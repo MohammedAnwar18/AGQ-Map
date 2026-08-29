@@ -1136,8 +1136,8 @@ const MapComponent = () => {
                 gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
             }
 
-            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
-            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=true&f=image`;
+            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=true&f=image`;
+            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=true&f=image`;
 
             return {
                 version: 8,
@@ -1155,14 +1155,14 @@ const MapComponent = () => {
                         type: 'raster',
                         tiles: [wbUrl],
                         tileSize: 256,
-                        maxzoom: 22,
+                        maxzoom: 24,
                         attribution: `© Geomolg WB ${year}`
                     },
                     'geomolg-gaza': {
                         type: 'raster',
                         tiles: [gazaUrl],
                         tileSize: 256,
-                        maxzoom: 22,
+                        maxzoom: 24,
                         attribution: `© Geomolg Gaza ${year}`
                     }
                 },
@@ -1172,21 +1172,21 @@ const MapComponent = () => {
                         type: 'raster',
                         source: 'google-base',
                         minzoom: 0,
-                        maxzoom: 22
+                        maxzoom: 24
                     },
                     {
                         id: 'geomolg-wb-layer',
                         type: 'raster',
                         source: 'geomolg-wb',
                         minzoom: 0,
-                        maxzoom: 22
+                        maxzoom: 24
                     },
                     {
                         id: 'geomolg-gaza-layer',
                         type: 'raster',
                         source: 'geomolg-gaza',
                         minzoom: 0,
-                        maxzoom: 22
+                        maxzoom: 24
                     }
                 ]
             };
@@ -3718,7 +3718,7 @@ const MapComponent = () => {
                         setActiveCustomStart(null);
                         setAiResults([]); // Also clear the destination marker
                         setIsTracking(false); // Stop tracking when nav ends
-                        setActiveMapType('satellite'); // REVERT TO DEFAULT MAP (Google Satellite)
+                        setActiveMapType(DEFAULT_MAP_TYPE); // REVERT TO DEFAULT MAP (Geomolg 2023)
                     }}
                 />
             )}
