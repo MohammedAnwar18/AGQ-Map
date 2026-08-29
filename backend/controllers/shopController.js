@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { uploadToCloud, uploadToSupabase } = require('../utils/storage');
+const { expandQuery, sqlNormalize } = require('../utils/searchTerms');
 
 // --- 1. Search Shops ---
 const searchShops = async (req, res) => {
@@ -1497,90 +1498,187 @@ const deletePanoramaHotspot = async (req, res) => {
     }
 };
 
+/**
+ * فحص مخطّط قاعدة البيانات مرة واحدة وتخزين النتيجة.
+ * بعض البيئات لا تملك كل الأعمدة (parent_shop_id / is_hidden / floor)
+ * ولا جدول مرافق الجامعات، فنبني الاستعلام حسب المتاح بدل الفشل.
+ */
+let searchSchemaCache = null;
+
+const getSearchSchema = async () => {
+    if (searchSchemaCache) return searchSchemaCache;
+
+    const [cols, tables] = await Promise.all([
+        pool.query(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name IN ('shops', 'shop_products')
+        `),
+        pool.query(`
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name IN ('university_facilities', 'shop_product_categories', 'shop_followers')
+        `)
+    ]);
+
+    const columnSet = new Set(cols.rows.map(r => r.column_name));
+    const tableSet = new Set(tables.rows.map(r => r.table_name));
+
+    searchSchemaCache = {
+        hasParent: columnSet.has('parent_shop_id'),
+        hasHidden: columnSet.has('is_hidden'),
+        hasFloor: columnSet.has('floor'),
+        hasBio: columnSet.has('bio'),
+        hasProductImages: columnSet.has('images'),
+        hasProductCategoryId: columnSet.has('category_id'),
+        hasFacilities: tableSet.has('university_facilities'),
+        hasProductCategories: tableSet.has('shop_product_categories'),
+        hasFollowers: tableSet.has('shop_followers')
+    };
+
+    return searchSchemaCache;
+};
+
 const smartSearch = async (req, res) => {
     try {
-        const { query, priceMin, priceMax, priceExact, productQuery } = req.query;
+        const { query, priceMin, priceMax, priceExact, productQuery, limit } = req.query;
         const userId = req.user ? (req.user.id || req.user.userId) : null;
 
-        if (!query && !productQuery) return res.json({ results: [] });
+        const rawQuery = (productQuery || query || '').trim();
+        if (!rawQuery) return res.json({ results: [], terms: [] });
 
-        const shopQuery = query ? `%${query}%` : '%';
-        const prodQuery = productQuery ? `%${productQuery}%` : (query ? `%${query}%` : '%');
+        // توسيع الاستعلام: تطبيع عربي + مرادفات عربية/إنجليزية
+        const { normalized, terms } = expandQuery(rawQuery);
+        if (!terms.length) return res.json({ results: [], terms: [] });
 
+        const schema = await getSearchSchema();
+
+        const patterns = terms.map(t => `%${t}%`);
+        const maxRows = Math.min(parseInt(limit, 10) || 40, 60);
+
+        const params = [patterns, normalized];
+        let idx = 3;
+
+        // فلاتر السعر (اختيارية)
         let priceCondition = '';
-        const params = [shopQuery, prodQuery];
-        let paramIdx = 3;
-
         if (priceExact !== undefined && priceExact !== '') {
-            priceCondition = `AND p.price = $` + paramIdx;
+            priceCondition = ` AND p.price = $${idx++}`;
             params.push(parseFloat(priceExact));
-            paramIdx++;
         } else {
             if (priceMin !== undefined && priceMin !== '') {
-                priceCondition += ` AND p.price >= $` + paramIdx;
+                priceCondition += ` AND p.price >= $${idx++}`;
                 params.push(parseFloat(priceMin));
-                paramIdx++;
             }
             if (priceMax !== undefined && priceMax !== '') {
-                priceCondition += ` AND p.price <= $` + paramIdx;
+                priceCondition += ` AND p.price <= $${idx++}`;
                 params.push(parseFloat(priceMax));
-                paramIdx++;
             }
         }
 
-        if (userId) params.push(parseInt(userId));
-        const userParamIdx = paramIdx;
-        const isFollowedExpr = userId
-            ? `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $` + userParamIdx + `::int)`
-            : 'FALSE';
+        let isFollowedShop = 'FALSE';
+        let isFollowedUni = 'FALSE';
+        if (userId && schema.hasFollowers) {
+            const userIdx = idx++;
+            params.push(parseInt(userId, 10));
+            isFollowedShop = `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = s.id AND user_id = $${userIdx}::int)`;
+            isFollowedUni = `EXISTS(SELECT 1 FROM shop_followers WHERE shop_id = f.university_id AND user_id = $${userIdx}::int)`;
+        }
+
+        // أعمدة قد لا تكون موجودة في كل البيئات
+        const parentIdCol = schema.hasParent ? 's.parent_shop_id' : 'NULL::int';
+        const parentNameCol = schema.hasParent ? 'parent.name' : 'NULL::text';
+        const parentJoin = schema.hasParent ? 'LEFT JOIN shops parent ON s.parent_shop_id = parent.id' : '';
+        const floorCol = schema.hasFloor ? 's.floor' : 'NULL::text';
+        const visible = schema.hasHidden ? 's.is_hidden = FALSE' : 'TRUE';
+        const productImagesCol = schema.hasProductImages ? 'p.images' : `'[]'::jsonb`;
+
+        const prodCatJoin = schema.hasProductCategories && schema.hasProductCategoryId
+            ? 'LEFT JOIN shop_product_categories pc ON pc.id = p.category_id' : '';
+        const prodCatCol = prodCatJoin ? 'pc.name' : 'NULL::text';
+
+        const nShopName = sqlNormalize('s.name');
+        const nShopCat = sqlNormalize('s.category');
+        const nShopBio = schema.hasBio ? sqlNormalize('s.bio') : `''`;
+        const nProdName = sqlNormalize('p.name');
+        const nProdDesc = sqlNormalize('p.description');
+        const nProdCat = prodCatJoin ? sqlNormalize('pc.name') : `''`;
+
+        // درجة الصلة: تطابق كامل > يبدأ بـ > يحتوي، والاسم أهم من الوصف
+        const score = (nameExpr, catExpr, descExpr) => `
+            (CASE WHEN ${nameExpr} = $2 THEN 100
+                  WHEN ${nameExpr} LIKE $2 || '%' THEN 70
+                  WHEN ${nameExpr} LIKE ANY($1::text[]) THEN 45
+                  ELSE 0 END)
+          + (CASE WHEN ${catExpr} LIKE ANY($1::text[]) THEN 20 ELSE 0 END)
+          + (CASE WHEN ${descExpr} LIKE ANY($1::text[]) THEN 8 ELSE 0 END)`;
+
+        const shopsCte = `
+            SELECT s.id, s.name, s.category, s.profile_picture,
+                   s.latitude, s.longitude, ${floorCol} AS floor, ${parentIdCol} AS parent_shop_id,
+                   ${parentNameCol} AS parent_shop_name,
+                   ${isFollowedShop} AS is_followed,
+                   NULL::numeric AS product_price, NULL::text AS product_name,
+                   NULL::text AS product_description, NULL::text AS product_image_url,
+                   NULL::jsonb AS product_images, NULL::text AS product_category,
+                   NULL::int AS product_id, 'shop' AS result_type,
+                   ${score(nShopName, nShopCat, nShopBio)} AS relevance
+            FROM shops s
+            ${parentJoin}
+            WHERE ${visible}
+              AND (${nShopName} LIKE ANY($1::text[])
+                OR ${nShopCat} LIKE ANY($1::text[])
+                ${schema.hasBio ? `OR ${nShopBio} LIKE ANY($1::text[])` : ''})
+            LIMIT 40`;
+
+        const productsCte = `
+            SELECT s.id, s.name, s.category, s.profile_picture,
+                   s.latitude, s.longitude, ${floorCol} AS floor, ${parentIdCol} AS parent_shop_id,
+                   ${parentNameCol} AS parent_shop_name,
+                   ${isFollowedShop} AS is_followed,
+                   p.price AS product_price, p.name AS product_name,
+                   p.description AS product_description, p.image_url AS product_image_url,
+                   ${productImagesCol} AS product_images, ${prodCatCol} AS product_category,
+                   p.id AS product_id, 'product' AS result_type,
+                   ${score(nProdName, nProdCat, nProdDesc)} AS relevance
+            FROM shop_products p
+            JOIN shops s ON p.shop_id = s.id
+            ${parentJoin}
+            ${prodCatJoin}
+            WHERE ${visible}
+              AND (${nProdName} LIKE ANY($1::text[])
+                OR ${nProdDesc} LIKE ANY($1::text[])
+                ${prodCatJoin ? `OR ${nProdCat} LIKE ANY($1::text[])` : ''})
+              ${priceCondition}
+            LIMIT 60`;
+
+        const facilitiesCte = schema.hasFacilities ? `
+            SELECT f.id, f.name, f.category, NULL::text AS profile_picture,
+                   f.latitude, f.longitude, NULL::text AS floor,
+                   f.university_id AS parent_shop_id,
+                   s.name AS parent_shop_name,
+                   ${isFollowedUni} AS is_followed,
+                   NULL::numeric AS product_price, NULL::text AS product_name,
+                   NULL::text AS product_description, NULL::text AS product_image_url,
+                   NULL::jsonb AS product_images, NULL::text AS product_category,
+                   NULL::int AS product_id, 'facility' AS result_type,
+                   ${score(sqlNormalize('f.name'), sqlNormalize('f.category'), `''`)} AS relevance
+            FROM university_facilities f
+            JOIN shops s ON f.university_id = s.id
+            WHERE ${visible}
+              AND (${sqlNormalize('f.name')} LIKE ANY($1::text[])
+                OR ${sqlNormalize('f.category')} LIKE ANY($1::text[]))
+            LIMIT 20` : null;
+
+        // كل فرع بين قوسين: Postgres لا يقبل LIMIT مباشرةً قبل UNION
+        const unionParts = [shopsCte, productsCte].map(part => `(${part})`);
+        if (facilitiesCte) unionParts.push(`(${facilitiesCte})`);
 
         const sql = `
-            WITH matching_shops AS (
-                SELECT s.id, s.name, s.category, s.profile_picture,
-                       s.latitude, s.longitude, s.floor, s.parent_shop_id,
-                       parent.name AS parent_shop_name,
-                       ${isFollowedExpr} as is_followed,
-                       NULL::numeric as product_price, NULL::text as product_name,
-                       NULL::text as product_description, NULL::text as product_image_url,
-                       NULL::int as product_id, 'shop' as result_type
-                FROM shops s
-                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
-                WHERE (s.name ILIKE $1 OR s.category ILIKE $1) AND s.is_hidden = FALSE
-                LIMIT 20
-            ),
-            matching_products AS (
-                SELECT s.id, s.name, s.category, s.profile_picture,
-                       s.latitude, s.longitude, s.floor, s.parent_shop_id,
-                       parent.name AS parent_shop_name,
-                       ${isFollowedExpr} as is_followed,
-                       p.price as product_price, p.name as product_name,
-                       p.description as product_description, p.image_url as product_image_url,
-                       p.id as product_id, 'product' as result_type
-                FROM shop_products p
-                JOIN shops s ON p.shop_id = s.id
-                LEFT JOIN shops parent ON s.parent_shop_id = parent.id
-                WHERE p.name ILIKE $2 ${priceCondition} AND s.is_hidden = FALSE
-                LIMIT 30
-            ),
-            matching_facilities AS (
-                SELECT f.id, f.name, f.category, NULL::text as profile_picture,
-                       f.latitude, f.longitude, NULL::text as floor, f.university_id as parent_shop_id,
-                       s.name AS parent_shop_name,
-                       ${isFollowedExpr.replace('s.id', 'f.university_id')} as is_followed,
-                       NULL::numeric as product_price, NULL::text as product_name,
-                       NULL::text as product_description, NULL::text as product_image_url,
-                       NULL::int as product_id, 'facility' as result_type
-                FROM university_facilities f
-                JOIN shops s ON f.university_id = s.id
-                WHERE (f.name ILIKE $1 OR f.category ILIKE $1) AND s.is_hidden = FALSE
-                LIMIT 20
-            )
-            SELECT * FROM matching_shops
-            UNION ALL
-            SELECT * FROM matching_products
-            UNION ALL
-            SELECT * FROM matching_facilities
-            ORDER BY result_type ASC, product_price ASC NULLS LAST
+            SELECT * FROM (
+                ${unionParts.join('\n                UNION ALL\n')}
+            ) merged
+            WHERE relevance > 0
+            ORDER BY relevance DESC, product_price ASC NULLS LAST
+            LIMIT ${maxRows}
         `;
 
         const result = await pool.query(sql, params);
@@ -1588,7 +1686,7 @@ const smartSearch = async (req, res) => {
         const shopsMap = {};
         const facilities = [];
 
-        result.rows.forEach(row => {
+        for (const row of result.rows) {
             if (row.result_type === 'facility') {
                 facilities.push({
                     id: row.id,
@@ -1598,39 +1696,66 @@ const smartSearch = async (req, res) => {
                     longitude: row.longitude,
                     parent_shop_name: row.parent_shop_name,
                     is_followed: row.is_followed,
+                    relevance: Number(row.relevance) || 0,
                     result_type: 'facility'
                 });
-                return;
+                continue;
             }
 
             if (!shopsMap[row.id]) {
                 shopsMap[row.id] = {
-                    id: row.id, name: row.name, category: row.category,
-                    profile_picture: row.profile_picture, latitude: row.latitude,
-                    longitude: row.longitude, floor: row.floor,
+                    id: row.id,
+                    name: row.name,
+                    category: row.category,
+                    profile_picture: row.profile_picture,
+                    latitude: row.latitude,
+                    longitude: row.longitude,
+                    floor: row.floor,
                     parent_shop_id: row.parent_shop_id,
                     parent_shop_name: row.parent_shop_name,
-                    is_followed: row.is_followed, products: [],
+                    is_followed: row.is_followed,
+                    relevance: Number(row.relevance) || 0,
+                    products: [],
                     result_type: 'shop'
                 };
             }
+
+            shopsMap[row.id].relevance = Math.max(
+                shopsMap[row.id].relevance,
+                Number(row.relevance) || 0
+            );
+
             if (row.result_type === 'product' && row.product_id) {
+                let images = [];
+                if (Array.isArray(row.product_images)) {
+                    images = row.product_images.filter(Boolean);
+                } else if (typeof row.product_images === 'string') {
+                    try { images = (JSON.parse(row.product_images) || []).filter(Boolean); } catch { images = []; }
+                }
+                if (!images.length && row.product_image_url) images = [row.product_image_url];
+
                 shopsMap[row.id].products.push({
-                    id: row.product_id, name: row.product_name,
+                    id: row.product_id,
+                    name: row.product_name,
                     description: row.product_description,
-                    price: row.product_price, image_url: row.product_image_url
+                    price: row.product_price,
+                    category: row.product_category,
+                    image_url: row.product_image_url || images[0] || null,
+                    images
                 });
             }
-        });
+        }
 
-        const mergedResults = [
-            ...Object.values(shopsMap),
-            ...facilities
-        ];
+        // المحلات التي طابقت بمنتج تُعرض أولاً، ثم الأعلى صلة
+        const mergedResults = [...Object.values(shopsMap), ...facilities]
+            .sort((a, b) => {
+                const aProducts = (a.products?.length || 0) > 0 ? 1 : 0;
+                const bProducts = (b.products?.length || 0) > 0 ? 1 : 0;
+                if (aProducts !== bProducts) return bProducts - aProducts;
+                return (b.relevance || 0) - (a.relevance || 0);
+            });
 
-        res.json({
-            results: mergedResults
-        });
+        res.json({ results: mergedResults, terms });
     } catch (error) {
         console.error('Smart search error:', error);
         res.status(500).json({ error: 'Smart search failed: ' + error.message });

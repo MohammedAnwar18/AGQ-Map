@@ -22,7 +22,7 @@ const FriendsModal          = React.lazy(() => import('../components/FriendsModa
 const SearchModal           = React.lazy(() => import('../components/SearchModal'));
 const ProfileModal          = React.lazy(() => import('../components/ProfileModal'));
 const NotificationsModal    = React.lazy(() => import('../components/NotificationsModal'));
-const AIChatModal           = React.lazy(() => import('../components/AIChatModal'));
+const AIAssistant           = React.lazy(() => import('../components/AIAssistant'));
 const CommunitiesModal      = React.lazy(() => import('../components/CommunitiesModal'));
 const NewsModal             = React.lazy(() => import('../components/NewsModal'));
 const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShopsModal'));
@@ -922,6 +922,8 @@ const MapComponent = () => {
 
     const [aiResults, setAiResults] = useState([]);
     const [routePath, setRoutePath] = useState(null);
+    // معرّف المحل الذي وصلنا إليه — يومض على الخريطة للحظات عند الوصول
+    const [arrivedShopId, setArrivedShopId] = useState(null);
     const [routeStats, setRouteStats] = useState(null);
     const [destination, setDestination] = useState(null);
     const [activeCustomStart, setActiveCustomStart] = useState(null);
@@ -1940,6 +1942,26 @@ const MapComponent = () => {
             });
         }
     }, [userLocation, isTracking]);
+
+    // رصد الوصول إلى الوجهة: عند اقتراب ٤٠ متراً نُنهي المسار ونومض على المحل
+    useEffect(() => {
+        if (!destination || !userLocation || !routePath) return;
+
+        const meters = haversineDistance(
+            { latitude: parseFloat(userLocation.latitude), longitude: parseFloat(userLocation.longitude) },
+            { latitude: parseFloat(destination.latitude), longitude: parseFloat(destination.longitude) }
+        );
+
+        if (!Number.isFinite(meters) || meters > 40) return;
+
+        setArrivedShopId(destination.id ?? `${destination.latitude},${destination.longitude}`);
+        setRoutePath(null);
+        setRouteStats(null);
+        setIsTracking(false);
+
+        const timer = setTimeout(() => setArrivedShopId(null), 6000);
+        return () => clearTimeout(timer);
+    }, [userLocation, destination, routePath]);
 
     // 🔒 Screen Wake Lock API to keep GPS active by preventing device sleep
     useEffect(() => {
@@ -3175,7 +3197,9 @@ const MapComponent = () => {
                                 }
                             }}
                         >
-                            <div style={{
+                            <div
+                              className={String(arrivedShopId) === String(shop.id) ? 'shop-marker-arrived' : undefined}
+                              style={{
                                 width:  `${shop.icon_size ? shop.icon_size : getMarkerSize(shop.category)}px`,
                                 height: `${shop.icon_size ? shop.icon_size : getMarkerSize(shop.category)}px`,
                                 borderRadius: '50%',
@@ -4017,9 +4041,14 @@ const MapComponent = () => {
                 }
             }} />}
             {showAIChat && (
-                <AIChatModal 
-                    onClose={() => setShowAIChat(false)} 
+                <AIAssistant
+                    onClose={() => setShowAIChat(false)}
                     userLocation={userLocation}
+                    onRequestLocation={() => {
+                        setShowAIChat(false);
+                        setLocationPermissionBlocked(false);
+                        setShowLocationPermission(true);
+                    }}
                     onNavigate={(shop, mode, customStartLoc) => {
                         const routeMode = (mode === 'walking' || mode === 'foot-walking') ? 'walking' : 'driving';
                         if (customStartLoc) {
