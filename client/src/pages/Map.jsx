@@ -104,12 +104,8 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
-// الخريطة الافتراضية: Google Satellite (سريعة). يمكن التبديل لجيومولج من الطبقات
+// الخريطة الافتراضية: Google Satellite
 const DEFAULT_MAP_TYPE = 'satellite';
-
-// جيومولج طبقة ثانوية تُفعَّل يدوياً. خادمها بطيء جداً (قياسنا: ٢٠-٤٠ ثانية
-// للبلاطة الواحدة)، لذلك نُبقي صور جوجل تحتها فلا تبيضّ الشاشة أثناء التحميل.
-const GEOMOLG_MAP_TYPE = 'geomolg-2023';
 
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
@@ -1112,101 +1108,7 @@ const MapComponent = () => {
             return MAPTILER_STYLE_URL;
         }
 
-        // Preference 3: Geomolg Layer (Or specific year orthophotos from Geomolg)
-        if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) {
-            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2024';
-            
-            // الافتراضي: أورثوفوتو الضفة 2024 بدقة 15 سم وغزة 2024
-            let wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
-            let gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
 
-            if (year === '2024') {
-                wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
-                gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
-            } else if (year === '2023') {
-                wbService = 'Orthophotos_WB_2023_15cm_jp2_PG1923_jp2';
-                gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
-            } else if (year === '2022') {
-                wbService = 'Orthophotos_WB_2022_15cm_tif_PG1923_05';
-                gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
-            } else if (year === '2021') {
-                wbService = 'Orthophotos_WB_2021_15cm_tif_PG1923';
-                gazaService = 'Orthophotos_GS_2021_Satellite_52cm_jp2_PG1923';
-            } else if (year === '2020') {
-                wbService = 'Orthophotos_WB_2020_25cm_jpg_PG1923';
-                gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
-            } else if (year === '2018') {
-                wbService = 'Orthophotos_WB_2018_Aerial_10cm_jpg_PG1923';
-                gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
-            }
-
-            // حجم 256 للسرعة — السيرفر يدعم حتى zoom 13 فقط (maxzoom=13 يمنع طلب تايلز فارغة)
-            // png8 بدل png32: قِسنا نفس البلاطة ٦٥ ك.ب مقابل ٢٠٩ ك.ب وزمن أقل من الخادم.
-            // transparent=true ليظهر أساس جوجل في المناطق خارج تغطية الأورثوفوتو.
-            const exportUrl = (service) =>
-                `https://orthophotos.geomolg.ps/adaptor/rest/services/${service}/MapServer/export` +
-                `?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png8&transparent=true&dpi=96&f=image`;
-
-            const wbUrl = exportUrl(wbService);
-            const gazaUrl = exportUrl(gazaService);
-
-            // صور جوجل أساساً تحت جيومولج فلا تبيضّ الشاشة أثناء انتظار الخادم البطيء.
-            // maxzoom في source = 13 → MapLibre يكبّر البلاطة الموجودة بدل طلب بلاطات جديدة
-            return {
-                version: 8,
-                name: `Geomolg-${year}`,
-                sources: {
-                    // صور جوجل أساساً: تظهر فوراً فلا تبيضّ الشاشة، وجيومولج تُرسم فوقها
-                    'google-base': {
-                        type: 'raster',
-                        tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
-                        tileSize: 256,
-                        maxzoom: 21,
-                        attribution: '© Google Satellite'
-                    },
-                    'geomolg-wb': {
-                        type: 'raster',
-                        tiles: [wbUrl],
-                        tileSize: 256,
-                        maxzoom: 13,
-                        attribution: `© Geomolg WB ${year}`
-                    },
-                    'geomolg-gaza': {
-                        type: 'raster',
-                        tiles: [gazaUrl],
-                        tileSize: 256,
-                        maxzoom: 13,
-                        attribution: `© Geomolg Gaza ${year}`
-                    }
-                },
-                layers: [
-                    {
-                        id: 'google-base-layer',
-                        type: 'raster',
-                        source: 'google-base',
-                        minzoom: 0,
-                        maxzoom: 22
-                    },
-                    {
-                        id: 'geomolg-wb-layer',
-                        type: 'raster',
-                        source: 'geomolg-wb',
-                        minzoom: 0,
-                        maxzoom: 22,
-                        // بلا تلاشٍ: البلاطة تظهر فور وصولها فوق جوجل بدل وميض أبيض
-                        paint: { 'raster-fade-duration': 0 }
-                    },
-                    {
-                        id: 'geomolg-gaza-layer',
-                        type: 'raster',
-                        source: 'geomolg-gaza',
-                        minzoom: 0,
-                        maxzoom: 22,
-                        paint: { 'raster-fade-duration': 0 }
-                    }
-                ]
-            };
-        }
 
         // Default & Fallback: Google Tiles (Satellite for general view)
         const attribution = 'Google Satellite';
@@ -2477,15 +2379,7 @@ const MapComponent = () => {
                                         background: 'transparent'
                                     }}
                                   />
-                                  <div className="map-layers-dropdown geomolg-layers-compact">
-                                      <button 
-                                          className={`dropdown-item ${activeMapType && activeMapType.startsWith('geomolg') ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType(GEOMOLG_MAP_TYPE); setShowMapLayersMenu(false); }}
-                                          title="أورثوفوتو جيومولج 2023 — 15 سم (GeoMOLG)"
-                                      >
-                                          <span className="item-icon">🛰️</span>
-                                      </button>
-
+                                  <div className="map-layers-dropdown">
                                       <button 
                                           className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
                                           onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
@@ -3394,7 +3288,7 @@ const MapComponent = () => {
                     )}
 
                     {/* Palestinian Cities Labels (Hide when route is active to keep map clean as requested) */}
-                    {(activeMapType === 'satellite' || (activeMapType && activeMapType.startsWith('geomolg-'))) && !routePath && !isGuestMode && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
+                    {activeMapType === 'satellite' && !routePath && !isGuestMode && viewState.zoom <= 13.5 && PALESTINIAN_CITIES.map((city, index) => (
                         <Marker key={`city-${index}`} longitude={city.lon} latitude={city.lat} anchor="bottom">
                             <div style={{
                                 color: (routePath && activeMapType !== 'satellite') ? '#1e293b' : 'white',
