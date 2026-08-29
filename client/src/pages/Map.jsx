@@ -104,8 +104,8 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
-// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2024 (الضفة 15 سم)
-const DEFAULT_MAP_TYPE = 'geomolg-2024';
+// الخريطة الافتراضية عند فتح الموقع: قمر صناعي (Google Satellite)
+const DEFAULT_MAP_TYPE = 'satellite';
 
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
@@ -2464,7 +2464,7 @@ const MapComponent = () => {
                                   <div className="map-layers-dropdown geomolg-layers-compact">
                                       <button 
                                           className={`dropdown-item ${activeMapType && activeMapType.startsWith('geomolg') ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType(DEFAULT_MAP_TYPE); setShowMapLayersMenu(false); }}
+                                          onClick={() => { setActiveMapType('geomolg-2024'); setShowMapLayersMenu(false); }}
                                           title="أورثوفوتو جيومولج 2024 (GeoMOLG)"
                                       >
                                           <span className="item-icon">🛰️</span>
