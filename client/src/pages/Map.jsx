@@ -104,8 +104,8 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
-// الخريطة الافتراضية عند فتح الموقع: قمر صناعي (Google Satellite)
-const DEFAULT_MAP_TYPE = 'satellite';
+// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2023 (الضفة 15 سم) — بدون طبقة جوجل من تحتها لسرعة الظهور
+const DEFAULT_MAP_TYPE = 'geomolg-2023';
 
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
@@ -1136,21 +1136,15 @@ const MapComponent = () => {
                 gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
             }
 
-            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=true&f=image`;
-            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=true&f=image`;
+            // طلب مربعات بجودة أعلى لدقة أفضل عند التكبير
+            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=false&f=image`;
+            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=false&f=image`;
 
+            // بدون طبقة جوجل من تحتها — الصور الجوية مباشرةً للسرعة القصوى
             return {
                 version: 8,
                 name: `Geomolg-${year}`,
-                sprite: "https://demotiles.maplibre.org/styles/osm-bright-gl-style/sprite",
-                glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
                 sources: {
-                    'google-base': {
-                        type: 'raster',
-                        tiles: [`https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}`],
-                        tileSize: 256,
-                        attribution: '© Google Satellite'
-                    },
                     'geomolg-wb': {
                         type: 'raster',
                         tiles: [wbUrl],
@@ -1167,13 +1161,6 @@ const MapComponent = () => {
                     }
                 },
                 layers: [
-                    {
-                        id: 'google-base-layer',
-                        type: 'raster',
-                        source: 'google-base',
-                        minzoom: 0,
-                        maxzoom: 24
-                    },
                     {
                         id: 'geomolg-wb-layer',
                         type: 'raster',
@@ -2464,8 +2451,8 @@ const MapComponent = () => {
                                   <div className="map-layers-dropdown geomolg-layers-compact">
                                       <button 
                                           className={`dropdown-item ${activeMapType && activeMapType.startsWith('geomolg') ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('geomolg-2024'); setShowMapLayersMenu(false); }}
-                                          title="أورثوفوتو جيومولج 2024 (GeoMOLG)"
+                                          onClick={() => { setActiveMapType('geomolg-2023'); setShowMapLayersMenu(false); }}
+                                          title="أورثوفوتو جيومولج 2023 — 15 سم (GeoMOLG)"
                                       >
                                           <span className="item-icon">🛰️</span>
                                       </button>
