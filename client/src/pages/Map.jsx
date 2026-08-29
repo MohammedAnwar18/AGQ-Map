@@ -104,8 +104,8 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
-// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2023 (الضفة 15 سم) — بدون طبقة جوجل من تحتها لسرعة الظهور
-const DEFAULT_MAP_TYPE = 'geomolg-2023';
+// الخريطة الافتراضية: Google Satellite (سريعة). يمكن التبديل لجيومولج من الطبقات
+const DEFAULT_MAP_TYPE = 'satellite';
 
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
@@ -1136,11 +1136,12 @@ const MapComponent = () => {
                 gazaService = 'Orthophotos_GS_2018_Satellite_50cm_TIF_PG1923';
             }
 
-            // طلب مربعات بجودة أعلى لدقة أفضل عند التكبير
-            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=false&f=image`;
-            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&dpi=96&format=png32&transparent=false&f=image`;
+            // حجم 256 للسرعة — السيرفر يدعم حتى zoom 13 فقط (maxzoom=13 يمنع طلب تايلز فارغة)
+            const wbUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${wbService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=false&f=image`;
+            const gazaUrl = `https://orthophotos.geomolg.ps/adaptor/rest/services/${gazaService}/MapServer/export?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=png32&transparent=false&f=image`;
 
-            // بدون طبقة جوجل من تحتها — الصور الجوية مباشرةً للسرعة القصوى
+            // بدون طبقة جوجل تحتها للسرعة
+            // maxzoom في source = 13 (حد السيرفر) → MapLibre يكبّر التايلز بدل ما يطلب جديدة فارغة
             return {
                 version: 8,
                 name: `Geomolg-${year}`,
@@ -1149,14 +1150,14 @@ const MapComponent = () => {
                         type: 'raster',
                         tiles: [wbUrl],
                         tileSize: 256,
-                        maxzoom: 24,
+                        maxzoom: 13,
                         attribution: `© Geomolg WB ${year}`
                     },
                     'geomolg-gaza': {
                         type: 'raster',
                         tiles: [gazaUrl],
                         tileSize: 256,
-                        maxzoom: 24,
+                        maxzoom: 13,
                         attribution: `© Geomolg Gaza ${year}`
                     }
                 },
@@ -1166,14 +1167,14 @@ const MapComponent = () => {
                         type: 'raster',
                         source: 'geomolg-wb',
                         minzoom: 0,
-                        maxzoom: 24
+                        maxzoom: 22
                     },
                     {
                         id: 'geomolg-gaza-layer',
                         type: 'raster',
                         source: 'geomolg-gaza',
                         minzoom: 0,
-                        maxzoom: 24
+                        maxzoom: 22
                     }
                 ]
             };
