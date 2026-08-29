@@ -27,6 +27,7 @@ const CommunitiesModal      = React.lazy(() => import('../components/Communities
 const NewsModal             = React.lazy(() => import('../components/NewsModal'));
 const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShopsModal'));
 const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
+const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
 const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
@@ -103,6 +104,21 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
+// المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
+// الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
+const LEGACY_PROFILE_CATEGORIES = [
+    'بنك', 'فرع بنك', 'صراف آلي', 'ATM', 'Bank',
+    'مركز تسوق', 'مجمع تجاري', 'Mall',
+    'Camera', 'كاميرا',
+    'جامعة', 'University',
+    'بلدية', 'Municipality'
+];
+
+const usesStorefront = (shop) => {
+    const category = String(shop?.category || '').trim();
+    return !LEGACY_PROFILE_CATEGORIES.some(c => c.toLowerCase() === category.toLowerCase());
+};
+
 const haversineDistance = (coords1, coords2) => {
     const R = 6371e3; // Earth radius in meters
     const toRad = x => x * Math.PI / 180;
@@ -3945,13 +3961,22 @@ const MapComponent = () => {
                 </div>
             )}
             {showShopProfile && selectedShopProfile && (
-                <ShopProfileModal
-                    shop={selectedShopProfile}
-                    currentUser={user}
-                    onClose={() => setShowShopProfile(false)}
-                    onFollowChange={handleShopFollowed}
-                    userLocation={userLocation}
-                />
+                usesStorefront(selectedShopProfile) ? (
+                    <ShopStorefront
+                        shop={selectedShopProfile}
+                        currentUser={user}
+                        onClose={() => setShowShopProfile(false)}
+                        userLocation={userLocation}
+                    />
+                ) : (
+                    <ShopProfileModal
+                        shop={selectedShopProfile}
+                        currentUser={user}
+                        onClose={() => setShowShopProfile(false)}
+                        onFollowChange={handleShopFollowed}
+                        userLocation={userLocation}
+                    />
+                )
             )}
             {showMedicalProfile && selectedMedicalProfile && (
                 <MedicalCenterProfileModal

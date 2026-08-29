@@ -909,20 +909,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         </div>
                                                     </>
                                                 )}
-                                                {(newShopData.category === 'Restaurant' || newShopData.category === 'Cafe') && (
-                                                    <div>
-                                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>تصميم قائمة الطعام المخصص</label>
-                                                        <select
-                                                            value={newShopData.menu_layout || 'default'}
-                                                            onChange={e => setNewShopData({ ...newShopData, menu_layout: e.target.value })}
-                                                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--bg-tertiary)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                                                        >
-                                                            <option value="default">التصميم الافتراضي (تبويبات)</option>
-                                                            <option value="vanilla">تصميم "فاننيلا" (Vanilla Minimal)</option>
-                                                            <option value="restaurant_modern">التصميم الحديث (Talabat/UberEats Style)</option>
-                                                        </select>
-                                                    </div>
-                                                )}
                                                 <div>
                                                     <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>الموقع الجغرافي</label>
                                                     <div style={{ display: 'flex', gap: '10px' }}>

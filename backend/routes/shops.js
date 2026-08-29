@@ -38,6 +38,11 @@ router.post('/:id/products', authenticateToken, upload.array('images', 5), shopC
 router.put('/:id/products/:productId', authenticateToken, upload.array('images', 5), shopController.updateProduct);
 router.delete('/:id/products/:productId', authenticateToken, shopController.deleteProduct);
 
+// أقسام المنتجات
+router.post('/:id/product-categories', authenticateToken, shopController.addProductCategory);
+router.put('/:id/product-categories/:categoryId', authenticateToken, shopController.updateProductCategory);
+router.delete('/:id/product-categories/:categoryId', authenticateToken, shopController.deleteProductCategory);
+
 // إدارة الملكية
 router.post('/:id/assign-owner', authenticateToken, shopController.assignShopOwner);
 router.delete('/:id/owner', authenticateToken, shopController.removeShopOwner);
@@ -87,6 +92,7 @@ router.get('/:id', optionalAuth, shopController.getShopProfile);
 
 
 // المرافق الجامعية (عرض - عام)
+router.get('/:id/product-categories', optionalAuth, shopController.getProductCategories);
 router.get('/:id/facilities', optionalAuth, shopController.getUniversityFacilities);
 router.get('/facilities/:facilityId', optionalAuth, shopController.getFacilityProfile);
 

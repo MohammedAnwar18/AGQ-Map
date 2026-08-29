@@ -160,15 +160,28 @@ const getShopProfile = async (req, res) => {
             ORDER BY p.created_at DESC
         `, [shopId, currentUserId]);
 
-        // 3. Get Shop Products
+        // 3. Get Shop Products (مع اسم القسم)
         const productsResult = await pool.query(`
-            SELECT * FROM shop_products WHERE shop_id = $1 ORDER BY created_at DESC
+            SELECT p.*, c.name AS category_name
+            FROM shop_products p
+            LEFT JOIN shop_product_categories c ON c.id = p.category_id
+            WHERE p.shop_id = $1
+            ORDER BY p.sort_order ASC, p.created_at DESC
+        `, [shopId]);
+
+        // 4. Get Product Categories
+        const categoriesResult = await pool.query(`
+            SELECT id, name, sort_order
+            FROM shop_product_categories
+            WHERE shop_id = $1
+            ORDER BY sort_order ASC, id ASC
         `, [shopId]);
 
         res.json({
             shop: { ...shop, is_owner: isOwner },
             posts: postsResult.rows,
-            products: productsResult.rows
+            products: productsResult.rows.map(normalizeProduct),
+            categories: categoriesResult.rows
         });
     } catch (error) {
         console.error('Get shop profile error:', error);
@@ -369,30 +382,114 @@ const createShopPost = async (req, res) => {
 };
 
 // --- 8.5 Add Product ---
+// ── أدوات مساعدة للمنتجات ────────────────────────────────────────────
+// يوحّد شكل المنتج: images دائماً مصفوفة، والسعر رقم أو null
+const normalizeProduct = (row) => {
+    if (!row) return row;
+    let images = [];
+    if (Array.isArray(row.images)) {
+        images = row.images.filter(Boolean);
+    } else if (typeof row.images === 'string') {
+        try { images = (JSON.parse(row.images) || []).filter(Boolean); } catch { images = []; }
+    }
+    if (images.length === 0 && row.image_url) images = [row.image_url];
+
+    return {
+        ...row,
+        images,
+        image_url: row.image_url || images[0] || null,
+        price: row.price === null || row.price === undefined || row.price === '' ? null : row.price
+    };
+};
+
+// يتحقق أن المستخدم يملك المحل أو أنه أدمن النظام
+const assertShopAccess = async (shopId, req, res) => {
+    const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+    if (!shopCheck.rows.length) {
+        res.status(404).json({ error: 'Shop not found' });
+        return false;
+    }
+    if (req.user.role !== 'admin' && shopCheck.rows[0].owner_id !== req.user.userId) {
+        res.status(403).json({ error: 'Unauthorized' });
+        return false;
+    }
+    return true;
+};
+
+// يرفع كل الصور المرسلة إلى التخزين السحابي (Cloudflare R2)
+const uploadProductImages = async (req) => {
+    const files = req.files || (req.file ? [req.file] : []);
+    const urls = [];
+    for (const file of files) {
+        const url = file.buffer
+            ? await uploadToCloud(file.buffer, file.originalname, file.mimetype)
+            : `/uploads/${file.filename}`;
+        if (url) urls.push(url);
+    }
+    return urls;
+};
+
+// يحوّل category_id / category (اسم) إلى معرّف قسم فعلي، وينشئه إن لزم
+const resolveCategoryId = async (shopId, body) => {
+    if (body.category_id !== undefined && body.category_id !== '' && body.category_id !== 'null') {
+        const parsed = parseInt(body.category_id, 10);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+    const name = (body.category || '').trim();
+    if (!name) return null;
+
+    const existing = await pool.query(
+        'SELECT id FROM shop_product_categories WHERE shop_id = $1 AND name = $2',
+        [shopId, name]
+    );
+    if (existing.rows.length) return existing.rows[0].id;
+
+    const created = await pool.query(
+        'INSERT INTO shop_product_categories (shop_id, name) VALUES ($1, $2) RETURNING id',
+        [shopId, name]
+    );
+    return created.rows[0].id;
+};
+
+const parsePrice = (value) => {
+    if (value === undefined || value === null || String(value).trim() === '') return null;
+    const num = parseFloat(value);
+    return Number.isNaN(num) ? null : num;
+};
+
+// --- 8.5 Add Product ---
 const addProduct = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const { name, price, description, old_price } = req.body;
-        const userId = req.user.userId;
-        const userRole = req.user.role;
+        if (!(await assertShopAccess(shopId, req, res))) return;
 
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
-
-        let image_url = null;
-        if (req.file) { // Assuming single file for product for now
-            image_url = req.file.buffer ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype) : `/uploads/${req.file.filename}`;
+        const { name, description } = req.body;
+        if (!name || !String(name).trim()) {
+            return res.status(400).json({ error: 'اسم المنتج مطلوب' });
         }
 
-        const result = await pool.query(`
-            INSERT INTO shop_products (shop_id, name, price, description, image_url, old_price)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
-        `, [shopId, name, price, description, image_url, old_price || null]);
+        const images = await uploadProductImages(req);
+        const categoryId = await resolveCategoryId(shopId, req.body);
 
-        res.json(result.rows[0]);
+        const result = await pool.query(`
+            INSERT INTO shop_products
+                (shop_id, name, price, description, image_url, old_price, category_id, images, sort_order, is_available)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+            RETURNING *
+        `, [
+            shopId,
+            String(name).trim(),
+            parsePrice(req.body.price),
+            description || null,
+            images[0] || null,
+            parsePrice(req.body.old_price),
+            categoryId,
+            JSON.stringify(images),
+            parseInt(req.body.sort_order, 10) || 0,
+            req.body.is_available === 'false' ? false : true
+        ]);
+
+        res.json(normalizeProduct(result.rows[0]));
     } catch (e) {
         console.error('Add product error:', e);
         res.status(500).json({ error: 'Failed to add product' });
@@ -403,28 +500,44 @@ const addProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { id, productId } = req.params; // id is shopId
-        const { name, price, description, old_price } = req.body;
-        const userId = req.user.userId;
-        const userRole = req.user.role;
+        if (!(await assertShopAccess(id, req, res))) return;
 
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
-
-        let queryParts = [];
-        let values = [];
+        const queryParts = [];
+        const values = [];
         let index = 1;
 
-        if (name !== undefined) { queryParts.push(`name = $${index++}`); values.push(name); }
-        if (price !== undefined) { queryParts.push(`price = $${index++}`); values.push(price); }
-        if (description !== undefined) { queryParts.push(`description = $${index++}`); values.push(description); }
-        if (old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(old_price || null); }
+        if (req.body.name !== undefined) { queryParts.push(`name = $${index++}`); values.push(String(req.body.name).trim()); }
+        if (req.body.price !== undefined) { queryParts.push(`price = $${index++}`); values.push(parsePrice(req.body.price)); }
+        if (req.body.description !== undefined) { queryParts.push(`description = $${index++}`); values.push(req.body.description || null); }
+        if (req.body.old_price !== undefined) { queryParts.push(`old_price = $${index++}`); values.push(parsePrice(req.body.old_price)); }
+        if (req.body.sort_order !== undefined) { queryParts.push(`sort_order = $${index++}`); values.push(parseInt(req.body.sort_order, 10) || 0); }
+        if (req.body.is_available !== undefined) { queryParts.push(`is_available = $${index++}`); values.push(req.body.is_available === 'false' ? false : true); }
 
-        if (req.file) {
-            const url = req.file.buffer ? await uploadToCloud(req.file.buffer, req.file.originalname, req.file.mimetype) : `/uploads/${req.file.filename}`;
+        if (req.body.category_id !== undefined || req.body.category !== undefined) {
+            const categoryId = await resolveCategoryId(id, req.body);
+            queryParts.push(`category_id = $${index++}`);
+            values.push(categoryId);
+        }
+
+        // صور جديدة تستبدل القديمة، وإلا نحترم قائمة الصور المُبقاة
+        const uploaded = await uploadProductImages(req);
+        if (uploaded.length > 0) {
+            let kept = [];
+            if (req.body.existing_images) {
+                try { kept = (JSON.parse(req.body.existing_images) || []).filter(Boolean); } catch { kept = []; }
+            }
+            const finalImages = [...kept, ...uploaded];
+            queryParts.push(`images = $${index++}::jsonb`);
+            values.push(JSON.stringify(finalImages));
             queryParts.push(`image_url = $${index++}`);
-            values.push(url);
+            values.push(finalImages[0] || null);
+        } else if (req.body.existing_images !== undefined) {
+            let kept = [];
+            try { kept = (JSON.parse(req.body.existing_images) || []).filter(Boolean); } catch { kept = []; }
+            queryParts.push(`images = $${index++}::jsonb`);
+            values.push(JSON.stringify(kept));
+            queryParts.push(`image_url = $${index++}`);
+            values.push(kept[0] || null);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });
@@ -437,7 +550,7 @@ const updateProduct = async (req, res) => {
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Product not found' });
 
-        res.json(result.rows[0]);
+        res.json(normalizeProduct(result.rows[0]));
     } catch (e) {
         console.error('Update product error:', e);
         res.status(500).json({ error: 'Failed to update product' });
@@ -448,19 +561,111 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
     try {
         const { id, productId } = req.params; // id is shopId
-        const userId = req.user.userId;
-        const userRole = req.user.role;
-
-        // Permissions
-        const shopCheck = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [id]);
-        if (!shopCheck.rows.length) return res.status(404).json({ error: 'Shop not found' });
-        if (userRole !== 'admin' && shopCheck.rows[0].owner_id !== userId) return res.status(403).json({ error: 'Unauthorized' });
+        if (!(await assertShopAccess(id, req, res))) return;
 
         await pool.query('DELETE FROM shop_products WHERE id = $1 AND shop_id = $2', [productId, id]);
         res.json({ message: 'Product deleted' });
     } catch (e) {
         console.error('Delete product error:', e);
         res.status(500).json({ error: 'Failed to delete product' });
+    }
+};
+
+// ── 8.8 أقسام المنتجات ───────────────────────────────────────────────
+const getProductCategories = async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT c.id, c.name, c.sort_order,
+                   (SELECT COUNT(*)::int FROM shop_products p WHERE p.category_id = c.id) AS products_count
+            FROM shop_product_categories c
+            WHERE c.shop_id = $1
+            ORDER BY c.sort_order ASC, c.id ASC
+        `, [req.params.id]);
+        res.json({ categories: result.rows });
+    } catch (e) {
+        console.error('Get product categories error:', e);
+        res.status(500).json({ error: 'Failed to get categories' });
+    }
+};
+
+const addProductCategory = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const name = (req.body.name || '').trim();
+        if (!name) return res.status(400).json({ error: 'اسم القسم مطلوب' });
+
+        const existing = await pool.query(
+            'SELECT * FROM shop_product_categories WHERE shop_id = $1 AND name = $2',
+            [shopId, name]
+        );
+        if (existing.rows.length) return res.json(existing.rows[0]);
+
+        const orderResult = await pool.query(
+            'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM shop_product_categories WHERE shop_id = $1',
+            [shopId]
+        );
+
+        const result = await pool.query(
+            'INSERT INTO shop_product_categories (shop_id, name, sort_order) VALUES ($1, $2, $3) RETURNING *',
+            [shopId, name, orderResult.rows[0].next]
+        );
+        res.json(result.rows[0]);
+    } catch (e) {
+        console.error('Add product category error:', e);
+        res.status(500).json({ error: 'Failed to add category' });
+    }
+};
+
+const updateProductCategory = async (req, res) => {
+    try {
+        const { id, categoryId } = req.params;
+        if (!(await assertShopAccess(id, req, res))) return;
+
+        const queryParts = [];
+        const values = [];
+        let index = 1;
+
+        if (req.body.name !== undefined) {
+            const name = (req.body.name || '').trim();
+            if (!name) return res.status(400).json({ error: 'اسم القسم مطلوب' });
+            queryParts.push(`name = $${index++}`);
+            values.push(name);
+        }
+        if (req.body.sort_order !== undefined) {
+            queryParts.push(`sort_order = $${index++}`);
+            values.push(parseInt(req.body.sort_order, 10) || 0);
+        }
+
+        if (queryParts.length === 0) return res.json({ message: 'No changes provided' });
+
+        values.push(categoryId);
+        values.push(id);
+
+        const result = await pool.query(
+            `UPDATE shop_product_categories SET ${queryParts.join(', ')} WHERE id = $${index++} AND shop_id = $${index} RETURNING *`,
+            values
+        );
+        if (!result.rows.length) return res.status(404).json({ error: 'Category not found' });
+        res.json(result.rows[0]);
+    } catch (e) {
+        console.error('Update product category error:', e);
+        res.status(500).json({ error: 'Failed to update category' });
+    }
+};
+
+const deleteProductCategory = async (req, res) => {
+    try {
+        const { id, categoryId } = req.params;
+        if (!(await assertShopAccess(id, req, res))) return;
+
+        // المنتجات لا تُحذف — تعود بلا قسم (ON DELETE SET NULL)
+        await pool.query('DELETE FROM shop_product_categories WHERE id = $1 AND shop_id = $2', [categoryId, id]);
+        res.json({ message: 'Category deleted' });
+    } catch (e) {
+        console.error('Delete product category error:', e);
+        res.status(500).json({ error: 'Failed to delete category' });
     }
 };
 
@@ -1445,6 +1650,10 @@ module.exports = {
     addProduct,
     updateProduct,
     deleteProduct,
+    getProductCategories,
+    addProductCategory,
+    updateProductCategory,
+    deleteProductCategory,
     assignShopOwner,
     removeShopOwner,
     getManagedShops,

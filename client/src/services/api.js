@@ -500,6 +500,27 @@ export const shopService = {
         return response.data;
     },
 
+    // ── أقسام المنتجات ─────────────────────────────────────────────
+    getProductCategories: async (shopId) => {
+        const response = await api.get(`/shops/${shopId}/product-categories`);
+        return response.data;
+    },
+
+    addProductCategory: async (shopId, name) => {
+        const response = await api.post(`/shops/${shopId}/product-categories`, { name });
+        return response.data;
+    },
+
+    updateProductCategory: async (shopId, categoryId, data) => {
+        const response = await api.put(`/shops/${shopId}/product-categories/${categoryId}`, data);
+        return response.data;
+    },
+
+    deleteProductCategory: async (shopId, categoryId) => {
+        const response = await api.delete(`/shops/${shopId}/product-categories/${categoryId}`);
+        return response.data;
+    },
+
     updateShopImages: async (shopId, formData) => {
         const response = await api.put(`/shops/${shopId}/images`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }

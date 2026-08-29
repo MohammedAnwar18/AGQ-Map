@@ -138,6 +138,47 @@ app.use('/api/fitness', fitnessRoutes);
     }
 })();
 
+// Auto-migrate: واجهة المحل (أقسام المنتجات + صور متعددة + سعر اختياري)
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shop_product_categories (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+                name VARCHAR(120) NOT NULL,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (shop_id, name)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_product_categories_shop
+            ON shop_product_categories (shop_id, sort_order);
+        `);
+        await pool.query(`
+            ALTER TABLE shop_products
+                ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shop_product_categories(id) ON DELETE SET NULL,
+                ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb,
+                ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT TRUE;
+        `);
+        await pool.query('ALTER TABLE shop_products ALTER COLUMN price DROP NOT NULL;').catch(() => {});
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_products_category
+            ON shop_products (shop_id, category_id, sort_order);
+        `);
+        await pool.query(`
+            UPDATE shop_products
+            SET images = to_jsonb(ARRAY[image_url])
+            WHERE image_url IS NOT NULL AND image_url <> ''
+              AND (images IS NULL OR jsonb_array_length(images) = 0);
+        `);
+        console.log('✅ storefront product tables ready');
+    } catch (err) {
+        console.warn('⚠️ storefront migration warning:', err.message);
+    }
+})();
+
 // Auto-migrate: ensure 360 panorama tables exist (panoramas + hotspots)
 (async () => {
     try {

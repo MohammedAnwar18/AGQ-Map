@@ -738,8 +738,8 @@ const PalNovaaMarketDesign = ({ onClose, onSelectShop, onSelectUniversity, initi
                         </svg>
                     </div>
                     <div>
-                        <div style={{ fontSize: 20, fontWeight: 950, color: '#F8F4ED', letterSpacing: '0.5px' }}>HYDROSTUDIO</div>
-                        <div style={{ fontSize: 9, color: '#e8b547', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: '2px', fontWeight: 'bold' }}>Live Experience Builder 3.0</div>
+                        <div style={{ fontSize: 20, fontWeight: 950, color: '#F8F4ED', letterSpacing: '0.5px' }}>استوديو التصميم</div>
+                        <div style={{ fontSize: 9, color: '#e8b547', letterSpacing: 1.5, marginTop: '2px', fontWeight: 'bold' }}>تصميم واجهة المحل</div>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
