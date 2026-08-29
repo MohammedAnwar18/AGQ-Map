@@ -104,6 +104,9 @@ const smartSmoothPolyline = (coords, ratio = 0.15, iterations = 2) => {
 };
 
 // Helper: Haversine Distance (Meters)
+// الخريطة الافتراضية عند فتح الموقع: أورثوفوتو جيومولج 2023 (الضفة 15 سم)
+const DEFAULT_MAP_TYPE = 'geomolg-2023';
+
 // المحلات العادية تفتح واجهة العرض الجديدة (Storefront).
 // الفئات ذات الواجهات الخاصة (بنوك، مجمعات، كاميرات، جامعات...) تبقى على ملفها القديم.
 const LEGACY_PROFILE_CATEGORIES = [
@@ -590,7 +593,18 @@ const MapComponent = () => {
     }, [user]);
 
     const mapRef = useRef(null);
-    const [activeMapType, setActiveMapType] = useState('satellite');
+    // الخريطة الافتراضية جيومولج 2023، ويُحفظ اختيار المستخدم بعد أي تبديل
+    const [activeMapType, setActiveMapType] = useState(() => {
+        try {
+            const saved = localStorage.getItem('preferred_map_type');
+            if (saved) return saved;
+        } catch (e) { /* التخزين غير متاح */ }
+        return DEFAULT_MAP_TYPE;
+    });
+
+    useEffect(() => {
+        try { localStorage.setItem('preferred_map_type', activeMapType); } catch (e) { /* تجاهل */ }
+    }, [activeMapType]);
     const [showMapLayersMenu, setShowMapLayersMenu] = useState(false);
 
     const PALESTINIAN_CITIES = [
@@ -1096,10 +1110,11 @@ const MapComponent = () => {
 
         // Preference 3: Geomolg Layer (Or specific year orthophotos from Geomolg)
         if (activeMapType === 'geomolg' || (activeMapType && activeMapType.startsWith('geomolg-'))) {
-            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2024';
+            const year = (activeMapType && activeMapType.includes('-')) ? activeMapType.split('-')[1] : '2023';
             
-            let wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
-            let gazaService = 'Orthophotos_GS_2024_m12_Satellite_tif_PG1923';
+            // الافتراضي: أورثوفوتو الضفة 2023 بدقة 15 سم
+            let wbService = 'Orthophotos_WB_2023_15cm_jp2_PG1923_jp2';
+            let gazaService = 'Orthophotos_GS_2022_Satellite_40cm_jp2_PG1923';
 
             if (year === '2024') {
                 wbService = 'Orthophotos_WB_2024_15cm_tif_PG1923';
@@ -2448,9 +2463,9 @@ const MapComponent = () => {
                                   />
                                   <div className="map-layers-dropdown geomolg-layers-compact">
                                       <button 
-                                          className={`dropdown-item ${activeMapType === 'geomolg-2025' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('geomolg-2025'); setShowMapLayersMenu(false); }}
-                                          title="خريطة جيومولج الجوية (GeoMOLG)"
+                                          className={`dropdown-item ${activeMapType && activeMapType.startsWith('geomolg') ? 'active' : ''}`}
+                                          onClick={() => { setActiveMapType(DEFAULT_MAP_TYPE); setShowMapLayersMenu(false); }}
+                                          title="أورثوفوتو جيومولج 2023 (GeoMOLG)"
                                       >
                                           <span className="item-icon">🛰️</span>
                                       </button>
