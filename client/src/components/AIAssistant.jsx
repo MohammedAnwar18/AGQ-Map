@@ -46,15 +46,13 @@ const Icon = {
         </svg>
     ),
     Car: (p) => (
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <path d="M5 17h14M5 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm18 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" />
-            <path d="M3 17v-4l2-5h14l2 5v4" /><line x1="6" y1="13" x2="18" y2="13" />
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" {...p}>
+            <path d="M18.92 6.01A1.5 1.5 0 0 0 17.5 5h-11a1.5 1.5 0 0 0-1.42 1.01L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-5.99ZM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3ZM5 11l1.5-4.5h11L19 11H5Z" />
         </svg>
     ),
     Walk: (p) => (
-        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <circle cx="13" cy="4" r="2" /><path d="m9 21 2-6 3-2-1-5" />
-            <path d="m13 8 3 2 2 4" /><path d="m11 15-2 2-3 1" />
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" {...p}>
+            <path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5.05-.8.1L6 8.3V13h2V9.6l1.8-.7Z" />
         </svg>
     ),
     Empty: (p) => (

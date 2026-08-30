@@ -3,6 +3,7 @@ import { shopService, getImageUrl } from '../services/api';
 import { optimizeImage } from '../utils/imageOptimizer';
 import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
+import Panorama360Viewer from './Panorama360Viewer';
 import './ShopStorefront.css';
 
 /* ============================================================
@@ -26,6 +27,13 @@ const Icon = {
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+    ),
+    Globe360: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <circle cx="12" cy="12" r="9" />
+            <ellipse cx="12" cy="12" rx="4" ry="9" />
+            <line x1="3" y1="12" x2="21" y2="12" />
         </svg>
     ),
     Plus: (p) => (
@@ -143,6 +151,10 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
     const [showCart, setShowCart] = useState(false);
     const [cartCount, setCartCount] = useState(cartService.getItemCount());
+
+    // جولة ٣٦٠° — تُجلب مرة واحدة لنقرّر إظهار الزر
+    const [panoramas, setPanoramas] = useState(null);
+    const [show360, setShow360] = useState(false);
     const [cartTotal, setCartTotal] = useState(0);
 
     const [detailProduct, setDetailProduct] = useState(null);
@@ -181,6 +193,14 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     }, [shop]);
 
     useEffect(() => { loadShop(); }, [loadShop]);
+
+    // ── جولة ٣٦٠° ──────────────────────────────────────────────
+    useEffect(() => {
+        if (!shop?.id) return;
+        shopService.getPanoramas(shop.id)
+            .then(data => setPanoramas(data?.panoramas || []))
+            .catch(() => setPanoramas([]));
+    }, [shop?.id]);
 
     // ── السلة ──────────────────────────────────────────────────
     useEffect(() => {
@@ -424,14 +444,27 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     {shopData?.name}
                 </div>
 
-                <button
-                    className="sf-icon-btn sf-cart-btn"
-                    onClick={() => setShowCart(true)}
-                    aria-label="سلة التسوق"
-                >
-                    <Icon.Cart />
-                    {cartCount > 0 && <span className="sf-cart-badge">{cartCount}</span>}
-                </button>
+                <div className="sf-topbar-actions">
+                    {(isAdmin || (panoramas && panoramas.length > 0)) && (
+                        <button
+                            className="sf-icon-btn sf-360-btn"
+                            onClick={() => setShow360(true)}
+                            aria-label="جولة ٣٦٠ درجة"
+                            title="جولة ٣٦٠°"
+                        >
+                            <Icon.Globe360 />
+                        </button>
+                    )}
+
+                    <button
+                        className="sf-icon-btn sf-cart-btn"
+                        onClick={() => setShowCart(true)}
+                        aria-label="سلة التسوق"
+                    >
+                        <Icon.Cart />
+                        {cartCount > 0 && <span className="sf-cart-badge">{cartCount}</span>}
+                    </button>
+                </div>
             </header>
 
             {/* ── جسم الصفحة ── */}
@@ -834,6 +867,16 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── السلة ── */}
             {showCart && <CartModal onClose={() => setShowCart(false)} />}
+
+            {show360 && (
+                <Panorama360Viewer
+                    shopId={shopData.id}
+                    shopName={shopData.name}
+                    isAdmin={isAdmin}
+                    initialPanoramas={panoramas}
+                    onClose={() => setShow360(false)}
+                />
+            )}
         </div>
     );
 };
