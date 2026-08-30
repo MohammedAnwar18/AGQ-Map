@@ -9,8 +9,6 @@ import './AIAssistant.css';
    • النتائج مرتّبة من الأقرب إليك إلى الأبعد
    ============================================================ */
 
-const SUGGESTIONS = ['قهوة', 'مطعم', 'صيدلية', 'سوبرماركت', 'حلويات', 'ملابس', 'مخبز', 'صيانة'];
-
 // المسافة التي نعتبرها "قريبة" فتُبرز بلون مختلف
 const NEAR_METERS = 1000;
 
@@ -40,11 +38,6 @@ const Icon = {
         <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
             <line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 0 1-8 0" />
-        </svg>
-    ),
-    Route: (p) => (
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <polyline points="15 18 9 12 15 6" />
         </svg>
     ),
     Near: (p) => (
@@ -126,12 +119,6 @@ const ResultCard = ({
                     </span>
                 )}
 
-                {shopName && (
-                    <span className="aia-shopbadge">
-                        <i>{shopImage ? <img src={shopImage} alt="" loading="lazy" /> : shopInitial}</i>
-                        <b>{shopName}</b>
-                    </span>
-                )}
             </div>
 
             <div className="aia-cardbody">
@@ -142,7 +129,13 @@ const ResultCard = ({
                     {price
                         ? <span className="aia-price">{price}</span>
                         : (tag ? <span className={`aia-tag ${tag.kind ? `is-${tag.kind}` : ''}`}>{tag.label}</span> : <span />)}
-                    <span className="aia-cta"><Icon.Route /></span>
+
+                    {shopName && (
+                        <span className="aia-shopbadge">
+                            <i>{shopImage ? <img src={shopImage} alt="" loading="lazy" /> : shopInitial}</i>
+                            <b>{shopName}</b>
+                        </span>
+                    )}
                 </div>
             </div>
         </button>
@@ -193,11 +186,6 @@ const AIAssistant = ({ onClose, userLocation, onNavigate, onShopClick, onRequest
             if (id === requestIdRef.current) setLoading(false);
         }
     }, [query]);
-
-    const pickSuggestion = (text) => {
-        setQuery(text);
-        runSearch(text);
-    };
 
     const resetSearch = () => {
         requestIdRef.current++;
@@ -342,12 +330,6 @@ const AIAssistant = ({ onClose, userLocation, onNavigate, onShopClick, onRequest
                     <p>اكتب بالعربية أو الإنجليزية — نفهم الاثنين ونبحث في كل المحلات ومنتجاتها.</p>
 
                     {searchBox}
-
-                    <div className="aia-chips">
-                        {SUGGESTIONS.map(s => (
-                            <button key={s} className="aia-chip" onClick={() => pickSuggestion(s)}>{s}</button>
-                        ))}
-                    </div>
 
                     {!userLocation && locationBanner}
                 </div>

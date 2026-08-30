@@ -787,8 +787,8 @@ const MapComponent = () => {
     // الدائرة المركزية: نقرة واحدة تفتح المساعد الذكي، ونقرتان متتاليتان تفتحان إنشاء منشور
     const centerTapTimer = useRef(null);
 
+    // المساعد الذكي متاح للجميع بلا حساب — الدردشة وإنشاء المنشور وحدهما يحتاجان حساباً
     const openAIAssistant = () => {
-        if (isVisitor) { setShowAuthPrompt(true); return; }
         setShowAIChat(true);
         setShowSearch(false);
         setShowCommunities(false);
