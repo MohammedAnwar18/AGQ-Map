@@ -44,7 +44,14 @@
 .aia-head-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--aia-line);
+    background: var(--aia-surface);
+    color: var(--aia-text);
+    font-family: inherit;
+    cursor: pointer;
     opacity: 0;
     transform: translateY(-6px);
     transition: opacity .25s ease, transform .25s ease;
@@ -57,9 +64,19 @@
 }
 
 .aia-head-brand span {
-    font-size: .92rem;
+    font-size: .84rem;
     font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+.aia-head-brand:hover {
+    border-color: rgba(251, 171, 21, .4);
+    color: var(--aia-gold);
+}
+
+.aia-head-brand:active { transform: scale(.96); }
 
 .aia-icon-btn {
     width: 42px;
@@ -136,7 +153,7 @@
     align-items: center;
     gap: 10px;
     height: 58px;
-    padding: 0 8px 0 18px;
+    padding-inline: 18px 6px;
     border-radius: 20px;
     background: var(--aia-surface);
     border: 1px solid var(--aia-line);
@@ -340,6 +357,38 @@
     height: 100%;
     object-fit: cover;
     display: block;
+}
+
+/* بطاقات المحلات: الشعار داخل دائرة بلا اقتصاص */
+.aia-media.is-round {
+    background:
+        radial-gradient(120% 120% at 50% 0%, rgba(251, 171, 21, .09), transparent 62%),
+        var(--aia-surface-2);
+}
+
+.aia-media.is-round img {
+    width: 62%;
+    max-width: 148px;
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    object-fit: contain;
+    background: #fff;
+    padding: 5px;
+    border: 2px solid rgba(251, 171, 21, .45);
+    box-shadow: 0 14px 32px -14px rgba(0, 0, 0, .85);
+}
+
+.aia-media.is-round .aia-initial,
+.aia-media.is-round .aia-emoji {
+    width: 62%;
+    max-width: 148px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--aia-surface);
+    border: 2px solid rgba(251, 171, 21, .45);
+    display: grid;
+    place-items: center;
 }
 
 .aia-media .aia-initial { font-size: 2.6rem; font-weight: 700; color: var(--aia-gold); }

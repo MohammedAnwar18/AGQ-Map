@@ -97,7 +97,7 @@ const CATEGORY_EMOJI = {
 
 // ── بطاقة نتيجة كبيرة ────────────────────────────────────────
 const ResultCard = ({
-    image, emoji, initial, distance,
+    image, emoji, initial, distance, round,
     shopName, shopImage, shopInitial,
     title, subtitle, price, tag, onClick
 }) => {
@@ -106,7 +106,7 @@ const ResultCard = ({
 
     return (
         <button className="aia-card" onClick={onClick}>
-            <div className="aia-media">
+            <div className={`aia-media ${round ? 'is-round' : ''}`}>
                 {image
                     ? <img src={image} alt="" loading="lazy" />
                     : (emoji
@@ -424,6 +424,7 @@ const AIAssistant = ({ onClose, userLocation, onNavigate, onShopClick, onRequest
                                         {placeHits.map(({ place, distance }) => (
                                             <ResultCard
                                                 key={`s-${place.result_type}-${place.id}`}
+                                                round
                                                 image={shopImageOf(place)}
                                                 emoji={!place.profile_picture ? CATEGORY_EMOJI[place.category] : null}
                                                 initial={initialOf(place)}
