@@ -194,7 +194,8 @@ const getShopProfile = async (req, res) => {
 const updateShopProfile = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const { bio, opening_hours, contact_info, name, latitude, longitude, category } = req.body;
+        const { bio, opening_hours, contact_info, name, latitude, longitude, category,
+                contact_phone, contact_email, contact_website } = req.body;
         const userId = req.user.userId;
 
         // Fetch fresh user role
@@ -235,6 +236,19 @@ const updateShopProfile = async (req, res) => {
         if (category !== undefined) {
             queryParts.push(`category = $${index++}`);
             values.push(category);
+        }
+        // بيانات التواصل المعروضة في قسم "حول" داخل صفحة المحل
+        if (contact_phone !== undefined) {
+            queryParts.push(`contact_phone = $${index++}`);
+            values.push(contact_phone || null);
+        }
+        if (contact_email !== undefined) {
+            queryParts.push(`contact_email = $${index++}`);
+            values.push(contact_email || null);
+        }
+        if (contact_website !== undefined) {
+            queryParts.push(`contact_website = $${index++}`);
+            values.push(contact_website || null);
         }
         if (req.body.enable_proximity_notifications !== undefined) {
             queryParts.push(`enable_proximity_notifications = $${index++}`);
@@ -313,10 +327,11 @@ const updateShopImages = async (req, res) => {
         }
 
         params.push(shopId);
-        const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index}`;
+        const query = `UPDATE shops SET ${updateQueryPart.join(', ')} WHERE id = $${index}
+                       RETURNING id, profile_picture, cover_picture`;
 
-        await pool.query(query, params);
-        res.json({ message: 'Shop updated successfully' });
+        const updated = await pool.query(query, params);
+        res.json({ message: 'Shop updated successfully', shop: updated.rows[0] });
 
     } catch (e) {
         console.error('Update shop images error:', e);

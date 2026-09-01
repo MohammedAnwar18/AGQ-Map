@@ -15,6 +15,7 @@ import './ShopStorefront.css';
 
 const ENTRY_DURATION = 1500; // ١.٥ ثانية كما طُلب
 const ALL_KEY = '__all__';
+const LOGO_PREVIEW = 260; // قطر معاينة الشعار بالبكسل، تُستخدم لتحويل الإزاحة إلى اللوحة
 
 // ── أيقونات ──────────────────────────────────────────────────
 const Icon = {
@@ -69,6 +70,28 @@ const Icon = {
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
         </svg>
     ),
+    Phone: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.09 4.18 2 2 0 0 1 4.08 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z" />
+        </svg>
+    ),
+    Mail: (p) => (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" />
+        </svg>
+    ),
+    Globe: (p) => (
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <circle cx="12" cy="12" r="10" /><path d="M2 12h20" />
+            <path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20" />
+        </svg>
+    ),
+    Camera: (p) => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+        </svg>
+    ),
     Chevron: (p) => (
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <polyline points="15 18 9 12 15 6" />
@@ -76,47 +99,182 @@ const Icon = {
     )
 };
 
-// ── حالة المحل (مفتوح / مغلق) من نص ساعات العمل ─────────────
+// ── ساعات العمل: نص «اليوم: من - إلى» لكل يوم على سطر ────────
 const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-const parseTodayHours = (openingHours) => {
-    if (!openingHours) return null;
+const DEFAULT_DAY = { closed: false, open: '09:00', close: '21:00' };
+
+const two = (n) => String(n).padStart(2, '0');
+
+// يقبل «09:00» و«9:00 صباحاً» معاً ويعيد الدقائق منذ منتصف الليل
+const toMinutes = (hour, minute, period) => {
+    let h = parseInt(hour, 10);
+    if (period?.includes('مساء') && h !== 12) h += 12;
+    if (period?.includes('صباح') && h === 12) h = 0;
+    return h * 60 + parseInt(minute, 10);
+};
+
+const minutesToText = (mins) => `${two(Math.floor(mins / 60))}:${two(mins % 60)}`;
+
+/** يحوّل نص opening_hours إلى جدول أسبوعي: { [day]: {closed, open, close} } */
+const parseWeeklyHours = (openingHours) => {
+    const week = {};
+    if (!openingHours) return week;
+
+    for (const day of DAYS) {
+        const match = openingHours.match(new RegExp(`${day}:\\s*(.*)`));
+        if (!match) continue;
+
+        const range = match[1].trim();
+        if (!range || range.includes('مغلق')) {
+            week[day] = { closed: true, open: DEFAULT_DAY.open, close: DEFAULT_DAY.close };
+            continue;
+        }
+
+        const times = range.match(/(\d{1,2}):(\d{2})\s*(صباحاً|مساءً)?\s*-\s*(\d{1,2}):(\d{2})\s*(صباحاً|مساءً)?/);
+        if (!times) continue;
+
+        const [, h1, m1, p1, h2, m2, p2] = times;
+        week[day] = {
+            closed: false,
+            open: minutesToText(toMinutes(h1, m1, p1)),
+            close: minutesToText(toMinutes(h2, m2, p2))
+        };
+    }
+    return week;
+};
+
+/** يبني نص opening_hours من الجدول الأسبوعي */
+const buildHoursText = (week) => DAYS
+    .map(day => {
+        const d = week[day];
+        if (!d || d.closed) return `${day}: مغلق`;
+        return `${day}: ${d.open} - ${d.close}`;
+    })
+    .join('\n');
+
+/** حالة المحل الآن اعتماداً على جدول اليوم (يدعم التوقيت الممتد بعد منتصف الليل) */
+const getTodayStatus = (week) => {
     const today = DAYS[new Date().getDay()];
-    const match = openingHours.match(new RegExp(`${today}:\\s*(.*)`));
-    if (!match) return null;
-
-    const range = match[1].trim();
-    if (range.includes('مغلق')) return { isOpen: false, label: 'مغلق اليوم', range: null };
-
-    const times = range.match(/(\d{1,2}):(\d{2})\s*(صباحاً|مساءً)?\s*-\s*(\d{1,2}):(\d{2})\s*(صباحاً|مساءً)?/);
-    if (!times) return null;
-
-    const [, h1, m1, p1, h2, m2, p2] = times;
-    let startH = parseInt(h1, 10);
-    if (p1?.includes('مساء') && startH !== 12) startH += 12;
-    if (p1?.includes('صباح') && startH === 12) startH = 0;
-    let endH = parseInt(h2, 10);
-    if (p2?.includes('مساء') && endH !== 12) endH += 12;
-    if (p2?.includes('صباح') && endH === 12) endH = 0;
+    const d = week[today];
+    if (!d) return null;
+    if (d.closed) return { isOpen: false, label: 'مغلق اليوم', range: null, today };
 
     const now = new Date();
     const cur = now.getHours() * 60 + now.getMinutes();
-    const start = startH * 60 + parseInt(m1, 10);
-    const end = endH * 60 + parseInt(m2, 10);
+    const [oh, om] = d.open.split(':').map(Number);
+    const [ch, cm] = d.close.split(':').map(Number);
+    const start = oh * 60 + om;
+    const end = ch * 60 + cm;
     const isOpen = end > start ? (cur >= start && cur <= end) : (cur >= start || cur <= end);
 
-    const two = (n) => String(n).padStart(2, '0');
     return {
         isOpen,
         label: isOpen ? 'مفتوح الآن' : 'مغلق الآن',
-        range: `${two(startH)}:${m1} - ${two(endH)}:${m2}`
+        range: `${d.open} - ${d.close}`,
+        today
     };
 };
+
+// يضمن أن رابط الموقع يبدأ ببروتوكول حتى يُفتح خارج التطبيق
+const normalizeUrl = (url) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 
 const formatPrice = (value) => {
     const num = parseFloat(value);
     if (Number.isNaN(num)) return null;
     return `${num % 1 === 0 ? num.toFixed(0) : num.toFixed(2)} ₪`;
+};
+
+// ── محرّر شعار المحل: سحب لضبط الموضع وشريط للتكبير ─────────
+const LogoCropper = ({ form, setForm, saving, onCancel, onSave }) => {
+    const dragRef = useRef(null);
+    const boxRef = useRef(null);
+
+    // القطر المعروض قد يصغر على الهواتف، فنقيسه لنطابق الاقتصاص تماماً
+    useEffect(() => {
+        const measure = () => {
+            const size = boxRef.current?.offsetWidth;
+            if (size) setForm(prev => (prev && prev.preview !== size ? { ...prev, preview: size } : prev));
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, [setForm]);
+
+    const startDrag = (e) => {
+        const point = e.touches ? e.touches[0] : e;
+        dragRef.current = { x: point.clientX, y: point.clientY, ox: form.x, oy: form.y };
+    };
+
+    const onDrag = (e) => {
+        if (!dragRef.current) return;
+        const point = e.touches ? e.touches[0] : e;
+        const limit = (form.preview || LOGO_PREVIEW) * form.zoom;
+        const clamp = (v) => Math.max(-limit, Math.min(limit, v));
+        setForm(prev => ({
+            ...prev,
+            x: clamp(dragRef.current.ox + (point.clientX - dragRef.current.x)),
+            y: clamp(dragRef.current.oy + (point.clientY - dragRef.current.y))
+        }));
+    };
+
+    const endDrag = () => { dragRef.current = null; };
+
+    return (
+        <div className="sf-sheet-backdrop" onClick={onCancel}>
+            <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
+                <div className="sf-sheet-head">
+                    <h3>شعار المحل</h3>
+                    <button className="sf-icon-btn" onClick={onCancel}><Icon.Close /></button>
+                </div>
+
+                <div className="sf-sheet-body">
+                    <div
+                        className="sf-crop"
+                        ref={boxRef}
+                        onMouseDown={startDrag}
+                        onMouseMove={onDrag}
+                        onMouseUp={endDrag}
+                        onMouseLeave={endDrag}
+                        onTouchStart={startDrag}
+                        onTouchMove={onDrag}
+                        onTouchEnd={endDrag}
+                    >
+                        <img
+                            src={form.src}
+                            alt=""
+                            draggable={false}
+                            style={{ transform: `translate(${form.x}px, ${form.y}px) scale(${form.zoom})` }}
+                        />
+                    </div>
+
+                    <div className="sf-crop-zoom">
+                        <span>الحجم</span>
+                        <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.01"
+                            value={form.zoom}
+                            onChange={(e) => setForm(prev => ({ ...prev, zoom: parseFloat(e.target.value) }))}
+                        />
+                        <b>{form.zoom.toFixed(1)}×</b>
+                    </div>
+
+                    <p className="sf-detail-desc" style={{ fontSize: '.8rem' }}>
+                        اسحب الصورة لضبط موضعها داخل الدائرة، واستخدم الشريط لتكبيرها. ما تراه هنا هو ما سيظهر تماماً.
+                    </p>
+                </div>
+
+                <div className="sf-sheet-foot">
+                    <button className="sf-btn sf-btn-ghost" onClick={onCancel}>إلغاء</button>
+                    <button className="sf-btn sf-btn-primary" onClick={onSave} disabled={saving}>
+                        {saving ? 'جاري الحفظ…' : 'حفظ الشعار'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 // ── صورة المنتج داخل البطاقة ─────────────────────────────────
@@ -160,7 +318,11 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [detailProduct, setDetailProduct] = useState(null);
     const [productForm, setProductForm] = useState(null); // null | {} = نموذج مفتوح
     const [categoryForm, setCategoryForm] = useState(false);
-    const [hoursForm, setHoursForm] = useState(null); // { open, close }
+    const [hoursForm, setHoursForm] = useState(null);   // جدول أسبوعي قابل للتحرير
+    const [showHours, setShowHours] = useState(false);  // جدول الأسبوع للزائر
+    const [aboutForm, setAboutForm] = useState(null);   // تحرير بيانات التواصل
+    const [showAbout, setShowAbout] = useState(false);  // قسم "حول"
+    const [logoForm, setLogoForm] = useState(null);     // { src, zoom, x, y }
     const [saving, setSaving] = useState(false);
 
     const [showTitle, setShowTitle] = useState(false);
@@ -252,23 +414,128 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
     // ── ساعات العمل ────────────────────────────────────────────
     const openHoursForm = () => {
-        const parsed = parseTodayHours(shopData?.opening_hours);
-        const [open, close] = (parsed?.range || '09:00 - 21:00').split(' - ');
-        setHoursForm({ open: open || '09:00', close: close || '21:00' });
+        const parsed = parseWeeklyHours(shopData?.opening_hours);
+        setHoursForm(DAYS.reduce((acc, day) => {
+            acc[day] = parsed[day] ? { ...parsed[day] } : { ...DEFAULT_DAY };
+            return acc;
+        }, {}));
+        setShowHours(false);
+    };
+
+    const setDay = (day, patch) =>
+        setHoursForm(prev => ({ ...prev, [day]: { ...prev[day], ...patch } }));
+
+    // ينسخ توقيت اليوم المحدّد إلى بقية أيام الأسبوع
+    const applyToAllDays = (day) => {
+        const src = hoursForm[day];
+        setHoursForm(DAYS.reduce((acc, d) => { acc[d] = { ...src }; return acc; }, {}));
     };
 
     const saveHours = async () => {
-        if (!hoursForm?.open || !hoursForm?.close) return;
+        if (!hoursForm) return;
         setSaving(true);
         try {
-            // نطبّق نفس التوقيت على كل أيام الأسبوع
-            const text = DAYS.map(day => `${day}: ${hoursForm.open} - ${hoursForm.close}`).join('\n');
+            const text = buildHoursText(hoursForm);
             await shopService.updateProfile(shopData.id, { opening_hours: text });
             setShopData(prev => ({ ...prev, opening_hours: text }));
             setHoursForm(null);
         } catch (e) {
             console.error(e);
             alert('تعذّر حفظ ساعات العمل، حاول مجدداً.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── بيانات التواصل (قسم "حول") ─────────────────────────────
+    const openAboutForm = () => {
+        setAboutForm({
+            contact_phone: shopData?.contact_phone || '',
+            contact_email: shopData?.contact_email || '',
+            contact_website: shopData?.contact_website || ''
+        });
+    };
+
+    const saveAbout = async () => {
+        if (!aboutForm) return;
+        setSaving(true);
+        try {
+            const payload = {
+                contact_phone: aboutForm.contact_phone.trim(),
+                contact_email: aboutForm.contact_email.trim(),
+                contact_website: aboutForm.contact_website.trim()
+            };
+            await shopService.updateProfile(shopData.id, payload);
+            setShopData(prev => ({ ...prev, ...payload }));
+            setAboutForm(null);
+        } catch (e) {
+            console.error(e);
+            alert('تعذّر حفظ بيانات التواصل، حاول مجدداً.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── شعار المحل: اختيار الصورة وضبط حجمها داخل الدائرة ──────
+    const logoInputRef = useRef(null);
+
+    const pickLogo = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => setLogoForm({ src: reader.result, zoom: 1, x: 0, y: 0 });
+        reader.readAsDataURL(file);
+    };
+
+    // نرسم الاقتصاص النهائي على لوحة مربّعة فتُحفظ الصورة مضبوطة أصلاً
+    const saveLogo = async () => {
+        if (!logoForm) return;
+        setSaving(true);
+        try {
+            const img = new Image();
+            img.src = logoForm.src;
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error('تعذّر قراءة الصورة'));
+            });
+
+            const SIZE = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = SIZE;
+            canvas.height = SIZE;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, SIZE, SIZE);
+
+            // نفس معادلة المعاينة: الصورة تملأ المربّع ثم تُكبَّر وتُزاح
+            const base = Math.max(SIZE / img.width, SIZE / img.height);
+            const scale = base * logoForm.zoom;
+            const w = img.width * scale;
+            const h = img.height * scale;
+            const ratio = SIZE / (logoForm.preview || LOGO_PREVIEW);
+            ctx.drawImage(
+                img,
+                (SIZE - w) / 2 + logoForm.x * ratio,
+                (SIZE - h) / 2 + logoForm.y * ratio,
+                w, h
+            );
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('تعذّر تجهيز الصورة');
+
+            const formData = new FormData();
+            formData.append('profile_picture', blob, 'logo.png');
+            const data = await shopService.uploadImages(shopData.id, formData);
+
+            const url = data?.shop?.profile_picture || data?.profile_picture;
+            if (url) setShopData(prev => ({ ...prev, profile_picture: url }));
+            else await loadShop();
+
+            setLogoForm(null);
+        } catch (e) {
+            console.error(e);
+            alert('تعذّر حفظ الشعار، حاول مجدداً.');
         } finally {
             setSaving(false);
         }
@@ -408,7 +675,10 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     };
 
     // ── معطيات العرض ───────────────────────────────────────────
-    const status = parseTodayHours(shopData?.opening_hours);
+    const week = parseWeeklyHours(shopData?.opening_hours);
+    const status = getTodayStatus(week);
+    const hasHours = Object.keys(week).length > 0;
+    const hasContact = Boolean(shopData?.contact_phone || shopData?.contact_email || shopData?.contact_website);
     const logo = shopData?.profile_picture ? getImageUrl(shopData.profile_picture) : null;
     const initial = (shopData?.name || '؟').trim().charAt(0);
     const totalProducts = products.length;
@@ -456,6 +726,17 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                         </button>
                     )}
 
+                    {(isAdmin || hasContact) && (
+                        <button
+                            className="sf-icon-btn sf-about-btn"
+                            onClick={() => setShowAbout(true)}
+                            aria-label="حول المحل"
+                            title="حول"
+                        >
+                            <Icon.Phone />
+                        </button>
+                    )}
+
                     <button
                         className="sf-icon-btn sf-cart-btn"
                         onClick={() => setShowCart(true)}
@@ -473,10 +754,32 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
                     {/* ترويسة المحل */}
                     <section className="sf-header">
-                        <div className="sf-avatar">
-                            {logo
-                                ? <img src={logo} alt={shopData?.name || ''} />
-                                : <span className="sf-initial">{initial}</span>}
+                        <div className="sf-avatar-wrap">
+                            <div className="sf-avatar">
+                                {logo
+                                    ? <img src={logo} alt={shopData?.name || ''} />
+                                    : <span className="sf-initial">{initial}</span>}
+                            </div>
+
+                            {isAdmin && (
+                                <>
+                                    <button
+                                        className="sf-avatar-edit"
+                                        onClick={() => logoInputRef.current?.click()}
+                                        aria-label="تغيير شعار المحل"
+                                        title="تغيير الشعار"
+                                    >
+                                        <Icon.Camera />
+                                    </button>
+                                    <input
+                                        ref={logoInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        onChange={pickLogo}
+                                    />
+                                </>
+                            )}
                         </div>
 
                         <h1 className="sf-name">{shopData?.name}</h1>
@@ -486,25 +789,33 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                         )}
 
                         {status && (
-                            <div className={`sf-status ${status.isOpen ? 'is-open' : 'is-closed'}`}>
+                            <button
+                                className={`sf-status ${status.isOpen ? 'is-open' : 'is-closed'}`}
+                                onClick={() => setShowHours(true)}
+                                title="عرض جدول ساعات العمل"
+                            >
                                 <span className="sf-status-dot" />
                                 {status.label}
-                            </div>
-                        )}
-
-                        {status?.range && (
-                            <div className="sf-hours">
-                                <Icon.Clock />
-                                ساعات اليوم <strong>{status.range}</strong>
-                            </div>
-                        )}
-
-                        {isAdmin && (
-                            <button className="sf-hours" style={{ cursor: 'pointer', color: 'var(--sf-gold)' }} onClick={openHoursForm}>
-                                <Icon.Clock />
-                                {shopData?.opening_hours ? 'تعديل ساعات العمل' : 'إضافة ساعات العمل'}
+                                {status.range && <b className="sf-status-range">{status.range}</b>}
+                                <Icon.Chevron className="sf-status-arrow" />
                             </button>
                         )}
+
+                        <div className="sf-header-actions">
+                            {hasHours && (
+                                <button className="sf-linkbtn" onClick={() => setShowHours(true)}>
+                                    <Icon.Clock />
+                                    جدول الأسبوع
+                                </button>
+                            )}
+
+                            {isAdmin && (
+                                <button className="sf-linkbtn is-gold" onClick={openHoursForm}>
+                                    <Icon.Clock />
+                                    {hasHours ? 'تعديل ساعات العمل' : 'إضافة ساعات العمل'}
+                                </button>
+                            )}
+                        </div>
                     </section>
 
                     {/* شريط الأقسام */}
@@ -645,7 +956,8 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             </div>
 
             {/* ── زر إضافة منتج (للأدمن) ── */}
-            {isAdmin && !productForm && !detailProduct && !categoryForm && !hoursForm && (
+            {isAdmin && !productForm && !detailProduct && !categoryForm
+                && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -696,49 +1008,263 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 </div>
             )}
 
-            {/* ── نافذة ساعات العمل ── */}
+            {/* ── جدول ساعات الأسبوع (عرض) ── */}
+            {showHours && (
+                <div className="sf-sheet-backdrop" onClick={() => setShowHours(false)}>
+                    <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
+                        <div className="sf-sheet-head">
+                            <h3>ساعات العمل</h3>
+                            <button className="sf-icon-btn" onClick={() => setShowHours(false)}><Icon.Close /></button>
+                        </div>
+
+                        <div className="sf-sheet-body">
+                            {status && (
+                                <div className={`sf-status sf-status-block ${status.isOpen ? 'is-open' : 'is-closed'}`}>
+                                    <span className="sf-status-dot" />
+                                    {status.label}
+                                </div>
+                            )}
+
+                            {hasHours ? (
+                                <ul className="sf-week">
+                                    {DAYS.map(day => {
+                                        const d = week[day];
+                                        const isToday = day === status?.today;
+                                        return (
+                                            <li key={day} className={`sf-week-row ${isToday ? 'is-today' : ''}`}>
+                                                <span className="sf-week-day">
+                                                    {day}
+                                                    {isToday && <em>اليوم</em>}
+                                                </span>
+                                                <span className={`sf-week-time ${!d || d.closed ? 'is-off' : ''}`}>
+                                                    {!d || d.closed ? 'مغلق' : `${d.open} - ${d.close}`}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : (
+                                <p className="sf-detail-desc">لم يحدّد المحل ساعات عمله بعد.</p>
+                            )}
+                        </div>
+
+                        {isAdmin && (
+                            <div className="sf-sheet-foot">
+                                <button className="sf-btn sf-btn-ghost" onClick={() => setShowHours(false)}>إغلاق</button>
+                                <button className="sf-btn sf-btn-primary" onClick={openHoursForm}>تعديل الجدول</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── تحرير جدول الأسبوع (للأدمن) ── */}
             {hoursForm && (
                 <div className="sf-sheet-backdrop" onClick={() => setHoursForm(null)}>
                     <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
                         <div className="sf-sheet-head">
-                            <h3>ساعات العمل</h3>
+                            <h3>ساعات العمل الأسبوعية</h3>
                             <button className="sf-icon-btn" onClick={() => setHoursForm(null)}><Icon.Close /></button>
                         </div>
+
                         <div className="sf-sheet-body">
-                            <div className="sf-row">
-                                <div className="sf-field">
-                                    <label>وقت الفتح</label>
-                                    <input
-                                        className="sf-input"
-                                        type="time"
-                                        value={hoursForm.open}
-                                        onChange={(e) => setHoursForm({ ...hoursForm, open: e.target.value })}
-                                        style={{ direction: 'ltr', textAlign: 'center' }}
-                                    />
-                                </div>
-                                <div className="sf-field">
-                                    <label>وقت الإغلاق</label>
-                                    <input
-                                        className="sf-input"
-                                        type="time"
-                                        value={hoursForm.close}
-                                        onChange={(e) => setHoursForm({ ...hoursForm, close: e.target.value })}
-                                        style={{ direction: 'ltr', textAlign: 'center' }}
-                                    />
-                                </div>
+                            <div className="sf-editor">
+                                {DAYS.map(day => {
+                                    const d = hoursForm[day];
+                                    return (
+                                        <div key={day} className={`sf-editor-row ${d.closed ? 'is-off' : ''}`}>
+                                            <div className="sf-editor-head">
+                                                <label className="sf-switch">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!d.closed}
+                                                        onChange={(e) => setDay(day, { closed: !e.target.checked })}
+                                                    />
+                                                    <span className="sf-switch-track"><i /></span>
+                                                    <span className="sf-switch-label">{day}</span>
+                                                </label>
+
+                                                {!d.closed && (
+                                                    <button
+                                                        type="button"
+                                                        className="sf-editor-copy"
+                                                        onClick={() => applyToAllDays(day)}
+                                                        title="نسخ هذا التوقيت لكل الأيام"
+                                                    >
+                                                        تطبيق على الكل
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {d.closed ? (
+                                                <span className="sf-editor-off">مغلق</span>
+                                            ) : (
+                                                <div className="sf-editor-times">
+                                                    <input
+                                                        className="sf-input sf-time"
+                                                        type="time"
+                                                        value={d.open}
+                                                        onChange={(e) => setDay(day, { open: e.target.value })}
+                                                    />
+                                                    <span className="sf-editor-sep">إلى</span>
+                                                    <input
+                                                        className="sf-input sf-time"
+                                                        type="time"
+                                                        value={d.close}
+                                                        onChange={(e) => setDay(day, { close: e.target.value })}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            <p className="sf-detail-desc" style={{ fontSize: '.82rem' }}>
-                                يُطبَّق هذا التوقيت على كل أيام الأسبوع، وتظهر حالة «مفتوح / مغلق» للزوار تلقائياً.
+
+                            <p className="sf-detail-desc" style={{ fontSize: '.8rem' }}>
+                                تظهر حالة «مفتوح / مغلق» للزوار تلقائياً حسب توقيت اليوم، ويمكنهم فتح الجدول لرؤية بقية الأيام.
                             </p>
                         </div>
+
                         <div className="sf-sheet-foot">
                             <button className="sf-btn sf-btn-ghost" onClick={() => setHoursForm(null)}>إلغاء</button>
                             <button className="sf-btn sf-btn-primary" onClick={saveHours} disabled={saving}>
+                                {saving ? 'جاري الحفظ…' : 'حفظ الجدول'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── حول المحل ── */}
+            {showAbout && (
+                <div className="sf-sheet-backdrop" onClick={() => setShowAbout(false)}>
+                    <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
+                        <div className="sf-sheet-head">
+                            <h3>حول المحل</h3>
+                            <button className="sf-icon-btn" onClick={() => setShowAbout(false)}><Icon.Close /></button>
+                        </div>
+
+                        <div className="sf-sheet-body">
+                            {hasContact ? (
+                                <div className="sf-contacts">
+                                    {shopData?.contact_phone && (
+                                        <a className="sf-contact" href={`tel:${shopData.contact_phone}`}>
+                                            <span className="sf-contact-icon"><Icon.Phone width="17" height="17" /></span>
+                                            <span className="sf-contact-text">
+                                                <b>الهاتف</b>
+                                                <em>{shopData.contact_phone}</em>
+                                            </span>
+                                        </a>
+                                    )}
+
+                                    {shopData?.contact_email && (
+                                        <a className="sf-contact" href={`mailto:${shopData.contact_email}`}>
+                                            <span className="sf-contact-icon"><Icon.Mail /></span>
+                                            <span className="sf-contact-text">
+                                                <b>البريد الإلكتروني</b>
+                                                <em>{shopData.contact_email}</em>
+                                            </span>
+                                        </a>
+                                    )}
+
+                                    {shopData?.contact_website && (
+                                        <a
+                                            className="sf-contact"
+                                            href={normalizeUrl(shopData.contact_website)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            <span className="sf-contact-icon"><Icon.Globe /></span>
+                                            <span className="sf-contact-text">
+                                                <b>الموقع الإلكتروني</b>
+                                                <em>{shopData.contact_website}</em>
+                                            </span>
+                                        </a>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="sf-detail-desc">لم يضِف المحل بيانات تواصل بعد.</p>
+                            )}
+                        </div>
+
+                        {isAdmin && (
+                            <div className="sf-sheet-foot">
+                                <button className="sf-btn sf-btn-ghost" onClick={() => setShowAbout(false)}>إغلاق</button>
+                                <button className="sf-btn sf-btn-primary" onClick={openAboutForm}>
+                                    {hasContact ? 'تعديل البيانات' : 'إضافة بيانات'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── تحرير بيانات التواصل ── */}
+            {aboutForm && (
+                <div className="sf-sheet-backdrop" onClick={() => setAboutForm(null)}>
+                    <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
+                        <div className="sf-sheet-head">
+                            <h3>بيانات التواصل</h3>
+                            <button className="sf-icon-btn" onClick={() => setAboutForm(null)}><Icon.Close /></button>
+                        </div>
+
+                        <div className="sf-sheet-body">
+                            <div className="sf-field">
+                                <label>رقم الهاتف</label>
+                                <input
+                                    className="sf-input"
+                                    type="tel"
+                                    dir="ltr"
+                                    value={aboutForm.contact_phone}
+                                    onChange={(e) => setAboutForm({ ...aboutForm, contact_phone: e.target.value })}
+                                    placeholder="0599 000 000"
+                                />
+                            </div>
+
+                            <div className="sf-field">
+                                <label>البريد الإلكتروني <span className="sf-opt">(اختياري)</span></label>
+                                <input
+                                    className="sf-input"
+                                    type="email"
+                                    dir="ltr"
+                                    value={aboutForm.contact_email}
+                                    onChange={(e) => setAboutForm({ ...aboutForm, contact_email: e.target.value })}
+                                    placeholder="shop@example.com"
+                                />
+                            </div>
+
+                            <div className="sf-field">
+                                <label>الموقع الإلكتروني <span className="sf-opt">(اختياري)</span></label>
+                                <input
+                                    className="sf-input"
+                                    type="url"
+                                    dir="ltr"
+                                    value={aboutForm.contact_website}
+                                    onChange={(e) => setAboutForm({ ...aboutForm, contact_website: e.target.value })}
+                                    placeholder="example.com"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="sf-sheet-foot">
+                            <button className="sf-btn sf-btn-ghost" onClick={() => setAboutForm(null)}>إلغاء</button>
+                            <button className="sf-btn sf-btn-primary" onClick={saveAbout} disabled={saving}>
                                 {saving ? 'جاري الحفظ…' : 'حفظ'}
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ── ضبط شعار المحل داخل الدائرة ── */}
+            {logoForm && (
+                <LogoCropper
+                    form={logoForm}
+                    setForm={setLogoForm}
+                    saving={saving}
+                    onCancel={() => setLogoForm(null)}
+                    onSave={saveLogo}
+                />
             )}
 
             {/* ── نافذة منتج (إضافة / تعديل) ── */}

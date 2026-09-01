@@ -93,7 +93,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    border-radius: 28%;
+    border-radius: 50%;
     overflow: hidden;
     background: var(--sf-surface-2);
     display: grid;
@@ -206,6 +206,18 @@
     position: relative;
 }
 
+/* زر "حول" بجانب جولة ٣٦٠° */
+.sf-about-btn {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, .3);
+    background: rgba(52, 211, 153, .1);
+}
+
+.sf-about-btn:hover {
+    background: rgba(52, 211, 153, .18);
+    border-color: rgba(52, 211, 153, .55);
+}
+
 /* زر جولة ٣٦٠° بجانب السلة */
 .sf-360-btn {
     color: #60a5fa;
@@ -259,10 +271,16 @@
     border-bottom: 1px solid var(--sf-line);
 }
 
-.sf-avatar {
+.sf-avatar-wrap {
+    position: relative;
     width: 104px;
     height: 104px;
-    border-radius: 30px;
+}
+
+.sf-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
     overflow: hidden;
     background: var(--sf-surface-2);
     display: grid;
@@ -270,6 +288,27 @@
     border: 2px solid rgba(251, 171, 21, .5);
     box-shadow: 0 18px 40px -14px rgba(0, 0, 0, .7);
 }
+
+/* زر تغيير الشعار (للأدمن) */
+.sf-avatar-edit {
+    position: absolute;
+    bottom: -2px;
+    inset-inline-end: -2px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--sf-bg);
+    background: var(--sf-gold);
+    color: #0b1020;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .8);
+    transition: transform .16s ease;
+}
+
+.sf-avatar-edit:hover { transform: scale(1.08); }
+.sf-avatar-edit:active { transform: scale(.94); }
 
 .sf-avatar img {
     width: 100%;
@@ -308,6 +347,8 @@
     font-size: .8rem;
     font-weight: 600;
     border: 1px solid transparent;
+    background: transparent;
+    color: var(--sf-text);
 }
 
 .sf-status.is-open {
@@ -947,7 +988,7 @@
 @media (min-width: 640px) {
     .sf-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
     .sf-section { padding: 26px 22px 0; }
-    .sf-avatar { width: 120px; height: 120px; border-radius: 34px; }
+    .sf-avatar-wrap, .sf-avatar { width: 120px; height: 120px; }
     .sf-name { font-size: 1.7rem; }
     .sf-sheet { border-radius: 24px; max-height: 88vh; }
     .sf-sheet-backdrop { align-items: center; padding: 24px; }
@@ -966,4 +1007,335 @@
 
 @media (prefers-reduced-motion: reduce) {
     .sf-root *, .sf-root { animation: none !important; transition: none !important; }
+}
+
+
+/* ============================================================
+   ساعات العمل الأسبوعية، حول المحل، ومحرّر الشعار
+   ============================================================ */
+
+/* حالة الفتح صارت زراً يفتح جدول الأسبوع */
+.sf-status {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.sf-status-range {
+    font-weight: 700;
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+    opacity: .85;
+}
+
+.sf-status-arrow {
+    opacity: .6;
+    margin-inline-start: -2px;
+}
+
+.sf-status-block {
+    cursor: default;
+    align-self: center;
+    margin: 0 auto 16px;
+}
+
+/* روابط أسفل الترويسة */
+.sf-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sf-linkbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+    color: var(--sf-muted);
+    font-family: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s ease;
+}
+
+.sf-linkbtn:hover {
+    color: var(--sf-text);
+    border-color: rgba(251, 171, 21, .35);
+}
+
+.sf-linkbtn.is-gold { color: var(--sf-gold); border-color: rgba(251, 171, 21, .3); }
+
+/* جدول الأسبوع كما يراه الزائر */
+.sf-week {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--sf-line);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.sf-week-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 15px;
+    font-size: .88rem;
+}
+
+.sf-week-row + .sf-week-row { border-top: 1px solid var(--sf-line); }
+
+.sf-week-row.is-today {
+    background: rgba(251, 171, 21, .08);
+}
+
+.sf-week-day {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.sf-week-day em {
+    font-style: normal;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--sf-gold);
+    color: #0b1020;
+}
+
+.sf-week-time {
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--sf-text);
+}
+
+.sf-week-time.is-off {
+    color: #f87171;
+    direction: rtl;
+    font-weight: 600;
+}
+
+/* محرّر الجدول (للأدمن) */
+.sf-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sf-editor-row {
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+    transition: opacity .18s ease;
+}
+
+.sf-editor-row.is-off { opacity: .6; }
+
+.sf-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.sf-editor-copy {
+    border: none;
+    background: none;
+    color: var(--sf-gold);
+    font-family: inherit;
+    font-size: .74rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 8px;
+}
+
+.sf-editor-copy:hover { background: rgba(251, 171, 21, .12); }
+
+.sf-editor-off {
+    display: block;
+    margin-top: 8px;
+    font-size: .82rem;
+    color: #f87171;
+    font-weight: 600;
+}
+
+.sf-editor-times {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.sf-editor-sep {
+    font-size: .78rem;
+    color: var(--sf-muted);
+    flex-shrink: 0;
+}
+
+.sf-time {
+    flex: 1;
+    min-width: 0;
+    direction: ltr;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* مفتاح مفتوح / مغلق */
+.sf-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.sf-switch input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.sf-switch-track {
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12);
+    position: relative;
+    transition: background .18s ease;
+}
+
+.sf-switch-track i {
+    position: absolute;
+    top: 3px;
+    inset-inline-start: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #94a3b8;
+    transition: transform .18s ease, background .18s ease;
+}
+
+.sf-switch input:checked + .sf-switch-track { background: rgba(251, 171, 21, .3); }
+.sf-switch input:checked + .sf-switch-track i { background: var(--sf-gold); transform: translateX(-18px); }
+
+.sf-switch-label { font-size: .9rem; font-weight: 600; }
+
+/* بيانات التواصل */
+.sf-contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sf-contact {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .18s ease, transform .16s ease;
+}
+
+.sf-contact:hover {
+    border-color: rgba(251, 171, 21, .4);
+    transform: translateY(-2px);
+}
+
+.sf-contact-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: rgba(251, 171, 21, .12);
+    color: var(--sf-gold);
+    display: grid;
+    place-items: center;
+}
+
+.sf-contact-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sf-contact-text b { font-size: .74rem; font-weight: 600; color: var(--sf-muted); }
+
+.sf-contact-text em {
+    font-style: normal;
+    font-size: .92rem;
+    font-weight: 600;
+    direction: ltr;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* محرّر الشعار */
+.sf-crop {
+    width: min(260px, 68vw);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fff;
+    border: 2px solid rgba(251, 171, 21, .5);
+    box-shadow: 0 18px 40px -14px rgba(0, 0, 0, .8);
+    cursor: grab;
+    touch-action: none;
+    display: grid;
+    place-items: center;
+}
+
+.sf-crop:active { cursor: grabbing; }
+
+.sf-crop img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.sf-crop-zoom {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    font-size: .84rem;
+    color: var(--sf-muted);
+}
+
+.sf-crop-zoom input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--sf-gold);
+    cursor: pointer;
+}
+
+.sf-crop-zoom b {
+    color: var(--sf-gold);
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+    min-width: 38px;
+    text-align: center;
 }
