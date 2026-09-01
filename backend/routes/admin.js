@@ -17,6 +17,7 @@ const {
     deleteShop,
     toggleShopStatus,
     toggleShopLock,
+    setShopCoverVideo,
     sendAdminNotification,
     getOrganizationItems,
     updateOrganizationItem,
@@ -70,6 +71,7 @@ router.get('/shops', getAllShops);
 router.delete('/shops/:shopId', deleteShop);
 router.patch('/shops/:shopId/status', toggleShopStatus);
 router.patch('/shops/:shopId/lock', toggleShopLock);
+router.patch('/shops/:shopId/cover-video', setShopCoverVideo);
 
 // Organization Management (Size, Zoom Controls)
 router.get('/organization-items', getOrganizationItems);

@@ -882,3 +882,178 @@
     border-color: #ef4444;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
+/* ============================================================
+   غلاف الفيديو للمحل (يوتيوب)
+   ============================================================ */
+
+.shop-action-btn.btn-video {
+    background: rgba(239, 68, 68, .1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, .25);
+}
+
+.shop-action-btn.btn-video-on {
+    background: rgba(239, 68, 68, .22);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, .5);
+}
+
+.shop-video-flag {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .75);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, .2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+}
+
+.video-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 6000;
+    background: rgba(2, 6, 23, .72);
+    backdrop-filter: blur(6px);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.video-modal {
+    width: min(520px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 22px;
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, .09);
+    box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .9);
+    color: #e2e8f0;
+}
+
+.video-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 22px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.video-modal-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.video-modal-head p { margin: 4px 0 0; font-size: .82rem; color: #94a3b8; }
+
+.video-modal-close {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    border: 1px solid rgba(255, 255, 255, .09);
+    background: rgba(255, 255, 255, .04);
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.video-modal-close:hover { background: rgba(255, 255, 255, .1); }
+
+.video-modal-body { padding: 18px 22px; }
+
+.video-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.video-input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 13px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .04);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: .9rem;
+    outline: none;
+}
+
+.video-input:focus { border-color: rgba(251, 171, 21, .5); }
+
+.video-error {
+    margin: 10px 0 0;
+    font-size: .82rem;
+    color: #f87171;
+}
+
+.video-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background: rgba(255, 255, 255, .03);
+}
+
+.video-preview img {
+    width: 108px;
+    height: 62px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    object-fit: cover;
+}
+
+.video-preview span { font-size: .8rem; color: #94a3b8; line-height: 1.6; }
+
+.video-hint {
+    margin: 16px 0 0;
+    font-size: .78rem;
+    line-height: 1.75;
+    color: #64748b;
+}
+
+.video-modal-foot {
+    display: flex;
+    gap: 10px;
+    padding: 14px 22px 20px;
+    border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+.video-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 13px;
+    border: 1px solid transparent;
+    font-family: inherit;
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s ease;
+}
+
+.video-btn:disabled { opacity: .5; cursor: default; }
+
+.video-btn-primary { background: #fbab15; color: #0b1020; }
+.video-btn-primary:hover:not(:disabled) { background: #ffc24d; }
+
+.video-btn-ghost {
+    background: rgba(255, 255, 255, .05);
+    color: #cbd5e1;
+    border-color: rgba(255, 255, 255, .1);
+}
+
+.video-btn-danger {
+    background: rgba(239, 68, 68, .12);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, .3);
+}

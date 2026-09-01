@@ -113,6 +113,12 @@ export const adminService = {
         return response.data;
     },
 
+    // غلاف الفيديو (يوتيوب) خلف شعار المحل — للأدمن العام فقط
+    setShopCoverVideo: async (shopId, cover_video_url) => {
+        const response = await adminApi.patch(`/shops/${shopId}/cover-video`, { cover_video_url });
+        return response.data;
+    },
+
     // Organization Items (Size and Zoom)
     getOrganizationItems: async () => {
         const response = await adminApi.get('/organization-items');

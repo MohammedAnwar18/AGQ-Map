@@ -179,6 +179,20 @@ app.use('/api/fitness', fitnessRoutes);
     }
 })();
 
+// Auto-migrate: روابط التواصل الاجتماعي وغلاف الفيديو للمحل
+(async () => {
+    try {
+        await pool.query(`
+            ALTER TABLE shops
+                ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb,
+                ADD COLUMN IF NOT EXISTS cover_video_url TEXT;
+        `);
+        console.log('✅ shop social links & cover video ready');
+    } catch (err) {
+        console.warn('⚠️ shop social/cover migration warning:', err.message);
+    }
+})();
+
 // Auto-migrate: ensure 360 panorama tables exist (panoramas + hotspots)
 (async () => {
     try {

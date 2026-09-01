@@ -195,7 +195,7 @@ const updateShopProfile = async (req, res) => {
     try {
         const shopId = req.params.id;
         const { bio, opening_hours, contact_info, name, latitude, longitude, category,
-                contact_phone, contact_email, contact_website } = req.body;
+                contact_phone, contact_email, contact_website, social_links } = req.body;
         const userId = req.user.userId;
 
         // Fetch fresh user role
@@ -249,6 +249,14 @@ const updateShopProfile = async (req, res) => {
         if (contact_website !== undefined) {
             queryParts.push(`contact_website = $${index++}`);
             values.push(contact_website || null);
+        }
+        // روابط صفحات المحل على مواقع التواصل: { facebook, instagram, tiktok, whatsapp }
+        if (social_links !== undefined) {
+            const links = typeof social_links === 'string'
+                ? social_links
+                : JSON.stringify(social_links || {});
+            queryParts.push(`social_links = $${index++}::jsonb`);
+            values.push(links);
         }
         if (req.body.enable_proximity_notifications !== undefined) {
             queryParts.push(`enable_proximity_notifications = $${index++}`);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
 import { cameraService, shopService, getImageUrl } from '../services/api';
+import { parseYouTubeId, youtubeThumb } from '../utils/youtube';
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
@@ -67,6 +68,8 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [posts, setPosts] = useState([]);
     const [shops, setShops] = useState([]);
+    // غلاف الفيديو للمحل: { shop, url, saving, error }
+    const [videoForm, setVideoForm] = useState(null);
     const [cameras, setCameras] = useState([]);
     const [eventPhotos, setEventPhotos] = useState([]);
     const [editingShopOrg, setEditingShopOrg] = useState(null);
@@ -233,6 +236,36 @@ const AdminDashboard = () => {
             setShops(prev => prev.map(s => (s.id === shopId && s.type === 'shop') ? { ...s, is_hidden: !currentHiddenStatus } : s));
         } catch (error) {
             alert('فشل في تحديث حالة ظهور المحل');
+        }
+    };
+
+    // ── غلاف الفيديو (يوتيوب) خلف شعار المحل ──────────────────
+    const openVideoForm = (shop) => {
+        setVideoForm({ shop, url: shop.cover_video_url || '', saving: false, error: null });
+    };
+
+    const saveCoverVideo = async (rawUrl) => {
+        if (!videoForm) return;
+        const url = (rawUrl ?? videoForm.url).trim();
+
+        // رابط فارغ = إزالة الغلاف ورجوع الشكل الأصلي
+        if (url && !parseYouTubeId(url)) {
+            setVideoForm(prev => ({ ...prev, error: 'الرابط غير صالح — الصق رابط فيديو يوتيوب.' }));
+            return;
+        }
+
+        setVideoForm(prev => ({ ...prev, saving: true, error: null }));
+        try {
+            await adminService.setShopCoverVideo(videoForm.shop.id, url);
+            setShops(prev => prev.map(s => (
+                s.id === videoForm.shop.id && s.type === videoForm.shop.type
+                    ? { ...s, cover_video_url: url || null }
+                    : s
+            )));
+            setVideoForm(null);
+        } catch (e) {
+            console.error(e);
+            setVideoForm(prev => ({ ...prev, saving: false, error: 'تعذّر الحفظ، حاول مجدداً.' }));
         }
     };
 
@@ -565,6 +598,9 @@ const AdminDashboard = () => {
                                             <div style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.2)', transition: 'all 0.2s' }}>
                                                 📐
                                             </div>
+                                            {s.cover_video_url && (
+                                                <div className="shop-video-flag" title="لهذا المحل غلاف فيديو">🎬</div>
+                                            )}
                                             {s.is_locked && (
                                                 <div className="shop-lock-overlay">
                                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="28" height="28">
@@ -629,6 +665,20 @@ const AdminDashboard = () => {
                                                 </>
                                             )}
 
+                                            {s.type !== 'facility' && (
+                                                <button
+                                                    className={`shop-action-btn ${s.cover_video_url ? 'btn-video-on' : 'btn-video'}`}
+                                                    title={s.cover_video_url ? 'تعديل غلاف الفيديو' : 'إضافة رابط فيديو يوتيوب كغلاف'}
+                                                    onClick={() => openVideoForm(s)}
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                                        <rect x="2" y="5" width="20" height="14" rx="3" />
+                                                        <polygon points="10 9 15 12 10 15" fill="currentColor" stroke="none" />
+                                                    </svg>
+                                                    {s.cover_video_url ? 'الغلاف' : 'فيديو'}
+                                                </button>
+                                            )}
+
                                             <button
                                                 className="shop-action-btn btn-delete"
                                                 title="حذف نهائي"
@@ -663,6 +713,70 @@ const AdminDashboard = () => {
 
 
             {/* Premium Shop Organization Modal Popup */}
+            {/* ── غلاف الفيديو للمحل (يوتيوب) ── */}
+            {videoForm && (() => {
+                const videoId = parseYouTubeId(videoForm.url);
+                return (
+                    <div className="video-modal-backdrop" onClick={() => setVideoForm(null)}>
+                        <div className="video-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="video-modal-head">
+                                <div>
+                                    <h3>غلاف فيديو للمحل</h3>
+                                    <p>{videoForm.shop.name}</p>
+                                </div>
+                                <button className="video-modal-close" onClick={() => setVideoForm(null)}>✕</button>
+                            </div>
+
+                            <div className="video-modal-body">
+                                <label className="video-label">رابط فيديو يوتيوب</label>
+                                <input
+                                    className="video-input"
+                                    dir="ltr"
+                                    value={videoForm.url}
+                                    onChange={(e) => setVideoForm(prev => ({ ...prev, url: e.target.value, error: null }))}
+                                    placeholder="https://www.youtube.com/watch?v=..."
+                                    autoFocus
+                                />
+
+                                {videoForm.error && <p className="video-error">{videoForm.error}</p>}
+
+                                {videoId && (
+                                    <div className="video-preview">
+                                        <img src={youtubeThumb(videoId)} alt="" />
+                                        <span>سيظهر هذا الفيديو كغلاف متحرك خلف شعار المحل</span>
+                                    </div>
+                                )}
+
+                                <p className="video-hint">
+                                    يُعرض الفيديو بلا أي واجهة ليوتيوب، صامتاً ومتكرراً. اترك الحقل فارغاً لإزالة الغلاف
+                                    وإرجاع الشكل الأصلي.
+                                </p>
+                            </div>
+
+                            <div className="video-modal-foot">
+                                {videoForm.shop.cover_video_url && (
+                                    <button
+                                        className="video-btn video-btn-danger"
+                                        onClick={() => saveCoverVideo('')}
+                                        disabled={videoForm.saving}
+                                    >
+                                        إزالة الغلاف
+                                    </button>
+                                )}
+                                <button className="video-btn video-btn-ghost" onClick={() => setVideoForm(null)}>إلغاء</button>
+                                <button
+                                    className="video-btn video-btn-primary"
+                                    onClick={() => saveCoverVideo()}
+                                    disabled={videoForm.saving}
+                                >
+                                    {videoForm.saving ? 'جاري الحفظ…' : 'حفظ'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {editingShopOrg && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',

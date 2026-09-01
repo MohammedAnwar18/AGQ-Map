@@ -4,6 +4,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
+import { parseYouTubeId, youtubeCoverSrc } from '../utils/youtube';
 import './ShopStorefront.css';
 
 /* ============================================================
@@ -176,6 +177,82 @@ const getTodayStatus = (week) => {
     };
 };
 
+// ── منصات التواصل المدعومة ───────────────────────────────────
+const PLATFORMS = [
+    {
+        key: 'facebook',
+        label: 'فيسبوك',
+        color: '#1877f2',
+        placeholder: 'facebook.com/yourpage',
+        icon: (
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.96.93-1.96 1.89v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07Z" />
+            </svg>
+        )
+    },
+    {
+        key: 'instagram',
+        label: 'إنستغرام',
+        color: '#e1306c',
+        placeholder: 'instagram.com/yourpage',
+        icon: (
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16ZM12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.79.3-1.46.72-2.13 1.38C1.35 2.68.93 3.35.63 4.14.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.3.79.72 1.46 1.38 2.13.67.66 1.34 1.08 2.13 1.38.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.79-.3 1.46-.72 2.13-1.38.66-.67 1.08-1.34 1.38-2.13.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91-.3-.79-.72-1.46-1.38-2.13C21.32 1.35 20.65.93 19.86.63 19.1.33 18.22.13 16.95.07 15.67.01 15.26 0 12 0Zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32Zm0 10.16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm7.85-10.4a1.44 1.44 0 1 1-2.88 0 1.44 1.44 0 0 1 2.88 0Z" />
+            </svg>
+        )
+    },
+    {
+        key: 'whatsapp',
+        label: 'واتساب',
+        color: '#25d366',
+        placeholder: '970599000000',
+        icon: (
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.08-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.48s1.06 2.87 1.21 3.07c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35ZM12.05 0C5.5 0 .2 5.3.2 11.84c0 2.09.55 4.13 1.59 5.93L0 24l6.37-1.66a11.8 11.8 0 0 0 5.68 1.45h.01c6.54 0 11.85-5.3 11.85-11.84C23.9 5.3 18.6 0 12.05 0Zm0 21.68h-.01a9.85 9.85 0 0 1-5.01-1.37l-.36-.21-3.72.97 1-3.63-.24-.37a9.8 9.8 0 0 1-1.5-5.23c0-5.43 4.42-9.85 9.85-9.85 2.63 0 5.1 1.03 6.96 2.89a9.78 9.78 0 0 1 2.88 6.97c0 5.43-4.42 9.83-9.85 9.83Z" />
+            </svg>
+        )
+    },
+    {
+        key: 'tiktok',
+        label: 'تيك توك',
+        color: '#010101',
+        placeholder: 'tiktok.com/@yourpage',
+        icon: (
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M16.6 5.82a4.28 4.28 0 0 1-1.07-2.82h-3.1v12.4a2.6 2.6 0 1 1-1.86-2.5V9.7a5.7 5.7 0 1 0 4.96 5.65V9.01a7.35 7.35 0 0 0 4.29 1.37V7.28a4.28 4.28 0 0 1-3.22-1.46Z" />
+            </svg>
+        )
+    }
+];
+
+const PLATFORM_MAP = PLATFORMS.reduce((acc, item) => { acc[item.key] = item; return acc; }, {});
+
+/** يحوّل ما أدخله صاحب المحل إلى رابط صالح للفتح */
+const socialHref = (key, value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    if (key === 'whatsapp') {
+        // رقم فقط => رابط wa.me، وإلا نعتبره رابطاً جاهزاً
+        const digits = raw.replace(/[^\d]/g, '');
+        if (/^https?:\/\//i.test(raw)) return raw;
+        return digits ? `https://wa.me/${digits}` : null;
+    }
+    return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+};
+
+/** يقرأ عمود social_links سواء وصل ككائن أو كنص JSON */
+const parseSocialLinks = (value) => {
+    if (!value) return {};
+    if (typeof value === 'object') return value;
+    try {
+        const parsed = JSON.parse(value);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
 // يضمن أن رابط الموقع يبدأ ببروتوكول حتى يُفتح خارج التطبيق
 const normalizeUrl = (url) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 
@@ -323,6 +400,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [aboutForm, setAboutForm] = useState(null);   // تحرير بيانات التواصل
     const [showAbout, setShowAbout] = useState(false);  // قسم "حول"
     const [logoForm, setLogoForm] = useState(null);     // { src, zoom, x, y }
+    const [socialForm, setSocialForm] = useState(null); // { key, value } لإضافة/تعديل رابط
     const [saving, setSaving] = useState(false);
 
     const [showTitle, setShowTitle] = useState(false);
@@ -471,6 +549,33 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
         } catch (e) {
             console.error(e);
             alert('تعذّر حفظ بيانات التواصل، حاول مجدداً.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // ── روابط صفحات المحل على مواقع التواصل ────────────────────
+    const openSocialForm = (key) => {
+        const links = parseSocialLinks(shopData?.social_links);
+        setSocialForm({ key, value: links[key] || '' });
+    };
+
+    const saveSocial = async (remove = false) => {
+        if (!socialForm) return;
+        setSaving(true);
+        try {
+            const links = { ...parseSocialLinks(shopData?.social_links) };
+            const value = socialForm.value.trim();
+
+            if (remove || !value) delete links[socialForm.key];
+            else links[socialForm.key] = value;
+
+            await shopService.updateProfile(shopData.id, { social_links: links });
+            setShopData(prev => ({ ...prev, social_links: links }));
+            setSocialForm(null);
+        } catch (e) {
+            console.error(e);
+            alert('تعذّر حفظ الرابط، حاول مجدداً.');
         } finally {
             setSaving(false);
         }
@@ -678,7 +783,13 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const week = parseWeeklyHours(shopData?.opening_hours);
     const status = getTodayStatus(week);
     const hasHours = Object.keys(week).length > 0;
-    const hasContact = Boolean(shopData?.contact_phone || shopData?.contact_email || shopData?.contact_website);
+    const socialLinks = parseSocialLinks(shopData?.social_links);
+    const activeSocials = PLATFORMS.filter(item => socialLinks[item.key]);
+    const missingSocials = PLATFORMS.filter(item => !socialLinks[item.key]);
+    const hasContact = Boolean(
+        shopData?.contact_phone || shopData?.contact_email || shopData?.contact_website || activeSocials.length
+    );
+    const coverVideoId = parseYouTubeId(shopData?.cover_video_url);
     const logo = shopData?.profile_picture ? getImageUrl(shopData.profile_picture) : null;
     const initial = (shopData?.name || '؟').trim().charAt(0);
     const totalProducts = products.length;
@@ -753,7 +864,20 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 <div className="sf-inner">
 
                     {/* ترويسة المحل */}
-                    <section className="sf-header">
+                    <section className={`sf-header ${coverVideoId ? 'has-video' : ''}`}>
+                        {coverVideoId && (
+                            <div className="sf-cover-video" aria-hidden="true">
+                                <iframe
+                                    src={youtubeCoverSrc(coverVideoId)}
+                                    title=""
+                                    frameBorder="0"
+                                    allow="autoplay; encrypted-media"
+                                    tabIndex={-1}
+                                />
+                                <span className="sf-cover-veil" />
+                            </div>
+                        )}
+
                         <div className="sf-avatar-wrap">
                             <div className="sf-avatar">
                                 {logo
@@ -957,7 +1081,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
-                && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && (
+                && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -1185,6 +1309,52 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                             ) : (
                                 <p className="sf-detail-desc">لم يضِف المحل بيانات تواصل بعد.</p>
                             )}
+
+                            {(activeSocials.length > 0 || isAdmin) && (
+                                <>
+                                    <h4 className="sf-about-title">صفحات المحل</h4>
+                                    <div className="sf-socials">
+                                        {activeSocials.map(item => (
+                                            <div className="sf-social-cell" key={item.key}>
+                                                <a
+                                                    className="sf-social"
+                                                    style={{ '--brand': item.color }}
+                                                    href={socialHref(item.key, socialLinks[item.key])}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title={item.label}
+                                                >
+                                                    {item.icon}
+                                                </a>
+                                                <span className="sf-social-name">{item.label}</span>
+
+                                                {isAdmin && (
+                                                    <button
+                                                        className="sf-social-edit"
+                                                        onClick={() => openSocialForm(item.key)}
+                                                        aria-label={`تعديل رابط ${item.label}`}
+                                                    >
+                                                        <Icon.Edit width="11" height="11" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {isAdmin && missingSocials.length > 0 && (
+                                            <div className="sf-social-cell">
+                                                <button
+                                                    className="sf-social sf-social-add"
+                                                    onClick={() => openSocialForm(missingSocials[0].key)}
+                                                    title="إضافة صفحة"
+                                                >
+                                                    <Icon.Plus />
+                                                </button>
+                                                <span className="sf-social-name">إضافة</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {isAdmin && (
@@ -1255,6 +1425,78 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     </div>
                 </div>
             )}
+
+            {/* ── إضافة / تعديل رابط صفحة تواصل ── */}
+            {socialForm && (() => {
+                const platform = PLATFORM_MAP[socialForm.key];
+                const links = parseSocialLinks(shopData?.social_links);
+                const isEditing = Boolean(links[socialForm.key]);
+
+                return (
+                    <div className="sf-sheet-backdrop" onClick={() => setSocialForm(null)}>
+                        <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
+                            <div className="sf-sheet-head">
+                                <h3>{isEditing ? `تعديل ${platform.label}` : 'إضافة صفحة'}</h3>
+                                <button className="sf-icon-btn" onClick={() => setSocialForm(null)}><Icon.Close /></button>
+                            </div>
+
+                            <div className="sf-sheet-body">
+                                <label className="sf-picker-label">اختر المنصة</label>
+                                <div className="sf-picker">
+                                    {PLATFORMS.map(item => (
+                                        <button
+                                            key={item.key}
+                                            className={`sf-picker-item ${socialForm.key === item.key ? 'is-active' : ''}`}
+                                            style={{ '--brand': item.color }}
+                                            onClick={() => setSocialForm({ key: item.key, value: links[item.key] || '' })}
+                                        >
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                            {links[item.key] && <i className="sf-picker-dot" />}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="sf-field" style={{ marginTop: 18 }}>
+                                    <label>
+                                        {socialForm.key === 'whatsapp' ? 'رقم واتساب المحل' : `رابط صفحة ${platform.label}`}
+                                    </label>
+                                    <input
+                                        className="sf-input"
+                                        dir="ltr"
+                                        value={socialForm.value}
+                                        onChange={(e) => setSocialForm({ ...socialForm, value: e.target.value })}
+                                        placeholder={platform.placeholder}
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <p className="sf-detail-desc" style={{ fontSize: '.8rem' }}>
+                                    {socialForm.key === 'whatsapp'
+                                        ? 'اكتب الرقم بمفتاح الدولة بلا رموز، أو الصق رابط واتساب جاهزاً.'
+                                        : 'الصق رابط الصفحة كاملاً؛ سيفتح الزائر الصفحة مباشرة عند الضغط على الشعار.'}
+                                </p>
+                            </div>
+
+                            <div className="sf-sheet-foot">
+                                {links[socialForm.key] && (
+                                    <button className="sf-btn sf-btn-ghost" onClick={() => saveSocial(true)} disabled={saving}>
+                                        حذف
+                                    </button>
+                                )}
+                                <button className="sf-btn sf-btn-ghost" onClick={() => setSocialForm(null)}>إلغاء</button>
+                                <button
+                                    className="sf-btn sf-btn-primary"
+                                    onClick={() => saveSocial()}
+                                    disabled={saving || !socialForm.value.trim()}
+                                >
+                                    {saving ? 'جاري الحفظ…' : 'حفظ'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* ── ضبط شعار المحل داخل الدائرة ── */}
             {logoForm && (

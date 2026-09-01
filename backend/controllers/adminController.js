@@ -324,6 +324,28 @@ const toggleShopLock = async (req, res) => {
     }
 };
 
+// غلاف الفيديو للمحل (يوتيوب) — للأدمن العام فقط
+const setShopCoverVideo = async (req, res) => {
+    try {
+        const { shopId } = req.params;
+        const { cover_video_url } = req.body;
+
+        const url = (cover_video_url || '').trim() || null;
+
+        const result = await pool.query(
+            'UPDATE shops SET cover_video_url = $1 WHERE id = $2 RETURNING id, cover_video_url',
+            [url, shopId]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Shop not found' });
+
+        res.json({ message: 'Cover video updated', shop: result.rows[0] });
+    } catch (e) {
+        console.error('setShopCoverVideo error:', e);
+        res.status(500).json({ error: 'Failed to update cover video' });
+    }
+};
+
 const sendAdminNotification = async (req, res) => {
     try {
         const { target, message } = req.body;
@@ -378,6 +400,7 @@ module.exports = {
     deleteShop,
     toggleShopStatus,
     toggleShopLock,
+    setShopCoverVideo,
     sendAdminNotification,
     getOrganizationItems,
     updateOrganizationItem,
