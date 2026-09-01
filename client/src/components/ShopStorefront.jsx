@@ -4,7 +4,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
-import { parseYouTubeId, youtubeCoverSrc } from '../utils/youtube';
+import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
 import './ShopStorefront.css';
 
 /* ============================================================
@@ -260,6 +260,97 @@ const formatPrice = (value) => {
     const num = parseFloat(value);
     if (Number.isNaN(num)) return null;
     return `${num % 1 === 0 ? num.toFixed(0) : num.toFixed(2)} ₪`;
+};
+
+// ── غلاف فيديو متحرك خلف شعار المحل ──────────────────────────
+// يوتيوب يرسم مثلّث التشغيل والأسهم في كل لحظة لا يكون الفيديو فيها
+// قيد التشغيل (قبل البدء، عند الإيقاف، عند العودة للصفحة، في النهاية).
+// لذلك لا نكشف الإطار إلا وهو يعمل فعلاً، ونضع لقطة ثابتة تحته
+// تظهر في تلك اللحظات — فلا يرى الزائر أي عنصر تحكّم أبداً.
+const VideoCover = ({ videoId }) => {
+    const frameRef = useRef(null);
+    const playerRef = useRef(null);
+    const [playing, setPlaying] = useState(false);
+    const [poster, setPoster] = useState(youtubeThumbHd(videoId));
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const resume = () => {
+            try { playerRef.current?.playVideo?.(); } catch { /* المشغّل لم يجهز بعد */ }
+        };
+
+        loadYouTubeApi()
+            .then((YT) => {
+                if (cancelled || !frameRef.current) return;
+
+                const host = document.createElement('div');
+                frameRef.current.appendChild(host);
+
+                playerRef.current = new YT.Player(host, {
+                    videoId,
+                    playerVars: youtubeCoverVars(videoId),
+                    events: {
+                        onReady: (e) => {
+                            e.target.mute();
+                            e.target.playVideo();
+                        },
+                        onStateChange: (e) => {
+                            const state = e.data;
+
+                            if (state === YT.PlayerState.PLAYING) {
+                                setPlaying(true);
+                                return;
+                            }
+
+                            // التخزين المؤقت لا يرسم أزراراً، فنُبقي الصورة كما هي
+                            if (state === YT.PlayerState.BUFFERING) return;
+
+                            // بقية الحالات (متوقف، منتهٍ، لم يبدأ) يرسم فيها يوتيوب
+                            // مثلّث التشغيل وشاشة النهاية: نُخفي الإطار ونستأنف فوراً
+                            setPlaying(false);
+                            if (state === YT.PlayerState.ENDED) {
+                                e.target.seekTo(0);
+                                e.target.playVideo();
+                            } else if (state === YT.PlayerState.PAUSED || state === YT.PlayerState.CUED) {
+                                e.target.playVideo();
+                            }
+                        },
+                        onError: () => setPlaying(false)
+                    }
+                });
+            })
+            .catch(() => { /* يبقى الغلاف صورة ثابتة */ });
+
+        // العودة إلى التبويب توقف التشغيل أحياناً، فنستأنفه فوراً
+        const onVisible = () => { if (!document.hidden) resume(); };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('pageshow', resume);
+        window.addEventListener('focus', resume);
+
+        return () => {
+            cancelled = true;
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('pageshow', resume);
+            window.removeEventListener('focus', resume);
+            try { playerRef.current?.destroy?.(); } catch { /* تم تفكيكه مسبقاً */ }
+            playerRef.current = null;
+            if (frameRef.current) frameRef.current.innerHTML = '';
+        };
+    }, [videoId]);
+
+    return (
+        <div className="sf-cover-video" aria-hidden="true">
+            <img
+                className="sf-cover-poster"
+                src={poster}
+                alt=""
+                onError={() => setPoster(youtubeThumb(videoId))}
+            />
+            <div ref={frameRef} className={`sf-cover-frame ${playing ? 'is-playing' : ''}`} />
+            <span className="sf-cover-veil" />
+        </div>
+    );
 };
 
 // ── محرّر شعار المحل: سحب لضبط الموضع وشريط للتكبير ─────────
@@ -865,18 +956,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
                     {/* ترويسة المحل */}
                     <section className={`sf-header ${coverVideoId ? 'has-video' : ''}`}>
-                        {coverVideoId && (
-                            <div className="sf-cover-video" aria-hidden="true">
-                                <iframe
-                                    src={youtubeCoverSrc(coverVideoId)}
-                                    title=""
-                                    frameBorder="0"
-                                    allow="autoplay; encrypted-media"
-                                    tabIndex={-1}
-                                />
-                                <span className="sf-cover-veil" />
-                            </div>
-                        )}
+                        {coverVideoId && <VideoCover videoId={coverVideoId} />}
 
                         <div className="sf-avatar-wrap">
                             <div className="sf-avatar">

@@ -1487,6 +1487,25 @@
     pointer-events: none;
 }
 
+/* لقطة ثابتة تحت الفيديو — تظهر في أي لحظة قد يرسم فيها
+   يوتيوب زر التشغيل أو شاشة النهاية، فلا يُرى أي عنصر تحكّم */
+.sf-cover-poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-cover-frame {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity .5s ease;
+}
+
+.sf-cover-frame.is-playing { opacity: 1; }
+
 /* نكبّر الإطار خارج حدود القسم حتى تختفي أي واجهة ليوتيوب */
 .sf-cover-video iframe {
     position: absolute;
