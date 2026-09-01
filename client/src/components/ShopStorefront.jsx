@@ -262,6 +262,9 @@ const formatPrice = (value) => {
     return `${num % 1 === 0 ? num.toFixed(0) : num.toFixed(2)} ₪`;
 };
 
+// المدّة التي يحتاجها يوتيوب لإخفاء أزراره تلقائياً بعد بدء التشغيل
+const CONTROLS_FADE_MS = 3200;
+
 // ── غلاف فيديو متحرك خلف شعار المحل ──────────────────────────
 // يوتيوب يرسم مثلّث التشغيل والأسهم في كل لحظة لا يكون الفيديو فيها
 // قيد التشغيل (قبل البدء، عند الإيقاف، عند العودة للصفحة، في النهاية).
@@ -270,11 +273,28 @@ const formatPrice = (value) => {
 const VideoCover = ({ videoId }) => {
     const frameRef = useRef(null);
     const playerRef = useRef(null);
+    const revealRef = useRef(null);
     const [playing, setPlaying] = useState(false);
     const [poster, setPoster] = useState(youtubeThumbHd(videoId));
 
     useEffect(() => {
         let cancelled = false;
+
+        // يوتيوب يعرض أزرار التشغيل لحظة البدء ثم يُخفيها تلقائياً،
+        // فلا نكشف الإطار إلا بعد أن تختفي — تبقى اللقطة الثابتة حتى ذلك
+        const hide = () => {
+            clearTimeout(revealRef.current);
+            revealRef.current = null;
+            setPlaying(false);
+        };
+
+        const revealWhenClean = () => {
+            if (revealRef.current) return; // العدّ جارٍ بالفعل
+            revealRef.current = setTimeout(() => {
+                revealRef.current = null;
+                setPlaying(true);
+            }, CONTROLS_FADE_MS);
+        };
 
         const resume = () => {
             try { playerRef.current?.playVideo?.(); } catch { /* المشغّل لم يجهز بعد */ }
@@ -299,7 +319,7 @@ const VideoCover = ({ videoId }) => {
                             const state = e.data;
 
                             if (state === YT.PlayerState.PLAYING) {
-                                setPlaying(true);
+                                revealWhenClean();
                                 return;
                             }
 
@@ -308,7 +328,7 @@ const VideoCover = ({ videoId }) => {
 
                             // بقية الحالات (متوقف، منتهٍ، لم يبدأ) يرسم فيها يوتيوب
                             // مثلّث التشغيل وشاشة النهاية: نُخفي الإطار ونستأنف فوراً
-                            setPlaying(false);
+                            hide();
                             if (state === YT.PlayerState.ENDED) {
                                 e.target.seekTo(0);
                                 e.target.playVideo();
@@ -316,20 +336,29 @@ const VideoCover = ({ videoId }) => {
                                 e.target.playVideo();
                             }
                         },
-                        onError: () => setPlaying(false)
+                        onError: () => hide()
                     }
                 });
             })
             .catch(() => { /* يبقى الغلاف صورة ثابتة */ });
 
         // العودة إلى التبويب توقف التشغيل أحياناً، فنستأنفه فوراً
-        const onVisible = () => { if (!document.hidden) resume(); };
+        // العودة إلى الصفحة تُعيد رسم الأزرار، وقد يبقى المشغّل على حالة
+        // PLAYING فلا يصلنا حدث جديد — لذا نُخفي ونجدول الكشف بأنفسنا
+        const onVisible = () => {
+            if (document.hidden) return;
+            hide();
+            resume();
+            revealWhenClean();
+        };
         document.addEventListener('visibilitychange', onVisible);
         window.addEventListener('pageshow', resume);
         window.addEventListener('focus', resume);
 
         return () => {
             cancelled = true;
+            clearTimeout(revealRef.current);
+            revealRef.current = null;
             document.removeEventListener('visibilitychange', onVisible);
             window.removeEventListener('pageshow', resume);
             window.removeEventListener('focus', resume);
