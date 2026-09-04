@@ -126,11 +126,32 @@ const createShop = async (req, res) => {
     }
 };
 
+// هل عمود صورة القسم موجود؟ نفحص مرة واحدة ونخزّن النتيجة، حتى لا
+// تنكسر صفحة المحل في بيئة لم يُنفَّذ فيها الترحيل بعد.
+let categoryImageColumn = null;
+
+const hasCategoryImage = async () => {
+    if (categoryImageColumn !== null) return categoryImageColumn;
+    try {
+        const result = await pool.query(`
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'shop_product_categories'
+              AND column_name = 'image_url'
+        `);
+        categoryImageColumn = result.rows.length > 0;
+    } catch {
+        categoryImageColumn = false;
+    }
+    return categoryImageColumn;
+};
+
 // --- 6. Get Shop Profile (Info + Posts + Products) ---
 const getShopProfile = async (req, res) => {
     try {
         const shopId = req.params.id;
-        const currentUserId = req.user.userId;
+        // المسار عام (optionalAuth): الزائر بلا حساب لا يملك req.user
+        const currentUserId = req.user ? (req.user.userId || req.user.id || null) : null;
 
         // 1. Get Shop Details
         const shopResult = await pool.query(`
@@ -148,7 +169,7 @@ const getShopProfile = async (req, res) => {
         }
 
         const shop = shopResult.rows[0];
-        const isOwner = shop.owner_id === currentUserId;
+        const isOwner = Boolean(currentUserId) && shop.owner_id === currentUserId;
 
         // 2. Get Shop Posts
         const postsResult = await pool.query(`
@@ -171,8 +192,9 @@ const getShopProfile = async (req, res) => {
         `, [shopId]);
 
         // 4. Get Product Categories
+        const imageCol = (await hasCategoryImage()) ? 'image_url' : 'NULL::text AS image_url';
         const categoriesResult = await pool.query(`
-            SELECT id, name, sort_order, image_url
+            SELECT id, name, sort_order, ${imageCol}
             FROM shop_product_categories
             WHERE shop_id = $1
             ORDER BY sort_order ASC, id ASC
@@ -599,7 +621,7 @@ const deleteProduct = async (req, res) => {
 const getProductCategories = async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT c.id, c.name, c.sort_order, c.image_url,
+            SELECT c.id, c.name, c.sort_order, ${(await hasCategoryImage()) ? 'c.image_url' : 'NULL::text AS image_url'},
                    (SELECT COUNT(*)::int FROM shop_products p WHERE p.category_id = c.id) AS products_count
             FROM shop_product_categories c
             WHERE c.shop_id = $1
@@ -616,6 +638,7 @@ const getProductCategories = async (req, res) => {
 const uploadCategoryImage = async (req) => {
     const file = req.file || (Array.isArray(req.files) ? req.files[0] : null);
     if (!file) return null;
+    if (!(await hasCategoryImage())) return null;
     return file.buffer
         ? await uploadToCloud(file.buffer, file.originalname, file.mimetype)
         : `/uploads/${file.filename}`;
