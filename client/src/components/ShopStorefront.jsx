@@ -1138,7 +1138,6 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                             >
                                 <span className="sf-status-dot" />
                                 {status.label}
-                                {status.range && <b className="sf-status-range">{status.range}</b>}
                                 <Icon.Chevron className="sf-status-arrow" />
                             </button>
                         )}

@@ -751,19 +751,22 @@ const assignShopOwner = async (req, res) => {
             return res.status(403).json({ error: 'Only admins can assign owners' });
         }
         const shopId = req.params.id;
-        const { username } = req.body; // Assign by username
+        const { username, userId } = req.body; // بالمعرّف أو باسم المستخدم
 
-        // 1. Find User ID
-        const userRes = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+        // 1. نحدّد المستخدم — المعرّف أدقّ، واسم المستخدم يبقى مدعوماً
+        const userRes = userId
+            ? await pool.query('SELECT id, username, full_name, profile_picture FROM users WHERE id = $1', [userId])
+            : await pool.query('SELECT id, username, full_name, profile_picture FROM users WHERE username = $1', [username]);
+
         if (userRes.rows.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
-        const newOwnerId = userRes.rows[0].id;
+        const owner = userRes.rows[0];
 
-        // 2. Update Shop
-        await pool.query('UPDATE shops SET owner_id = $1 WHERE id = $2', [newOwnerId, shopId]);
+        // 2. نسند ملكية المحل — صلاحياته محصورة بهذا المحل وحده
+        await pool.query('UPDATE shops SET owner_id = $1 WHERE id = $2', [owner.id, shopId]);
 
-        res.json({ message: `Shop ownership assigned to ${username}` });
+        res.json({ message: `Shop ownership assigned to ${owner.username}`, owner });
     } catch (error) {
         console.error('Assign owner error:', error);
         res.status(500).json({ error: 'Failed to assign owner' });

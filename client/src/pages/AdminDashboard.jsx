@@ -70,6 +70,8 @@ const AdminDashboard = () => {
     const [shops, setShops] = useState([]);
     // غلاف الفيديو للمحل: { shop, url, saving, error }
     const [videoForm, setVideoForm] = useState(null);
+    // إسناد صلاحية المحل: { shop, query, results, searching, saving, error }
+    const [ownerForm, setOwnerForm] = useState(null);
     const [cameras, setCameras] = useState([]);
     const [eventPhotos, setEventPhotos] = useState([]);
     const [editingShopOrg, setEditingShopOrg] = useState(null);
@@ -236,6 +238,60 @@ const AdminDashboard = () => {
             setShops(prev => prev.map(s => (s.id === shopId && s.type === 'shop') ? { ...s, is_hidden: !currentHiddenStatus } : s));
         } catch (error) {
             alert('فشل في تحديث حالة ظهور المحل');
+        }
+    };
+
+    // ── صلاحية المحل: مستخدم واحد يديره من حسابه ───────────────
+    const openOwnerForm = (shop) => {
+        setOwnerForm({ shop, query: '', results: [], searching: false, saving: false, error: null });
+    };
+
+    const searchOwnerCandidates = async (query) => {
+        setOwnerForm(prev => ({ ...prev, query, error: null }));
+
+        const term = query.trim();
+        if (term.length < 2) {
+            setOwnerForm(prev => ({ ...prev, results: [], searching: false }));
+            return;
+        }
+
+        setOwnerForm(prev => ({ ...prev, searching: true }));
+        try {
+            const data = await adminService.getAllUsers(term, 1, 8);
+            setOwnerForm(prev => (
+                // نتجاهل نتيجة بحث قديم إن كان المستخدم قد غيّر النص
+                prev && prev.query === query
+                    ? { ...prev, results: data.users || [], searching: false }
+                    : prev
+            ));
+        } catch (e) {
+            console.error(e);
+            setOwnerForm(prev => ({ ...prev, searching: false, error: 'تعذّر البحث عن المستخدمين.' }));
+        }
+    };
+
+    const applyShopOwner = async (user) => {
+        if (!ownerForm) return;
+        setOwnerForm(prev => ({ ...prev, saving: true, error: null }));
+        try {
+            if (user) await shopService.assignOwner(ownerForm.shop.id, { userId: user.id });
+            else await shopService.removeOwner(ownerForm.shop.id);
+
+            setShops(prev => prev.map(s => (
+                s.id === ownerForm.shop.id && s.type === ownerForm.shop.type
+                    ? {
+                        ...s,
+                        owner_id: user ? user.id : null,
+                        owner_username: user ? user.username : null,
+                        owner_full_name: user ? user.full_name : null,
+                        owner_picture: user ? user.profile_picture : null
+                    }
+                    : s
+            )));
+            setOwnerForm(null);
+        } catch (e) {
+            console.error(e);
+            setOwnerForm(prev => ({ ...prev, saving: false, error: 'تعذّر حفظ الصلاحية، حاول مجدداً.' }));
         }
     };
 
@@ -628,6 +684,11 @@ const AdminDashboard = () => {
                                                         <span className={`badge ${s.is_locked ? 'badge-locked' : 'badge-unlocked'}`}>
                                                             {s.is_locked ? 'مقفول' : 'مفتوح'}
                                                         </span>
+                                                        {s.owner_id && (
+                                                            <span className="badge badge-owner" title={s.owner_full_name || s.owner_username}>
+                                                                👤 {s.owner_username}
+                                                            </span>
+                                                        )}
                                                     </>
                                                 )}
                                             </div>
@@ -663,6 +724,23 @@ const AdminDashboard = () => {
                                                         {s.is_locked ? 'فتح' : 'قفل'}
                                                     </button>
                                                 </>
+                                            )}
+
+                                            {s.type !== 'facility' && (
+                                                <button
+                                                    className={`shop-action-btn ${s.owner_id ? 'btn-owner-on' : 'btn-owner'}`}
+                                                    title={s.owner_id
+                                                        ? `المالك: ${s.owner_username} — اضغط للتغيير`
+                                                        : 'إعطاء صلاحية إدارة هذا المحل لمستخدم'}
+                                                    onClick={() => openOwnerForm(s)}
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                                        <circle cx="9" cy="7" r="4" />
+                                                        <path d="M19 8v6M22 11h-6" />
+                                                    </svg>
+                                                    {s.owner_id ? 'المالك' : 'صلاحية'}
+                                                </button>
                                             )}
 
                                             {s.type !== 'facility' && (
@@ -713,6 +791,93 @@ const AdminDashboard = () => {
 
 
             {/* Premium Shop Organization Modal Popup */}
+            {/* ── إسناد صلاحية إدارة المحل لمستخدم ── */}
+            {ownerForm && (
+                <div className="video-modal-backdrop" onClick={() => setOwnerForm(null)}>
+                    <div className="video-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="video-modal-head">
+                            <div>
+                                <h3>صلاحية إدارة المحل</h3>
+                                <p>{ownerForm.shop.name}</p>
+                            </div>
+                            <button className="video-modal-close" onClick={() => setOwnerForm(null)}>✕</button>
+                        </div>
+
+                        <div className="video-modal-body">
+                            {ownerForm.shop.owner_id && (
+                                <div className="owner-current">
+                                    <img
+                                        src={ownerForm.shop.owner_picture ? getImageUrl(ownerForm.shop.owner_picture) : '/logo.png'}
+                                        alt=""
+                                    />
+                                    <div className="owner-current-text">
+                                        <b>{ownerForm.shop.owner_full_name || ownerForm.shop.owner_username}</b>
+                                        <span>@{ownerForm.shop.owner_username} — يدير هذا المحل حالياً</span>
+                                    </div>
+                                    <button
+                                        className="owner-remove"
+                                        onClick={() => applyShopOwner(null)}
+                                        disabled={ownerForm.saving}
+                                    >
+                                        سحب الصلاحية
+                                    </button>
+                                </div>
+                            )}
+
+                            <label className="video-label">ابحث عن المستخدم بالاسم أو البريد</label>
+                            <input
+                                className="video-input"
+                                value={ownerForm.query}
+                                onChange={(e) => searchOwnerCandidates(e.target.value)}
+                                placeholder="اسم المستخدم أو البريد الإلكتروني…"
+                                autoFocus
+                            />
+
+                            {ownerForm.error && <p className="video-error">{ownerForm.error}</p>}
+
+                            <div className="owner-results">
+                                {ownerForm.searching && <p className="video-hint">جاري البحث…</p>}
+
+                                {!ownerForm.searching && ownerForm.query.trim().length >= 2 && ownerForm.results.length === 0 && (
+                                    <p className="video-hint">لا يوجد مستخدم بهذا الاسم.</p>
+                                )}
+
+                                {ownerForm.results.map(u => {
+                                    const isCurrent = String(u.id) === String(ownerForm.shop.owner_id);
+                                    return (
+                                        <button
+                                            key={u.id}
+                                            className={`owner-row ${isCurrent ? 'is-current' : ''}`}
+                                            onClick={() => !isCurrent && applyShopOwner(u)}
+                                            disabled={ownerForm.saving || isCurrent}
+                                        >
+                                            <img src={u.profile_picture ? getImageUrl(u.profile_picture) : '/logo.png'} alt="" />
+                                            <span className="owner-row-text">
+                                                <b>{u.full_name || u.username}</b>
+                                                <span>@{u.username}</span>
+                                            </span>
+                                            <span className="owner-row-action">
+                                                {isCurrent ? 'المالك الحالي' : 'إسناد'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            <p className="video-hint">
+                                المستخدم المُسنَد يدخل من حسابه العادي فيجد أدوات التحكّم داخل صفحة هذا المحل وحده:
+                                المنتجات والأقسام والشعار والغلاف وساعات العمل وبيانات التواصل. لا يملك أي صلاحية
+                                على بقية المحلات ولا على لوحة الإدارة. لكل محل مالك واحد، وإسناد مستخدم جديد يستبدل السابق.
+                            </p>
+                        </div>
+
+                        <div className="video-modal-foot">
+                            <button className="video-btn video-btn-ghost" onClick={() => setOwnerForm(null)}>إغلاق</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── غلاف الفيديو للمحل (يوتيوب) ── */}
             {videoForm && (() => {
                 const videoId = parseYouTubeId(videoForm.url);

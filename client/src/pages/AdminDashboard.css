@@ -1057,3 +1057,140 @@
     color: #f87171;
     border-color: rgba(239, 68, 68, .3);
 }
+
+/* ============================================================
+   إسناد صلاحية إدارة المحل
+   ============================================================ */
+
+.shop-action-btn.btn-owner {
+    background: rgba(139, 92, 246, .1);
+    color: #a78bfa;
+    border-color: rgba(139, 92, 246, .25);
+}
+
+.shop-action-btn.btn-owner-on {
+    background: rgba(139, 92, 246, .24);
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, .5);
+}
+
+.badge-owner {
+    background: rgba(139, 92, 246, .12);
+    color: #a78bfa;
+    border-color: rgba(139, 92, 246, .3);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.owner-current {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(139, 92, 246, .3);
+    background: rgba(139, 92, 246, .08);
+}
+
+.owner-current img {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.owner-current-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.owner-current-text b { font-size: .9rem; }
+.owner-current-text span { font-size: .75rem; color: #94a3b8; }
+
+.owner-remove {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-radius: 11px;
+    border: 1px solid rgba(239, 68, 68, .3);
+    background: rgba(239, 68, 68, .12);
+    color: #f87171;
+    font-family: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.owner-remove:hover:not(:disabled) { background: rgba(239, 68, 68, .22); }
+.owner-remove:disabled { opacity: .5; cursor: default; }
+
+.owner-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+    max-height: 290px;
+    overflow-y: auto;
+}
+
+.owner-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background: rgba(255, 255, 255, .03);
+    color: #e2e8f0;
+    font-family: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease;
+}
+
+.owner-row:hover:not(:disabled) {
+    border-color: rgba(139, 92, 246, .5);
+    background: rgba(139, 92, 246, .1);
+}
+
+.owner-row:disabled { cursor: default; }
+.owner-row.is-current { border-color: rgba(139, 92, 246, .4); opacity: .8; }
+
+.owner-row img {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.owner-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.owner-row-text b {
+    font-size: .88rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.owner-row-text span { font-size: .74rem; color: #94a3b8; }
+
+.owner-row-action {
+    flex-shrink: 0;
+    font-size: .76rem;
+    font-weight: 700;
+    color: #a78bfa;
+}

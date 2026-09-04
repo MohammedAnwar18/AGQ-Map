@@ -546,8 +546,12 @@ export const shopService = {
         return response.data;
     },
 
-    assignOwner: async (shopId, username) => {
-        const response = await api.post(`/shops/${shopId}/assign-owner`, { username });
+    // يقبل معرّف المستخدم (الأدقّ) أو اسم المستخدم
+    assignOwner: async (shopId, user) => {
+        const payload = typeof user === 'object' && user !== null
+            ? user
+            : (Number.isInteger(user) || /^\d+$/.test(String(user)) ? { userId: user } : { username: user });
+        const response = await api.post(`/shops/${shopId}/assign-owner`, payload);
         return response.data;
     },
 

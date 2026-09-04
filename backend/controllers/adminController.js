@@ -287,7 +287,16 @@ const createAdminPost = async (req, res) => {
 
 const getAllShops = async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM shops ORDER BY created_at DESC');
+        // نُرفق بيانات المالك ليعرف الأدمن من يملك صلاحية كل محل
+        const result = await pool.query(`
+            SELECT s.*,
+                   u.username AS owner_username,
+                   u.full_name AS owner_full_name,
+                   u.profile_picture AS owner_picture
+            FROM shops s
+            LEFT JOIN users u ON u.id = s.owner_id
+            ORDER BY s.created_at DESC
+        `);
         res.json({ shops: result.rows });
     } catch (e) {
         res.status(500).json({ error: 'Failed to fetch shops' });

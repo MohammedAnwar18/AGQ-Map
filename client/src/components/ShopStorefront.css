@@ -1020,13 +1020,6 @@
     cursor: pointer;
 }
 
-.sf-status-range {
-    font-weight: 700;
-    direction: ltr;
-    font-variant-numeric: tabular-nums;
-    opacity: .85;
-}
-
 .sf-status-arrow {
     opacity: .6;
     margin-inline-start: -2px;
