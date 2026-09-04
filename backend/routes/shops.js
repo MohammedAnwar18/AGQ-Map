@@ -39,8 +39,8 @@ router.put('/:id/products/:productId', authenticateToken, upload.array('images',
 router.delete('/:id/products/:productId', authenticateToken, shopController.deleteProduct);
 
 // أقسام المنتجات
-router.post('/:id/product-categories', authenticateToken, shopController.addProductCategory);
-router.put('/:id/product-categories/:categoryId', authenticateToken, shopController.updateProductCategory);
+router.post('/:id/product-categories', authenticateToken, upload.single('image'), shopController.addProductCategory);
+router.put('/:id/product-categories/:categoryId', authenticateToken, upload.single('image'), shopController.updateProductCategory);
 router.delete('/:id/product-categories/:categoryId', authenticateToken, shopController.deleteProductCategory);
 
 // إدارة الملكية

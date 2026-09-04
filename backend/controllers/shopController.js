@@ -172,7 +172,7 @@ const getShopProfile = async (req, res) => {
 
         // 4. Get Product Categories
         const categoriesResult = await pool.query(`
-            SELECT id, name, sort_order
+            SELECT id, name, sort_order, image_url
             FROM shop_product_categories
             WHERE shop_id = $1
             ORDER BY sort_order ASC, id ASC
@@ -599,7 +599,7 @@ const deleteProduct = async (req, res) => {
 const getProductCategories = async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT c.id, c.name, c.sort_order,
+            SELECT c.id, c.name, c.sort_order, c.image_url,
                    (SELECT COUNT(*)::int FROM shop_products p WHERE p.category_id = c.id) AS products_count
             FROM shop_product_categories c
             WHERE c.shop_id = $1
@@ -612,6 +612,15 @@ const getProductCategories = async (req, res) => {
     }
 };
 
+// يرفع صورة القسم إن أُرفقت، ويعيد رابطها أو null
+const uploadCategoryImage = async (req) => {
+    const file = req.file || (Array.isArray(req.files) ? req.files[0] : null);
+    if (!file) return null;
+    return file.buffer
+        ? await uploadToCloud(file.buffer, file.originalname, file.mimetype)
+        : `/uploads/${file.filename}`;
+};
+
 const addProductCategory = async (req, res) => {
     try {
         const shopId = req.params.id;
@@ -620,11 +629,21 @@ const addProductCategory = async (req, res) => {
         const name = (req.body.name || '').trim();
         if (!name) return res.status(400).json({ error: 'اسم القسم مطلوب' });
 
+        const imageUrl = await uploadCategoryImage(req);
+
         const existing = await pool.query(
             'SELECT * FROM shop_product_categories WHERE shop_id = $1 AND name = $2',
             [shopId, name]
         );
-        if (existing.rows.length) return res.json(existing.rows[0]);
+        // القسم موجود مسبقاً: نكتفي بتحديث صورته إن أُرسلت واحدة
+        if (existing.rows.length) {
+            if (!imageUrl) return res.json(existing.rows[0]);
+            const updated = await pool.query(
+                'UPDATE shop_product_categories SET image_url = $1 WHERE id = $2 RETURNING *',
+                [imageUrl, existing.rows[0].id]
+            );
+            return res.json(updated.rows[0]);
+        }
 
         const orderResult = await pool.query(
             'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM shop_product_categories WHERE shop_id = $1',
@@ -632,8 +651,9 @@ const addProductCategory = async (req, res) => {
         );
 
         const result = await pool.query(
-            'INSERT INTO shop_product_categories (shop_id, name, sort_order) VALUES ($1, $2, $3) RETURNING *',
-            [shopId, name, orderResult.rows[0].next]
+            `INSERT INTO shop_product_categories (shop_id, name, sort_order, image_url)
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [shopId, name, orderResult.rows[0].next, imageUrl]
         );
         res.json(result.rows[0]);
     } catch (e) {
@@ -660,6 +680,14 @@ const updateProductCategory = async (req, res) => {
         if (req.body.sort_order !== undefined) {
             queryParts.push(`sort_order = $${index++}`);
             values.push(parseInt(req.body.sort_order, 10) || 0);
+        }
+
+        const imageUrl = await uploadCategoryImage(req);
+        if (imageUrl) {
+            queryParts.push(`image_url = $${index++}`);
+            values.push(imageUrl);
+        } else if (req.body.remove_image === 'true' || req.body.remove_image === true) {
+            queryParts.push(`image_url = NULL`);
         }
 
         if (queryParts.length === 0) return res.json({ message: 'No changes provided' });

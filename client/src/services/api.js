@@ -506,13 +506,24 @@ export const shopService = {
         return response.data;
     },
 
-    addProductCategory: async (shopId, name) => {
-        const response = await api.post(`/shops/${shopId}/product-categories`, { name });
+    // يقبل نصاً (اسم فقط) أو FormData عند إرفاق صورة للقسم
+    addProductCategory: async (shopId, payload) => {
+        const isForm = payload instanceof FormData;
+        const response = await api.post(
+            `/shops/${shopId}/product-categories`,
+            isForm ? payload : { name: payload },
+            isForm ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+        );
         return response.data;
     },
 
     updateProductCategory: async (shopId, categoryId, data) => {
-        const response = await api.put(`/shops/${shopId}/product-categories/${categoryId}`, data);
+        const isForm = data instanceof FormData;
+        const response = await api.put(
+            `/shops/${shopId}/product-categories/${categoryId}`,
+            data,
+            isForm ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined
+        );
         return response.data;
     },
 

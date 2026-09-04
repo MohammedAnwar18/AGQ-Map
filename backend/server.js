@@ -187,7 +187,11 @@ app.use('/api/fitness', fitnessRoutes);
                 ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}'::jsonb,
                 ADD COLUMN IF NOT EXISTS cover_video_url TEXT;
         `);
-        console.log('✅ shop social links & cover video ready');
+        await pool.query(`
+            ALTER TABLE shop_product_categories
+                ADD COLUMN IF NOT EXISTS image_url TEXT;
+        `);
+        console.log('✅ shop social links, cover video & category images ready');
     } catch (err) {
         console.warn('⚠️ shop social/cover migration warning:', err.message);
     }

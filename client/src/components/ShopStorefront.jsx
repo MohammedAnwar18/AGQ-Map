@@ -514,13 +514,14 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
     const [detailProduct, setDetailProduct] = useState(null);
     const [productForm, setProductForm] = useState(null); // null | {} = نموذج مفتوح
-    const [categoryForm, setCategoryForm] = useState(false);
+    const [categoryForm, setCategoryForm] = useState(null); // { id, name, file, preview, removeImage }
     const [hoursForm, setHoursForm] = useState(null);   // جدول أسبوعي قابل للتحرير
     const [showHours, setShowHours] = useState(false);  // جدول الأسبوع للزائر
     const [aboutForm, setAboutForm] = useState(null);   // تحرير بيانات التواصل
     const [showAbout, setShowAbout] = useState(false);  // قسم "حول"
     const [logoForm, setLogoForm] = useState(null);     // { src, zoom, x, y }
     const [socialForm, setSocialForm] = useState(null); // { key, value } لإضافة/تعديل رابط
+    const [uploadingCover, setUploadingCover] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const [showTitle, setShowTitle] = useState(false);
@@ -585,6 +586,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
         const buckets = categories.map(cat => ({
             id: cat.id,
             name: cat.name,
+            image_url: cat.image_url || null,
             items: products.filter(p => String(p.category_id) === String(cat.id))
         }));
         const orphans = products.filter(p => !p.category_id);
@@ -671,6 +673,34 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             alert('تعذّر حفظ بيانات التواصل، حاول مجدداً.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // ── غلاف المحل: صورة من المعرض أو الكاميرا ─────────────────
+    const coverInputRef = useRef(null);
+
+    const pickCover = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+
+        setUploadingCover(true);
+        try {
+            // نضغط الصورة قبل الرفع حتى تبقى الصفحة سريعة على الهواتف
+            const optimized = await optimizeImage(file, { maxWidth: 1600, maxHeight: 900, quality: 0.82 }).catch(() => file);
+
+            const formData = new FormData();
+            formData.append('cover_picture', optimized, 'cover.webp');
+            const data = await shopService.uploadImages(shopData.id, formData);
+
+            const url = data?.shop?.cover_picture;
+            if (url) setShopData(prev => ({ ...prev, cover_picture: url }));
+            else await loadShop();
+        } catch (err) {
+            console.error(err);
+            alert('تعذّر رفع صورة الغلاف، حاول مجدداً.');
+        } finally {
+            setUploadingCover(false);
         }
     };
 
@@ -767,20 +797,68 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     };
 
     // ── إدارة الأقسام ──────────────────────────────────────────
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const openCategoryForm = (category = null) => {
+        setCategoryForm({
+            id: category?.id || null,
+            name: category?.name || '',
+            file: null,
+            preview: category?.image_url ? getImageUrl(category.image_url) : null,
+            removeImage: false
+        });
+    };
+
+    const categoryImageRef = useRef(null);
+
+    const pickCategoryImage = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        const optimized = await optimizeImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.85 }).catch(() => file);
+        setCategoryForm(prev => {
+            if (prev?.file && prev.preview) URL.revokeObjectURL(prev.preview);
+            return { ...prev, file: optimized, preview: URL.createObjectURL(optimized), removeImage: false };
+        });
+    };
+
+    // نحرّر رابط المعاينة المؤقت عند إغلاق النافذة
+    const closeCategoryForm = () => {
+        setCategoryForm(prev => {
+            if (prev?.file && prev.preview) URL.revokeObjectURL(prev.preview);
+            return null;
+        });
+    };
 
     const saveCategory = async () => {
-        const name = newCategoryName.trim();
+        const name = categoryForm?.name.trim();
         if (!name) return;
         setSaving(true);
         try {
-            const created = await shopService.addProductCategory(shopData.id, name);
-            setCategories(prev => prev.some(c => c.id === created.id) ? prev : [...prev, created]);
-            setNewCategoryName('');
-            setCategoryForm(false);
+            let saved;
+
+            if (categoryForm.file) {
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('image', categoryForm.file, 'category.webp');
+                saved = categoryForm.id
+                    ? await shopService.updateProductCategory(shopData.id, categoryForm.id, formData)
+                    : await shopService.addProductCategory(shopData.id, formData);
+            } else {
+                const payload = { name };
+                if (categoryForm.removeImage) payload.remove_image = true;
+                saved = categoryForm.id
+                    ? await shopService.updateProductCategory(shopData.id, categoryForm.id, payload)
+                    : await shopService.addProductCategory(shopData.id, name);
+            }
+
+            setCategories(prev => (
+                prev.some(c => c.id === saved.id)
+                    ? prev.map(c => (c.id === saved.id ? saved : c))
+                    : [...prev, saved]
+            ));
+            closeCategoryForm();
         } catch (e) {
             console.error(e);
-            alert('تعذّر إضافة القسم، حاول مجدداً.');
+            alert('تعذّر حفظ القسم، حاول مجدداً.');
         } finally {
             setSaving(false);
         }
@@ -910,6 +988,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
         shopData?.contact_phone || shopData?.contact_email || shopData?.contact_website || activeSocials.length
     );
     const coverVideoId = parseYouTubeId(shopData?.cover_video_url);
+    const coverImage = shopData?.cover_picture ? getImageUrl(shopData.cover_picture) : null;
     const logo = shopData?.profile_picture ? getImageUrl(shopData.profile_picture) : null;
     const initial = (shopData?.name || '؟').trim().charAt(0);
     const totalProducts = products.length;
@@ -984,8 +1063,38 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 <div className="sf-inner">
 
                     {/* ترويسة المحل */}
-                    <section className={`sf-header ${coverVideoId ? 'has-video' : ''}`}>
+                    <section className={`sf-header ${coverVideoId || coverImage ? 'has-cover' : ''}`}>
+                        {coverImage && !coverVideoId && (
+                            <div className="sf-cover-video" aria-hidden="true">
+                                <img className="sf-cover-poster" src={coverImage} alt="" />
+                                <span className="sf-cover-veil" />
+                            </div>
+                        )}
+
                         {coverVideoId && <VideoCover videoId={coverVideoId} />}
+
+                        {isAdmin && (
+                            <>
+                                <button
+                                    className="sf-cover-edit"
+                                    onClick={() => coverInputRef.current?.click()}
+                                    disabled={uploadingCover}
+                                    title={coverImage ? 'تغيير صورة الغلاف' : 'إضافة صورة غلاف'}
+                                >
+                                    {uploadingCover
+                                        ? <span className="sf-cover-spin" />
+                                        : <Icon.Camera width="16" height="16" />}
+                                    <span>{coverImage ? 'تغيير الغلاف' : 'إضافة غلاف'}</span>
+                                </button>
+                                <input
+                                    ref={coverInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={pickCover}
+                                />
+                            </>
+                        )}
 
                         <div className="sf-avatar-wrap">
                             <div className="sf-avatar">
@@ -1065,15 +1174,18 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                                 {categories.map(cat => (
                                     <button
                                         key={cat.id}
-                                        className={`sf-tab ${String(activeCat) === String(cat.id) ? 'is-active' : ''}`}
+                                        className={`sf-tab ${cat.image_url ? 'has-img' : ''} ${String(activeCat) === String(cat.id) ? 'is-active' : ''}`}
                                         onClick={() => setActiveCat(cat.id)}
                                     >
+                                        {cat.image_url && (
+                                            <img className="sf-tab-img" src={getImageUrl(cat.image_url)} alt="" loading="lazy" />
+                                        )}
                                         {cat.name}
                                     </button>
                                 ))}
 
                                 {isAdmin && (
-                                    <button className="sf-tab sf-tab-add" onClick={() => setCategoryForm(true)}>
+                                    <button className="sf-tab sf-tab-add" onClick={() => openCategoryForm()}>
                                         + قسم جديد
                                     </button>
                                 )}
@@ -1103,13 +1215,23 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     {!loadError && visibleGroups.map(group => (
                         <section className="sf-section" key={group.id ?? 'orphans'}>
                             <div className="sf-section-head">
-                                <h2 className="sf-section-title">{group.name}</h2>
+                                <h2 className="sf-section-title">
+                                    {group.image_url && (
+                                        <img className="sf-section-img" src={getImageUrl(group.image_url)} alt="" loading="lazy" />
+                                    )}
+                                    {group.name}
+                                </h2>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <span className="sf-section-count">{group.items.length} منتج</span>
                                     {isAdmin && group.id && (
-                                        <button className="sf-section-del" onClick={() => removeCategory(group.id, group.name)}>
-                                            حذف القسم
-                                        </button>
+                                        <>
+                                            <button className="sf-section-del" onClick={() => openCategoryForm(group)}>
+                                                تعديل
+                                            </button>
+                                            <button className="sf-section-del" onClick={() => removeCategory(group.id, group.name)}>
+                                                حذف القسم
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -1213,28 +1335,81 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── نافذة قسم جديد ── */}
             {categoryForm && (
-                <div className="sf-sheet-backdrop" onClick={() => setCategoryForm(false)}>
+                <div className="sf-sheet-backdrop" onClick={closeCategoryForm}>
                     <div className="sf-sheet" onClick={(e) => e.stopPropagation()}>
                         <div className="sf-sheet-head">
-                            <h3>قسم جديد</h3>
-                            <button className="sf-icon-btn" onClick={() => setCategoryForm(false)}><Icon.Close /></button>
+                            <h3>{categoryForm.id ? 'تعديل القسم' : 'قسم جديد'}</h3>
+                            <button className="sf-icon-btn" onClick={closeCategoryForm}><Icon.Close /></button>
                         </div>
+
                         <div className="sf-sheet-body">
                             <div className="sf-field">
                                 <label>اسم القسم</label>
                                 <input
                                     className="sf-input"
-                                    value={newCategoryName}
-                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    value={categoryForm.name}
+                                    onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
                                     placeholder="مثال: المشروبات، الحلويات، الأجهزة"
                                     autoFocus
                                 />
                             </div>
+
+                            <div className="sf-field">
+                                <label>صورة القسم <span className="sf-opt">(اختياري)</span></label>
+                                <div className="sf-catpick">
+                                    <button
+                                        type="button"
+                                        className={`sf-catpick-box ${categoryForm.preview ? 'has-img' : ''}`}
+                                        onClick={() => categoryImageRef.current?.click()}
+                                    >
+                                        {categoryForm.preview
+                                            ? <img src={categoryForm.preview} alt="" />
+                                            : <Icon.Image />}
+                                    </button>
+
+                                    <div className="sf-catpick-side">
+                                        <button
+                                            type="button"
+                                            className="sf-btn sf-btn-ghost sf-btn-sm"
+                                            onClick={() => categoryImageRef.current?.click()}
+                                        >
+                                            {categoryForm.preview ? 'تغيير الصورة' : 'اختيار صورة'}
+                                        </button>
+
+                                        {categoryForm.preview && (
+                                            <button
+                                                type="button"
+                                                className="sf-btn sf-btn-ghost sf-btn-sm sf-btn-warn"
+                                                onClick={() => setCategoryForm({
+                                                    ...categoryForm, file: null, preview: null, removeImage: true
+                                                })}
+                                            >
+                                                إزالة الصورة
+                                            </button>
+                                        )}
+
+                                        <span className="sf-catpick-hint">صورة تعبّر عن نوع القسم، تظهر بجانب اسمه.</span>
+                                    </div>
+                                </div>
+
+                                <input
+                                    ref={categoryImageRef}
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={pickCategoryImage}
+                                />
+                            </div>
                         </div>
+
                         <div className="sf-sheet-foot">
-                            <button className="sf-btn sf-btn-ghost" onClick={() => setCategoryForm(false)}>إلغاء</button>
-                            <button className="sf-btn sf-btn-primary" onClick={saveCategory} disabled={saving || !newCategoryName.trim()}>
-                                {saving ? 'جاري الحفظ…' : 'إضافة القسم'}
+                            <button className="sf-btn sf-btn-ghost" onClick={closeCategoryForm}>إلغاء</button>
+                            <button
+                                className="sf-btn sf-btn-primary"
+                                onClick={saveCategory}
+                                disabled={saving || !categoryForm.name.trim()}
+                            >
+                                {saving ? 'جاري الحفظ…' : (categoryForm.id ? 'حفظ' : 'إضافة القسم')}
                             </button>
                         </div>
                     </div>

@@ -1477,7 +1477,7 @@
 }
 
 /* غلاف الفيديو خلف شعار المحل */
-.sf-header.has-video { position: relative; }
+.sf-header.has-cover { position: relative; }
 
 .sf-cover-video {
     position: absolute;
@@ -1528,11 +1528,161 @@
         rgba(11, 16, 32, .25);
 }
 
-.sf-header.has-video > *:not(.sf-cover-video) {
+.sf-header.has-cover > *:not(.sf-cover-video) {
     position: relative;
     z-index: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .sf-cover-video { display: none; }
+}
+
+/* ============================================================
+   غلاف صورة المحل وصور الأقسام
+   ============================================================ */
+
+/* زر رفع الغلاف — أعلى الترويسة للأدمن */
+.sf-cover-edit {
+    position: absolute;
+    top: 12px;
+    inset-inline-start: 14px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    background: rgba(2, 6, 23, .62);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: .76rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .18s ease, transform .16s ease, border-color .18s ease;
+}
+
+.sf-cover-edit:hover {
+    background: rgba(2, 6, 23, .82);
+    border-color: rgba(251, 171, 21, .55);
+    color: var(--sf-gold);
+}
+
+.sf-cover-edit:active { transform: scale(.96); }
+.sf-cover-edit:disabled { opacity: .7; cursor: default; }
+
+.sf-cover-spin {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .25);
+    border-top-color: var(--sf-gold);
+    animation: sfSpin .7s linear infinite;
+}
+
+@keyframes sfSpin { to { transform: rotate(360deg); } }
+
+/* صورة القسم داخل التبويب */
+.sf-tab.has-img {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-inline-start: 6px;
+}
+
+.sf-tab-img {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--sf-surface-2);
+}
+
+/* صورة القسم بجانب عنوانه */
+.sf-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sf-section-img {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface-2);
+}
+
+/* اختيار صورة القسم في النافذة */
+.sf-catpick {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sf-catpick-box {
+    width: 92px;
+    height: 92px;
+    flex-shrink: 0;
+    border-radius: 20px;
+    border: 1px dashed rgba(255, 255, 255, .18);
+    background: var(--sf-surface-2);
+    color: var(--sf-muted);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .18s ease, transform .16s ease;
+}
+
+.sf-catpick-box:hover {
+    border-color: rgba(251, 171, 21, .5);
+    color: var(--sf-gold);
+}
+
+.sf-catpick-box:active { transform: scale(.97); }
+
+.sf-catpick-box.has-img { border-style: solid; border-color: var(--sf-line); }
+
+.sf-catpick-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sf-catpick-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.sf-btn-sm {
+    height: 36px;
+    padding: 0 14px;
+    font-size: .8rem;
+    width: auto;
+    flex: none;
+}
+
+.sf-btn-warn { color: #f87171; }
+
+.sf-catpick-hint {
+    font-size: .74rem;
+    line-height: 1.6;
+    color: var(--sf-muted);
+}
+
+@media (max-width: 380px) {
+    .sf-catpick { gap: 11px; }
+    .sf-catpick-box { width: 76px; height: 76px; border-radius: 17px; }
+    .sf-cover-edit span { display: none; }
+    .sf-cover-edit { padding: 0 10px; }
 }
