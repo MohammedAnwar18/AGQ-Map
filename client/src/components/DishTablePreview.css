@@ -529,3 +529,59 @@
     .dtp, .dtp-menu, .dtp-glass, .dtp-glass-body { animation: none; transition: none; }
     .dtp-hint { animation: none; }
 }
+
+/* ── لا أطباق مهيّأة بعد ── */
+.dtp-empty {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+}
+
+.dtp-empty-card {
+    max-width: 360px;
+    padding: 28px 24px;
+    border-radius: 24px;
+    border: 1px solid var(--dtp-line);
+    background: var(--dtp-glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    text-align: center;
+}
+
+.dtp-empty-icon {
+    display: grid;
+    place-items: center;
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 14px;
+    border-radius: 20px;
+    background: rgba(251, 171, 21, .14);
+    color: var(--dtp-gold);
+}
+
+.dtp-empty-card h3 { margin: 0 0 10px; font-size: 1.02rem; font-weight: 700; }
+
+.dtp-empty-card p {
+    margin: 0 0 18px;
+    font-size: .85rem;
+    line-height: 1.9;
+    color: var(--dtp-muted);
+}
+
+.dtp-empty-btn {
+    height: 44px;
+    padding: 0 22px;
+    border-radius: 14px;
+    border: none;
+    background: var(--dtp-gold);
+    color: #0b1020;
+    font-family: inherit;
+    font-size: .88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.dtp-empty-btn:hover { background: #ffc24d; }

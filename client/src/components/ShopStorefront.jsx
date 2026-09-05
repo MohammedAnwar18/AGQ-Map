@@ -914,7 +914,10 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             newFiles: [],
             previews: [],
             sizes: product?.options?.sizes?.length ? product.options.sizes.map(x => ({ ...x })) : [],
-            extras: product?.options?.extras?.length ? product.options.extras.map(x => ({ ...x })) : []
+            extras: product?.options?.extras?.length ? product.options.extras.map(x => ({ ...x })) : [],
+            tableImage: product?.table_image_url ? getImageUrl(product.table_image_url) : null,
+            tableFile: null,
+            removeTableImage: false
         });
     };
 
@@ -975,6 +978,13 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 formData.append('images', optimized);
             }
 
+            // الصورة المفرغة تُرفع بحقل مستقل وبلا ضغط يفقد الشفافية
+            if (productForm.tableFile) {
+                formData.append('table_image', productForm.tableFile, productForm.tableFile.name || 'dish.png');
+            } else if (productForm.removeTableImage) {
+                formData.append('remove_table_image', 'true');
+            }
+
             let saved;
             if (productForm.id) {
                 saved = await shopService.updateProduct(shopData.id, productForm.id, formData);
@@ -995,6 +1005,26 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             setSaving(false);
         }
     };
+
+    // ── صورة الطبق مفرغة الخلفية (معاينة الطاولة) ──────────────
+    const tableImageRef = useRef(null);
+
+    const pickTableImage = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        // لا نضغطها إلى WebP بفقد الشفافية — نرفعها كما هي للحفاظ على القص
+        setProductForm(prev => {
+            if (prev?.tableFile && prev.tableImage) URL.revokeObjectURL(prev.tableImage);
+            return { ...prev, tableFile: file, tableImage: URL.createObjectURL(file), removeTableImage: false };
+        });
+    };
+
+    const clearTableImage = () =>
+        setProductForm(prev => {
+            if (prev?.tableFile && prev.tableImage) URL.revokeObjectURL(prev.tableImage);
+            return { ...prev, tableFile: null, tableImage: null, removeTableImage: true };
+        });
 
     // ── تحرير صفوف الأحجام / الإضافات ──────────────────────────
     const addOptionRow = (key) =>
@@ -1035,6 +1065,8 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const coverVideoId = parseYouTubeId(shopData?.cover_video_url);
     const coverImage = shopData?.cover_picture ? getImageUrl(shopData.cover_picture) : null;
     const foodShop = isFoodShop(shopData?.category);
+    // المعاينة تُعرض للزوار فقط عند وجود طبق مهيّأ، وللأدمن دائماً ليجهّزها
+    const hasTableDishes = products.some(p => p.table_image_url);
     const logo = shopData?.profile_picture ? getImageUrl(shopData.profile_picture) : null;
     const initial = (shopData?.name || '؟').trim().charAt(0);
     const totalProducts = products.length;
@@ -1071,7 +1103,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 </div>
 
                 <div className="sf-topbar-actions">
-                    {foodShop && (
+                    {foodShop && (hasTableDishes || isAdmin) && (
                         <button
                             className="sf-icon-btn sf-dish-btn"
                             onClick={() => setShowTablePreview(true)}
@@ -1951,6 +1983,59 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                                 />
                             </div>
 
+                            {foodShop && (
+                                <div className="sf-field">
+                                    <label>
+                                        صورة الطبق للمعاينة على الطاولة <span className="sf-opt">(اختياري)</span>
+                                    </label>
+
+                                    <div className="sf-catpick">
+                                        <button
+                                            type="button"
+                                            className={`sf-catpick-box sf-cutbox ${productForm.tableImage ? 'has-img' : ''}`}
+                                            onClick={() => tableImageRef.current?.click()}
+                                        >
+                                            {productForm.tableImage
+                                                ? <img src={productForm.tableImage} alt="" />
+                                                : <Icon.Dish />}
+                                        </button>
+
+                                        <div className="sf-catpick-side">
+                                            <button
+                                                type="button"
+                                                className="sf-btn sf-btn-ghost sf-btn-sm"
+                                                onClick={() => tableImageRef.current?.click()}
+                                            >
+                                                {productForm.tableImage ? 'تغيير الصورة' : 'اختيار صورة'}
+                                            </button>
+
+                                            {productForm.tableImage && (
+                                                <button
+                                                    type="button"
+                                                    className="sf-btn sf-btn-ghost sf-btn-sm sf-btn-warn"
+                                                    onClick={clearTableImage}
+                                                >
+                                                    إزالة الصورة
+                                                </button>
+                                            )}
+
+                                            <span className="sf-catpick-hint">
+                                                PNG أو WebP بخلفية شفافة، مصوّرة بزاوية ٤٥° تقريباً من أعلى الطبق.
+                                                تُرفع كما هي بلا ضغط حفاظاً على القص.
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <input
+                                        ref={tableImageRef}
+                                        type="file"
+                                        accept="image/png,image/webp,image/*"
+                                        hidden
+                                        onChange={pickTableImage}
+                                    />
+                                </div>
+                            )}
+
                             {[
                                 { key: 'sizes', title: 'الأحجام', hint: 'سعر كل حجم يحلّ محل السعر الأساسي', ph: 'وسط' },
                                 { key: 'extras', title: 'الإضافات', hint: 'يُضاف سعرها فوق سعر الحجم المختار', ph: 'جبنة إضافية' }
@@ -2031,6 +2116,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     <DishTablePreview
                         shop={shopData}
                         products={products}
+                        isAdmin={isAdmin}
                         onClose={() => setShowTablePreview(false)}
                     />
                 </React.Suspense>

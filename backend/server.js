@@ -193,7 +193,8 @@ app.use('/api/fitness', fitnessRoutes);
         `);
         await pool.query(`
             ALTER TABLE shop_products
-                ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '{}'::jsonb;
+                ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '{}'::jsonb,
+                ADD COLUMN IF NOT EXISTS table_image_url TEXT;
         `);
         console.log('✅ shop social links, cover video & category images ready');
     } catch (err) {

@@ -153,6 +153,8 @@ const makeColumnProbe = (table, column) => {
 };
 
 const hasProductOptions = makeColumnProbe('shop_products', 'options');
+// صورة الطبق مفرغة الخلفية، تُستخدم في معاينة الطاولة
+const hasTableImage = makeColumnProbe('shop_products', 'table_image_url');
 
 // هل عمود صورة القسم موجود؟ نفحص مرة واحدة ونخزّن النتيجة، حتى لا
 // تنكسر صفحة المحل في بيئة لم يُنفَّذ فيها الترحيل بعد.
@@ -500,8 +502,21 @@ const assertShopAccess = async (shopId, req, res) => {
 };
 
 // يرفع كل الصور المرسلة إلى التخزين السحابي (Cloudflare R2)
+const uploadOne = async (file) => {
+    if (!file) return null;
+    return file.buffer
+        ? await uploadToCloud(file.buffer, file.originalname, file.mimetype)
+        : `/uploads/${file.filename}`;
+};
+
+// صورة الطبق مفرغة الخلفية (PNG/WebP) لمعاينة الطاولة
+const uploadTableImage = async (req) => uploadOne(req.files?.table_image?.[0]);
+
 const uploadProductImages = async (req) => {
-    const files = req.files || (req.file ? [req.file] : []);
+    // upload.fields يعطي كائناً بحقول، وupload.array يعطي مصفوفة — ندعم الاثنين
+    const files = Array.isArray(req.files)
+        ? req.files
+        : (req.files?.images || (req.file ? [req.file] : []));
     const urls = [];
     for (const file of files) {
         const url = file.buffer
@@ -554,12 +569,16 @@ const addProduct = async (req, res) => {
         const images = await uploadProductImages(req);
         const categoryId = await resolveCategoryId(shopId, req.body);
         const withOptions = await hasProductOptions();
+        const withTable = await hasTableImage();
+        const tableImage = withTable ? await uploadTableImage(req) : null;
 
         const result = await pool.query(`
             INSERT INTO shop_products
                 (shop_id, name, price, description, image_url, old_price, category_id, images, sort_order, is_available
-                 ${withOptions ? ', options' : ''})
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10${withOptions ? ', $11::jsonb' : ''})
+                 ${withOptions ? ', options' : ''}${withTable ? ', table_image_url' : ''})
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10${
+                withOptions ? `, $${11}::jsonb` : ''}${
+                withTable ? `, $${withOptions ? 12 : 11}` : ''})
             RETURNING *
         `, [
             shopId,
@@ -572,7 +591,8 @@ const addProduct = async (req, res) => {
             JSON.stringify(images),
             parseInt(req.body.sort_order, 10) || 0,
             req.body.is_available === 'false' ? false : true,
-            ...(withOptions ? [JSON.stringify(normalizeOptions(req.body.options))] : [])
+            ...(withOptions ? [JSON.stringify(normalizeOptions(req.body.options))] : []),
+            ...(withTable ? [tableImage] : [])
         ]);
 
         res.json(normalizeProduct(result.rows[0]));
@@ -608,6 +628,16 @@ const updateProduct = async (req, res) => {
         if (req.body.options !== undefined && await hasProductOptions()) {
             queryParts.push(`options = $${index++}::jsonb`);
             values.push(JSON.stringify(normalizeOptions(req.body.options)));
+        }
+
+        if (await hasTableImage()) {
+            const tableImage = await uploadTableImage(req);
+            if (tableImage) {
+                queryParts.push(`table_image_url = $${index++}`);
+                values.push(tableImage);
+            } else if (req.body.remove_table_image === 'true' || req.body.remove_table_image === true) {
+                queryParts.push('table_image_url = NULL');
+            }
         }
 
         // صور جديدة تستبدل القديمة، وإلا نحترم قائمة الصور المُبقاة

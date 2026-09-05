@@ -34,8 +34,8 @@ router.post('/:id/posts', authenticateToken, upload.array('images', 5), shopCont
 router.delete('/:id/posts/:postId', authenticateToken, shopController.deleteShopPost);
 
 // المنتجات
-router.post('/:id/products', authenticateToken, upload.array('images', 5), shopController.addProduct);
-router.put('/:id/products/:productId', authenticateToken, upload.array('images', 5), shopController.updateProduct);
+router.post('/:id/products', authenticateToken, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'table_image', maxCount: 1 }]), shopController.addProduct);
+router.put('/:id/products/:productId', authenticateToken, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'table_image', maxCount: 1 }]), shopController.updateProduct);
 router.delete('/:id/products/:productId', authenticateToken, shopController.deleteProduct);
 
 // أقسام المنتجات

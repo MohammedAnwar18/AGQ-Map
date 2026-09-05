@@ -1746,3 +1746,17 @@
 }
 
 .sf-optadd:hover { background: rgba(251, 171, 21, .15); }
+
+/* معاينة الصورة المفرغة: مربّعات شطرنج تُظهر الشفافية */
+.sf-cutbox {
+    background-color: #1c2333;
+    background-image:
+        linear-gradient(45deg, rgba(255, 255, 255, .06) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, .06) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, .06) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, .06) 75%);
+    background-size: 14px 14px;
+    background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+}
+
+.sf-cutbox img { object-fit: contain !important; padding: 6px; }

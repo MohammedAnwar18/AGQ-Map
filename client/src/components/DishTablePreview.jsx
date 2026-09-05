@@ -56,6 +56,13 @@ const Icon = {
             <circle cx="12" cy="13" r="4" />
         </svg>
     ),
+    Dish: (p) => (
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <ellipse cx="12" cy="14.5" rx="9" ry="5.5" />
+            <ellipse cx="12" cy="13.5" rx="5" ry="3" />
+            <path d="M7 8.5c0-2 2.2-3.5 5-3.5s5 1.5 5 3.5" />
+        </svg>
+    ),
     Chevron: (p) => (
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <polyline points="9 18 15 12 9 6" />
@@ -63,55 +70,8 @@ const Icon = {
     )
 };
 
-/* طبق تجريبي مرسوم بالكامل كـ SVG — يعمل بلا إنترنت ولا ملفات،
-   ويظهر عندما لا يملك المطعم صور أطباق مفرغة بعد. */
-const SAMPLE_DISH = `data:image/svg+xml;utf8,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
-  <defs>
-    <radialGradient id="plate" cx="42%" cy="34%" r="72%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="62%" stop-color="#f1f3f6"/>
-      <stop offset="100%" stop-color="#cfd5de"/>
-    </radialGradient>
-    <radialGradient id="well" cx="44%" cy="36%" r="70%">
-      <stop offset="0%" stop-color="#fbfcfd"/>
-      <stop offset="100%" stop-color="#e3e8ee"/>
-    </radialGradient>
-    <linearGradient id="patty" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a45b2a"/>
-      <stop offset="100%" stop-color="#6d3616"/>
-    </linearGradient>
-    <linearGradient id="fry" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f6c453"/>
-      <stop offset="100%" stop-color="#d99a24"/>
-    </linearGradient>
-  </defs>
-
-  <ellipse cx="200" cy="212" rx="178" ry="168" fill="url(#plate)"/>
-  <ellipse cx="200" cy="208" rx="140" ry="132" fill="url(#well)"/>
-  <ellipse cx="200" cy="208" rx="140" ry="132" fill="none" stroke="#dfe4ea" stroke-width="2"/>
-
-  <ellipse cx="176" cy="228" rx="86" ry="70" fill="#00000018"/>
-  <ellipse cx="176" cy="214" rx="84" ry="66" fill="url(#patty)"/>
-  <ellipse cx="176" cy="200" rx="80" ry="60" fill="#c9772f"/>
-  <ellipse cx="176" cy="192" rx="76" ry="54" fill="#5f9e3a"/>
-  <ellipse cx="176" cy="184" rx="70" ry="48" fill="#f3e2b8"/>
-  <ellipse cx="176" cy="176" rx="72" ry="50" fill="#e0b978"/>
-  <path d="M104 176a72 50 0 0 1 144 0Z" fill="#f0cf92"/>
-  <circle cx="150" cy="150" r="4" fill="#d9b273"/>
-  <circle cx="184" cy="141" r="4" fill="#d9b273"/>
-  <circle cx="212" cy="156" r="4" fill="#d9b273"/>
-
-  <g transform="rotate(-18 300 240)">
-    <rect x="272" y="176" width="17" height="86" rx="7" fill="url(#fry)"/>
-    <rect x="294" y="188" width="17" height="80" rx="7" fill="url(#fry)"/>
-    <rect x="316" y="176" width="17" height="88" rx="7" fill="url(#fry)"/>
-  </g>
-  <ellipse cx="300" cy="268" rx="46" ry="14" fill="#00000014"/>
-</svg>`)}`;
-
 // ============================================================
-const DishTablePreview = ({ shop, products = [], onClose }) => {
+const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const stageRef = useRef(null);
@@ -126,30 +86,18 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
     const [pose, setPose] = useState({ x: 0, y: 60, scale: 1, spin: 0, tilt: TILT_DEFAULT });
 
     // ── الأطباق المتاحة ────────────────────────────────────────
-    const dishes = useMemo(() => {
-        const withImages = products.filter(p => (p.images?.length || p.image_url));
-        const list = withImages.map(p => ({
+    // تُعرض الأطباق التي رفع لها المحل صورة مفرغة الخلفية فقط،
+    // فصورة المنتج العادية تظهر كمستطيل على الطاولة ويفسد الإيهام
+    const dishes = useMemo(() => products
+        .filter(p => p.table_image_url)
+        .map(p => ({
             id: p.id,
             name: p.name,
             description: p.description,
             price: p.price,
             options: p.options || { sizes: [], extras: [] },
-            image: getImageUrl(p.images?.[0] || p.image_url),
-            sample: false
-        }));
-
-        // نضيف طبقاً تجريبياً دائماً ليجرّب الزائر المعاينة فوراً
-        list.push({
-            id: '__sample__',
-            name: 'طبق تجريبي',
-            description: 'نموذج لمعاينة الحجم والموضع على الطاولة قبل إضافة صور الأطباق.',
-            price: null,
-            options: { sizes: [], extras: [] },
-            image: SAMPLE_DISH,
-            sample: true
-        });
-        return list;
-    }, [products]);
+            image: getImageUrl(p.table_image_url)
+        })), [products]);
 
     const [activeId, setActiveId] = useState(dishes[0]?.id ?? null);
     const dish = dishes.find(d => d.id === activeId) || dishes[0];
@@ -157,15 +105,10 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
     const [sizeIndex, setSizeIndex] = useState(0);
     const [extraKeys, setExtraKeys] = useState([]);
 
-    // إن وصلت أطباق المطعم بعد فتح المعاينة ننتقل إليها، ما لم يكن
-    // الزائر قد اختار طبقاً بنفسه فنحترم اختياره
-    const userPickedRef = useRef(false);
-
+    // إن وصلت الأطباق بعد فتح المعاينة نختار أوّلها
     useEffect(() => {
         if (!dishes.length) return;
-        const exists = dishes.some(d => d.id === activeId);
-        const stuckOnSample = !userPickedRef.current && activeId === '__sample__' && dishes.length > 1;
-        if (!exists || stuckOnSample) setActiveId(dishes[0].id);
+        if (!dishes.some(d => d.id === activeId)) setActiveId(dishes[0].id);
     }, [dishes, activeId]);
 
     // ── الكاميرا ───────────────────────────────────────────────
@@ -291,7 +234,6 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
     const resetPose = () => setPose({ x: 0, y: 60, scale: 1, spin: 0, tilt: TILT_DEFAULT });
 
     const pickDish = (id) => {
-        userPickedRef.current = true;
         setActiveId(id);
         setSizeIndex(0);
         setExtraKeys([]);
@@ -319,7 +261,7 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
     };
 
     const addToCart = () => {
-        if (!dish || dish.sample) return;
+        if (!dish) return;
         const parts = [activeSize?.label, ...extraKeys].filter(Boolean);
         cartService.addItem({
             id: parts.length ? `${dish.id}::${parts.join('+')}` : dish.id,
@@ -411,11 +353,14 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
             </header>
 
             {/* ── تلميح الاستخدام ── */}
+            {dishes.length > 0 && (
             <div className="dtp-hint">
                 وجّه الكاميرا نحو الطاولة • إصبع لتحريك الطبق • إصبعان للتكبير والتدوير
             </div>
+            )}
 
             {/* ── شريط الميل ── */}
+            {dishes.length > 0 && (
             <div className="dtp-tilt">
                 <span>المنظور</span>
                 <input
@@ -427,8 +372,26 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
                     aria-label="زاوية المنظور"
                 />
             </div>
+            )}
+
+            {/* ── لا توجد أطباق مهيّأة بعد ── */}
+            {dishes.length === 0 && (
+                <div className="dtp-empty">
+                    <div className="dtp-empty-card">
+                        <span className="dtp-empty-icon"><Icon.Dish /></span>
+                        <h3>لا توجد أطباق مهيّأة للمعاينة</h3>
+                        <p>
+                            {isAdmin
+                                ? 'افتح أي منتج من صفحة المحل واضغط تعديل، ثم ارفع «صورة الطبق للمعاينة على الطاولة» — صورة مفرغة الخلفية (PNG أو WebP) مصوّرة بزاوية ٤٥° تقريباً.'
+                                : 'لم يجهّز هذا المطعم أطباقه للمعاينة بعد.'}
+                        </p>
+                        <button className="dtp-empty-btn" onClick={onClose}>رجوع إلى المحل</button>
+                    </div>
+                </div>
+            )}
 
             {/* ── قائمة الأطباق الجانبية ── */}
+            {dishes.length > 0 && (
             <aside className={`dtp-menu ${menuOpen ? 'is-open' : ''}`}>
                 <button
                     className="dtp-menu-toggle"
@@ -452,6 +415,7 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
                     ))}
                 </div>
             </aside>
+            )}
 
             {/* ── اللوحة الزجاجية ── */}
             {dish && (
@@ -463,9 +427,7 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
                     <div className="dtp-glass-head">
                         <div className="dtp-glass-title">
                             <h3>{dish.name}</h3>
-                            {dish.sample
-                                ? <span className="dtp-badge">نموذج للمعاينة</span>
-                                : (totalPrice !== null && <span className="dtp-price">{formatPrice(totalPrice)}</span>)}
+                            {totalPrice !== null && <span className="dtp-price">{formatPrice(totalPrice)}</span>}
                         </div>
 
                         <button
@@ -521,25 +483,16 @@ const DishTablePreview = ({ shop, products = [], onClose }) => {
                             </div>
                         )}
 
-                        {!dish.description && sizes.length === 0 && extras.length === 0 && !dish.sample && (
+                        {!dish.description && sizes.length === 0 && extras.length === 0 && (
                             <p className="dtp-muted">لم يضِف المطعم تفاصيل هذا الطبق بعد.</p>
-                        )}
-
-                        {dish.sample && (
-                            <p className="dtp-muted">
-                                هذا طبق تجريبي مرسوم داخل التطبيق. أضف صور أطباق مفرغة الخلفية (PNG أو WebP)
-                                من صفحة المحل لتظهر هنا بنفس الواقعية.
-                            </p>
                         )}
                     </div>
 
-                    {!dish.sample && (
-                        <button className={`dtp-order ${added ? 'is-done' : ''}`} onClick={addToCart}>
-                            <Icon.Cart />
-                            {added ? 'أُضيف إلى السلة' : 'إضافة إلى السلة'}
-                            {totalPrice !== null && !added && <b>{formatPrice(totalPrice)}</b>}
-                        </button>
-                    )}
+                    <button className={`dtp-order ${added ? 'is-done' : ''}`} onClick={addToCart}>
+                        <Icon.Cart />
+                        {added ? 'أُضيف إلى السلة' : 'إضافة إلى السلة'}
+                        {totalPrice !== null && !added && <b>{formatPrice(totalPrice)}</b>}
+                    </button>
                 </section>
             )}
         </div>
