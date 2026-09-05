@@ -45,10 +45,12 @@ const Icon = {
         </svg>
     ),
     Dish: (p) => (
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <ellipse cx="12" cy="14.5" rx="9" ry="5.5" />
-            <ellipse cx="12" cy="13.5" rx="5" ry="3" />
-            <path d="M7 8.5c0-2 2.2-3.5 5-3.5s5 1.5 5 3.5" />
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M2.5 20h19" />
+            <path d="M4 16.5h16" />
+            <path d="M4.4 16.5a7.6 7.6 0 0 1 15.2 0" />
+            <path d="M12 6.2V8.9" />
+            <circle cx="12" cy="5" r="1.3" />
         </svg>
     ),
     Globe360: (p) => (
@@ -913,6 +915,8 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             existingImages: product?.images || (product?.image_url ? [product.image_url] : []),
             newFiles: [],
             previews: [],
+            ingredients: product?.options?.ingredients?.length ? [...product.options.ingredients] : [],
+            ingredientDraft: '',
             sizes: product?.options?.sizes?.length ? product.options.sizes.map(x => ({ ...x })) : [],
             extras: product?.options?.extras?.length ? product.options.extras.map(x => ({ ...x })) : [],
             tableImage: product?.table_image_url ? getImageUrl(product.table_image_url) : null,
@@ -969,6 +973,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 .map(item => ({ label: String(item.label || '').trim(), price: item.price === '' ? null : item.price }))
                 .filter(item => item.label);
             formData.append('options', JSON.stringify({
+                ingredients: productForm.ingredients,
                 sizes: cleanOptions(productForm.sizes),
                 extras: cleanOptions(productForm.extras)
             }));
@@ -1003,6 +1008,31 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             alert('تعذّر حفظ المنتج، حاول مجدداً.');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // ── المكوّنات: وسوم تُضاف بالإدخال أو الفاصلة ──────────────
+    const addIngredient = (raw) => {
+        const parts = String(raw ?? '').split(/[,،\n]/).map(x => x.trim()).filter(Boolean);
+        if (!parts.length) return;
+        setProductForm(prev => {
+            const next = [...prev.ingredients];
+            for (const part of parts) {
+                if (!next.includes(part) && next.length < 24) next.push(part);
+            }
+            return { ...prev, ingredients: next, ingredientDraft: '' };
+        });
+    };
+
+    const removeIngredient = (name) =>
+        setProductForm(prev => ({ ...prev, ingredients: prev.ingredients.filter(x => x !== name) }));
+
+    const onIngredientKey = (e) => {
+        if (e.key === 'Enter' || e.key === ',' || e.key === '،') {
+            e.preventDefault();
+            addIngredient(productForm.ingredientDraft);
+        } else if (e.key === 'Backspace' && !productForm.ingredientDraft && productForm.ingredients.length) {
+            removeIngredient(productForm.ingredients[productForm.ingredients.length - 1]);
         }
     };
 
@@ -1981,6 +2011,36 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                                     onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                                     placeholder="مثال: خبز محمّص، لحم بقري، جبنة شيدر، صلصة خاصة"
                                 />
+                            </div>
+
+                            <div className="sf-field">
+                                <label>
+                                    المكوّنات <span className="sf-opt">(اختياري — تُعرض كوسوم في صفحة المعاينة)</span>
+                                </label>
+
+                                <div className="sf-tagbox">
+                                    {productForm.ingredients.map(item => (
+                                        <span className="sf-tag" key={item}>
+                                            {item}
+                                            <button
+                                                type="button"
+                                                onClick={() => removeIngredient(item)}
+                                                aria-label={`حذف ${item}`}
+                                            >
+                                                <Icon.Close width="11" height="11" />
+                                            </button>
+                                        </span>
+                                    ))}
+
+                                    <input
+                                        className="sf-taginput"
+                                        value={productForm.ingredientDraft}
+                                        onChange={(e) => setProductForm({ ...productForm, ingredientDraft: e.target.value })}
+                                        onKeyDown={onIngredientKey}
+                                        onBlur={() => addIngredient(productForm.ingredientDraft)}
+                                        placeholder={productForm.ingredients.length ? 'أضف مكوّناً…' : 'خبز، لحم بقري، جبنة شيدر…'}
+                                    />
+                                </div>
                             </div>
 
                             {foodShop && (

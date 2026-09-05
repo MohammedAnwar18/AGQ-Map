@@ -585,3 +585,31 @@
 }
 
 .dtp-empty-btn:hover { background: #ffc24d; }
+
+/* السعر ثابت في رأس اللوحة مع زر التفاصيل */
+.dtp-glass-side {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* ── المكوّنات كوسوم مميّزة ── */
+.dtp-ings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.dtp-ing {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 171, 21, .28);
+    background: linear-gradient(140deg, rgba(251, 171, 21, .18), rgba(251, 171, 21, .07));
+    color: #ffd68a;
+    font-size: .8rem;
+    font-weight: 600;
+    line-height: 1.4;
+}

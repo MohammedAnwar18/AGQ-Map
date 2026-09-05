@@ -464,7 +464,8 @@ const normalizeProduct = (row) => {
 };
 
 /**
- * خيارات المنتج: { sizes: [{label, price}], extras: [{label, price}] }
+ * خيارات المنتج:
+ *   { ingredients: ['خبز', 'لحم'], sizes: [{label, price}], extras: [{label, price}] }
  * نقبلها ككائن أو نص JSON، ونُسقط أي مدخل بلا اسم.
  */
 const normalizeOptions = (value) => {
@@ -484,7 +485,14 @@ const normalizeOptions = (value) => {
         .filter(item => item.label)
         .slice(0, 12);
 
-    return { sizes: clean(parsed.sizes), extras: clean(parsed.extras) };
+    // المكوّنات نصوص مفردة تُعرض كوسوم في صفحة المعاينة — بلا تكرار
+    const ingredients = [...new Set(
+        (Array.isArray(parsed.ingredients) ? parsed.ingredients : [])
+            .map(item => String(item || '').trim())
+            .filter(Boolean)
+    )].slice(0, 24);
+
+    return { ingredients, sizes: clean(parsed.sizes), extras: clean(parsed.extras) };
 };
 
 // يتحقق أن المستخدم يملك المحل أو أنه أدمن النظام

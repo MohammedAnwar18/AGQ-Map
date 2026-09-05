@@ -57,10 +57,12 @@ const Icon = {
         </svg>
     ),
     Dish: (p) => (
-        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <ellipse cx="12" cy="14.5" rx="9" ry="5.5" />
-            <ellipse cx="12" cy="13.5" rx="5" ry="3" />
-            <path d="M7 8.5c0-2 2.2-3.5 5-3.5s5 1.5 5 3.5" />
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M2.5 20h19" />
+            <path d="M4 16.5h16" />
+            <path d="M4.4 16.5a7.6 7.6 0 0 1 15.2 0" />
+            <path d="M12 6.2V8.9" />
+            <circle cx="12" cy="5" r="1.3" />
         </svg>
     ),
     Chevron: (p) => (
@@ -79,7 +81,7 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
 
     const [cameraState, setCameraState] = useState('starting'); // starting | live | denied | unsupported
     const [menuOpen, setMenuOpen] = useState(true);
-    const [detailsOpen, setDetailsOpen] = useState(false);
+    const [detailsOpen, setDetailsOpen] = useState(true);
     const [added, setAdded] = useState(false);
 
     // وضعية الطبق على الطاولة
@@ -95,7 +97,7 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
             name: p.name,
             description: p.description,
             price: p.price,
-            options: p.options || { sizes: [], extras: [] },
+            options: p.options || { ingredients: [], sizes: [], extras: [] },
             image: getImageUrl(p.table_image_url)
         })), [products]);
 
@@ -241,6 +243,7 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
     };
 
     // ── السعر بعد الحجم والإضافات ──────────────────────────────
+    const ingredients = dish?.options?.ingredients || [];
     const sizes = dish?.options?.sizes || [];
     const extras = dish?.options?.extras || [];
     const activeSize = sizes[sizeIndex] || null;
@@ -427,22 +430,39 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
                     <div className="dtp-glass-head">
                         <div className="dtp-glass-title">
                             <h3>{dish.name}</h3>
-                            {totalPrice !== null && <span className="dtp-price">{formatPrice(totalPrice)}</span>}
+                            {activeSize?.label && <span className="dtp-badge">{activeSize.label}</span>}
                         </div>
 
-                        <button
-                            className="dtp-icon dtp-icon-sm"
-                            onClick={() => setDetailsOpen(o => !o)}
-                            aria-label="التفاصيل"
-                        >
-                            <Icon.Info />
-                        </button>
+                        <div className="dtp-glass-side">
+                            {totalPrice !== null
+                                ? <span className="dtp-price">{formatPrice(totalPrice)}</span>
+                                : <span className="dtp-badge">السعر عند الطلب</span>}
+
+                            <button
+                                className="dtp-icon dtp-icon-sm"
+                                onClick={() => setDetailsOpen(o => !o)}
+                                aria-label={detailsOpen ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}
+                            >
+                                <Icon.Info />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="dtp-glass-body">
-                        {dish.description && (
+                        {ingredients.length > 0 && (
                             <div className="dtp-block">
                                 <h4>المكوّنات</h4>
+                                <div className="dtp-ings">
+                                    {ingredients.map(item => (
+                                        <span className="dtp-ing" key={item}>{item}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {dish.description && (
+                            <div className="dtp-block">
+                                <h4>عن الطبق</h4>
                                 <p>{dish.description}</p>
                             </div>
                         )}
@@ -483,7 +503,7 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
                             </div>
                         )}
 
-                        {!dish.description && sizes.length === 0 && extras.length === 0 && (
+                        {!dish.description && !ingredients.length && sizes.length === 0 && extras.length === 0 && (
                             <p className="dtp-muted">لم يضِف المطعم تفاصيل هذا الطبق بعد.</p>
                         )}
                     </div>
