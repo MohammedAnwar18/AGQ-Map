@@ -127,43 +127,36 @@ const createShop = async (req, res) => {
 };
 
 // هل عمود خيارات المنتج (الأحجام والإضافات) موجود؟ نفحص مرة واحدة.
-let productOptionsColumn = null;
+const SCHEMA_RECHECK_MS = 60000;
 
-const hasProductOptions = async () => {
-    if (productOptionsColumn !== null) return productOptionsColumn;
-    try {
-        const result = await pool.query(`
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'shop_products'
-              AND column_name = 'options'
-        `);
-        productOptionsColumn = result.rows.length > 0;
-    } catch {
-        productOptionsColumn = false;
-    }
-    return productOptionsColumn;
+// نخزّن الوجود إلى الأبد، والغياب لدقيقة فقط: النسخة التي أقلعت قبل
+// انتهاء الترحيل تلتقط العمود من تلقاء نفسها بدل أن تبقى معطّلة.
+const makeColumnProbe = (table, column) => {
+    let known = false;
+    let checkedAt = 0;
+
+    return async () => {
+        if (known) return true;
+        if (Date.now() - checkedAt < SCHEMA_RECHECK_MS) return false;
+        checkedAt = Date.now();
+        try {
+            const result = await pool.query(`
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+            `, [table, column]);
+            known = result.rows.length > 0;
+        } catch {
+            known = false;
+        }
+        return known;
+    };
 };
+
+const hasProductOptions = makeColumnProbe('shop_products', 'options');
 
 // هل عمود صورة القسم موجود؟ نفحص مرة واحدة ونخزّن النتيجة، حتى لا
 // تنكسر صفحة المحل في بيئة لم يُنفَّذ فيها الترحيل بعد.
-let categoryImageColumn = null;
-
-const hasCategoryImage = async () => {
-    if (categoryImageColumn !== null) return categoryImageColumn;
-    try {
-        const result = await pool.query(`
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'shop_product_categories'
-              AND column_name = 'image_url'
-        `);
-        categoryImageColumn = result.rows.length > 0;
-    } catch {
-        categoryImageColumn = false;
-    }
-    return categoryImageColumn;
-};
+const hasCategoryImage = makeColumnProbe('shop_product_categories', 'image_url');
 
 // --- 6. Get Shop Profile (Info + Posts + Products) ---
 const getShopProfile = async (req, res) => {
