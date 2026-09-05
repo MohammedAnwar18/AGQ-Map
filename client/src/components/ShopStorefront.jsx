@@ -1224,7 +1224,6 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                                     {uploadingCover
                                         ? <span className="sf-cover-spin" />
                                         : <Icon.Camera width="16" height="16" />}
-                                    <span>{coverImage ? 'تغيير الغلاف' : 'إضافة غلاف'}</span>
                                 </button>
                                 <input
                                     ref={coverInputRef}

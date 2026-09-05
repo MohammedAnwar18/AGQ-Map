@@ -1534,26 +1534,24 @@
    غلاف صورة المحل وصور الأقسام
    ============================================================ */
 
-/* زر رفع الغلاف — أعلى الترويسة للأدمن */
+/* زر رفع الغلاف — أيقونة صغيرة في زاوية الغلاف */
 .sf-cover-edit {
     position: absolute;
-    top: 12px;
-    inset-inline-start: 14px;
+    top: 10px;
+    inset-inline-start: 10px;
     z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    height: 34px;
-    padding: 0 13px;
-    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, .18);
     background: rgba(2, 6, 23, .62);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     color: #e2e8f0;
     font-family: inherit;
-    font-size: .76rem;
-    font-weight: 600;
     cursor: pointer;
     transition: background .18s ease, transform .16s ease, border-color .18s ease;
 }
@@ -1676,8 +1674,6 @@
 @media (max-width: 380px) {
     .sf-catpick { gap: 11px; }
     .sf-catpick-box { width: 76px; height: 76px; border-radius: 17px; }
-    .sf-cover-edit span { display: none; }
-    .sf-cover-edit { padding: 0 10px; }
 }
 
 /* زر معاينة الطبق على الطاولة (للمطاعم) */
