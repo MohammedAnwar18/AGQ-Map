@@ -4,6 +4,7 @@ import { optimizeImage } from '../utils/imageOptimizer';
 import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
+const DishTablePreview = React.lazy(() => import('./DishTablePreview'));
 import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
 import './ShopStorefront.css';
 
@@ -16,6 +17,18 @@ import './ShopStorefront.css';
 
 const ENTRY_DURATION = 1500; // ١.٥ ثانية كما طُلب
 const ALL_KEY = '__all__';
+
+// التصنيفات التي تستحق معاينة الطبق على الطاولة
+const FOOD_CATEGORIES = [
+    'مطعم', 'مطاعم', 'restaurant', 'كافيه', 'كافية', 'مقهى', 'cafe', 'coffee',
+    'حلويات', 'مخبز', 'bakery', 'وجبات سريعة', 'fast food', 'شاورما', 'بيتزا', 'pizza'
+];
+
+const isFoodShop = (category) => {
+    const value = String(category || '').trim().toLowerCase();
+    if (!value) return false;
+    return FOOD_CATEGORIES.some(item => value.includes(item.toLowerCase()));
+};
 const LOGO_PREVIEW = 260; // قطر معاينة الشعار بالبكسل، تُستخدم لتحويل الإزاحة إلى اللوحة
 
 // ── أيقونات ──────────────────────────────────────────────────
@@ -29,6 +42,13 @@ const Icon = {
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+    ),
+    Dish: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <ellipse cx="12" cy="14.5" rx="9" ry="5.5" />
+            <ellipse cx="12" cy="13.5" rx="5" ry="3" />
+            <path d="M7 8.5c0-2 2.2-3.5 5-3.5s5 1.5 5 3.5" />
         </svg>
     ),
     Globe360: (p) => (
@@ -510,6 +530,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     // جولة ٣٦٠° — تُجلب مرة واحدة لنقرّر إظهار الزر
     const [panoramas, setPanoramas] = useState(null);
     const [show360, setShow360] = useState(false);
+    const [showTablePreview, setShowTablePreview] = useState(false);
     const [cartTotal, setCartTotal] = useState(0);
 
     const [detailProduct, setDetailProduct] = useState(null);
@@ -891,7 +912,9 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             category_id: product?.category_id ? String(product.category_id) : (activeCat !== ALL_KEY ? String(activeCat) : ''),
             existingImages: product?.images || (product?.image_url ? [product.image_url] : []),
             newFiles: [],
-            previews: []
+            previews: [],
+            sizes: product?.options?.sizes?.length ? product.options.sizes.map(x => ({ ...x })) : [],
+            extras: product?.options?.extras?.length ? product.options.extras.map(x => ({ ...x })) : []
         });
     };
 
@@ -938,6 +961,15 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             formData.append('category_id', productForm.category_id || '');
             formData.append('existing_images', JSON.stringify(productForm.existingImages));
 
+            // الأحجام والإضافات — تظهر في صفحة المنتج وفي معاينة الطاولة
+            const cleanOptions = (list) => list
+                .map(item => ({ label: String(item.label || '').trim(), price: item.price === '' ? null : item.price }))
+                .filter(item => item.label);
+            formData.append('options', JSON.stringify({
+                sizes: cleanOptions(productForm.sizes),
+                extras: cleanOptions(productForm.extras)
+            }));
+
             for (const file of productForm.newFiles) {
                 const optimized = await optimizeImage(file, { maxWidth: 1000 });
                 formData.append('images', optimized);
@@ -964,6 +996,19 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
         }
     };
 
+    // ── تحرير صفوف الأحجام / الإضافات ──────────────────────────
+    const addOptionRow = (key) =>
+        setProductForm(prev => ({ ...prev, [key]: [...prev[key], { label: '', price: '' }] }));
+
+    const setOptionRow = (key, index, patch) =>
+        setProductForm(prev => ({
+            ...prev,
+            [key]: prev[key].map((row, i) => (i === index ? { ...row, ...patch } : row))
+        }));
+
+    const removeOptionRow = (key, index) =>
+        setProductForm(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== index) }));
+
     const removeProduct = async (product, e) => {
         e?.stopPropagation();
         if (!window.confirm(`حذف "${product.name}"؟`)) return;
@@ -989,6 +1034,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     );
     const coverVideoId = parseYouTubeId(shopData?.cover_video_url);
     const coverImage = shopData?.cover_picture ? getImageUrl(shopData.cover_picture) : null;
+    const foodShop = isFoodShop(shopData?.category);
     const logo = shopData?.profile_picture ? getImageUrl(shopData.profile_picture) : null;
     const initial = (shopData?.name || '؟').trim().charAt(0);
     const totalProducts = products.length;
@@ -1025,6 +1071,17 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 </div>
 
                 <div className="sf-topbar-actions">
+                    {foodShop && (
+                        <button
+                            className="sf-icon-btn sf-dish-btn"
+                            onClick={() => setShowTablePreview(true)}
+                            aria-label="معاينة الطبق على الطاولة"
+                            title="معاينة على الطاولة"
+                        >
+                            <Icon.Dish />
+                        </button>
+                    )}
+
                     {(isAdmin || (panoramas && panoramas.length > 0)) && (
                         <button
                             className="sf-icon-btn sf-360-btn"
@@ -1311,7 +1368,8 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
-                && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm && (
+                && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm
+                && !showTablePreview && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -1884,14 +1942,63 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                             </div>
 
                             <div className="sf-field">
-                                <label>الوصف <span className="sf-opt">(اختياري)</span></label>
+                                <label>المكوّنات / الوصف <span className="sf-opt">(اختياري)</span></label>
                                 <textarea
                                     className="sf-textarea"
                                     value={productForm.description}
                                     onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                                    placeholder="تفاصيل قصيرة عن المنتج…"
+                                    placeholder="مثال: خبز محمّص، لحم بقري، جبنة شيدر، صلصة خاصة"
                                 />
                             </div>
+
+                            {[
+                                { key: 'sizes', title: 'الأحجام', hint: 'سعر كل حجم يحلّ محل السعر الأساسي', ph: 'وسط' },
+                                { key: 'extras', title: 'الإضافات', hint: 'يُضاف سعرها فوق سعر الحجم المختار', ph: 'جبنة إضافية' }
+                            ].map(group => (
+                                <div className="sf-field" key={group.key}>
+                                    <label>
+                                        {group.title} <span className="sf-opt">(اختياري — {group.hint})</span>
+                                    </label>
+
+                                    <div className="sf-optlist">
+                                        {productForm[group.key].map((row, i) => (
+                                            <div className="sf-optrow" key={i}>
+                                                <input
+                                                    className="sf-input"
+                                                    value={row.label}
+                                                    onChange={(e) => setOptionRow(group.key, i, { label: e.target.value })}
+                                                    placeholder={group.ph}
+                                                />
+                                                <input
+                                                    className="sf-input sf-optprice"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={row.price ?? ''}
+                                                    onChange={(e) => setOptionRow(group.key, i, { price: e.target.value })}
+                                                    placeholder="₪"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="sf-optdel"
+                                                    onClick={() => removeOptionRow(group.key, i)}
+                                                    aria-label="حذف"
+                                                >
+                                                    <Icon.Close width="15" height="15" />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <button
+                                            type="button"
+                                            className="sf-optadd"
+                                            onClick={() => addOptionRow(group.key)}
+                                        >
+                                            <Icon.Plus width="14" height="14" /> إضافة {group.title === 'الأحجام' ? 'حجم' : 'إضافة'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         <div className="sf-sheet-foot">
@@ -1918,6 +2025,16 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── السلة ── */}
             {showCart && <CartModal onClose={() => setShowCart(false)} />}
+
+            {showTablePreview && (
+                <React.Suspense fallback={null}>
+                    <DishTablePreview
+                        shop={shopData}
+                        products={products}
+                        onClose={() => setShowTablePreview(false)}
+                    />
+                </React.Suspense>
+            )}
 
             {show360 && (
                 <Panorama360Viewer

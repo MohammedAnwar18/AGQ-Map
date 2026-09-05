@@ -126,6 +126,25 @@ const createShop = async (req, res) => {
     }
 };
 
+// هل عمود خيارات المنتج (الأحجام والإضافات) موجود؟ نفحص مرة واحدة.
+let productOptionsColumn = null;
+
+const hasProductOptions = async () => {
+    if (productOptionsColumn !== null) return productOptionsColumn;
+    try {
+        const result = await pool.query(`
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'shop_products'
+              AND column_name = 'options'
+        `);
+        productOptionsColumn = result.rows.length > 0;
+    } catch {
+        productOptionsColumn = false;
+    }
+    return productOptionsColumn;
+};
+
 // هل عمود صورة القسم موجود؟ نفحص مرة واحدة ونخزّن النتيجة، حتى لا
 // تنكسر صفحة المحل في بيئة لم يُنفَّذ فيها الترحيل بعد.
 let categoryImageColumn = null;
@@ -444,8 +463,33 @@ const normalizeProduct = (row) => {
         ...row,
         images,
         image_url: row.image_url || images[0] || null,
-        price: row.price === null || row.price === undefined || row.price === '' ? null : row.price
+        price: row.price === null || row.price === undefined || row.price === '' ? null : row.price,
+        options: normalizeOptions(row.options)
     };
+};
+
+/**
+ * خيارات المنتج: { sizes: [{label, price}], extras: [{label, price}] }
+ * نقبلها ككائن أو نص JSON، ونُسقط أي مدخل بلا اسم.
+ */
+const normalizeOptions = (value) => {
+    let parsed = value;
+    if (typeof value === 'string') {
+        try { parsed = JSON.parse(value); } catch { parsed = null; }
+    }
+    if (!parsed || typeof parsed !== 'object') return { sizes: [], extras: [] };
+
+    const clean = (list) => (Array.isArray(list) ? list : [])
+        .map(item => ({
+            label: String(item?.label || '').trim(),
+            price: item?.price === null || item?.price === undefined || item?.price === ''
+                ? null
+                : (Number.isNaN(parseFloat(item.price)) ? null : parseFloat(item.price))
+        }))
+        .filter(item => item.label)
+        .slice(0, 12);
+
+    return { sizes: clean(parsed.sizes), extras: clean(parsed.extras) };
 };
 
 // يتحقق أن المستخدم يملك المحل أو أنه أدمن النظام
@@ -516,11 +560,13 @@ const addProduct = async (req, res) => {
 
         const images = await uploadProductImages(req);
         const categoryId = await resolveCategoryId(shopId, req.body);
+        const withOptions = await hasProductOptions();
 
         const result = await pool.query(`
             INSERT INTO shop_products
-                (shop_id, name, price, description, image_url, old_price, category_id, images, sort_order, is_available)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+                (shop_id, name, price, description, image_url, old_price, category_id, images, sort_order, is_available
+                 ${withOptions ? ', options' : ''})
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10${withOptions ? ', $11::jsonb' : ''})
             RETURNING *
         `, [
             shopId,
@@ -532,7 +578,8 @@ const addProduct = async (req, res) => {
             categoryId,
             JSON.stringify(images),
             parseInt(req.body.sort_order, 10) || 0,
-            req.body.is_available === 'false' ? false : true
+            req.body.is_available === 'false' ? false : true,
+            ...(withOptions ? [JSON.stringify(normalizeOptions(req.body.options))] : [])
         ]);
 
         res.json(normalizeProduct(result.rows[0]));
@@ -563,6 +610,11 @@ const updateProduct = async (req, res) => {
             const categoryId = await resolveCategoryId(id, req.body);
             queryParts.push(`category_id = $${index++}`);
             values.push(categoryId);
+        }
+
+        if (req.body.options !== undefined && await hasProductOptions()) {
+            queryParts.push(`options = $${index++}::jsonb`);
+            values.push(JSON.stringify(normalizeOptions(req.body.options)));
         }
 
         // صور جديدة تستبدل القديمة، وإلا نحترم قائمة الصور المُبقاة

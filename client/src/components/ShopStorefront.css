@@ -1679,3 +1679,70 @@
     .sf-cover-edit span { display: none; }
     .sf-cover-edit { padding: 0 10px; }
 }
+
+/* زر معاينة الطبق على الطاولة (للمطاعم) */
+.sf-dish-btn {
+    color: #fb923c;
+    border-color: rgba(251, 146, 60, .32);
+    background: rgba(251, 146, 60, .1);
+}
+
+.sf-dish-btn:hover {
+    background: rgba(251, 146, 60, .2);
+    border-color: rgba(251, 146, 60, .58);
+}
+
+/* ── محرّر الأحجام والإضافات ── */
+.sf-optlist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sf-optrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sf-optrow .sf-input { flex: 1; min-width: 0; }
+
+.sf-optprice {
+    width: 92px;
+    flex: none !important;
+    direction: ltr;
+    text-align: center;
+}
+
+.sf-optdel {
+    width: 40px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, .28);
+    background: rgba(239, 68, 68, .1);
+    color: #f87171;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+}
+
+.sf-optdel:hover { background: rgba(239, 68, 68, .2); }
+
+.sf-optadd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px dashed rgba(251, 171, 21, .4);
+    background: rgba(251, 171, 21, .07);
+    color: var(--sf-gold);
+    font-family: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sf-optadd:hover { background: rgba(251, 171, 21, .15); }
