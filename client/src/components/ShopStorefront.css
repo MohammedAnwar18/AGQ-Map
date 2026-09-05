@@ -995,14 +995,19 @@
     .sf-cartbar { inset-inline: auto; inset-inline-end: 24px; width: 340px; }
 }
 
+/* على الحاسوب: الصفحة بعرض الشاشة كاملاً — الغلاف من حافة إلى حافة
+   والمنتجات تملأ العرض، مع هوامش داخلية تتّسع مع اتّساع الشاشة */
 @media (min-width: 1024px) {
-    .sf-scroll > .sf-inner {
-        max-width: 1180px;
-        margin: 0 auto;
-    }
-    .sf-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
-    .sf-header { padding: 44px 24px 32px; }
-    .sf-section { padding: 30px 24px 0; }
+    .sf-header { padding: 56px clamp(24px, 5vw, 72px) 40px; }
+    .sf-tabs { padding: 14px clamp(24px, 5vw, 72px); }
+    .sf-section { padding: 34px clamp(24px, 5vw, 72px) 0; }
+    .sf-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+    .sf-avatar-wrap, .sf-avatar { width: 132px; height: 132px; }
+    .sf-name { font-size: 1.95rem; }
+}
+
+@media (min-width: 1600px) {
+    .sf-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
