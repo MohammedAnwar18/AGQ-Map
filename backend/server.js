@@ -179,6 +179,34 @@ app.use('/api/fitness', fitnessRoutes);
     }
 })();
 
+// Auto-migrate: سجلّ فواتير المحل
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shop_invoices (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+                invoice_number INTEGER NOT NULL,
+                customer_name VARCHAR(160),
+                notes TEXT,
+                items JSONB NOT NULL DEFAULT '[]'::jsonb,
+                total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (shop_id, invoice_number)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_invoices_shop
+            ON shop_invoices (shop_id, created_at DESC);
+        `);
+        console.log('✅ shop invoices table ready');
+    } catch (err) {
+        console.warn('⚠️ shop invoices migration warning:', err.message);
+    }
+})();
+
 // Auto-migrate: روابط التواصل الاجتماعي وغلاف الفيديو للمحل
 (async () => {
     try {

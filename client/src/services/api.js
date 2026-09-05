@@ -546,6 +546,27 @@ export const shopService = {
         return response.data;
     },
 
+    // ── الفواتير ──────────────────────────────────────────────
+    getInvoices: async (shopId, { limit = 50, offset = 0 } = {}) => {
+        const response = await api.get(`/shops/${shopId}/invoices`, { params: { limit, offset } });
+        return response.data;
+    },
+
+    createInvoice: async (shopId, data) => {
+        const response = await api.post(`/shops/${shopId}/invoices`, data);
+        return response.data;
+    },
+
+    updateInvoice: async (shopId, invoiceId, data) => {
+        const response = await api.put(`/shops/${shopId}/invoices/${invoiceId}`, data);
+        return response.data;
+    },
+
+    deleteInvoice: async (shopId, invoiceId) => {
+        const response = await api.delete(`/shops/${shopId}/invoices/${invoiceId}`);
+        return response.data;
+    },
+
     // يقبل معرّف المستخدم (الأدقّ) أو اسم المستخدم
     assignOwner: async (shopId, user) => {
         const payload = typeof user === 'object' && user !== null

@@ -827,6 +827,182 @@ const deleteProductCategory = async (req, res) => {
     }
 };
 
+// ============================================================
+//  الفواتير — إصدارها وحفظها في سجل المحل
+// ============================================================
+
+/**
+ * بنود الفاتورة: [{ product_id, name, image_url, quantity, price }]
+ * نحسب مجموع كل بند والمجموع الكلي على الخادم ولا نثق بما يرسله العميل.
+ */
+const normalizeInvoiceItems = (raw) => {
+    let parsed = raw;
+    if (typeof raw === 'string') {
+        try { parsed = JSON.parse(raw); } catch { parsed = []; }
+    }
+    if (!Array.isArray(parsed)) return { items: [], total: 0 };
+
+    const items = parsed
+        .map(item => {
+            const name = String(item?.name || '').trim();
+            if (!name) return null;
+
+            const quantity = Math.max(0, parseFloat(item?.quantity) || 0);
+            const price = Math.max(0, parseFloat(item?.price) || 0);
+            const productId = parseInt(item?.product_id, 10);
+
+            return {
+                product_id: Number.isNaN(productId) ? null : productId,
+                name: name.slice(0, 200),
+                image_url: item?.image_url || null,
+                quantity: Math.round(quantity * 1000) / 1000,
+                price: Math.round(price * 100) / 100,
+                line_total: Math.round(quantity * price * 100) / 100
+            };
+        })
+        .filter(Boolean)
+        .slice(0, 200);
+
+    const total = Math.round(items.reduce((sum, item) => sum + item.line_total, 0) * 100) / 100;
+    return { items, total };
+};
+
+const normalizeInvoice = (row) => {
+    if (!row) return row;
+    let items = row.items;
+    if (typeof items === 'string') {
+        try { items = JSON.parse(items); } catch { items = []; }
+    }
+    return { ...row, items: Array.isArray(items) ? items : [], total: parseFloat(row.total) || 0 };
+};
+
+const getShopInvoices = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+        const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+        const [rows, count] = await Promise.all([
+            pool.query(`
+                SELECT i.*, u.username AS created_by_name
+                FROM shop_invoices i
+                LEFT JOIN users u ON u.id = i.created_by
+                WHERE i.shop_id = $1
+                ORDER BY i.created_at DESC
+                LIMIT $2 OFFSET $3
+            `, [shopId, limit, offset]),
+            pool.query('SELECT COUNT(*)::int AS n FROM shop_invoices WHERE shop_id = $1', [shopId])
+        ]);
+
+        res.json({ invoices: rows.rows.map(normalizeInvoice), total: count.rows[0].n });
+    } catch (e) {
+        console.error('Get invoices error:', e);
+        res.status(500).json({ error: 'Failed to get invoices' });
+    }
+};
+
+const createShopInvoice = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const { items, total } = normalizeInvoiceItems(req.body.items);
+        if (!items.length) return res.status(400).json({ error: 'الفاتورة تحتاج بنداً واحداً على الأقل' });
+
+        const userId = req.user.userId || req.user.id || null;
+        const customer = String(req.body.customer_name || '').trim().slice(0, 160) || null;
+        const notes = String(req.body.notes || '').trim().slice(0, 2000) || null;
+
+        // رقم متسلسل لكل محل؛ نعيد المحاولة إن سبقنا طلب آخر إلى الرقم نفسه
+        for (let attempt = 0; attempt < 4; attempt++) {
+            const next = await pool.query(
+                'SELECT COALESCE(MAX(invoice_number), 0) + 1 AS n FROM shop_invoices WHERE shop_id = $1',
+                [shopId]
+            );
+            try {
+                const result = await pool.query(`
+                    INSERT INTO shop_invoices (shop_id, invoice_number, customer_name, notes, items, total, created_by)
+                    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)
+                    RETURNING *
+                `, [shopId, next.rows[0].n, customer, notes, JSON.stringify(items), total, userId]);
+
+                return res.json(normalizeInvoice(result.rows[0]));
+            } catch (err) {
+                if (err.code !== '23505') throw err; // ليس تعارض ترقيم
+            }
+        }
+
+        res.status(409).json({ error: 'تعذّر توليد رقم الفاتورة، حاول مجدداً' });
+    } catch (e) {
+        console.error('Create invoice error:', e);
+        res.status(500).json({ error: 'Failed to create invoice' });
+    }
+};
+
+const updateShopInvoice = async (req, res) => {
+    try {
+        const { id: shopId, invoiceId } = req.params;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const queryParts = [];
+        const values = [];
+        let index = 1;
+
+        if (req.body.items !== undefined) {
+            const { items, total } = normalizeInvoiceItems(req.body.items);
+            if (!items.length) return res.status(400).json({ error: 'الفاتورة تحتاج بنداً واحداً على الأقل' });
+            queryParts.push(`items = $${index++}::jsonb`);
+            values.push(JSON.stringify(items));
+            queryParts.push(`total = $${index++}`);
+            values.push(total);
+        }
+        if (req.body.customer_name !== undefined) {
+            queryParts.push(`customer_name = $${index++}`);
+            values.push(String(req.body.customer_name || '').trim().slice(0, 160) || null);
+        }
+        if (req.body.notes !== undefined) {
+            queryParts.push(`notes = $${index++}`);
+            values.push(String(req.body.notes || '').trim().slice(0, 2000) || null);
+        }
+
+        if (!queryParts.length) return res.json({ message: 'No changes provided' });
+        queryParts.push('updated_at = CURRENT_TIMESTAMP');
+
+        values.push(invoiceId, shopId);
+        const result = await pool.query(
+            `UPDATE shop_invoices SET ${queryParts.join(', ')}
+             WHERE id = $${index++} AND shop_id = $${index} RETURNING *`,
+            values
+        );
+
+        if (!result.rows.length) return res.status(404).json({ error: 'Invoice not found' });
+        res.json(normalizeInvoice(result.rows[0]));
+    } catch (e) {
+        console.error('Update invoice error:', e);
+        res.status(500).json({ error: 'Failed to update invoice' });
+    }
+};
+
+const deleteShopInvoice = async (req, res) => {
+    try {
+        const { id: shopId, invoiceId } = req.params;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const result = await pool.query(
+            'DELETE FROM shop_invoices WHERE id = $1 AND shop_id = $2 RETURNING id',
+            [invoiceId, shopId]
+        );
+        if (!result.rows.length) return res.status(404).json({ error: 'Invoice not found' });
+
+        res.json({ message: 'Invoice deleted' });
+    } catch (e) {
+        console.error('Delete invoice error:', e);
+        res.status(500).json({ error: 'Failed to delete invoice' });
+    }
+};
+
 // --- 9. Assign Shop Owner (Admin Only) ---
 const assignShopOwner = async (req, res) => {
     try {
@@ -1923,6 +2099,10 @@ const smartSearch = async (req, res) => {
 };
 
 module.exports = {
+    getShopInvoices,
+    createShopInvoice,
+    updateShopInvoice,
+    deleteShopInvoice,
     searchShops,
     followShop,
     unfollowShop,

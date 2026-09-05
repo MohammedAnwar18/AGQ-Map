@@ -44,6 +44,12 @@ router.put('/:id/product-categories/:categoryId', authenticateToken, upload.sing
 router.delete('/:id/product-categories/:categoryId', authenticateToken, shopController.deleteProductCategory);
 
 // إدارة الملكية
+// الفواتير — للمالك أو الأدمن فقط (assertShopAccess داخل المتحكّم)
+router.get('/:id/invoices', authenticateToken, shopController.getShopInvoices);
+router.post('/:id/invoices', authenticateToken, shopController.createShopInvoice);
+router.put('/:id/invoices/:invoiceId', authenticateToken, shopController.updateShopInvoice);
+router.delete('/:id/invoices/:invoiceId', authenticateToken, shopController.deleteShopInvoice);
+
 router.post('/:id/assign-owner', authenticateToken, shopController.assignShopOwner);
 router.delete('/:id/owner', authenticateToken, shopController.removeShopOwner);
 router.post('/:id/notify', authenticateToken, shopController.sendNotificationToFollowers);

@@ -7,6 +7,7 @@ const pool = require('../config/database');
  *  - shop_product_categories.image_url   صورة اختيارية تمثّل القسم
  *  - shop_products.options           الأحجام والإضافات { sizes:[], extras:[] }
  *  - shop_products.table_image_url   صورة الطبق مفرغة الخلفية لمعاينة الطاولة
+ *  - shop_invoices                   جدول سجلّ فواتير المحل
  *
  * الترحيل يعمل تلقائياً عند إقلاع الخادم، وهذا الملف لتشغيله يدوياً:
  *   node backend/migrations/add_shop_media_columns.js
@@ -36,6 +37,27 @@ async function addShopMediaColumns() {
         `);
         console.log('✅ shop_products.options + shop_products.table_image_url');
 
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS shop_invoices (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+                invoice_number INTEGER NOT NULL,
+                customer_name VARCHAR(160),
+                notes TEXT,
+                items JSONB NOT NULL DEFAULT '[]'::jsonb,
+                total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (shop_id, invoice_number)
+            );
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_invoices_shop
+            ON shop_invoices (shop_id, created_at DESC);
+        `);
+        console.log('✅ shop_invoices');
+
         // تقرير مختصر بما صار موجوداً فعلاً
         const check = await client.query(`
             SELECT table_name, column_name
@@ -50,6 +72,12 @@ async function addShopMediaColumns() {
         `);
         console.log(`📋 الأعمدة الموجودة (${check.rows.length}/5):`);
         check.rows.forEach(r => console.log(`   • ${r.table_name}.${r.column_name}`));
+
+        const invoices = await client.query(`
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'shop_invoices';
+        `);
+        console.log(invoices.rows.length ? '📋 جدول shop_invoices جاهز' : '⚠️ جدول shop_invoices غير موجود');
 
         console.log('✨ Shop media migration completed successfully');
     } catch (error) {

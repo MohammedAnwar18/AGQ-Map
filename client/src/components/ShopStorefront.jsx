@@ -5,6 +5,7 @@ import { cartService } from '../services/cartService';
 import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
 const DishTablePreview = React.lazy(() => import('./DishTablePreview'));
+const ShopInvoices = React.lazy(() => import('./ShopInvoices'));
 import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
 import './ShopStorefront.css';
 
@@ -42,6 +43,14 @@ const Icon = {
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+    ),
+    Invoice: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M6 2h9l5 5v13a1 1 0 0 1-1.5.86L16 20l-2 1.2L12 20l-2 1.2L8 20l-1.5.86A1 1 0 0 1 5 20V3a1 1 0 0 1 1-1Z" />
+            <polyline points="15 2 15 7 20 7" />
+            <line x1="9" y1="11" x2="15" y2="11" />
+            <line x1="9" y1="15" x2="13" y2="15" />
         </svg>
     ),
     Dish: (p) => (
@@ -533,6 +542,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [panoramas, setPanoramas] = useState(null);
     const [show360, setShow360] = useState(false);
     const [showTablePreview, setShowTablePreview] = useState(false);
+    const [showInvoices, setShowInvoices] = useState(false);
     const [cartTotal, setCartTotal] = useState(0);
 
     const [detailProduct, setDetailProduct] = useState(null);
@@ -1133,6 +1143,17 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 </div>
 
                 <div className="sf-topbar-actions">
+                    {isAdmin && (
+                        <button
+                            className="sf-icon-btn sf-invoice-btn"
+                            onClick={() => setShowInvoices(true)}
+                            aria-label="إصدار الفاتورة"
+                            title="إصدار الفاتورة"
+                        >
+                            <Icon.Invoice />
+                        </button>
+                    )}
+
                     {foodShop && (hasTableDishes || isAdmin) && (
                         <button
                             className="sf-icon-btn sf-dish-btn"
@@ -1431,7 +1452,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
                 && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm
-                && !showTablePreview && (
+                && !showTablePreview && !showInvoices && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -2170,6 +2191,16 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── السلة ── */}
             {showCart && <CartModal onClose={() => setShowCart(false)} />}
+
+            {showInvoices && (
+                <React.Suspense fallback={null}>
+                    <ShopInvoices
+                        shop={shopData}
+                        products={products}
+                        onClose={() => setShowInvoices(false)}
+                    />
+                </React.Suspense>
+            )}
 
             {showTablePreview && (
                 <React.Suspense fallback={null}>
