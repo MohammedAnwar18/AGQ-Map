@@ -6,7 +6,9 @@ import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
 const DishTablePreview = React.lazy(() => import('./DishTablePreview'));
 const ShopInvoices = React.lazy(() => import('./ShopInvoices'));
+const Cropper = React.lazy(() => import('react-easy-crop'));
 import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
+import 'react-easy-crop/react-easy-crop.css';
 import './ShopStorefront.css';
 
 /* ============================================================
@@ -30,6 +32,8 @@ const isFoodShop = (category) => {
     if (!value) return false;
     return FOOD_CATEGORIES.some(item => value.includes(item.toLowerCase()));
 };
+const COVER_ASPECT = 16 / 9;   // نسبة إطار قص الغلاف
+const COVER_WIDTH = 1600;      // عرض الصورة المحفوظة بالبكسل
 const LOGO_PREVIEW = 260; // قطر معاينة الشعار بالبكسل، تُستخدم لتحويل الإزاحة إلى اللوحة
 
 // ── أيقونات ──────────────────────────────────────────────────
@@ -413,6 +417,73 @@ const VideoCover = ({ videoId }) => {
     );
 };
 
+// ── محرّر غلاف المحل: قص يدوي بنسبة ١٦:٩ ─────────────────────
+const CoverCropper = ({ src, saving, onCancel, onSave }) => {
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [area, setArea] = useState(null);
+
+    return (
+        <div className="sf-sheet-backdrop" onClick={onCancel}>
+            <div className="sf-sheet sf-sheet-wide" onClick={(e) => e.stopPropagation()}>
+                <div className="sf-sheet-head">
+                    <h3>قص صورة الغلاف</h3>
+                    <button className="sf-icon-btn" onClick={onCancel}><Icon.Close /></button>
+                </div>
+
+                <div className="sf-sheet-body">
+                    <div className="sf-cropwrap">
+                        <React.Suspense fallback={<div className="sf-cropwait">جاري التحضير…</div>}>
+                            <Cropper
+                                image={src}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={COVER_ASPECT}
+                                minZoom={1}
+                                maxZoom={4}
+                                restrictPosition
+                                showGrid
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={(_, pixels) => setArea(pixels)}
+                            />
+                        </React.Suspense>
+                    </div>
+
+                    <div className="sf-crop-zoom">
+                        <span>تكبير</span>
+                        <input
+                            type="range"
+                            min="1"
+                            max="4"
+                            step="0.01"
+                            value={zoom}
+                            onChange={(e) => setZoom(parseFloat(e.target.value))}
+                        />
+                        <b>{zoom.toFixed(1)}×</b>
+                    </div>
+
+                    <p className="sf-detail-desc" style={{ fontSize: '.8rem' }}>
+                        اسحب الصورة داخل الإطار وكبّرها حتى يظهر الجزء الذي تريده بالضبط.
+                        ما يقع داخل الإطار هو ما سيُحفظ كغلاف.
+                    </p>
+                </div>
+
+                <div className="sf-sheet-foot">
+                    <button className="sf-btn sf-btn-ghost" onClick={onCancel}>إلغاء</button>
+                    <button
+                        className="sf-btn sf-btn-primary"
+                        onClick={() => onSave(area)}
+                        disabled={saving || !area}
+                    >
+                        {saving ? 'جاري الحفظ…' : 'حفظ الغلاف'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ── محرّر شعار المحل: سحب لضبط الموضع وشريط للتكبير ─────────
 const LogoCropper = ({ form, setForm, saving, onCancel, onSave }) => {
     const dragRef = useRef(null);
@@ -555,6 +626,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [logoForm, setLogoForm] = useState(null);     // { src, zoom, x, y }
     const [socialForm, setSocialForm] = useState(null); // { key, value } لإضافة/تعديل رابط
     const [uploadingCover, setUploadingCover] = useState(false);
+    const [coverForm, setCoverForm] = useState(null); // { src } أثناء القص
     const [saving, setSaving] = useState(false);
 
     const [showTitle, setShowTitle] = useState(false);
@@ -712,23 +784,56 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     // ── غلاف المحل: صورة من المعرض أو الكاميرا ─────────────────
     const coverInputRef = useRef(null);
 
-    const pickCover = async (e) => {
+    // اختيار الصورة يفتح محرّر القص، فيحدّد صاحب المحل الجزء الظاهر بنفسه
+    const pickCover = (e) => {
         const file = e.target.files?.[0];
         e.target.value = '';
         if (!file) return;
 
+        const reader = new FileReader();
+        reader.onload = () => setCoverForm({ src: reader.result });
+        reader.readAsDataURL(file);
+    };
+
+    // نقصّ المنطقة التي اختارها بالضبط ونرفعها مقصوصة أصلاً
+    const saveCover = async (areaPixels) => {
+        if (!coverForm || !areaPixels) return;
+
         setUploadingCover(true);
         try {
-            // نضغط الصورة قبل الرفع حتى تبقى الصفحة سريعة على الهواتف
-            const optimized = await optimizeImage(file, { maxWidth: 1600, maxHeight: 900, quality: 0.82 }).catch(() => file);
+            const img = new Image();
+            img.src = coverForm.src;
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = () => reject(new Error('تعذّر قراءة الصورة'));
+            });
+
+            const width = Math.min(COVER_WIDTH, Math.round(areaPixels.width));
+            const height = Math.round(width / COVER_ASPECT);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(
+                img,
+                areaPixels.x, areaPixels.y, areaPixels.width, areaPixels.height,
+                0, 0, width, height
+            );
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            if (!blob) throw new Error('تعذّر تجهيز الصورة');
 
             const formData = new FormData();
-            formData.append('cover_picture', optimized, 'cover.webp');
+            formData.append('cover_picture', blob, 'cover.jpg');
             const data = await shopService.uploadImages(shopData.id, formData);
 
             const url = data?.shop?.cover_picture;
             if (url) setShopData(prev => ({ ...prev, cover_picture: url }));
             else await loadShop();
+
+            setCoverForm(null);
         } catch (err) {
             console.error(err);
             alert('تعذّر رفع صورة الغلاف، حاول مجدداً.');
@@ -1451,7 +1556,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
                 && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm
-                && !showTablePreview && !showInvoices && (
+                && !showTablePreview && !showInvoices && !coverForm && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -2190,6 +2295,15 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
             {/* ── السلة ── */}
             {showCart && <CartModal onClose={() => setShowCart(false)} />}
+
+            {coverForm && (
+                <CoverCropper
+                    src={coverForm.src}
+                    saving={uploadingCover}
+                    onCancel={() => setCoverForm(null)}
+                    onSave={saveCover}
+                />
+            )}
 
             {showInvoices && (
                 <React.Suspense fallback={null}>

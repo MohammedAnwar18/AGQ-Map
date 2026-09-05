@@ -1526,7 +1526,8 @@
         rgba(11, 16, 32, .25);
 }
 
-.sf-header.has-cover > *:not(.sf-cover-video) {
+/* أبناء الترويسة فوق الغلاف — عدا الغلاف نفسه وزرّه المثبّت في الزاوية */
+.sf-header.has-cover > *:not(.sf-cover-video):not(.sf-cover-edit) {
     position: relative;
     z-index: 1;
 }
@@ -1830,4 +1831,33 @@
 .sf-invoice-btn:hover {
     background: rgba(56, 189, 248, .2);
     border-color: rgba(56, 189, 248, .55);
+}
+
+/* ── محرّر قص الغلاف ── */
+.sf-sheet-wide { max-width: 720px; }
+
+.sf-cropwrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #0b1020;
+    border: 1px solid var(--sf-line);
+}
+
+.sf-cropwait {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: .85rem;
+    color: var(--sf-muted);
+}
+
+/* تهدئة ألوان أداة القص لتناسب الواجهة الداكنة */
+.sf-cropwrap .reactEasyCrop_CropArea {
+    border: 2px solid rgba(251, 171, 21, .9) !important;
+    box-shadow: 0 0 0 9999em rgba(2, 6, 23, .68) !important;
+    color: rgba(2, 6, 23, .68) !important;
 }
