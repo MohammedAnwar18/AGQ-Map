@@ -120,6 +120,37 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
     const printRef = useRef(null);
 
     const logo = shop?.profile_picture ? getImageUrl(shop.profile_picture) : null;
+    const shopInitial = (shop?.name || '؟').trim().charAt(0);
+
+    // الشعار مستضاف على نطاق آخر (R2). نحوّله إلى data URL فيصير
+    // محلياً: يُطبع ويُرسم داخل html2canvas بلا أي عائق CORS.
+    const [logoData, setLogoData] = useState(null);
+
+    useEffect(() => {
+        if (!logo) { setLogoData(null); return; }
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const response = await fetch(logo, { mode: 'cors', cache: 'force-cache' });
+                if (!response.ok) throw new Error('logo fetch failed');
+                const blob = await response.blob();
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                if (!cancelled) setLogoData(dataUrl);
+            } catch {
+                // لا CORS على المستضيف: نبقى على الصورة المباشرة،
+                // فتُطبع طبيعياً ويظهر الحرف الأول خلفها في PDF
+                if (!cancelled) setLogoData(null);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [logo]);
 
     const flash = (message, kind = 'ok') => {
         setNotice({ message, kind });
@@ -304,6 +335,19 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
                 import('html2canvas'),
                 import('jspdf')
             ]);
+
+            // ننتظر اكتمال تحميل الشعار وإلا صوّرناه فارغاً
+            await Promise.all(
+                Array.from(printRef.current.querySelectorAll('img')).map(img => (
+                    img.complete
+                        ? Promise.resolve()
+                        : new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 3000);
+                        })
+                ))
+            );
 
             // نُصوّر الورقة المرسومة فتظهر العربية بخطها الصحيح بلا خطوط مضمّنة
             const canvas = await html2canvas(printRef.current, {
@@ -564,7 +608,14 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
             {/* ── ورقة الطباعة / PDF ── */}
             <div className="siv-print" ref={printRef}>
                 <div className="siv-print-head">
-                    {logo && <img className="siv-print-logo" src={logo} alt="" crossOrigin="anonymous" />}
+                    {logo && (
+                        <span className="siv-print-logo">
+                            <i>{shopInitial}</i>
+                            {/* بلا crossOrigin: إضافته تمنع تحميل الصورة أصلاً حين
+                                لا يرسل المستضيف ترويسة CORS، فتختفي من الطباعة */}
+                            <img src={logoData || logo} alt="" />
+                        </span>
+                    )}
                     <div className="siv-print-shop">
                         <h1>{shop?.name}</h1>
                         {shop?.category && <span>{shop.category}</span>}
