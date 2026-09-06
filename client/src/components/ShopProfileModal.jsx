@@ -229,7 +229,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const [activeTab, setActiveTab] = useState((shop.category === 'صراف آلي' || shop.category === 'فرع بنك') ? 'about' : 'products');
     const [loading, setLoading] = useState(true);
     const [isLocked, setIsLocked] = useState(false);
-    const [isFollowing, setIsFollowing] = useState(false);
     const [internalShops, setInternalShops] = useState([]); // Shops inside this mall
     const [panoramas, setPanoramas] = useState(null); // 360 tour data (fetched once, null = not yet fetched)
     const [show360Viewer, setShow360Viewer] = useState(false);
@@ -729,7 +728,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
             setPosts(data.posts || []);
             setProducts(data.products || []);
             setInternalShops(data.internal_shops || []);
-            setIsFollowing(data.shop.is_followed);
 
             // Dynamic Font Loading for Custom Designs
             if (data.shop.custom_design) {
@@ -777,28 +775,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
         } catch (e) {
             console.error(e);
             alert('حدث خطأ أثناء محاولة حذف المحل.');
-        }
-    };
-
-    const handleFollow = async () => {
-        try {
-            if (isFollowing) {
-                await shopService.unfollow(shopData.id);
-                setShopData(prev => ({
-                    ...prev,
-                    followers_count: Math.max(0, parseInt(prev.followers_count || 0) - 1)
-                }));
-            } else {
-                await shopService.follow(shopData.id);
-                setShopData(prev => ({
-                    ...prev,
-                    followers_count: parseInt(prev.followers_count || 0) + 1
-                }));
-            }
-            setIsFollowing(!isFollowing);
-            if (onFollowChange) onFollowChange();
-        } catch (e) {
-            console.error(e);
         }
     };
 
@@ -1597,16 +1573,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                         <TrashIcon /> حذف
                                     </button>
                                 )}
-                                <button onClick={handleFollow} className={`btn-small ${isFollowing ? 'btn-reject' : 'btn-accept'}`}
-                                    style={{
-                                        fontFamily: 'inherit',
-                                        padding: '8px 20px',
-                                        background: (!isFollowing && design.palette) ? design.palette.colors[3] : undefined,
-                                        color: (!isFollowing && design.palette) ? design.palette.colors[0] : undefined,
-                                        border: 'none'
-                                    }}>
-                                    {isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -2107,7 +2073,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         setInternalShops(data.internal_shops || []);
                                                                         setProducts(data.products || []);
                                                                         setPosts(data.posts || []);
-                                                                        setIsFollowing(data.shop.is_followed);
                                                                         setActiveTab((data.shop.category === 'صراف آلي' || data.shop.category === 'فرع بنك') ? 'about' : 'products');
                                                                         const container = document.querySelector('.modal-container');
                                                                         if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2907,7 +2872,6 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                                         setInternalShops(data.internal_shops || []);
                                                                         setProducts(data.products || []);
                                                                         setPosts(data.posts || []);
-                                                                        setIsFollowing(data.shop.is_followed);
                                                                         setActiveTab('products');
                                                                         // Smoothly scroll to top of modal
                                                                         const container = document.querySelector('.modal-container');

@@ -3751,7 +3751,6 @@ const MapComponent = () => {
             {showChat && <ChatModal onClose={() => setShowChat(false)} />}
             {showFriends && <FriendsModal
                 onClose={() => setShowFriends(false)}
-                followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
                 onCameraAdded={fetchLiveCameras}
                 onShopClick={(shop) => {
@@ -3764,7 +3763,6 @@ const MapComponent = () => {
                 onClose={() => setShowShops(false)}
                 isShopsMode={true}
                 currentUser={user}
-                followedShops={followedShopsMap}
                 onShopFollowed={handleShopFollowed}
                 onCameraAdded={fetchLiveCameras}
                 onShopClick={(shop) => {

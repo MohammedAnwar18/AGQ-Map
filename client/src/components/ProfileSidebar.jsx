@@ -62,11 +62,6 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
         return cat === 'بلدية' || cat === 'municipality';
     });
 
-    const followedRegularShops = followedShops.filter(shop => {
-        const cat = (shop.category || '').toLowerCase().trim();
-        return cat !== 'بلدية' && cat !== 'municipality';
-    });
-
     const displayName = profile?.full_name || currentUser?.full_name || currentUser?.username || 'مستخدم PalNovaa';
     const avatarSrc = profile?.profile_picture
         ? getImageUrl(profile.profile_picture)
@@ -182,9 +177,9 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                                     </svg>
                                 </div>
-                                <span className="item-label">المتابعات</span>
-                                {followedShops.length > 0 && (
-                                    <span className="badge-count">{followedShops.length}</span>
+                                <span className="item-label">البلديات المتابَعة</span>
+                                {followedMunicipalities.length > 0 && (
+                                    <span className="badge-count">{followedMunicipalities.length}</span>
                                 )}
                             </button>
 
@@ -218,13 +213,13 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                 <button className="back-to-menu-btn" onClick={() => setActiveSection('menu')}>
                                     ← العودة للقائمة
                                 </button>
-                                <h4>المتابعات 🔔</h4>
+                                <h4>البلديات المتابَعة 🔔</h4>
                             </div>
 
                             <div className="liked-scroll-list">
                                 {followedMunicipalities.length > 0 && (
                                     <div className="liked-category-block">
-                                        <h5>البلديات المتابعة ({followedMunicipalities.length})</h5>
+                                        <h5>البلديات ({followedMunicipalities.length})</h5>
                                         {followedMunicipalities.map(shop => (
                                             <div key={shop.id} className="liked-item-row" onClick={() => { onNavigate('shop', shop); onClose(); }}>
                                                 <span className="liked-item-emoji">🏛️</span>
@@ -234,29 +229,11 @@ const ProfileSidebar = ({ isOpen, onClose, currentUser, onNavigate, followedShop
                                     </div>
                                 )}
 
-                                {followedRegularShops.length > 0 && (
-                                    <div className="liked-category-block">
-                                        <h5>المحلات والمؤسسات ({followedRegularShops.length})</h5>
-                                        {followedRegularShops.map(shop => {
-                                            const cat = (shop.category || '').toLowerCase().trim();
-                                            const isUni = cat === 'university' || cat === 'جامعة';
-                                            const isMedical = cat === 'medical' || cat === 'طبي';
-                                            const emoji = isUni ? '🎓' : isMedical ? '🏥' : '🏪';
-                                            return (
-                                                <div key={shop.id} className="liked-item-row" onClick={() => { onNavigate('shop', shop); onClose(); }}>
-                                                    <span className="liked-item-emoji">{emoji}</span>
-                                                    <span className="liked-item-name">{shop.name}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {followedShops.length === 0 && (
+                                {followedMunicipalities.length === 0 && (
                                     <div className="empty-liked-state">
-                                        <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🔔</div>
+                                        <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>🏛️</div>
                                         <p>لا توجد متابعات بعد.</p>
-                                        <p style={{ fontSize: '0.78rem', marginTop: '4px', color: '#475569' }}>تابع بلديات أو محلات لتظهر هنا</p>
+                                        <p style={{ fontSize: '0.78rem', marginTop: '4px', color: '#475569' }}>تابع بلدية لتظهر هنا</p>
                                     </div>
                                 )}
                             </div>

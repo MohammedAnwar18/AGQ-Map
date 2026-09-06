@@ -46,7 +46,7 @@ const ShopAvatar = ({ shop }) => {
     );
 };
 
-const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, followedShops: propFollowedShops, onCameraAdded }) => {
+const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, onCameraAdded }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -55,9 +55,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
     const [selectedFriendId, setSelectedFriendId] = useState(null);
 
     // Shops State
-    const [followedShops, setFollowedShops] = useState(propFollowedShops || []);
     const [allMapShops, setAllMapShops] = useState([]);
-    const [shopsSubTab, setShopsSubTab] = useState('all'); // 'all' (جميع المحلات والمؤسسات) or 'following' (المتابعات)
     const [shopSearchQuery, setShopSearchQuery] = useState('');
     const [shopSearchResults, setShopSearchResults] = useState([]);
     const [isSearchingShop, setIsSearchingShop] = useState(false);
@@ -89,27 +87,17 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         loadData();
     }, [activeTab, isShopsMode]); // Re-run when tab changes
 
-    useEffect(() => {
-        if (propFollowedShops !== undefined) {
-            setFollowedShops(propFollowedShops);
-        }
-    }, [propFollowedShops]);
-
     const loadData = async () => {
         try {
             setLoading(true);
             setLoadError(null);
 
-            const [followingRes, mapAllRes, friendsRes, requestsRes] = await Promise.allSettled([
-                shopService.getFollowing(),
+            const [mapAllRes, friendsRes, requestsRes] = await Promise.allSettled([
                 shopService.getAllForMap(),
                 friendService.getFriends(),
                 friendService.getPendingRequests()
             ]);
 
-            if (followingRes.status === 'fulfilled') {
-                setFollowedShops(followingRes.value?.shops || []);
-            }
             if (mapAllRes.status === 'fulfilled') {
                 const shopsList = mapAllRes.value?.shops || [];
                 const facilitiesList = mapAllRes.value?.facilities || [];
@@ -208,9 +196,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         }
     };
 
-    // --- Filtered Shops List (All Map Places / Followed Places) ---
+    // --- Filtered Shops List (كل الأماكن الظاهرة على الخريطة) ---
     const displayShopsList = useMemo(() => {
-        let list = shopsSubTab === 'all' ? allMapShops : followedShops;
+        let list = allMapShops;
         if (shopSearchQuery.trim()) {
             const q = shopSearchQuery.trim().toLowerCase();
             list = list.filter(item =>
@@ -220,7 +208,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             );
         }
         return list.filter(Boolean);
-    }, [shopsSubTab, allMapShops, followedShops, shopSearchQuery]);
+    }, [allMapShops, shopSearchQuery]);
 
     // --- Shops Functions ---
     const handleShopSearch = async (e) => {
@@ -238,37 +226,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             console.error("Search failed", error);
         } finally {
             setIsSearchingShop(false);
-        }
-    };
-
-    const handleFollowShop = async (shop) => {
-        try {
-            const response = await shopService.follow(shop.id);
-            console.log("Follow response:", response);
-
-            // Fetch the updated following list to ensure complete shop data (like lat/lon)
-            const updatedFollowing = await shopService.getFollowing();
-            setFollowedShops(updatedFollowing.shops || []);
-
-            if (onShopFollowed) onShopFollowed();
-
-            // Switch to "following" sub-tab so user sees the newly followed shop immediately
-            setShopsSubTab('following');
-        } catch (error) {
-            console.error("Follow failed", error);
-            alert("حدث خطأ أثناء محاولة متابعة المحل. يرجى التأكد من الاتصال بالإنترنت.");
-        }
-    };
-
-    const handleUnfollowShop = async (shopId) => {
-        if (!confirm("هل تريد إلغاء متابعة هذا المحل؟")) return;
-        try {
-            await shopService.unfollow(shopId);
-            setFollowedShops(prev => prev.filter(s => s.id != shopId));
-            if (onShopFollowed) onShopFollowed();
-        } catch (error) {
-            console.error("Unfollow failed", error);
-            alert("حدث خطأ أثناء محاولة إلغاء المتابعة.");
         }
     };
 
@@ -336,7 +293,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 setIsCreatingShop(false);
                 setNewShopData({ name: '', category: 'General', lat: '', lon: '', menu_layout: 'default', stream_url: '', crop_position: 'full', specialization: '', customCategory: '' });
                 setPendingDesign(null);
-                await handleFollowShop(createdShop);
+                if (onShopFollowed) onShopFollowed();
             }
         } catch (error) {
             console.error("Create shop failed", error);
@@ -366,7 +323,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
             alert("تم إنشاء الجامعة بنجاح!");
             setIsCreatingUniversity(false);
             setNewUniversityData({ name: '', lat: '', lon: '' });
-            await handleFollowShop(createdShop);
+            if (onShopFollowed) onShopFollowed();
         } catch (error) {
             console.error("Create university failed", error);
             alert("فشل إنشاء الجامعة.");
@@ -426,10 +383,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
         } else {
             alert("المتصفح لا يدعم تحديد الموقع");
         }
-    };
-
-    const isFollowingShop = (shopId) => {
-        return followedShops.some(s => s && s.id == shopId);
     };
 
     const formatTime = (timestamp) => {
@@ -493,7 +446,7 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                             onClick={() => setActiveTab('shops')}
                             style={activeTab === 'shops' ? { color: '#fbab15', borderBottomColor: '#fbab15' } : {}}
                         >
-                            المحلات التي أتابعها ({followedShops.length})
+                            المحلات والمؤسسات ({allMapShops.length})
                         </button>
                     </div>
                 )}
@@ -942,23 +895,6 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                     ) : (
                                         <>
                                             {/* ===== SHOPS & INSTITUTIONS VIEW ===== */}
-                                            {/* Sub-tabs Header: All Map Places vs Followed Places */}
-                                            <div style={{ display: 'flex', gap: '8px', padding: '10px 15px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                                                <button
-                                                    className="btn-small"
-                                                    onClick={() => setShopsSubTab('all')}
-                                                    style={{ flex: 1, borderRadius: '10px', padding: '8px', fontSize: '0.85rem', background: shopsSubTab === 'all' ? '#fbab15' : 'var(--bg-tertiary)', color: shopsSubTab === 'all' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
-                                                >
-                                                    🏢 جميع المحلات والمؤسسات ({allMapShops.length})
-                                                </button>
-                                                <button
-                                                    className="btn-small"
-                                                    onClick={() => setShopsSubTab('following')}
-                                                    style={{ flex: 1, borderRadius: '10px', padding: '8px', fontSize: '0.85rem', background: shopsSubTab === 'following' ? '#fbab15' : 'var(--bg-tertiary)', color: shopsSubTab === 'following' ? '#000' : 'var(--text-primary)', border: 'none', fontWeight: 'bold' }}
-                                                >
-                                                    🔔 المتابَعات ({followedShops.length})
-                                                </button>
-                                            </div>
 
                                             {/* Live Search Input */}
                                             <form onSubmit={handleShopSearch} style={{ padding: '15px', position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 10, borderBottom: '1px solid var(--bg-tertiary)' }}>
@@ -980,26 +916,16 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                             {/* Shops List */}
                                             <div className="user-list">
                                                 <h4 style={{ padding: '10px 15px', fontSize: '0.9rem', color: '#fbab15' }}>
-                                                    {shopsSubTab === 'all' ? 'جميع المحلات والمؤسسات الظاهرة على الخريطة' : 'المحلات والمؤسسات التي أتابعها'}
-                                                    {shopSearchQuery.trim() && ` (نتائج البحث: ${displayShopsList.length})`}
+                                                    جميع المحلات والمؤسسات الظاهرة على الخريطة ({allMapShops.length})
+                                                    {shopSearchQuery.trim() && ` — نتائج البحث: ${displayShopsList.length}`}
                                                 </h4>
 
                                                 {displayShopsList.length === 0 ? (
                                                     <div className="empty-state">
-                                                        <p>{shopsSubTab === 'following' ? 'لا تتابع أي محل أو مؤسسة حالياً' : 'لم يتم العثور على محلات أو مؤسسات مطابقة'}</p>
-                                                        {shopsSubTab === 'following' && (
-                                                            <button
-                                                                className="btn-small btn-accept"
-                                                                onClick={() => setShopsSubTab('all')}
-                                                                style={{ marginTop: '10px', background: '#fbab15', color: '#000', fontWeight: 'bold' }}
-                                                            >
-                                                                تصفح جميع المحلات والمؤسسات 🏢
-                                                            </button>
-                                                        )}
+                                                        <p>لم يتم العثور على محلات أو مؤسسات مطابقة</p>
                                                     </div>
                                                 ) : (
                                                     displayShopsList.map(shop => {
-                                                        const isFollowing = isFollowingShop(shop.id);
                                                         return (
                                                             <div
                                                                 key={`${shop.type || 'shop'}-${shop.id}`}
@@ -1052,27 +978,8 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                                         onClick={() => onShopClick && onShopClick(shop)}
                                                                         style={{ background: 'rgba(251,171,21,0.15)', color: '#fbab15', border: '1px solid #fbab15', borderRadius: '8px', padding: '4px 8px', fontSize: '0.78rem', marginLeft: '6px' }}
                                                                     >
-                                                                        عرض 📍
+                                                                        عرض على الخريطة 📍
                                                                     </button>
-                                                                    {shop.type !== 'facility' && (
-                                                                        isFollowing ? (
-                                                                            <button
-                                                                                className="btn-small btn-reject"
-                                                                                onClick={() => handleUnfollowShop(shop.id)}
-                                                                                style={{ border: '1px solid var(--error)', color: 'var(--error)', fontSize: '0.75rem' }}
-                                                                            >
-                                                                                إلغاء المتابعة
-                                                                            </button>
-                                                                        ) : (
-                                                                            <button
-                                                                                className="btn-small btn-accept"
-                                                                                onClick={() => handleFollowShop(shop)}
-                                                                                style={{ background: '#fbab15', color: '#000', fontWeight: 'bold', fontSize: '0.75rem' }}
-                                                                            >
-                                                                                متابعة
-                                                                            </button>
-                                                                        )
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
