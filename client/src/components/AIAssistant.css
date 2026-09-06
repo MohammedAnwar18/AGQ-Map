@@ -312,9 +312,10 @@
 /* ── شبكة البطاقات الكبيرة ─────────────────────────────────── */
 .aia-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 16px;
-    margin-bottom: 30px;
+    /* نفس مقاسات شبكة صفحة المحل حتى يظهر المنتج بالحجم ذاته */
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 26px;
 }
 
 .aia-card {
@@ -407,8 +408,8 @@
 /* شارة المسافة فوق الصورة */
 .aia-dist {
     position: absolute;
-    top: 10px;
-    inset-inline-start: 10px;
+    top: 8px;
+    inset-inline-start: 8px;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -430,8 +431,8 @@
     align-items: center;
     gap: 7px;
     min-width: 0;
-    max-width: 62%;
-    padding: 4px 10px 4px 4px;
+    max-width: 100%;
+    padding: 4px 9px 4px 4px;
     border-radius: 999px;
     border: 1px solid var(--aia-line);
     background: rgba(255, 255, 255, .04);
@@ -474,14 +475,14 @@
 .aia-cardbody {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    padding: 14px 15px 16px;
+    gap: 5px;
+    padding: 11px 12px 13px;
     flex: 1;
 }
 
 .aia-title {
     margin: 0;
-    font-size: 1.02rem;
+    font-size: .92rem;
     font-weight: 700;
     line-height: 1.4;
     display: -webkit-box;
@@ -491,7 +492,7 @@
 }
 
 .aia-sub {
-    font-size: .82rem;
+    font-size: .76rem;
     color: var(--aia-muted);
     display: -webkit-box;
     -webkit-line-clamp: 1;
@@ -501,16 +502,28 @@
 
 .aia-cardfoot {
     margin-top: auto;
-    padding-top: 10px;
+    padding-top: 9px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+}
+
+/* من عرضٍ معيّن تتّسع البطاقة فيصطفّان في سطر واحد */
+@media (min-width: 700px) {
+    .aia-cardfoot {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .aia-shopbadge { max-width: 62%; }
 }
 
 .aia-price {
     flex-shrink: 0;
-    font-size: 1.05rem;
+    font-size: .98rem;
     font-weight: 700;
     color: var(--aia-gold);
     direction: ltr;
@@ -565,7 +578,7 @@
 }
 
 .aia-skeleton-media { aspect-ratio: 16 / 11; }
-.aia-skeleton-card { height: 300px; }
+.aia-skeleton-card { height: 244px; }   /* صورة مربّعة + جسم البطاقة */
 
 @keyframes aiaShimmer {
     from { background-position: 200% 0; }
@@ -683,18 +696,13 @@
     .aia-hero { gap: 22px; }
     .aia-searchbar { padding: 4px 24px 16px; }
     .aia-body { padding: 22px 24px 44px; }
-    .aia-grid { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; }
+    .aia-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
     .aia-sheet-back { align-items: center; padding: 24px; }
     .aia-sheet { border-radius: 26px; }
 }
 
 @media (min-width: 1200px) {
-    .aia-grid { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 20px; }
-}
-
-/* هواتف صغيرة جداً: بطاقة واحدة بعرض كامل */
-@media (max-width: 380px) {
-    .aia-grid { grid-template-columns: 1fr; }
+    .aia-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
