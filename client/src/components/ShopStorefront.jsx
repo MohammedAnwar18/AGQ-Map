@@ -50,6 +50,13 @@ const Icon = {
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
         </svg>
     ),
+    Menu: (p) => (
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" {...p}>
+            <line x1="4" y1="7" x2="20" y2="7" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+    ),
     Search: (p) => (
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" {...p}>
             <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.7" y2="16.7" />
@@ -632,6 +639,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [showTablePreview, setShowTablePreview] = useState(false);
     const [showInvoices, setShowInvoices] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     const [productQuery, setProductQuery] = useState('');
     const [shared, setShared] = useState(false);
     const searchInputRef = useRef(null);
@@ -693,11 +701,8 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     useEffect(() => {
         const sync = () => {
             setCartCount(cartService.getItemCount());
-            const cart = cartService.getCart();
-            const total = (cart.items || []).reduce(
-                (sum, item) => sum + (parseFloat(item.price) || 0) * (item.quantity || 1), 0
-            );
-            setCartTotal(total);
+            // نستخدم حساب الخدمة نفسه: البنود بلا سعر لا تدخل المجموع
+            setCartTotal(cartService.getTotalPrice());
         };
         sync();
         window.addEventListener('cart-updated', sync);
@@ -749,10 +754,12 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     // ── إجراءات السلة ──────────────────────────────────────────
     const addToCart = (product, e) => {
         e?.stopPropagation();
+        const price = parseFloat(product.price);
         cartService.addItem({
             id: product.id,
             name: product.name,
-            price: parseFloat(product.price) || 0,
+            // بلا سعر ⇒ null، لا صفر: الصفر يعني «مجاني» وهذا ليس المقصود
+            price: Number.isFinite(price) ? price : null,
             image_url: product.images?.[0] || product.image_url || null,
             shop_id: shopData.id,
             shop_name: shopData.name
@@ -1337,77 +1344,98 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
                 <div className="sf-topbar-actions">
                     <button
-                        className={`sf-icon-btn sf-search-btn ${searchOpen ? 'is-on' : ''}`}
-                        onClick={toggleSearch}
-                        aria-label="البحث داخل المحل"
-                        title="البحث عن منتج"
+                        className="sf-icon-btn sf-menu-btn"
+                        onClick={() => setMenuOpen(true)}
+                        aria-label="قائمة أدوات المحل"
+                        title="القائمة"
                     >
-                        {searchOpen ? <Icon.Close /> : <Icon.Search />}
+                        <Icon.Menu />
                     </button>
-
-                    <button
-                        className={`sf-icon-btn sf-share-btn ${shared ? 'is-done' : ''}`}
-                        onClick={shareShop}
-                        aria-label="مشاركة رابط المحل"
-                        title="مشاركة رابط المحل"
-                    >
-                        {shared ? <Icon.Check /> : <Icon.Share />}
-                    </button>
-
-                    {isAdmin && (
-                        <button
-                            className="sf-icon-btn sf-invoice-btn"
-                            onClick={() => setShowInvoices(true)}
-                            aria-label="إصدار الفاتورة"
-                            title="إصدار الفاتورة"
-                        >
-                            <Icon.Invoice />
-                        </button>
-                    )}
-
-                    {foodShop && (hasTableDishes || isAdmin) && (
-                        <button
-                            className="sf-icon-btn sf-dish-btn"
-                            onClick={() => setShowTablePreview(true)}
-                            aria-label="معاينة الطبق على الطاولة"
-                            title="معاينة على الطاولة"
-                        >
-                            <Icon.Dish />
-                        </button>
-                    )}
-
-                    {(isAdmin || (panoramas && panoramas.length > 0)) && (
-                        <button
-                            className="sf-icon-btn sf-360-btn"
-                            onClick={() => setShow360(true)}
-                            aria-label="جولة ٣٦٠ درجة"
-                            title="جولة ٣٦٠°"
-                        >
-                            <Icon.Globe360 />
-                        </button>
-                    )}
-
-                    {(isAdmin || hasContact) && (
-                        <button
-                            className="sf-icon-btn sf-about-btn"
-                            onClick={() => setShowAbout(true)}
-                            aria-label="حول المحل"
-                            title="حول"
-                        >
-                            <Icon.Phone />
-                        </button>
-                    )}
 
                     <button
                         className="sf-icon-btn sf-cart-btn"
                         onClick={() => setShowCart(true)}
                         aria-label="سلة التسوق"
+                        title="سلة التسوق"
                     >
                         <Icon.Cart />
                         {cartCount > 0 && <span className="sf-cart-badge">{cartCount}</span>}
                     </button>
                 </div>
             </header>
+
+            {/* ── قائمة الأدوات الجانبية ── */}
+            {menuOpen && (
+                <div className="sf-drawer-back" onClick={() => setMenuOpen(false)}>
+                    <aside className="sf-drawer" onClick={(e) => e.stopPropagation()}>
+                        <div className="sf-drawer-head">
+                            <div className="sf-drawer-shop">
+                                <span className="sf-drawer-logo">
+                                    {logo ? <img src={logo} alt="" /> : <i>{initial}</i>}
+                                </span>
+                                <div>
+                                    <b>{shopData?.name}</b>
+                                    {shopData?.category && <span>{shopData.category}</span>}
+                                </div>
+                            </div>
+                            <button className="sf-icon-btn" onClick={() => setMenuOpen(false)} aria-label="إغلاق القائمة">
+                                <Icon.Close />
+                            </button>
+                        </div>
+
+                        <nav className="sf-drawer-list">
+                            {[
+                                {
+                                    key: 'search', tone: 'gold', icon: <Icon.Search />,
+                                    label: 'البحث عن منتج', hint: 'ابحث داخل منتجات المحل',
+                                    run: () => { setSearchOpen(false); toggleSearch(); }
+                                },
+                                {
+                                    key: 'share', tone: 'violet', icon: shared ? <Icon.Check /> : <Icon.Share />,
+                                    label: shared ? 'تم نسخ الرابط' : 'مشاركة رابط المحل',
+                                    hint: 'أرسل الرابط ليفتح صفحة المحل مباشرة',
+                                    run: shareShop, keepOpen: true
+                                },
+                                (isAdmin || hasContact) && {
+                                    key: 'about', tone: 'green', icon: <Icon.Phone />,
+                                    label: 'حول المحل', hint: 'الهاتف والبريد وصفحات التواصل',
+                                    run: () => setShowAbout(true)
+                                },
+                                (isAdmin || (panoramas && panoramas.length > 0)) && {
+                                    key: '360', tone: 'blue', icon: <Icon.Globe360 />,
+                                    label: 'جولة ٣٦٠°', hint: 'تجوّل داخل المحل بالصور البانورامية',
+                                    run: () => setShow360(true)
+                                },
+                                foodShop && (hasTableDishes || isAdmin) && {
+                                    key: 'table', tone: 'orange', icon: <Icon.Dish />,
+                                    label: 'معاينة على الطاولة', hint: 'شاهد الطبق أمامك عبر الكاميرا',
+                                    run: () => setShowTablePreview(true)
+                                },
+                                isAdmin && {
+                                    key: 'invoice', tone: 'sky', icon: <Icon.Invoice />,
+                                    label: 'إصدار فاتورة', hint: 'أنشئ فاتورة واحفظها في السجل',
+                                    run: () => setShowInvoices(true)
+                                }
+                            ].filter(Boolean).map(entry => (
+                                <button
+                                    key={entry.key}
+                                    className={`sf-drawer-item is-${entry.tone}`}
+                                    onClick={() => {
+                                        entry.run();
+                                        if (!entry.keepOpen) setMenuOpen(false);
+                                    }}
+                                >
+                                    <span className="sf-drawer-icon">{entry.icon}</span>
+                                    <span className="sf-drawer-text">
+                                        <b>{entry.label}</b>
+                                        <span>{entry.hint}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </nav>
+                    </aside>
+                </div>
+            )}
 
             {/* ── جسم الصفحة ── */}
             <div className="sf-scroll" ref={scrollRef} onScroll={handleScroll}>
@@ -1703,7 +1731,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
                 && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm
-                && !showTablePreview && !showInvoices && !coverForm && (
+                && !showTablePreview && !showInvoices && !coverForm && !menuOpen && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -2441,7 +2469,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             )}
 
             {/* ── السلة ── */}
-            {showCart && <CartModal onClose={() => setShowCart(false)} />}
+            {showCart && <CartModal shop={shopData} onClose={() => setShowCart(false)} />}
 
             {coverForm && (
                 <CoverCropper

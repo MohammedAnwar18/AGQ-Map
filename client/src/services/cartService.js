@@ -71,9 +71,13 @@ export const cartService = {
         window.dispatchEvent(new Event('cart-updated'));
     },
 
+    // البنود بلا سعر لا تدخل الحساب حتى لا يصير المجموع NaN
     getTotalPrice: () => {
         const cart = cartService.getCart();
-        return cart.items.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
+        return cart.items.reduce((total, item) => {
+            const price = parseFloat(item.price);
+            return Number.isFinite(price) ? total + price * item.quantity : total;
+        }, 0);
     },
 
     getItemCount: () => {

@@ -269,7 +269,7 @@ const DishTablePreview = ({ shop, products = [], isAdmin = false, onClose }) => 
         cartService.addItem({
             id: parts.length ? `${dish.id}::${parts.join('+')}` : dish.id,
             name: parts.length ? `${dish.name} (${parts.join('، ')})` : dish.name,
-            price: totalPrice ?? 0,
+            price: totalPrice ?? null,
             image_url: dish.image,
             shop_id: shop?.id,
             shop_name: shop?.name

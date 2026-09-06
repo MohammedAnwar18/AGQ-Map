@@ -1971,3 +1971,188 @@
     .sf-searchbar { padding: 14px clamp(24px, 5vw, 72px); }
     .sf-searchfield { max-width: 620px; }
 }
+
+/* ============================================================
+   قائمة أدوات المحل الجانبية
+   ============================================================ */
+
+.sf-menu-btn {
+    color: var(--sf-gold);
+    border-color: rgba(251, 171, 21, .3);
+    background: rgba(251, 171, 21, .1);
+}
+
+.sf-menu-btn:hover {
+    background: rgba(251, 171, 21, .2);
+    border-color: rgba(251, 171, 21, .55);
+}
+
+.sf-drawer-back {
+    position: fixed;
+    inset: 0;
+    z-index: 5100;
+    background: rgba(2, 6, 23, .68);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    animation: sfDrawerFade .2s ease;
+}
+
+@keyframes sfDrawerFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* الدرج يخرج من الحافة التي يقع فيها زر القائمة
+   (inset-inline-end في RTL = الحافة اليسرى) */
+.sf-drawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    inset-inline-end: 0;
+    width: min(88vw, 370px);
+    display: flex;
+    flex-direction: column;
+    background: var(--sf-bg);
+    border-inline-start: 1px solid var(--sf-line);
+    box-shadow: -24px 0 60px -20px rgba(0, 0, 0, .9);
+    animation: sfDrawerIn .28s cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes sfDrawerIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+}
+
+.sf-drawer-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: max(14px, env(safe-area-inset-top)) 16px 14px;
+    border-bottom: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+}
+
+.sf-drawer-shop {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+}
+
+.sf-drawer-logo {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--sf-surface-2);
+    border: 2px solid rgba(251, 171, 21, .45);
+    display: grid;
+    place-items: center;
+}
+
+.sf-drawer-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+.sf-drawer-logo i {
+    font-style: normal;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sf-gold);
+}
+
+.sf-drawer-shop > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sf-drawer-shop b {
+    font-size: .95rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sf-drawer-shop span { font-size: .76rem; color: var(--sf-muted); }
+
+.sf-drawer-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 14px calc(14px + env(safe-area-inset-bottom));
+}
+
+.sf-drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 17px;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+    color: var(--sf-text);
+    font-family: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: border-color .18s ease, transform .16s ease, background .18s ease;
+}
+
+.sf-drawer-item:hover {
+    border-color: var(--tone, rgba(251, 171, 21, .5));
+    transform: translateX(-3px);
+}
+
+.sf-drawer-item:active { transform: scale(.98); }
+
+.sf-drawer-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: var(--tone-soft, rgba(251, 171, 21, .12));
+    color: var(--tone, var(--sf-gold));
+}
+
+.sf-drawer-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sf-drawer-text b { font-size: .92rem; font-weight: 700; }
+
+.sf-drawer-text span {
+    font-size: .75rem;
+    line-height: 1.55;
+    color: var(--sf-muted);
+}
+
+/* ألوان مميّزة لكل أداة */
+.sf-drawer-item.is-gold   { --tone: #fbab15; --tone-soft: rgba(251, 171, 21, .13); }
+.sf-drawer-item.is-violet { --tone: #c084fc; --tone-soft: rgba(192, 132, 252, .13); }
+.sf-drawer-item.is-green  { --tone: #34d399; --tone-soft: rgba(52, 211, 153, .13); }
+.sf-drawer-item.is-blue   { --tone: #60a5fa; --tone-soft: rgba(96, 165, 250, .13); }
+.sf-drawer-item.is-orange { --tone: #fb923c; --tone-soft: rgba(251, 146, 60, .13); }
+.sf-drawer-item.is-sky    { --tone: #38bdf8; --tone-soft: rgba(56, 189, 248, .13); }
+
+@media (min-width: 1024px) {
+    .sf-drawer { width: 400px; }
+    .sf-drawer-head { padding: 20px 22px 18px; }
+    .sf-drawer-list { padding: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sf-drawer, .sf-drawer-back { animation: none; }
+    .sf-drawer-item:hover { transform: none; }
+}

@@ -1589,7 +1589,7 @@ const MedicalCenterProfileModal = ({ shop, onClose, currentUser, onFollowChange,
 
 
 
-                        {showCart && <CartModal onClose={() => setShowCart(false)} />}
+                        {showCart && <CartModal shop={shopData} onClose={() => setShowCart(false)} />}
 
                         {/* --- Mall Directory View --- */}
                         {activeTab === 'products' && (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (

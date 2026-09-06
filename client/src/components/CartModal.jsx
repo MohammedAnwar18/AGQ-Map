@@ -1,264 +1,397 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { cartService } from '../services/cartService';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-import './Modal.css';
+import { getImageUrl } from '../services/api';
+import './CartModal.css';
 
-const CartModal = ({ onClose }) => {
+/* ============================================================
+   سلة المشتريات — عرض وتعديل وطباعة الطلب
+   • البند بلا سعر يُعرض «السعر عند الطلب» ولا يدخل المجموع
+   • ورقة الطلب تحمل شعار المحل واسمه وبياناته
+   ============================================================ */
+
+const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+const priceOf = (value) => {
+    const n = parseFloat(value);
+    return Number.isFinite(n) ? n : null;
+};
+
+const money = (value) => {
+    const n = priceOf(value);
+    return n === null ? null : `${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)} ₪`;
+};
+
+const stamp = () => {
+    const now = new Date();
+    const two = (n) => String(n).padStart(2, '0');
+    const hours = now.getHours();
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return {
+        day: DAY_NAMES[now.getDay()],
+        date: `${two(now.getDate())}/${two(now.getMonth() + 1)}/${now.getFullYear()}`,
+        time: `${two(hour12)}:${two(now.getMinutes())} ${hours < 12 ? 'ص' : 'م'}`
+    };
+};
+
+// ── أيقونات ──────────────────────────────────────────────────
+const Icon = {
+    Close: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" {...p}>
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+    ),
+    Cart: (p) => (
+        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+    ),
+    Trash: (p) => (
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+    ),
+    Print: (p) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+        </svg>
+    ),
+    Pdf: (p) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" />
+            <polyline points="9 15 12 18 15 15" />
+        </svg>
+    ),
+    Box: (p) => (
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+    )
+};
+
+// ============================================================
+const CartModal = ({ onClose, shop = null }) => {
     const [cart, setCart] = useState(cartService.getCart());
-    const [total, setTotal] = useState(0);
+    const [exporting, setExporting] = useState(false);
+    const [logoData, setLogoData] = useState(null);
     const printRef = useRef(null);
 
-    const refreshCart = () => {
-        setCart(cartService.getCart());
-        setTotal(cartService.getTotalPrice());
-    };
-
     useEffect(() => {
-        refreshCart();
-        const handleUpdate = () => refreshCart();
-        window.addEventListener('cart-updated', handleUpdate);
-        return () => window.removeEventListener('cart-updated', handleUpdate);
+        const refresh = () => setCart(cartService.getCart());
+        refresh();
+        window.addEventListener('cart-updated', refresh);
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('cart-updated', refresh);
+            document.body.style.overflow = '';
+        };
     }, []);
 
-    const handleQuantity = (id, delta) => {
-        cartService.updateQuantity(id, delta);
-    };
+    const items = cart.items || [];
 
-    const handleRemove = (id) => {
-        cartService.removeItem(id);
-    };
+    // ── المحل صاحب الطلب ───────────────────────────────────────
+    // نأخذ الممرَّر، وإلا نستنتجه من بنود السلة
+    const orderShop = useMemo(() => {
+        if (shop?.name) return shop;
+        const named = items.find(item => item.shop_name);
+        return named ? { name: named.shop_name, id: named.shop_id } : null;
+    }, [shop, items]);
 
-    const handlePrintPDF = async () => {
+    const logo = orderShop?.profile_picture ? getImageUrl(orderShop.profile_picture) : null;
+    const shopInitial = (orderShop?.name || 'ط').trim().charAt(0);
+
+    // الشعار على نطاق آخر: نحوّله إلى data URL ليُطبع ويُرسم بلا عائق CORS
+    useEffect(() => {
+        if (!logo) { setLogoData(null); return; }
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const response = await fetch(logo, { mode: 'cors', cache: 'force-cache' });
+                if (!response.ok) throw new Error('logo fetch failed');
+                const blob = await response.blob();
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                if (!cancelled) setLogoData(dataUrl);
+            } catch {
+                if (!cancelled) setLogoData(null);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [logo]);
+
+    // ── الحساب ─────────────────────────────────────────────────
+    const total = useMemo(() => items.reduce((sum, item) => {
+        const price = priceOf(item.price);
+        return price === null ? sum : sum + price * item.quantity;
+    }, 0), [items]);
+
+    const unpricedCount = useMemo(
+        () => items.filter(item => priceOf(item.price) === null).length,
+        [items]
+    );
+
+    const totalUnits = useMemo(
+        () => items.reduce((sum, item) => sum + (item.quantity || 0), 0),
+        [items]
+    );
+
+    const at = stamp();
+
+    // ── التصدير ────────────────────────────────────────────────
+    const fileBase = `طلب-${orderShop?.name || 'بالنوفا'}-${at.date.replace(/\//g, '-')}`
+        .replace(/[\\/:*?"<>|]/g, '-');
+
+    const exportPdf = async () => {
         if (!printRef.current) return;
+        setExporting(true);
         try {
-            // High fidelity capture with specific configuration for Arabic and fonts
-            const canvas = await html2canvas(printRef.current, { 
-                scale: 3, // Higher scale for professional print quality
-                useCORS: true, 
-                logging: false, 
+            const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+                import('html2canvas'),
+                import('jspdf')
+            ]);
+
+            // ننتظر اكتمال الصور وإلا صوّرناها فارغة
+            await Promise.all(
+                Array.from(printRef.current.querySelectorAll('img')).map(img => (
+                    img.complete
+                        ? Promise.resolve()
+                        : new Promise(resolve => {
+                            img.addEventListener('load', resolve, { once: true });
+                            img.addEventListener('error', resolve, { once: true });
+                            setTimeout(resolve, 3000);
+                        })
+                ))
+            );
+
+            const canvas = await html2canvas(printRef.current, {
+                scale: 2,
                 backgroundColor: '#ffffff',
-                windowWidth: 1200 // Ensure desktop-like layout for capture
+                useCORS: true,
+                logging: false
             });
-            
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF({ 
-                orientation: 'portrait', 
-                unit: 'mm', 
-                format: 'a4',
-                compress: true
-            });
-            
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            
-            // Add image with top padding if needed, or fill page
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-            
-            // Generate a professional filename
-            const dateStr = new Date().toISOString().split('T')[0];
-            pdf.save(`PalNovaa-Order-${dateStr}.pdf`);
-        } catch (error) {
-            console.error("PDF Generation Error:", error);
-            alert("حدث خطأ أثناء تحميل الملف. يرجى المحاولة لاحقاً.");
+
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const imgHeight = (canvas.height * pageWidth) / canvas.width;
+            const image = canvas.toDataURL('image/jpeg', 0.95);
+
+            let remaining = imgHeight;
+            let position = 0;
+            pdf.addImage(image, 'JPEG', 0, position, pageWidth, imgHeight);
+            remaining -= pageHeight;
+            while (remaining > 0) {
+                position -= pageHeight;
+                pdf.addPage();
+                pdf.addImage(image, 'JPEG', 0, position, pageWidth, imgHeight);
+                remaining -= pageHeight;
+            }
+
+            pdf.save(`${fileBase}.pdf`);
+        } catch (e) {
+            console.error('PDF generation error:', e);
+            alert('تعذّر إنشاء ملف PDF، حاول مجدداً.');
+        } finally {
+            setExporting(false);
         }
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 3000 }}>
-            <div className="modal-container"
-                style={{ 
-                    width: '95%', 
-                    maxWidth: '480px', 
-                    maxHeight: '85vh', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
-                }}
-                onClick={e => e.stopPropagation()}
-            >
-                <div className="modal-header" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', padding: '15px 20px' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        سلة المشتريات
-                    </h2>
-                    <button className="btn-close" onClick={onClose}>✕</button>
-                </div>
+        <div className="crt" dir="rtl" onClick={onClose}>
+            <div className="crt-panel" onClick={(e) => e.stopPropagation()}>
 
-                <div style={{ flex: 1, overflowY: 'auto', padding: '15px', background: '#f8fafc' }}>
-                    {cart.items.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                            <div style={{ fontSize: '4rem', marginBottom: '15px', opacity: 0.3 }}>🛒</div>
-                            <p style={{ color: '#64748b', fontSize: '1.1rem' }}>سلتك فارغة حالياً</p>
+                {/* ── الترويسة ── */}
+                <header className="crt-head">
+                    <div className="crt-head-shop">
+                        {orderShop && (
+                            <span className="crt-head-logo">
+                                <i>{shopInitial}</i>
+                                {logo && <img src={logoData || logo} alt="" />}
+                            </span>
+                        )}
+                        <div className="crt-head-text">
+                            <h2>سلة المشتريات</h2>
+                            {orderShop?.name && <span>{orderShop.name}</span>}
+                        </div>
+                    </div>
+
+                    <button className="crt-icon" onClick={onClose} aria-label="إغلاق"><Icon.Close /></button>
+                </header>
+
+                {/* ── البنود ── */}
+                <div className="crt-body">
+                    {items.length === 0 ? (
+                        <div className="crt-empty">
+                            <span className="crt-empty-icon"><Icon.Cart /></span>
+                            <h3>سلتك فارغة</h3>
+                            <p>أضف منتجاً من صفحة المحل ليظهر هنا.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {cart.items.map(item => (
-                                <div key={item.id} style={{ 
-                                    display: 'flex', 
-                                    gap: 12, 
-                                    background: 'white', 
-                                    padding: '12px', 
-                                    borderRadius: '16px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                                    border: '1px solid rgba(0,0,0,0.03)'
-                                }}>
-                                    <div style={{ position: 'relative' }}>
-                                        {item.image_url ? (
-                                            <img 
-                                                src={item.image_url.startsWith('http') ? item.image_url : `${import.meta.env.VITE_API_URL.replace('/api', '')}${item.image_url}`} 
-                                                style={{ width: 75, height: 75, objectFit: 'cover', borderRadius: '12px' }} 
-                                            />
-                                        ) : (
-                                            <div style={{ width: 75, height: 75, background: '#f1f5f9', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>📦</div>
-                                        )}
-                                    </div>
+                        <div className="crt-list">
+                            {items.map(item => {
+                                const unit = priceOf(item.price);
+                                const line = unit === null ? null : unit * item.quantity;
 
-                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: '#1e293b' }}>{item.name}</h4>
-                                            <button onClick={() => handleRemove(item.id)} style={{ color: '#ef4444', background: '#fee2e2', border: 'none', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-                                        </div>
-                                        
-                                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                                            {item.shop_name || 'متجر'}
+                                return (
+                                    <div className="crt-item" key={item.id}>
+                                        <div className="crt-thumb">
+                                            {item.image_url
+                                                ? <img src={getImageUrl(item.image_url)} alt="" loading="lazy" />
+                                                : <Icon.Box />}
                                         </div>
 
-                                        {item.note && (
-                                            <div style={{ fontSize: '0.75rem', color: '#b45309', background: '#fffbeb', padding: '3px 8px', borderRadius: '6px', border: '1px solid #fef3c7', alignSelf: 'flex-start' }}>
-                                                📝 {item.note}
+                                        <div className="crt-info">
+                                            <div className="crt-info-top">
+                                                <h4>{item.name}</h4>
+                                                <button
+                                                    className="crt-del"
+                                                    onClick={() => cartService.removeItem(item.id)}
+                                                    aria-label="حذف البند"
+                                                >
+                                                    <Icon.Trash />
+                                                </button>
                                             </div>
-                                        )}
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                                            <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1rem' }}>{item.price} <small>ILS</small></div>
-                                            
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f1f5f9', borderRadius: '50px', padding: '2px 4px' }}>
-                                                <button onClick={() => handleQuantity(item.id, -1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', color: '#1e293b' }}>-</button>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: '800', minWidth: '15px', textAlign: 'center', color: '#1e293b' }}>{item.quantity}</span>
-                                                <button onClick={() => handleQuantity(item.id, 1)} style={{ width: 26, height: 26, border: 'none', background: 'white', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', color: '#1e293b' }}>+</button>
+                                            {item.note && <span className="crt-note">📝 {item.note}</span>}
+
+                                            <div className="crt-info-foot">
+                                                {unit === null
+                                                    ? <span className="crt-ask">السعر عند الطلب</span>
+                                                    : (
+                                                        <span className="crt-price">
+                                                            {money(line)}
+                                                            {item.quantity > 1 && <b>{money(unit)} × {item.quantity}</b>}
+                                                        </span>
+                                                    )}
+
+                                                <div className="crt-qty">
+                                                    <button onClick={() => cartService.updateQuantity(item.id, -1)} aria-label="إنقاص">−</button>
+                                                    <span>{item.quantity}</span>
+                                                    <button onClick={() => cartService.updateQuantity(item.id, 1)} aria-label="زيادة">+</button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
 
-                <div style={{ background: 'white', padding: '20px', borderTop: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                        <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600' }}>المجموع الكلي:</span>
-                        <div style={{ textAlign: 'left' }}>
-                            <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a' }}>{total.toFixed(2)}</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#64748b', marginRight: '5px' }}>شيكل</span>
+                {/* ── التذييل ── */}
+                {items.length > 0 && (
+                    <footer className="crt-foot">
+                        <div className="crt-total">
+                            <span>المجموع{unpricedCount > 0 ? ' (للأصناف المسعّرة)' : ''}</span>
+                            <b>{total > 0 ? money(total) : '—'}</b>
                         </div>
+
+                        {unpricedCount > 0 && (
+                            <p className="crt-hint">
+                                {unpricedCount === 1 ? 'صنف واحد' : `${unpricedCount} أصناف`} بلا سعر معلن —
+                                يُحدَّد سعره عند الطلب من المحل.
+                            </p>
+                        )}
+
+                        <div className="crt-actions">
+                            <button className="crt-btn crt-btn-primary" onClick={() => window.print()}>
+                                <Icon.Print /> طباعة الطلب
+                            </button>
+                            <button className="crt-btn" onClick={exportPdf} disabled={exporting}>
+                                <Icon.Pdf /> {exporting ? 'جاري…' : 'حفظ PDF'}
+                            </button>
+                            <button
+                                className="crt-btn crt-btn-danger"
+                                onClick={() => window.confirm('إفراغ السلة بالكامل؟') && cartService.clear()}
+                            >
+                                <Icon.Trash /> إفراغ
+                            </button>
+                        </div>
+                    </footer>
+                )}
+            </div>
+
+            {/* ── ورقة الطلب: مخفية على الشاشة، تظهر عند الطباعة و PDF ── */}
+            <div className="crt-print" ref={printRef}>
+                <div className="crt-print-head">
+                    {orderShop && (
+                        <span className="crt-print-logo">
+                            <i>{shopInitial}</i>
+                            {logo && <img src={logoData || logo} alt="" />}
+                        </span>
+                    )}
+
+                    <div className="crt-print-shop">
+                        <h1>{orderShop?.name || 'بالنوفا'}</h1>
+                        {orderShop?.category && <span>{orderShop.category}</span>}
+                        {orderShop?.contact_phone && <span dir="ltr">{orderShop.contact_phone}</span>}
+                        {orderShop?.contact_email && <span dir="ltr">{orderShop.contact_email}</span>}
+                        {orderShop?.address && <span>{orderShop.address}</span>}
                     </div>
-                    
-                    <button
-                        className="btn is-primary"
-                        style={{ 
-                            width: '100%', 
-                            height: '52px',
-                            background: '#fbab15', 
-                            color: 'white',
-                            borderRadius: '16px',
-                            fontSize: '1.1rem',
-                            fontWeight: '800',
-                            letterSpacing: '0.5px',
-                            boxShadow: '0 10px 20px -5px rgba(251, 171, 21, 0.4)',
-                            border: 'none',
-                            cursor: 'pointer',
-                        }}
-                        disabled={cart.items.length === 0}
-                        onClick={handlePrintPDF}
-                    >
-                        تحميل قائمة المشتريات (PDF)
-                    </button>
+
+                    <div className="crt-print-meta">
+                        <b>طلب</b>
+                        <span>{at.day} {at.date}</span>
+                        <span>الساعة {at.time}</span>
+                        <span>{totalUnits} قطعة · {items.length} صنف</span>
+                    </div>
                 </div>
 
-                {/* --- PROFESSIONAL INVOICE TEMPLATE FOR PDF --- */}
-                <div style={{ position: 'absolute', top: -20000, left: -20000 }}>
-                    <div ref={printRef} style={{ 
-                        width: '210mm', 
-                        padding: '25mm', 
-                        background: 'white', 
-                        color: '#1e293b', 
-                        fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
-                        direction: 'rtl', 
-                        boxSizing: 'border-box' 
-                    }}>
-                        {/* Header Section */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', borderBottom: '4px solid #fbab15', paddingBottom: '20px' }}>
-                            <div>
-                                <h1 style={{ margin: 0, color: '#0f172a', fontSize: '32px', fontWeight: '900' }}>PalNovaa</h1>
-                                <p style={{ margin: '5px 0', color: '#64748b', fontSize: '16px' }}>الشبكة الاجتماعية المكانية - فلسطين</p>
-                            </div>
-                            <div style={{ textAlign: 'left' }}>
-                                <h2 style={{ margin: 0, color: '#fbab15', fontSize: '24px' }}>قائمة طلبات</h2>
-                                <p style={{ margin: '5px 0', color: '#64748b' }}>{new Date().toLocaleDateString('ar-PS')}</p>
-                            </div>
-                        </div>
-
-                        {/* Order Info */}
-                        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', display: 'flex', justifyContent: 'space-between' }}>
-                            <div>
-                                <p style={{ margin: '0 0 5px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>حالة السلة</p>
-                                <p style={{ margin: 0, fontWeight: 'bold' }}>جاهزة للتسوق</p>
-                            </div>
-                            <div>
-                                <p style={{ margin: '0 0 5px', color: '#94a3b8', fontSize: '12px', textTransform: 'uppercase' }}>عدد الأصناف</p>
-                                <p style={{ margin: 0, fontWeight: 'bold' }}>{cart.items.length} أصناف</p>
-                            </div>
-                        </div>
-
-                        {/* Items Table */}
-                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
-                            <thead>
-                                <tr style={{ background: '#0f172a', color: 'white' }}>
-                                    <th style={{ padding: '15px', textAlign: 'right', borderRadius: '0 8px 0 0' }}>المنتج والتفاصيل</th>
-                                    <th style={{ padding: '15px', textAlign: 'center' }}>المتجر</th>
-                                    <th style={{ padding: '15px', textAlign: 'center' }}>الكمية</th>
-                                    <th style={{ padding: '15px', textAlign: 'center' }}>سعر الوحدة</th>
-                                    <th style={{ padding: '15px', textAlign: 'center', borderRadius: '8px 0 0 0' }}>الإجمالي</th>
+                <table className="crt-print-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th className="crt-print-name">المنتج</th>
+                            <th>الكمية</th>
+                            <th>سعر الوحدة</th>
+                            <th>المجموع</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {items.map((item, i) => {
+                            const unit = priceOf(item.price);
+                            return (
+                                <tr key={item.id}>
+                                    <td>{i + 1}</td>
+                                    <td className="crt-print-name">
+                                        {item.name}
+                                        {item.note && <em>ملاحظة: {item.note}</em>}
+                                    </td>
+                                    <td>{item.quantity}</td>
+                                    <td>{unit === null ? <span className="crt-print-ask">عند الطلب</span> : money(unit)}</td>
+                                    <td>{unit === null ? <span className="crt-print-ask">—</span> : money(unit * item.quantity)}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {cart.items.map((item, idx) => (
-                                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                        <td style={{ padding: '20px 15px' }}>
-                                            <div style={{ fontWeight: '800', fontSize: '16px', color: '#1e293b' }}>{item.name}</div>
-                                            {item.note && <div style={{ fontSize: '13px', color: '#f59e0b', marginTop: '4px', background: '#fffbeb', padding: '2px 8px', borderRadius: '4px', display: 'inline-block' }}>ملاحظة: {item.note}</div>}
-                                        </td>
-                                        <td style={{ padding: '20px 15px', textAlign: 'center', color: '#64748b' }}>{item.shop_name || "متجر عام"}</td>
-                                        <td style={{ padding: '20px 15px', textAlign: 'center', fontWeight: 'bold' }}>{item.quantity}</td>
-                                        <td style={{ padding: '20px 15px', textAlign: 'center' }}>{item.price}</td>
-                                        <td style={{ padding: '20px 15px', textAlign: 'center', fontWeight: '800', color: '#0f172a' }}>{(item.price * item.quantity).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                            );
+                        })}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colSpan={4}>المجموع{unpricedCount > 0 ? ' (للأصناف المسعّرة)' : ''}</td>
+                            <td>{total > 0 ? money(total) : '—'}</td>
+                        </tr>
+                    </tfoot>
+                </table>
 
-                        {/* Summary Section */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <div style={{ width: '200px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', color: '#64748b' }}>
-                                    <span>المجموع الفرعي:</span>
-                                    <span>{total.toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 0', borderTop: '2px solid #0f172a', marginTop: '10px' }}>
-                                    <span style={{ fontSize: '18px', fontWeight: '900' }}>المجموع الكلي:</span>
-                                    <span style={{ fontSize: '22px', fontWeight: '900', color: '#fbab15' }}>{total.toFixed(2)} شيكل</span>
-                                </div>
-                            </div>
-                        </div>
+                {unpricedCount > 0 && (
+                    <p className="crt-print-notes">
+                        الأصناف المعلّمة بـ «عند الطلب» لم يُعلن سعرها، ويُحدَّد عند التأكيد مع المحل.
+                    </p>
+                )}
 
-                        {/* Footer */}
-                        <div style={{ marginTop: '60px', textAlign: 'center', borderTop: '1px dashed #cbd5e1', paddingTop: '30px' }}>
-                            <p style={{ color: '#94a3b8', fontSize: '12px' }}>شكراً لتسوقكم عبر PalNovaa. هذا الملف تم إنتاجه تلقائياً ولا يعتبر فاتورة قانونية للبيع.</p>
-                        </div>
-                    </div>
+                <div className="crt-print-foot">
+                    <span>{orderShop?.name || 'بالنوفا'}</span>
+                    <span>هذه قائمة طلب وليست فاتورة ضريبية</span>
                 </div>
             </div>
         </div>

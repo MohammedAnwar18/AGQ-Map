@@ -2760,7 +2760,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
 
 
 
-                        {showCart && <CartModal onClose={() => setShowCart(false)} />}
+                        {showCart && <CartModal shop={shopData} onClose={() => setShowCart(false)} />}
 
                         {/* --- Mall Directory View --- */}
                         {activeTab === 'products' && (shopData.category === 'مركز تسوق' || shopData.category === 'مجمع تجاري' || shopData.category === 'Mall') && (
@@ -3595,8 +3595,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         {showCart && (
                             <CartModal
                                 onClose={() => setShowCart(false)}
-                                shopId={shopData.id}
-                                shopName={shopData.name}
+                                shop={shopData}
                             />
                         )}
 
