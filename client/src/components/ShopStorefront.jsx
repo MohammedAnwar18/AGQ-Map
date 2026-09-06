@@ -8,6 +8,7 @@ const DishTablePreview = React.lazy(() => import('./DishTablePreview'));
 const ShopInvoices = React.lazy(() => import('./ShopInvoices'));
 const Cropper = React.lazy(() => import('react-easy-crop'));
 import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
+import { smartFilter } from '../utils/smartSearch';
 import 'react-easy-crop/react-easy-crop.css';
 import './ShopStorefront.css';
 
@@ -722,15 +723,17 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const visibleGroups = useMemo(() => {
         const term = productQuery.trim().toLowerCase();
 
-        // أثناء البحث نتجاوز التبويبات ونعرض المطابق من كل الأقسام
+        // أثناء البحث نتجاوز التبويبات ونعرض المطابق من كل الأقسام،
+        // ببحث يتسامح مع الهمزات والأخطاء الإملائية ويفهم اللغتين
         if (term) {
-            const matches = (product) => (
-                String(product.name || '').toLowerCase().includes(term) ||
-                String(product.description || '').toLowerCase().includes(term) ||
-                (product.options?.ingredients || []).some(x => String(x).toLowerCase().includes(term))
-            );
+            const fields = (product) => [
+                product.name,
+                product.category_name,
+                (product.options?.ingredients || []).join(' '),
+                product.description
+            ];
             return grouped
-                .map(group => ({ ...group, items: group.items.filter(matches) }))
+                .map(group => ({ ...group, items: smartFilter(group.items, productQuery, fields) }))
                 .filter(group => group.items.length > 0);
         }
 
