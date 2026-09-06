@@ -610,3 +610,25 @@
     .bcs-laser { animation: none; top: 50%; }
     .bcs-mode:hover { transform: none; }
 }
+
+/* تلميح تحت إطار التصويب */
+.bcs-tip {
+    position: absolute;
+    top: calc(38% + min(38vw, 170px) * 0.6 + 22px);
+    inset-inline: 0;
+    z-index: 2;
+    width: fit-content;
+    max-width: 84vw;
+    margin: 0 auto;
+    padding: 8px 15px;
+    border-radius: 999px;
+    background: var(--bcs-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--bcs-line);
+    font-size: .76rem;
+    font-weight: 600;
+    color: var(--bcs-muted);
+    text-align: center;
+    pointer-events: none;
+}

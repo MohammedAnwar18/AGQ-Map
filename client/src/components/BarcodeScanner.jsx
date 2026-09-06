@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { shopService } from '../services/api';
-import { startScanning } from '../utils/barcodeReader';
+import { startScanning, scannerEngine } from '../utils/barcodeReader';
 import './BarcodeScanner.css';
 
 /* ============================================================
@@ -89,6 +89,7 @@ const BarcodeScanner = ({ shop, onClose }) => {
     const [form, setForm] = useState(null);            // نموذج التسجيل
     const [saving, setSaving] = useState(false);
     const [flash, setFlash] = useState(null);
+    const [scanError, setScanError] = useState(false);
 
     const videoRef = useRef(null);
     const streamRef = useRef(null);
@@ -186,11 +187,13 @@ const BarcodeScanner = ({ shop, onClose }) => {
             }
 
             try {
+                // دقّة عالية: الباركود خطوط رفيعة، والدقّة الأقل تُذيبها
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: { ideal: 'environment' },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 30 }
                     },
                     audio: false
                 });
@@ -201,14 +204,32 @@ const BarcodeScanner = ({ shop, onClose }) => {
                 }
 
                 streamRef.current = stream;
+
+                // تركيز مستمر إن دعمه الجهاز — بدونه يخرج الرمز القريب عن الوضوح
+                const track = stream.getVideoTracks()[0];
+                try {
+                    const caps = track.getCapabilities?.() || {};
+                    const advanced = [];
+                    if (caps.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+                    if (caps.exposureMode?.includes('continuous')) advanced.push({ exposureMode: 'continuous' });
+                    if (advanced.length) await track.applyConstraints({ advanced });
+                } catch { /* قيود غير مدعومة: نكمل بالإعداد الافتراضي */ }
+
                 const video = videoRef.current;
                 if (video) {
                     video.srcObject = stream;
+                    video.setAttribute('playsinline', 'true');   // يمنع ملء الشاشة على iOS
                     await video.play().catch(() => {});
                 }
 
                 setCameraState('live');
-                const stop = await startScanning(video, (code) => handleCodeRef.current(code));
+
+                const stop = await startScanning(
+                    video,
+                    (code) => handleCodeRef.current(code),
+                    { onError: (err) => { console.error('Scanner start failed:', err); setScanError(true); } }
+                );
+
                 if (cancelled) stop();          // أُغلقت الشاشة أثناء التجهيز
                 else stopScanRef.current = stop;
             } catch (e) {
@@ -319,10 +340,18 @@ const BarcodeScanner = ({ shop, onClose }) => {
 
             {/* إطار التصويب */}
             {cameraState === 'live' && (
-                <div className="bcs-reticle" aria-hidden="true">
-                    <span /><span /><span /><span />
-                    <i className="bcs-laser" />
-                </div>
+                <>
+                    <div className="bcs-reticle" aria-hidden="true">
+                        <span /><span /><span /><span />
+                        <i className="bcs-laser" />
+                    </div>
+
+                    <p className="bcs-tip">
+                        {scanError
+                            ? 'تعذّر تشغيل القارئ على هذا المتصفح'
+                            : 'ضع الباركود داخل الإطار على بُعد ١٠–٢٠ سم'}
+                    </p>
+                </>
             )}
 
             <header className="bcs-top is-over">
