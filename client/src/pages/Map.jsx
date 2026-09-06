@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import Map, { Marker, Popup, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
@@ -256,6 +256,15 @@ const MapComponent = () => {
     const [popupCoords, setPopupCoords] = useState(null);
 
     const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
+
+    // رابط المشاركة /shop/:id — نفتح صفحة المحل فور الدخول عليه
+    const sharedShopId = useMemo(() => {
+        const match = location.pathname.match(/^\/shop\/(\d+)/);
+        return match ? match[1] : null;
+    }, [location.pathname]);
+
+    const openedSharedRef = useRef(null);
     const shopIdQuery = searchParams.get('shopId');
     const facilityIdQuery = searchParams.get('facilityId');
     const isGuestMode = !user && (!!shopIdQuery || !!facilityIdQuery);
@@ -852,6 +861,12 @@ const MapComponent = () => {
     // Facility Profile State
     const [showFacilityProfile, setShowFacilityProfile] = useState(false);
     const [selectedFacilityId, setSelectedFacilityId] = useState(null);
+
+    // إغلاق صفحة المحل يعيد المسار إلى الخريطة إن كنّا دخلنا من رابط مشاركة
+    const closeShopProfile = useCallback(() => {
+        setShowShopProfile(false);
+        if (window.location.pathname.startsWith('/shop/')) navigate('/map', { replace: true });
+    }, [navigate]);
 
     const handleOpenShopProfile = async (shop) => {
         if (!shop) return;
@@ -2091,6 +2106,40 @@ const MapComponent = () => {
         const interval = setInterval(fetchPublicMapData, 30000);
         return () => clearInterval(interval);
     }, [user]);
+
+    // فتح المحل القادم من رابط المشاركة بمجرد توفّر بيانات الخريطة
+    useEffect(() => {
+        if (!sharedShopId || openedSharedRef.current === sharedShopId) return;
+        if (!allShopsMap.length) return;
+
+        let cancelled = false;
+
+        const reveal = (shop) => {
+            if (cancelled || !shop) return;
+            openedSharedRef.current = sharedShopId;
+            handleOpenShopProfile(shop);
+            if (shop.latitude && shop.longitude) {
+                mapRef.current?.flyTo({
+                    center: [parseFloat(shop.longitude), parseFloat(shop.latitude)],
+                    zoom: 18,
+                    pitch: 45
+                });
+            }
+        };
+
+        const known = allShopsMap.find(item => String(item.id) === String(sharedShopId));
+        if (known) {
+            reveal(known);
+            return;
+        }
+
+        // غير ظاهر على الخريطة (مخفي مثلاً): نجلبه بمعرّفه مباشرة
+        shopService.getProfile(sharedShopId)
+            .then(data => reveal(data?.shop ? { ...data.shop, id: Number(sharedShopId) } : null))
+            .catch(() => { /* رابط لمحل محذوف أو غير متاح */ });
+
+        return () => { cancelled = true; };
+    }, [sharedShopId, allShopsMap]);
 
     // Live Cameras Data - Fetch and auto-refresh
     const fetchLiveCameras = async () => {
@@ -3912,14 +3961,14 @@ const MapComponent = () => {
                     <ShopStorefront
                         shop={selectedShopProfile}
                         currentUser={user}
-                        onClose={() => setShowShopProfile(false)}
+                        onClose={closeShopProfile}
                         userLocation={userLocation}
                     />
                 ) : (
                     <ShopProfileModal
                         shop={selectedShopProfile}
                         currentUser={user}
-                        onClose={() => setShowShopProfile(false)}
+                        onClose={closeShopProfile}
                         onFollowChange={handleShopFollowed}
                         userLocation={userLocation}
                     />

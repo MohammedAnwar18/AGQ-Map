@@ -49,6 +49,22 @@ const Icon = {
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
         </svg>
     ),
+    Search: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" {...p}>
+            <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.7" y2="16.7" />
+        </svg>
+    ),
+    Share: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+            <line x1="8.6" y1="10.5" x2="15.4" y2="6.5" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+        </svg>
+    ),
+    Check: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+    ),
     Invoice: (p) => (
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <path d="M6 2h9l5 5v13a1 1 0 0 1-1.5.86L16 20l-2 1.2L12 20l-2 1.2L8 20l-1.5.86A1 1 0 0 1 5 20V3a1 1 0 0 1 1-1Z" />
@@ -614,6 +630,10 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [show360, setShow360] = useState(false);
     const [showTablePreview, setShowTablePreview] = useState(false);
     const [showInvoices, setShowInvoices] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [productQuery, setProductQuery] = useState('');
+    const [shared, setShared] = useState(false);
+    const searchInputRef = useRef(null);
     const [cartTotal, setCartTotal] = useState(0);
 
     const [detailProduct, setDetailProduct] = useState(null);
@@ -700,9 +720,28 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     }, [products, categories, isAdmin]);
 
     const visibleGroups = useMemo(() => {
+        const term = productQuery.trim().toLowerCase();
+
+        // أثناء البحث نتجاوز التبويبات ونعرض المطابق من كل الأقسام
+        if (term) {
+            const matches = (product) => (
+                String(product.name || '').toLowerCase().includes(term) ||
+                String(product.description || '').toLowerCase().includes(term) ||
+                (product.options?.ingredients || []).some(x => String(x).toLowerCase().includes(term))
+            );
+            return grouped
+                .map(group => ({ ...group, items: group.items.filter(matches) }))
+                .filter(group => group.items.length > 0);
+        }
+
         if (activeCat === ALL_KEY) return grouped;
         return grouped.filter(g => String(g.id) === String(activeCat));
-    }, [grouped, activeCat]);
+    }, [grouped, activeCat, productQuery]);
+
+    const searchHits = useMemo(
+        () => visibleGroups.reduce((sum, group) => sum + group.items.length, 0),
+        [visibleGroups]
+    );
 
     // ── إجراءات السلة ──────────────────────────────────────────
     const addToCart = (product, e) => {
@@ -779,6 +818,52 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
         } finally {
             setSaving(false);
         }
+    };
+
+    // ── مشاركة رابط المحل ──────────────────────────────────────
+    const shareShop = async () => {
+        const url = `${window.location.origin}/shop/${shopData.id}`;
+        const payload = {
+            title: shopData?.name || 'بالنوفا',
+            text: shopData?.name ? `${shopData.name} على بالنوفا` : 'محل على بالنوفا',
+            url
+        };
+
+        // نافذة المشاركة الأصلية على الهاتف، وإلا ننسخ الرابط
+        try {
+            if (navigator.share) {
+                await navigator.share(payload);
+                return;
+            }
+        } catch (e) {
+            if (e?.name === 'AbortError') return; // ألغى المستخدم المشاركة
+        }
+
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            // متصفحات قديمة أو سياق غير آمن
+            const field = document.createElement('textarea');
+            field.value = url;
+            field.style.position = 'fixed';
+            field.style.opacity = '0';
+            document.body.appendChild(field);
+            field.select();
+            document.execCommand('copy');
+            document.body.removeChild(field);
+        }
+
+        setShared(true);
+        setTimeout(() => setShared(false), 2200);
+    };
+
+    // ── البحث داخل المحل ───────────────────────────────────────
+    const toggleSearch = () => {
+        setSearchOpen(open => {
+            if (open) setProductQuery('');
+            else setTimeout(() => searchInputRef.current?.focus(), 60);
+            return !open;
+        });
     };
 
     // ── غلاف المحل: صورة من المعرض أو الكاميرا ─────────────────
@@ -1248,6 +1333,24 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                 </div>
 
                 <div className="sf-topbar-actions">
+                    <button
+                        className={`sf-icon-btn sf-search-btn ${searchOpen ? 'is-on' : ''}`}
+                        onClick={toggleSearch}
+                        aria-label="البحث داخل المحل"
+                        title="البحث عن منتج"
+                    >
+                        {searchOpen ? <Icon.Close /> : <Icon.Search />}
+                    </button>
+
+                    <button
+                        className={`sf-icon-btn sf-share-btn ${shared ? 'is-done' : ''}`}
+                        onClick={shareShop}
+                        aria-label="مشاركة رابط المحل"
+                        title="مشاركة رابط المحل"
+                    >
+                        {shared ? <Icon.Check /> : <Icon.Share />}
+                    </button>
+
                     {isAdmin && (
                         <button
                             className="sf-icon-btn sf-invoice-btn"
@@ -1403,8 +1506,41 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                         </div>
                     </section>
 
+                    {/* البحث داخل المحل */}
+                    {searchOpen && (
+                        <div className="sf-searchbar">
+                            <div className="sf-searchfield">
+                                <Icon.Search width="18" height="18" />
+                                <input
+                                    ref={searchInputRef}
+                                    value={productQuery}
+                                    onChange={(e) => setProductQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Escape' && toggleSearch()}
+                                    placeholder="ابحث عن منتج داخل المحل…"
+                                    enterKeyHint="search"
+                                    autoComplete="off"
+                                />
+                                {productQuery && (
+                                    <button
+                                        className="sf-searchclear"
+                                        onClick={() => { setProductQuery(''); searchInputRef.current?.focus(); }}
+                                        aria-label="مسح البحث"
+                                    >
+                                        <Icon.Close width="15" height="15" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {productQuery.trim() && (
+                                <span className="sf-searchcount">
+                                    {searchHits > 0 ? `${searchHits} نتيجة` : 'لا نتائج'}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     {/* شريط الأقسام */}
-                    {(categories.length > 0 || isAdmin) && (
+                    {!productQuery.trim() && (categories.length > 0 || isAdmin) && (
                         <div className="sf-tabs-wrap">
                             <div className="sf-tabs">
                                 <button
@@ -1447,11 +1583,19 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     )}
 
                     {/* الأقسام والمنتجات */}
-                    {!loadError && visibleGroups.length === 0 && (
+                    {!loadError && !productQuery.trim() && visibleGroups.length === 0 && (
                         <div className="sf-empty">
                             <div className="sf-empty-icon"><Icon.Box /></div>
                             <p>لا توجد منتجات بعد</p>
                             <span>{isAdmin ? 'ابدأ بإضافة قسم ثم أضف منتجاتك إليه.' : 'سيضيف المحل منتجاته قريباً.'}</span>
+                        </div>
+                    )}
+
+                    {!loadError && productQuery.trim() && searchHits === 0 && (
+                        <div className="sf-empty">
+                            <div className="sf-empty-icon"><Icon.Search width="26" height="26" /></div>
+                            <p>لا نتائج لـ «{productQuery.trim()}»</p>
+                            <span>جرّب اسماً أقصر أو كلمة من مكوّنات المنتج.</span>
                         </div>
                     )}
 

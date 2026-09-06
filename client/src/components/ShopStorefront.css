@@ -1861,3 +1861,113 @@
     box-shadow: 0 0 0 9999em rgba(2, 6, 23, .68) !important;
     color: rgba(2, 6, 23, .68) !important;
 }
+
+/* ============================================================
+   البحث داخل المحل ومشاركة رابطه
+   ============================================================ */
+
+.sf-search-btn.is-on {
+    color: var(--sf-gold);
+    border-color: rgba(251, 171, 21, .5);
+    background: rgba(251, 171, 21, .14);
+}
+
+.sf-share-btn {
+    color: #c084fc;
+    border-color: rgba(192, 132, 252, .3);
+    background: rgba(192, 132, 252, .1);
+}
+
+.sf-share-btn:hover {
+    background: rgba(192, 132, 252, .2);
+    border-color: rgba(192, 132, 252, .55);
+}
+
+.sf-share-btn.is-done {
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, .5);
+    background: rgba(34, 197, 94, .16);
+}
+
+/* شريط البحث — ملتصق بالأعلى تحت شريط الأدوات */
+.sf-searchbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(11, 16, 32, .95);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--sf-line);
+    animation: sfSearchIn .22s cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes sfSearchIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.sf-searchfield {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+    padding-inline: 15px 6px;
+    border-radius: 15px;
+    border: 1px solid var(--sf-line);
+    background: var(--sf-surface);
+    transition: border-color .18s ease;
+}
+
+.sf-searchfield:focus-within { border-color: rgba(251, 171, 21, .55); }
+.sf-searchfield > svg { flex-shrink: 0; color: var(--sf-muted); }
+
+.sf-searchfield input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--sf-text);
+    font-family: inherit;
+    font-size: .95rem;
+    outline: none;
+}
+
+.sf-searchfield input::placeholder { color: rgba(148, 163, 184, .65); }
+
+.sf-searchclear {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .07);
+    color: var(--sf-muted);
+    cursor: pointer;
+}
+
+.sf-searchclear:hover { background: rgba(255, 255, 255, .14); color: var(--sf-text); }
+
+.sf-searchcount {
+    flex-shrink: 0;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(251, 171, 21, .12);
+    color: var(--sf-gold);
+    font-size: .78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+    .sf-searchbar { padding: 14px clamp(24px, 5vw, 72px); }
+    .sf-searchfield { max-width: 620px; }
+}

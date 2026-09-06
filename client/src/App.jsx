@@ -168,6 +168,8 @@ function App() {
                             <Routes>
                                 <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
                                 <Route path="/map" element={<PublicMapRoute><Map /></PublicMapRoute>} />
+                                {/* رابط مشاركة المحل: يفتح الخريطة على صفحة المحل مباشرة */}
+                                <Route path="/shop/:shopId" element={<PublicMapRoute><Map /></PublicMapRoute>} />
                                 <Route path="/streets" element={<ProtectedRoute><StreetMap /></ProtectedRoute>} />
                                 <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                                 <Route path="/admin/geoportal" element={<AdminRoute><GeoportalDesigner /></AdminRoute>} />
