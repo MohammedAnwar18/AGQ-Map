@@ -342,11 +342,14 @@
 .aia-card:active { transform: scale(.99); }
 
 /* الصورة الكبيرة */
+/* صورة المنتج تُعرض كاملة كما في المحل — بلا اقتصاص —
+   داخل إطار ثابت الارتفاع حتى تبقى البطاقات متساوية */
 .aia-media {
     position: relative;
     width: 100%;
-    aspect-ratio: 16 / 11;
-    background: var(--aia-surface-2);
+    aspect-ratio: 1 / 1;
+    /* أرضية فاتحة: أغلب صور المنتجات مفرّغة على أبيض فتندمج معها */
+    background: linear-gradient(180deg, #f8fafc, #e9eef5);
     display: grid;
     place-items: center;
     overflow: hidden;
@@ -355,8 +358,15 @@
 .aia-media img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    padding: 10px;
     display: block;
+}
+
+/* البديل حين لا صورة: نعود للأرضية الداكنة */
+.aia-media:has(.aia-emoji),
+.aia-media:has(.aia-initial) {
+    background: var(--aia-surface-2);
 }
 
 /* بطاقات المحلات: الشعار داخل دائرة بلا اقتصاص */

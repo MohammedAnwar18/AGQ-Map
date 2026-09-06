@@ -1342,14 +1342,15 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     {shopData?.name}
                 </div>
 
+                {/* الترتيب في RTL: أوّل عنصر يقع لليمين، وآخره في زاوية الشاشة */}
                 <div className="sf-topbar-actions">
                     <button
-                        className="sf-icon-btn sf-menu-btn"
-                        onClick={() => setMenuOpen(true)}
-                        aria-label="قائمة أدوات المحل"
-                        title="القائمة"
+                        className={`sf-icon-btn sf-search-btn ${searchOpen ? 'is-on' : ''}`}
+                        onClick={toggleSearch}
+                        aria-label="البحث داخل المحل"
+                        title="البحث عن منتج"
                     >
-                        <Icon.Menu />
+                        {searchOpen ? <Icon.Close /> : <Icon.Search />}
                     </button>
 
                     <button
@@ -1360,6 +1361,15 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     >
                         <Icon.Cart />
                         {cartCount > 0 && <span className="sf-cart-badge">{cartCount}</span>}
+                    </button>
+
+                    <button
+                        className="sf-icon-btn sf-menu-btn"
+                        onClick={() => setMenuOpen(true)}
+                        aria-label="قائمة أدوات المحل"
+                        title="القائمة"
+                    >
+                        <Icon.Menu />
                     </button>
                 </div>
             </header>
@@ -1385,11 +1395,6 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
 
                         <nav className="sf-drawer-list">
                             {[
-                                {
-                                    key: 'search', tone: 'gold', icon: <Icon.Search />,
-                                    label: 'البحث عن منتج', hint: 'ابحث داخل منتجات المحل',
-                                    run: () => { setSearchOpen(false); toggleSearch(); }
-                                },
                                 {
                                     key: 'share', tone: 'violet', icon: shared ? <Icon.Check /> : <Icon.Share />,
                                     label: shared ? 'تم نسخ الرابط' : 'مشاركة رابط المحل',

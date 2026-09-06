@@ -66,6 +66,12 @@ const Icon = {
             <polyline points="9 15 12 18 15 15" />
         </svg>
     ),
+    Image: (p) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <rect x="3" y="3" width="18" height="18" rx="3" />
+            <circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+        </svg>
+    ),
     Box: (p) => (
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
@@ -77,7 +83,7 @@ const Icon = {
 // ============================================================
 const CartModal = ({ onClose, shop = null }) => {
     const [cart, setCart] = useState(cartService.getCart());
-    const [exporting, setExporting] = useState(false);
+    const [exporting, setExporting] = useState(null); // 'image' | 'pdf' | null
     const [logoData, setLogoData] = useState(null);
     const printRef = useRef(null);
 
@@ -152,40 +158,86 @@ const CartModal = ({ onClose, shop = null }) => {
     const fileBase = `طلب-${orderShop?.name || 'بالنوفا'}-${at.date.replace(/\//g, '-')}`
         .replace(/[\\/:*?"<>|]/g, '-');
 
-    const exportPdf = async () => {
-        if (!printRef.current) return;
-        setExporting(true);
+    // نلتقط الورقة مرّة واحدة ونعيد استعمال اللوحة
+    const captureSheet = async () => {
+        const { default: html2canvas } = await import('html2canvas');
+
+        // ننتظر اكتمال الصور وإلا صوّرناها فارغة
+        await Promise.all(
+            Array.from(printRef.current.querySelectorAll('img')).map(img => (
+                img.complete
+                    ? Promise.resolve()
+                    : new Promise(resolve => {
+                        img.addEventListener('load', resolve, { once: true });
+                        img.addEventListener('error', resolve, { once: true });
+                        setTimeout(resolve, 3000);
+                    })
+            ))
+        );
+
+        return html2canvas(printRef.current, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            logging: false
+        });
+    };
+
+    // يحفظ الملف: على الهاتف عبر ورقة المشاركة (أضمن على iOS)، وإلا تنزيل مباشر
+    const deliver = async (blob, filename, mime) => {
+        const file = new File([blob], filename, { type: mime });
+
+        if (navigator.canShare?.({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: filename });
+                return;
+            } catch (e) {
+                if (e?.name === 'AbortError') return;   // ألغى المستخدم
+                // غير ذلك: نكمل إلى التنزيل المباشر
+            }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    // الصورة أسرع: لا نحمّل jsPDF ولا نعيد ترميز الصفحة
+    const exportImage = async () => {
+        if (!printRef.current || exporting) return;
+        setExporting('image');
         try {
-            const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-                import('html2canvas'),
+            const canvas = await captureSheet();
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error('تعذّر تجهيز الصورة');
+            await deliver(blob, `${fileBase}.png`, 'image/png');
+        } catch (e) {
+            console.error('Image export error:', e);
+            alert('تعذّر حفظ الصورة، حاول مجدداً.');
+        } finally {
+            setExporting(null);
+        }
+    };
+
+    const exportPdf = async () => {
+        if (!printRef.current || exporting) return;
+        setExporting('pdf');
+        try {
+            const [canvas, { default: jsPDF }] = await Promise.all([
+                captureSheet(),
                 import('jspdf')
             ]);
-
-            // ننتظر اكتمال الصور وإلا صوّرناها فارغة
-            await Promise.all(
-                Array.from(printRef.current.querySelectorAll('img')).map(img => (
-                    img.complete
-                        ? Promise.resolve()
-                        : new Promise(resolve => {
-                            img.addEventListener('load', resolve, { once: true });
-                            img.addEventListener('error', resolve, { once: true });
-                            setTimeout(resolve, 3000);
-                        })
-                ))
-            );
-
-            const canvas = await html2canvas(printRef.current, {
-                scale: 2,
-                backgroundColor: '#ffffff',
-                useCORS: true,
-                logging: false
-            });
 
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
             const imgHeight = (canvas.height * pageWidth) / canvas.width;
-            const image = canvas.toDataURL('image/jpeg', 0.95);
+            const image = canvas.toDataURL('image/jpeg', 0.92);
 
             let remaining = imgHeight;
             let position = 0;
@@ -198,12 +250,12 @@ const CartModal = ({ onClose, shop = null }) => {
                 remaining -= pageHeight;
             }
 
-            pdf.save(`${fileBase}.pdf`);
+            await deliver(pdf.output('blob'), `${fileBase}.pdf`, 'application/pdf');
         } catch (e) {
             console.error('PDF generation error:', e);
             alert('تعذّر إنشاء ملف PDF، حاول مجدداً.');
         } finally {
-            setExporting(false);
+            setExporting(null);
         }
     };
 
@@ -305,12 +357,22 @@ const CartModal = ({ onClose, shop = null }) => {
                         )}
 
                         <div className="crt-actions">
-                            <button className="crt-btn crt-btn-primary" onClick={() => window.print()}>
-                                <Icon.Print /> طباعة الطلب
+                            <button
+                                className="crt-btn crt-btn-primary"
+                                onClick={exportImage}
+                                disabled={Boolean(exporting)}
+                            >
+                                <Icon.Image /> {exporting === 'image' ? 'جاري…' : 'حفظ صورة'}
                             </button>
-                            <button className="crt-btn" onClick={exportPdf} disabled={exporting}>
-                                <Icon.Pdf /> {exporting ? 'جاري…' : 'حفظ PDF'}
+
+                            <button className="crt-btn" onClick={() => window.print()}>
+                                <Icon.Print /> طباعة
                             </button>
+
+                            <button className="crt-btn" onClick={exportPdf} disabled={Boolean(exporting)}>
+                                <Icon.Pdf /> {exporting === 'pdf' ? 'جاري…' : 'PDF'}
+                            </button>
+
                             <button
                                 className="crt-btn crt-btn-danger"
                                 onClick={() => window.confirm('إفراغ السلة بالكامل؟') && cartService.clear()}
