@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { shopService, getImageUrl } from '../services/api';
+import { saveFile } from '../utils/download';
 import './ShopInvoices.css';
 
 /* ============================================================
@@ -295,7 +296,7 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
     // ── التصدير ────────────────────────────────────────────────
     const fileBase = `فاتورة-${invoiceNumber ?? 'جديدة'}-${shop?.name || ''}`.replace(/[\\/:*?"<>|]/g, '-');
 
-    const exportExcel = () => {
+    const exportExcel = async () => {
         const at = stamp(issuedAt);
         const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
 
@@ -319,12 +320,7 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
         // BOM ليقرأ Excel العربية بترميز UTF-8 صحيح
         const csv = '﻿' + lines.map(line => line.join(',')).join('\r\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${fileBase}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        await saveFile(blob, `${fileBase}.csv`, 'text/csv;charset=utf-8;');
     };
 
     const exportPdf = async () => {
@@ -375,7 +371,7 @@ const ShopInvoices = ({ shop, products = [], onClose }) => {
                 remaining -= pageHeight;
             }
 
-            pdf.save(`${fileBase}.pdf`);
+            await saveFile(pdf.output('blob'), `${fileBase}.pdf`, 'application/pdf');
         } catch (e) {
             console.error(e);
             flash('تعذّر إنشاء ملف PDF', 'err');

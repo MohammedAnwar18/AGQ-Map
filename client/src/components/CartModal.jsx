@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { cartService } from '../services/cartService';
 import { getImageUrl } from '../services/api';
+import { saveFile } from '../utils/download';
 import './CartModal.css';
 
 /* ============================================================
@@ -183,30 +184,6 @@ const CartModal = ({ onClose, shop = null }) => {
         });
     };
 
-    // يحفظ الملف: على الهاتف عبر ورقة المشاركة (أضمن على iOS)، وإلا تنزيل مباشر
-    const deliver = async (blob, filename, mime) => {
-        const file = new File([blob], filename, { type: mime });
-
-        if (navigator.canShare?.({ files: [file] })) {
-            try {
-                await navigator.share({ files: [file], title: filename });
-                return;
-            } catch (e) {
-                if (e?.name === 'AbortError') return;   // ألغى المستخدم
-                // غير ذلك: نكمل إلى التنزيل المباشر
-            }
-        }
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-    };
-
     // الصورة أسرع: لا نحمّل jsPDF ولا نعيد ترميز الصفحة
     const exportImage = async () => {
         if (!printRef.current || exporting) return;
@@ -215,7 +192,7 @@ const CartModal = ({ onClose, shop = null }) => {
             const canvas = await captureSheet();
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
             if (!blob) throw new Error('تعذّر تجهيز الصورة');
-            await deliver(blob, `${fileBase}.png`, 'image/png');
+            await saveFile(blob, `${fileBase}.png`, 'image/png');
         } catch (e) {
             console.error('Image export error:', e);
             alert('تعذّر حفظ الصورة، حاول مجدداً.');
@@ -250,7 +227,7 @@ const CartModal = ({ onClose, shop = null }) => {
                 remaining -= pageHeight;
             }
 
-            await deliver(pdf.output('blob'), `${fileBase}.pdf`, 'application/pdf');
+            await saveFile(pdf.output('blob'), `${fileBase}.pdf`, 'application/pdf');
         } catch (e) {
             console.error('PDF generation error:', e);
             alert('تعذّر إنشاء ملف PDF، حاول مجدداً.');
