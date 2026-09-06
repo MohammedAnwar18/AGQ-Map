@@ -179,6 +179,32 @@ app.use('/api/fitness', fitnessRoutes);
     }
 })();
 
+// Auto-migrate: كتالوج باركود المحل
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shop_barcodes (
+                id SERIAL PRIMARY KEY,
+                shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+                code VARCHAR(64) NOT NULL,
+                name VARCHAR(200) NOT NULL,
+                price NUMERIC(12, 2),
+                product_id INTEGER REFERENCES shop_products(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (shop_id, code)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_barcodes_lookup
+            ON shop_barcodes (shop_id, code);
+        `);
+        console.log('✅ shop barcodes table ready');
+    } catch (err) {
+        console.warn('⚠️ shop barcodes migration warning:', err.message);
+    }
+})();
+
 // Auto-migrate: سجلّ فواتير المحل
 (async () => {
     try {

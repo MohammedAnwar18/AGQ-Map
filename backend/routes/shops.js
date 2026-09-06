@@ -44,6 +44,12 @@ router.put('/:id/product-categories/:categoryId', authenticateToken, upload.sing
 router.delete('/:id/product-categories/:categoryId', authenticateToken, shopController.deleteProductCategory);
 
 // إدارة الملكية
+// الباركود — للمالك أو الأدمن فقط (assertShopAccess داخل المتحكّم)
+router.get('/:id/barcodes', authenticateToken, shopController.getShopBarcodes);
+router.get('/:id/barcodes/:code', authenticateToken, shopController.lookupShopBarcode);
+router.post('/:id/barcodes', authenticateToken, shopController.saveShopBarcode);
+router.delete('/:id/barcodes/:code', authenticateToken, shopController.deleteShopBarcode);
+
 // الفواتير — للمالك أو الأدمن فقط (assertShopAccess داخل المتحكّم)
 router.get('/:id/invoices', authenticateToken, shopController.getShopInvoices);
 router.post('/:id/invoices', authenticateToken, shopController.createShopInvoice);

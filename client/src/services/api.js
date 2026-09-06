@@ -546,6 +546,27 @@ export const shopService = {
         return response.data;
     },
 
+    // ── الباركود ──────────────────────────────────────────────
+    getBarcodes: async (shopId) => {
+        const response = await api.get(`/shops/${shopId}/barcodes`);
+        return response.data;
+    },
+
+    lookupBarcode: async (shopId, code) => {
+        const response = await api.get(`/shops/${shopId}/barcodes/${encodeURIComponent(code)}`);
+        return response.data;
+    },
+
+    saveBarcode: async (shopId, data) => {
+        const response = await api.post(`/shops/${shopId}/barcodes`, data);
+        return response.data;
+    },
+
+    deleteBarcode: async (shopId, code) => {
+        const response = await api.delete(`/shops/${shopId}/barcodes/${encodeURIComponent(code)}`);
+        return response.data;
+    },
+
     // ── الفواتير ──────────────────────────────────────────────
     getInvoices: async (shopId, { limit = 50, offset = 0 } = {}) => {
         const response = await api.get(`/shops/${shopId}/invoices`, { params: { limit, offset } });

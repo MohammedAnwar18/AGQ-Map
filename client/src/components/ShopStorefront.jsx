@@ -6,6 +6,7 @@ import CartModal from './CartModal';
 import Panorama360Viewer from './Panorama360Viewer';
 const DishTablePreview = React.lazy(() => import('./DishTablePreview'));
 const ShopInvoices = React.lazy(() => import('./ShopInvoices'));
+const BarcodeScanner = React.lazy(() => import('./BarcodeScanner'));
 const Cropper = React.lazy(() => import('react-easy-crop'));
 import { parseYouTubeId, youtubeCoverVars, youtubeThumbHd, youtubeThumb, loadYouTubeApi } from '../utils/youtube';
 import { smartFilter } from '../utils/smartSearch';
@@ -48,6 +49,13 @@ const Icon = {
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
             <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+    ),
+    Barcode: (p) => (
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" {...p}>
+            <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" />
+            <line x1="7" y1="8" x2="7" y2="16" /><line x1="10.5" y1="8" x2="10.5" y2="16" />
+            <line x1="13.5" y1="8" x2="13.5" y2="16" /><line x1="17" y1="8" x2="17" y2="16" />
         </svg>
     ),
     Menu: (p) => (
@@ -638,6 +646,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
     const [show360, setShow360] = useState(false);
     const [showTablePreview, setShowTablePreview] = useState(false);
     const [showInvoices, setShowInvoices] = useState(false);
+    const [showBarcode, setShowBarcode] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [productQuery, setProductQuery] = useState('');
@@ -1417,6 +1426,11 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                                     run: () => setShowTablePreview(true)
                                 },
                                 isAdmin && {
+                                    key: 'barcode', tone: 'gold', icon: <Icon.Barcode />,
+                                    label: 'الباركود', hint: 'امسح المنتجات للبيع، أو سجّل رموزاً جديدة',
+                                    run: () => setShowBarcode(true)
+                                },
+                                isAdmin && {
                                     key: 'invoice', tone: 'sky', icon: <Icon.Invoice />,
                                     label: 'إصدار فاتورة', hint: 'أنشئ فاتورة واحفظها في السجل',
                                     run: () => setShowInvoices(true)
@@ -1736,7 +1750,7 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
             {/* ── زر إضافة منتج (للأدمن) ── */}
             {isAdmin && !productForm && !detailProduct && !categoryForm
                 && !hoursForm && !showHours && !showAbout && !aboutForm && !logoForm && !socialForm
-                && !showTablePreview && !showInvoices && !coverForm && !menuOpen && (
+                && !showTablePreview && !showInvoices && !coverForm && !menuOpen && !showBarcode && (
                 <button
                     className="sf-fab"
                     style={cartCount > 0 ? { bottom: 'calc(84px + env(safe-area-inset-bottom))' } : undefined}
@@ -2483,6 +2497,15 @@ const ShopStorefront = ({ shop, currentUser, onClose, userLocation }) => {
                     onCancel={() => setCoverForm(null)}
                     onSave={saveCover}
                 />
+            )}
+
+            {showBarcode && (
+                <React.Suspense fallback={null}>
+                    <BarcodeScanner
+                        shop={shopData}
+                        onClose={() => setShowBarcode(false)}
+                    />
+                </React.Suspense>
             )}
 
             {showInvoices && (

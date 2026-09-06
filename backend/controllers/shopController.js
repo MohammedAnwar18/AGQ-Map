@@ -828,6 +828,110 @@ const deleteProductCategory = async (req, res) => {
 };
 
 // ============================================================
+//  الباركود — كتالوج المنتجات المرتبطة برموزها
+// ============================================================
+
+const normalizeBarcode = (value) => String(value || '').trim().replace(/\s+/g, '').slice(0, 64);
+
+const normalizeBarcodeRow = (row) => row && ({
+    ...row,
+    price: row.price === null || row.price === undefined ? null : parseFloat(row.price)
+});
+
+const getShopBarcodes = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const result = await pool.query(
+            'SELECT * FROM shop_barcodes WHERE shop_id = $1 ORDER BY updated_at DESC',
+            [shopId]
+        );
+        res.json({ barcodes: result.rows.map(normalizeBarcodeRow) });
+    } catch (e) {
+        console.error('Get barcodes error:', e);
+        res.status(500).json({ error: 'Failed to get barcodes' });
+    }
+};
+
+/** بحث برمز واحد — يستخدمه وضع «الاستخدام» عند كل مسحة */
+const lookupShopBarcode = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const code = normalizeBarcode(req.params.code);
+        if (!code) return res.status(400).json({ error: 'رمز غير صالح' });
+
+        const result = await pool.query(
+            'SELECT * FROM shop_barcodes WHERE shop_id = $1 AND code = $2',
+            [shopId, code]
+        );
+
+        if (!result.rows.length) return res.status(404).json({ error: 'not found', code });
+        res.json(normalizeBarcodeRow(result.rows[0]));
+    } catch (e) {
+        console.error('Lookup barcode error:', e);
+        res.status(500).json({ error: 'Failed to look up barcode' });
+    }
+};
+
+/** تسجيل رمز أو تحديثه — الرمز نفسه لا يتكرّر داخل المحل */
+const saveShopBarcode = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const code = normalizeBarcode(req.body.code);
+        const name = String(req.body.name || '').trim().slice(0, 200);
+        if (!code) return res.status(400).json({ error: 'الرمز مطلوب' });
+        if (!name) return res.status(400).json({ error: 'اسم المنتج مطلوب' });
+
+        const rawPrice = req.body.price;
+        const parsed = parseFloat(rawPrice);
+        const price = (rawPrice === '' || rawPrice === null || rawPrice === undefined || Number.isNaN(parsed))
+            ? null
+            : Math.max(0, parsed);
+
+        const productId = parseInt(req.body.product_id, 10);
+
+        const result = await pool.query(`
+            INSERT INTO shop_barcodes (shop_id, code, name, price, product_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (shop_id, code) DO UPDATE
+                SET name = EXCLUDED.name,
+                    price = EXCLUDED.price,
+                    product_id = EXCLUDED.product_id,
+                    updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [shopId, code, name, price, Number.isNaN(productId) ? null : productId]);
+
+        res.json(normalizeBarcodeRow(result.rows[0]));
+    } catch (e) {
+        console.error('Save barcode error:', e);
+        res.status(500).json({ error: 'Failed to save barcode' });
+    }
+};
+
+const deleteShopBarcode = async (req, res) => {
+    try {
+        const shopId = req.params.id;
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const result = await pool.query(
+            'DELETE FROM shop_barcodes WHERE shop_id = $1 AND code = $2 RETURNING id',
+            [shopId, normalizeBarcode(req.params.code)]
+        );
+        if (!result.rows.length) return res.status(404).json({ error: 'Barcode not found' });
+
+        res.json({ message: 'Barcode deleted' });
+    } catch (e) {
+        console.error('Delete barcode error:', e);
+        res.status(500).json({ error: 'Failed to delete barcode' });
+    }
+};
+
+// ============================================================
 //  الفواتير — إصدارها وحفظها في سجل المحل
 // ============================================================
 
@@ -2099,6 +2203,10 @@ const smartSearch = async (req, res) => {
 };
 
 module.exports = {
+    getShopBarcodes,
+    lookupShopBarcode,
+    saveShopBarcode,
+    deleteShopBarcode,
     getShopInvoices,
     createShopInvoice,
     updateShopInvoice,
