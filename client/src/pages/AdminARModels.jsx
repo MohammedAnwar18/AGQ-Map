@@ -273,6 +273,26 @@ const AdminARModels = ({ onClose }) => {
                                 />
                             </label>
 
+                            {/* ── دليل الصيغ ── */}
+                            <div className="arm-guide">
+                                <b>أي صيغة أرفع؟</b>
+                                <p>
+                                    <strong>GLB</strong> هي الصيغة الوحيدة التي تعرضها كل الهواتف والمتصفحات —
+                                    ملف واحد يحوي الشكل والخامات والصور والحركة معاً. إن كان مجسّمك
+                                    FBX أو OBJ أو STL أو Blender، حوّله إلى GLB أولاً
+                                    (في Blender: <code dir="ltr">File ← Export ← glTF 2.0 (.glb)</code>).
+                                </p>
+                                <p>
+                                    <strong>USDZ</strong> اختيارية، وتلزم فقط ليضع مستخدم <strong>iPhone</strong>
+                                    المجسّم في غرفته. بدونها يعمل العرض ثلاثي الأبعاد على الآيفون كاملاً،
+                                    لكن دون «الإسقاط في الغرفة» — وهذا قيد من Apple لا حيلة فيه.
+                                </p>
+                                <p className="arm-guide-tip">
+                                    للسرعة: أبقِ الملف تحت ١٠ ميغابايت، والصور بحجم ٢٠٤٨ بكسل أو أقل،
+                                    وفعّل ضغط Draco عند التصدير.
+                                </p>
+                            </div>
+
                             {/* ── الملفات ── */}
                             <div className="arm-files">
                                 <FileSlot

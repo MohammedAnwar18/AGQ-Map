@@ -75,6 +75,22 @@ const ARModelView = () => {
         return () => { cancelled = true; };
     }, [slug]);
 
+    // الصفحة مستقلّة تماماً: نضبط عنوان التبويب ولون شريط المتصفح
+    useEffect(() => {
+        if (!model?.title) return;
+        const previous = document.title;
+        document.title = `${model.title} · بالنوفا`;
+
+        const meta = document.querySelector('meta[name="theme-color"]');
+        const previousColor = meta?.getAttribute('content');
+        meta?.setAttribute('content', '#0b1020');
+
+        return () => {
+            document.title = previous;
+            if (previousColor) meta?.setAttribute('content', previousColor);
+        };
+    }, [model?.title]);
+
     // ── تحميل مشغّل العرض عند الحاجة فقط ──────────────────────
     useEffect(() => {
         if (!model) return;

@@ -457,3 +457,44 @@
     margin: 0 auto 14px;
     display: block;
 }
+
+/* ── دليل الصيغ ── */
+.arm-guide {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(96, 165, 250, .3);
+    background: rgba(96, 165, 250, .08);
+}
+
+.arm-guide b {
+    display: block;
+    margin-bottom: 7px;
+    font-size: .88rem;
+    font-weight: 700;
+    color: #93c5fd;
+}
+
+.arm-guide p {
+    margin: 0 0 8px;
+    font-size: .79rem;
+    line-height: 1.9;
+    color: #cbd5e1;
+}
+
+.arm-guide p:last-child { margin-bottom: 0; }
+.arm-guide strong { color: var(--arm-gold); font-weight: 700; }
+
+.arm-guide code {
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, .35);
+    font-size: .74rem;
+    color: #93c5fd;
+}
+
+.arm-guide-tip {
+    padding-top: 8px;
+    border-top: 1px solid rgba(96, 165, 250, .2);
+    color: #94a3b8 !important;
+}
