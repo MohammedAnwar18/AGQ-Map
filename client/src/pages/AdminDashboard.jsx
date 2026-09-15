@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
 import { cameraService, shopService, getImageUrl } from '../services/api';
 import { parseYouTubeId, youtubeThumb } from '../utils/youtube';
+const AdminARModels = React.lazy(() => import('./AdminARModels'));
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
@@ -416,6 +417,7 @@ const AdminDashboard = () => {
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
+                        { id: 'ar-models', icon: '🧊', label: 'مجسّمات ورموز QR' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
                         { id: 'event-photos', icon: '📸', label: 'صور الفعاليات/الدعوات' },
                         { id: 'face-recognition', icon: '🧬', label: 'التعرف على الوجوه' },
@@ -621,6 +623,14 @@ const AdminDashboard = () => {
                 )}
 
                 {/* Shops Management */}
+                {activeTab === 'ar-models' && (
+                    <div className="admin-content-card">
+                        <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
+                            <AdminARModels />
+                        </React.Suspense>
+                    </div>
+                )}
+
                 {activeTab === 'shops' && (
                     <div className="admin-content-card">
                         <div className="content-header">
