@@ -622,7 +622,7 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Shops Management */}
+                {/* مجسّمات الواقع المعزّز ورموز QR */}
                 {activeTab === 'ar-models' && (
                     <div className="admin-content-card">
                         <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
@@ -631,6 +631,7 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
+                {/* Shops Management */}
                 {activeTab === 'shops' && (
                     <div className="admin-content-card">
                         <div className="content-header">
