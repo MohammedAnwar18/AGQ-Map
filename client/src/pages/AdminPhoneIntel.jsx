@@ -181,6 +181,8 @@ const AdminPhoneIntel = () => {
         }
     };
 
+    const [copiedDork, setCopiedDork] = useState(null);
+
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') handleAnalyze();
     };
@@ -201,8 +203,8 @@ const AdminPhoneIntel = () => {
 
         const report = `
 ╔══════════════════════════════════════════════════════════╗
-║          📱 Phone Intelligence Report                    ║
-║          تقرير استخبارات الهاتف                          ║
+║          📱 Phone Intelligence & Cyber OSINT Report      ║
+║          تقرير استخبارات الهاتف والتحليل الأمني          ║
 ╚══════════════════════════════════════════════════════════╝
 
 📞 الرقم: ${result.phoneNumber}
@@ -214,6 +216,15 @@ const AdminPhoneIntel = () => {
 🌍 البلد: ${result.local.countryNameAr || 'غير محدد'} (${result.local.country || '-'})
 📡 الشركة: ${result.local.carrier || 'غير محدد'}
 🔑 مفتاح الاتصال: +${result.local.countryCallingCode || '-'}
+
+═══ هندسة شبكة الاتصالات (HLR Profile) ═══
+MCC: ${result.hlrProfile?.mcc || '-'}
+MNC: ${result.hlrProfile?.mnc || '-'}
+Network: ${result.hlrProfile?.network || '-'}
+Radio Standards: ${result.hlrProfile?.standards || '-'}
+Frequency Bands: ${result.hlrProfile?.frequencyBands || '-'}
+Routing Profile: ${result.hlrProfile?.routingProfile || '-'}
+IMSI Range: ${result.hlrProfile?.imsiRange || '-'}
 
 ═══ صيغ الرقم ═══
 E.164: ${result.local.formats?.e164 || '-'}
@@ -230,6 +241,12 @@ RFC3966: ${result.local.formats?.rfc3966 || '-'}
 المستوى: ${result.riskAssessment?.level || 'غير محدد'}
 ${result.riskAssessment?.factors?.length > 0 ? 'العوامل: ' + result.riskAssessment.factors.join(', ') : ''}
 
+═══ محاور التحقيق المباشر (Pivots) ═══
+${result.investigativePivots?.map(p => `  • ${p.platform}: ${p.url}`).join('\n') || 'لا توجد محاور'}
+
+═══ استعلامات Google Dorks ═══
+${result.googleDorks?.map(d => `  [${d.title}]\n  Query: ${d.query}`).join('\n\n') || 'لا توجد استعلامات'}
+
 ═══ الظهور في الويب ═══
 عدد النتائج: ${result.webPresence?.count || 0}
 ${result.webPresence?.results?.map(r => `  • ${r.domain}: ${r.title}`).join('\n') || 'لا توجد نتائج'}
@@ -242,7 +259,7 @@ ${result.webPresence?.results?.map(r => `  • ${r.domain}: ${r.title}`).join('\
 ${result.confidenceScores?.map(s => `  ${s.icon} ${s.category}: ${s.confidence}/10 (${s.source})`).join('\n') || 'لا توجد بيانات'}
 
 ═══════════════════════════════════════
-تم إنشاء التقرير بواسطة PalNovaa Phone Intelligence
+تم إنشاء التقرير بواسطة PalNovaa Phone Intelligence System
 `;
 
         const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
@@ -349,6 +366,43 @@ ${result.confidenceScores?.map(s => `  ${s.icon} ${s.category}: ${s.confidence}/
                         </div>
                     </div>
 
+                    {/* محاور التحقيق الفوري والمباشر (Investigative Pivots) */}
+                    {result.investigativePivots?.length > 0 && (
+                        <div className="pi-section">
+                            <div className="pi-section-header">
+                                <div className="pi-section-icon">⚡</div>
+                                <div>
+                                    <h3 className="pi-section-title">محاور التحقيق الفوري والمطابقة المباشرة</h3>
+                                    <p className="pi-section-subtitle">Direct Investigative Pivots & Carrier Lookup</p>
+                                </div>
+                            </div>
+                            <div className="pi-pivots-grid">
+                                {result.investigativePivots.map((pivot, i) => (
+                                    <div key={i} className="pi-pivot-card">
+                                        <div>
+                                            <div className="pi-pivot-header">
+                                                <span className="pi-pivot-icon">{pivot.icon}</span>
+                                                <span className="pi-pivot-platform">{pivot.platform}</span>
+                                                <span className="pi-pivot-badge">{pivot.category}</span>
+                                            </div>
+                                            <div className="pi-pivot-title">{pivot.title}</div>
+                                            <div className="pi-pivot-action">{pivot.action}</div>
+                                        </div>
+                                        <a
+                                            href={pivot.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="pi-pivot-btn"
+                                        >
+                                            <span>فحص مباشر</span>
+                                            <span>↗</span>
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="pi-grid-2">
                         {/* ── القسم الأيسر ── */}
                         <div>
@@ -442,6 +496,53 @@ ${result.confidenceScores?.map(s => `  ${s.icon} ${s.category}: ${s.confidence}/
                                         <div className="pi-data-item">
                                             <div className="pi-data-label">المنطقة الفرعية</div>
                                             <div className="pi-data-value">{result.local.region.subregion}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* هندسة شبكة الاتصالات و HLR */}
+                            {result.hlrProfile && (
+                                <div className="pi-section">
+                                    <div className="pi-section-header">
+                                        <div className="pi-section-icon">🛰️</div>
+                                        <div>
+                                            <h3 className="pi-section-title">هندسة شبكة الاتصالات (HLR)</h3>
+                                            <p className="pi-section-subtitle">Telecom Engineering & Network Route</p>
+                                        </div>
+                                    </div>
+                                    <div className="pi-hlr-grid">
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">رمز البلد الخلوي (MCC)</div>
+                                            <div className="pi-hlr-value code">{result.hlrProfile.mcc}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">رمز شبكة المشغل (MNC)</div>
+                                            <div className="pi-hlr-value code">{result.hlrProfile.mnc}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">شبكة المشغل</div>
+                                            <div className="pi-hlr-value">{result.hlrProfile.network}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">المعايير اللاسلكية</div>
+                                            <div className="pi-hlr-value">{result.hlrProfile.standards}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">نطاقات التردد</div>
+                                            <div className="pi-hlr-value">{result.hlrProfile.frequencyBands}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">توجيه HLR/VLR</div>
+                                            <div className="pi-hlr-value code">{result.hlrProfile.routingProfile}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">بادئة IMSI التقديرية</div>
+                                            <div className="pi-hlr-value code">{result.hlrProfile.imsiRange}</div>
+                                        </div>
+                                        <div className="pi-hlr-item">
+                                            <div className="pi-hlr-label">حالة نقل الرقم</div>
+                                            <div className="pi-hlr-value">{result.hlrProfile.portabilityStatus}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -589,6 +690,54 @@ ${result.confidenceScores?.map(s => `  ${s.icon} ${s.category}: ${s.confidence}/
                         </div>
                         <NetworkGraph network={result.network} />
                     </div>
+
+                    {/* محرك استعلامات الاختراق الأخلاقي والـ OSINT (Google Dorks) */}
+                    {result.googleDorks?.length > 0 && (
+                        <div className="pi-section">
+                            <div className="pi-section-header">
+                                <div className="pi-section-icon">🎯</div>
+                                <div>
+                                    <h3 className="pi-section-title">محرك استعلامات الاختراق الأخلاقي (Cyber Recon Google Dorks)</h3>
+                                    <p className="pi-section-subtitle">Targeted OSINT Queries for Leaks, Documents, and Footprints</p>
+                                </div>
+                            </div>
+                            <div className="pi-dorks-grid">
+                                {result.googleDorks.map((dork) => (
+                                    <div key={dork.id} className="pi-dork-card">
+                                        <div>
+                                            <div className="pi-dork-header">
+                                                <span className="pi-dork-icon">{dork.icon}</span>
+                                                <span className="pi-dork-title">{dork.title}</span>
+                                            </div>
+                                            <div className="pi-dork-desc">{dork.description}</div>
+                                            <div className="pi-dork-query-box">{dork.query}</div>
+                                        </div>
+                                        <div className="pi-dork-actions">
+                                            <button
+                                                className="pi-dork-copy-btn"
+                                                onClick={() => {
+                                                    copyToClipboard(dork.query);
+                                                    setCopiedDork(dork.id);
+                                                    setTimeout(() => setCopiedDork(null), 2000);
+                                                }}
+                                            >
+                                                {copiedDork === dork.id ? 'تم النسخ ✓' : 'نسخ الاستعلام 📋'}
+                                            </button>
+                                            <a
+                                                href={dork.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="pi-dork-launch-btn"
+                                            >
+                                                <span>تشغيل في Google</span>
+                                                <span>↗</span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* الظهور في الويب */}
                     {result.webPresence?.available && result.webPresence.results?.length > 0 && (

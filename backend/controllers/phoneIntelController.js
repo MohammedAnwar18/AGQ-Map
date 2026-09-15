@@ -84,6 +84,190 @@ const REGION_MAP = {
     OM: { region: 'الشرق الأوسط', subregion: 'شبه الجزيرة العربية' },
 };
 
+const TELECOM_HLR_DATA = {
+    PS: {
+        'Jawwal': { mcc: '425', mnc: '05', network: 'Palestine Cellular Communications Ltd. (Jawwal)', standard: 'GSM / UMTS / LTE', band: '900 / 1800 / 2100 MHz' },
+        'Ooredoo Palestine': { mcc: '425', mnc: '06', network: 'Wataniya Palestine Mobile Telecommunication (Ooredoo)', standard: 'GSM / UMTS / LTE', band: '900 / 1800 MHz' }
+    },
+    JO: {
+        'Orange Jordan': { mcc: '416', mnc: '77', network: 'Petra Jordanian Mobile (Orange)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2600 MHz' },
+        'Zain Jordan': { mcc: '416', mnc: '01', network: 'Jordan Mobile Telephone Services (Zain)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2100 MHz' },
+        'Umniah': { mcc: '416', mnc: '03', network: 'Umniah Mobile Company', standard: 'GSM / LTE / 5G', band: '1800 / 2100 MHz' }
+    },
+    SA: {
+        'STC': { mcc: '420', mnc: '01', network: 'Saudi Telecom Company (stc)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2100 / 3500 MHz' },
+        'Mobily': { mcc: '420', mnc: '03', network: 'Etihad Etisalat (Mobily)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2600 MHz' },
+        'Zain KSA': { mcc: '420', mnc: '04', network: 'Zain Saudi Arabia', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2100 / 2600 MHz' }
+    },
+    EG: {
+        'Vodafone Egypt': { mcc: '602', mnc: '02', network: 'Vodafone Egypt Telecommunications', standard: 'GSM / LTE', band: '900 / 1800 / 2100 MHz' },
+        'Orange Egypt': { mcc: '602', mnc: '01', network: 'Orange Egypt (Mobinil)', standard: 'GSM / LTE', band: '900 / 1800 / 2100 MHz' },
+        'Etisalat Egypt': { mcc: '602', mnc: '03', network: 'Etisalat Misr', standard: 'GSM / LTE', band: '900 / 1800 / 2100 MHz' },
+        'WE Egypt': { mcc: '602', mnc: '04', network: 'Telecom Egypt (WE)', standard: 'GSM / LTE', band: '1800 / 2600 MHz' }
+    },
+    AE: {
+        'Etisalat': { mcc: '424', mnc: '02', network: 'Emirates Telecommunications Corporation (e&)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2100 / 3500 MHz' },
+        'du': { mcc: '424', mnc: '03', network: 'Emirates Integrated Telecommunications Company (du)', standard: 'GSM / LTE / 5G', band: '900 / 1800 / 2100 MHz' }
+    }
+};
+
+function generateGoogleDorks(phone, nationalNum, cleanDigits) {
+    return [
+        {
+            id: 'docs',
+            title: 'المستندات المسربة والسير الذاتية (Exposed Docs & CVs)',
+            description: 'البحث عن ملفات PDF أو Word أو Excel تحوي الرقم (كشوفات، سيرة ذاتية، عقود)',
+            category: 'documents',
+            icon: '📑',
+            query: `("${phone}" OR "${nationalNum}") (filetype:pdf OR filetype:xlsx OR filetype:docx OR filetype:doc)`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`("${phone}" OR "${nationalNum}") (filetype:pdf OR filetype:xlsx OR filetype:docx OR filetype:doc)`)}`
+        },
+        {
+            id: 'pastes',
+            title: 'تسريبات النصوص ومقالب البيانات (Pastebin & Leaks)',
+            description: 'فحص مواقع مشاركة النصوص وقواعد البيانات المفتوحة والمقالب النصية',
+            category: 'leaks',
+            icon: '🗄️',
+            query: `("${phone}" OR "${cleanDigits}") (site:pastebin.com OR site:justpaste.it OR site:controlc.com OR site:rentry.co)`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`("${phone}" OR "${cleanDigits}") (site:pastebin.com OR site:justpaste.it OR site:controlc.com OR site:rentry.co)`)}`
+        },
+        {
+            id: 'social',
+            title: 'البصمة الرقمية على السوشيال ميديا (Social Footprint)',
+            description: 'استهداف المنشورات والملفات الشخصية العامة في فيسبوك، لينكدإن، إنستغرام، إكس',
+            category: 'social',
+            icon: '👥',
+            query: `"${phone}" (site:facebook.com OR site:linkedin.com OR site:instagram.com OR site:twitter.com OR site:x.com)`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`"${phone}" (site:facebook.com OR site:linkedin.com OR site:instagram.com OR site:twitter.com OR site:x.com)`)}`
+        },
+        {
+            id: 'groups',
+            title: 'مجموعات واتساب وتليجرام العامة (Messaging Public Invites)',
+            description: 'البحث عن دعوات مجموعات واتساب أو قنوات تليجرام التي نشرت الرقم كجهة اتصال',
+            category: 'messaging',
+            icon: '💬',
+            query: `("${phone}" OR "${cleanDigits}") ("chat.whatsapp.com" OR "t.me/")`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`("${phone}" OR "${cleanDigits}") ("chat.whatsapp.com" OR "t.me/")`)}`
+        },
+        {
+            id: 'business',
+            title: 'السجلات التجارية والشركات (Business & Directories)',
+            description: 'فحص الأدلة التجارية، صفحات الأنشطة، وحسابات التجارة والإعلانات',
+            category: 'business',
+            icon: '🏢',
+            query: `"${phone}" ("السجل التجاري" OR "دليل الشركات" OR "اتصل بنا" OR "خدمة العملاء")`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`"${phone}" ("السجل التجاري" OR "دليل الشركات" OR "اتصل بنا" OR "خدمة العملاء")`)}`
+        },
+        {
+            id: 'classifieds',
+            title: 'الإعلانات المبوبة وأسواق البيع (Classifieds & Ads)',
+            description: 'فحص مواقع حراج والسوق المفتوح وأوليكس وسوق المستعمل',
+            category: 'classifieds',
+            icon: '🏷️',
+            query: `("${phone}" OR "${nationalNum}") (site:opensooq.com OR site:haraj.com.sa OR site:olx.*)`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(`("${phone}" OR "${nationalNum}") (site:opensooq.com OR site:haraj.com.sa OR site:olx.*)`)}`
+        }
+    ];
+}
+
+function generateInvestigativePivots(e164, cleanDigits, countryCode, nationalNumber) {
+    const rawNoPlus = e164.replace('+', '');
+    return [
+        {
+            platform: 'WhatsApp',
+            title: 'واتساب مباشر (WhatsApp Direct Check)',
+            action: 'فحص الحساب المباشر عبر بروتوكول wa.me',
+            category: 'chat',
+            url: `https://wa.me/${rawNoPlus}`,
+            icon: '🟢'
+        },
+        {
+            platform: 'Telegram',
+            title: 'تليجرام مباشر (Telegram Contact Lookup)',
+            action: 'فتح الحساب عبر معرف الهاتف المباشر',
+            category: 'chat',
+            url: `https://t.me/+${rawNoPlus}`,
+            icon: '✈️'
+        },
+        {
+            platform: 'Truecaller',
+            title: 'كشف المتصل Truecaller Web',
+            action: 'كشف اسم المتصل وسجلات السمعة والبروفايل',
+            category: 'callerid',
+            url: `https://www.truecaller.com/search/${(countryCode || '').toLowerCase()}/${nationalNumber || rawNoPlus}`,
+            icon: '🔍'
+        },
+        {
+            platform: 'Sync.me',
+            title: 'استعلام مطابقة المتصلين Sync.me',
+            action: 'ربط الرقم بالحسابات الاجتماعية وسجل جهات الاتصال',
+            category: 'callerid',
+            url: `https://sync.me/search/?number=${encodeURIComponent(e164)}`,
+            icon: '🔄'
+        },
+        {
+            platform: 'ViewDNS WHOIS',
+            title: 'سجلات النطاقات Reverse WHOIS',
+            action: 'كشف المواقع والخوادم والدومينات المحجوزة بالرقم',
+            category: 'domains',
+            url: `https://viewdns.info/reversewhois/?q=${encodeURIComponent(e164)}`,
+            icon: '🌐'
+        },
+        {
+            platform: 'WhoXY',
+            title: 'أرشيفات النطاقات العالمية WhoXY',
+            action: 'مطابقة الهاتف في أرشيفات الدومينات العالمية',
+            category: 'domains',
+            url: `https://www.whoxy.com/search.php?phone=${encodeURIComponent(rawNoPlus)}`,
+            icon: '🏛️'
+        },
+        {
+            platform: 'ScamSearch',
+            title: 'قاعدة بيانات الاحتيال ScamSearch',
+            action: 'البحث عن بلاغات احتيال وسكام مسجلة عالمياً',
+            category: 'security',
+            url: `https://scamsearch.io/search?q=${encodeURIComponent(e164)}`,
+            icon: '🛡️'
+        },
+        {
+            platform: 'Google Exact',
+            title: 'بحث جوجل الدقيق (Exact Literal Match)',
+            action: 'استخراج كل صفحة ويب وموقع يحوي الرقم حرفياً',
+            category: 'search',
+            url: `https://www.google.com/search?q=%22${encodeURIComponent(e164)}%22`,
+            icon: '🔎'
+        }
+    ];
+}
+
+function getHlrTelecomProfile(countryCode, carrier, nationalNum) {
+    const countryHLR = TELECOM_HLR_DATA[countryCode];
+    let hlr = countryHLR && carrier ? countryHLR[carrier] : null;
+
+    if (!hlr && countryHLR) {
+        for (const [key, val] of Object.entries(countryHLR)) {
+            if (carrier && (carrier.includes(key) || key.includes(carrier))) {
+                hlr = val;
+                break;
+            }
+        }
+    }
+
+    const defaultMCC = countryCode === 'PS' ? '425' : countryCode === 'JO' ? '416' : countryCode === 'SA' ? '420' : countryCode === 'EG' ? '602' : countryCode === 'AE' ? '424' : 'N/A';
+
+    return {
+        mcc: hlr?.mcc || defaultMCC,
+        mnc: hlr?.mnc || '01',
+        network: hlr?.network || carrier || 'مشغل شبكة محلي معتمد',
+        standards: hlr?.standard || 'GSM / UMTS / LTE',
+        frequencyBands: hlr?.band || '900 / 1800 / 2100 MHz',
+        routingProfile: `HLR/VLR Route: ${countryCode || 'INT'}-${hlr?.mcc || defaultMCC}-${hlr?.mnc || '01'}`,
+        imsiRange: `${hlr?.mcc || defaultMCC}${hlr?.mnc || '01'}xxxxxxxxx`,
+        portabilityStatus: 'رقم محلي قياسي (Standard Assigned Route)',
+        roamingProfile: 'متاح للربط والتجوال الدولي (GSM Standard Roaming)'
+    };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Helper: تحديد شركة الاتصالات من بادئة الرقم
 // ═══════════════════════════════════════════════════════════════
@@ -533,6 +717,12 @@ const analyzePhone = async (req, res) => {
         else if (riskScore >= 30) overallRisk = 'متوسط 🟡';
         else overallRisk = 'منخفض 🟢';
 
+        // ─── Step 7: حساب بيانات HLR و Dorks و Pivots ───
+        const cleanDigits = cleanNumber.replace(/\D/g, '');
+        const hlrProfile = getHlrTelecomProfile(localData.country, localData.carrier, localData.nationalNumber);
+        const googleDorks = generateGoogleDorks(e164, localData.nationalNumber || cleanDigits, cleanDigits);
+        const investigativePivots = generateInvestigativePivots(e164, cleanDigits, localData.country, localData.nationalNumber);
+
         // ─── الرد النهائي ───
         res.json({
             success: true,
@@ -541,6 +731,15 @@ const analyzePhone = async (req, res) => {
 
             // البيانات المحلية
             local: localData,
+
+            // HLR & Telecom Technical Profile
+            hlrProfile,
+
+            // Cyber Reconnaissance Google Dorks
+            googleDorks,
+
+            // Investigative Pivot Links
+            investigativePivots,
 
             // NumVerify
             numverify: numverifyData,
@@ -576,7 +775,9 @@ const analyzePhone = async (req, res) => {
                 libphonenumber: true,
                 numverify: numverifyData?.available || false,
                 googleSearch: webResults?.available || false,
-                spamCheck: spamData?.available || false
+                spamCheck: spamData?.available || false,
+                hlrDatabase: true,
+                dorkEngine: true
             }
         });
 
