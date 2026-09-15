@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { arModelService } from '../services/arModelApi';
 import { saveFile } from '../utils/download';
@@ -26,6 +27,14 @@ const emptyForm = () => ({
     hotspots: [],
     is_published: true
 });
+
+/**
+ * النوافذ تُرسم في <body> مباشرةً.
+ * بطاقة لوحة الإدارة تحمل backdrop-filter و overflow:hidden — والأولى
+ * تجعلها حاوية لأي position:fixed بداخلها، والثانية تقصّ ما يتجاوزها،
+ * فتظهر النافذة ملتصقة بالبطاقة ومقصوصة بدل أن تملأ الشاشة.
+ */
+const Portal = ({ children }) => createPortal(children, document.body);
 
 const extOf = (name) => {
     const dot = String(name || '').lastIndexOf('.');
@@ -234,6 +243,7 @@ const AdminARModels = ({ onClose }) => {
 
             {/* ── نموذج الإضافة / التعديل ── */}
             {form && (
+                <Portal>
                 <div className="arm-modal-back" onClick={() => !saving && setForm(null)}>
                     <div className="arm-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="arm-modal-head">
@@ -394,10 +404,15 @@ const AdminARModels = ({ onClose }) => {
                         </div>
                     </div>
                 </div>
+                </Portal>
             )}
 
             {/* ── بطاقة رمز QR ── */}
-            {qrFor && <QrCard model={qrFor} url={modelUrl(qrFor)} onClose={() => setQrFor(null)} onFlash={flash} />}
+            {qrFor && (
+                <Portal>
+                    <QrCard model={qrFor} url={modelUrl(qrFor)} onClose={() => setQrFor(null)} onFlash={flash} />
+                </Portal>
+            )}
         </div>
     );
 };
