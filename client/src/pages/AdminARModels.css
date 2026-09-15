@@ -56,6 +56,29 @@
 
 .arm-btn-primary:hover:not(:disabled) { background: #ffc24d; border-color: transparent; }
 
+.arm-btn-scanner {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.18), rgba(0, 212, 255, 0.18));
+    border: 1px solid rgba(0, 255, 136, 0.45);
+    color: #00ff88;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+}
+
+.arm-btn-scanner:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.3), rgba(0, 212, 255, 0.3));
+    border-color: #00ff88;
+    color: #fff;
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.35);
+    transform: translateY(-2px);
+}
+
+.arm-btn-scanner .arm-btn-icon {
+    font-size: 1.1rem;
+}
+
 /* ── إشعار ── */
 .arm-notice {
     margin-bottom: 16px;

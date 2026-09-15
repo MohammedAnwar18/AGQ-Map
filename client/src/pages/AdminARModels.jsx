@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { arModelService } from '../services/arModelApi';
 import { saveFile } from '../utils/download';
+import ARObjectScannerModal from '../components/ARObjectScannerModal';
 import './AdminARModels.css';
 
 /* ============================================================
@@ -50,6 +51,7 @@ const AdminARModels = ({ onClose }) => {
     const [upload, setUpload] = useState(null);      // { kind, percent }
     const [notice, setNotice] = useState(null);
     const [qrFor, setQrFor] = useState(null);
+    const [showScanner, setShowScanner] = useState(false);
 
     const modelInput = useRef(null);
     const iosInput = useRef(null);
@@ -185,6 +187,15 @@ const AdminARModels = ({ onClose }) => {
                 </div>
 
                 <div className="arm-top-actions">
+                    <button 
+                        className="arm-btn arm-btn-scanner" 
+                        onClick={() => setShowScanner(true)}
+                        title="مسح مجسم حقيقي 360° بالكاميرا وتوليد نموذج ثلاثي أبعاد"
+                    >
+                        <span className="arm-btn-icon">📷</span>
+                        <span>مسح مجسم 360°</span>
+                    </button>
+
                     <button className="arm-btn arm-btn-primary" onClick={() => setForm(emptyForm())}>
                         + مجسّم جديد
                     </button>
@@ -411,6 +422,23 @@ const AdminARModels = ({ onClose }) => {
             {qrFor && (
                 <Portal>
                     <QrCard model={qrFor} url={modelUrl(qrFor)} onClose={() => setQrFor(null)} onFlash={flash} />
+                </Portal>
+            )}
+
+            {/* ── الماسح ثلاثي الأبعاد 360° ── */}
+            {showScanner && (
+                <Portal>
+                    <ARObjectScannerModal
+                        onClose={() => setShowScanner(false)}
+                        onSaveModel={(newModel) => {
+                            if (newModel) {
+                                setModels(prev => [newModel, ...prev]);
+                            } else {
+                                load();
+                            }
+                            flash('تم مسح وحفظ المجسم ثلاثي الأبعاد بنجاح!');
+                        }}
+                    />
                 </Portal>
             )}
         </div>
