@@ -96,4 +96,8 @@ router.delete('/face/photos/:photoId', deletePersonPhoto);
 // Face Recognition — Search by Image
 router.post('/face/search', faceUpload.single('image'), searchByImage);
 
+// Phone Intelligence — تحليل أرقام الهواتف
+const { analyzePhone } = require('../controllers/phoneIntelController');
+router.post('/phone-intel/analyze', analyzePhone);
+
 module.exports = router;

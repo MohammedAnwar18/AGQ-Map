@@ -194,6 +194,12 @@ export const adminService = {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
         return response.data;
+    },
+
+    // Phone Intelligence — تحليل أرقام الهواتف
+    analyzePhone: async (phoneNumber) => {
+        const response = await adminApi.post('/phone-intel/analyze', { phoneNumber });
+        return response.data;
     }
 };
 
