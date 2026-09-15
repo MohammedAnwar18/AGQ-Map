@@ -104,6 +104,7 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/ar-models', require('./routes/arModels'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
@@ -176,6 +177,36 @@ app.use('/api/fitness', fitnessRoutes);
         console.log('✅ storefront product tables ready');
     } catch (err) {
         console.warn('⚠️ storefront migration warning:', err.message);
+    }
+})();
+
+// Auto-migrate: مجسّمات الواقع المعزّز ورموزها
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_models (
+                id SERIAL PRIMARY KEY,
+                slug VARCHAR(24) NOT NULL UNIQUE,
+                title VARCHAR(200) NOT NULL,
+                subtitle VARCHAR(200),
+                description TEXT,
+                model_url TEXT NOT NULL,
+                ios_url TEXT,
+                poster_url TEXT,
+                hotspots JSONB NOT NULL DEFAULT '[]'::jsonb,
+                is_published BOOLEAN DEFAULT TRUE,
+                views INTEGER DEFAULT 0,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_ar_models_slug ON ar_models (slug);
+        `);
+        console.log('✅ AR models table ready');
+    } catch (err) {
+        console.warn('⚠️ AR models migration warning:', err.message);
     }
 })();
 
