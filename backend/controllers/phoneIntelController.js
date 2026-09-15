@@ -1,9 +1,21 @@
-const {
-    parsePhoneNumberFromString,
-    getCountryCallingCode,
-    getExampleNumber,
-    isSupportedCountry
-} = require('libphonenumber-js/max');
+let parsePhoneNumberFromString, getCountryCallingCode, getExampleNumber, isSupportedCountry;
+try {
+    const libphone = require('libphonenumber-js/max');
+    parsePhoneNumberFromString = libphone.parsePhoneNumberFromString;
+    getCountryCallingCode = libphone.getCountryCallingCode;
+    getExampleNumber = libphone.getExampleNumber;
+    isSupportedCountry = libphone.isSupportedCountry;
+} catch (e) {
+    try {
+        const libphone = require('libphonenumber-js');
+        parsePhoneNumberFromString = libphone.parsePhoneNumberFromString;
+        getCountryCallingCode = libphone.getCountryCallingCode;
+        getExampleNumber = libphone.getExampleNumber;
+        isSupportedCountry = libphone.isSupportedCountry;
+    } catch (e2) {
+        console.error('[PhoneIntel] libphonenumber-js not found:', e2.message);
+    }
+}
 const axios = require('axios');
 
 /**
