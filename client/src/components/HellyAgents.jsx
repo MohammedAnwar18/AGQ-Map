@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { hellyService } from '../services/hellyApi';
+import HellyMark from './HellyMark';
 import './HellyAgents.css';
 
 /* ============================================================
@@ -241,7 +242,7 @@ const HellyAgents = ({ onClose }) => {
                             <Icon.Back />
                         </button>
                     )}
-                    <span className="hla-brand-mark"><Icon.Brain width="20" height="20" /></span>
+                    <HellyMark size={42} className="hla-brand-mark" />
                     <div>
                         <b>HellyAgents</b>
                         <span>محاكاة جماعية متعدّدة الوكلاء</span>
@@ -271,7 +272,7 @@ const HellyAgents = ({ onClose }) => {
                         <div className="hla-empty"><p>جاري التحميل…</p></div>
                     ) : sims.length === 0 ? (
                         <div className="hla-empty">
-                            <span className="hla-empty-icon"><Icon.Brain /></span>
+                            <HellyMark size={68} className="hla-empty-icon" />
                             <h3>لا محاكاات بعد</h3>
                             <p>ابدأ بسيناريو: قرار تفكّر فيه، أو خبر تريد قياس أثره.</p>
                         </div>
@@ -309,7 +310,7 @@ const HellyAgents = ({ onClose }) => {
                 <div className="hla-body">
                     <div className="hla-setup">
                         <div className="hla-hero">
-                            <span className="hla-hero-icon"><Icon.Brain /></span>
+                            <HellyMark size={72} className="hla-hero-icon" />
                             <h2>محاكاة جديدة</h2>
                             <p>سيُبنى مجتمع من وكلاء مستقلّين، لكلٍّ شخصيته وموقفه، ثم يتفاعلون جولةً بعد جولة.</p>
                         </div>

@@ -29,6 +29,7 @@ const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShop
 const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
 const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
 const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
+import HellyMark from '../components/HellyMark';
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
 const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
@@ -2551,11 +2552,7 @@ const MapComponent = () => {
                             <button onClick={() => { setShowMoreMenu(false); setShowHellyAgents(true); }}>
                                 <div className="menu-item-content">
                                     <div className="menu-icon-wrapper">
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <circle cx="7" cy="7" r="2.6" /><circle cx="17" cy="7" r="2.6" />
-                                            <circle cx="12" cy="17" r="2.6" /><circle cx="12" cy="4.5" r="1.6" />
-                                            <path d="M9.4 8.4 11 15M14.6 8.4 13 15M9.3 6.4h5.4" />
-                                        </svg>
+                                        <HellyMark size={26} />
                                     </div>
                                     <span>HellyAgents</span>
                                 </div>

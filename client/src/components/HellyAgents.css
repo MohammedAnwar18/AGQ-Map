@@ -47,16 +47,11 @@
     min-width: 0;
 }
 
+/* الشعار يحمل لوحته وحوافّه بنفسه، فلا إطار حوله */
 .hla-brand-mark {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
     flex-shrink: 0;
     border-radius: 14px;
-    background: linear-gradient(140deg, rgba(139, 92, 246, .3), rgba(139, 92, 246, .12));
-    border: 1px solid rgba(139, 92, 246, .4);
-    color: #c4b5fd;
+    box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .8);
 }
 
 .hla-brand > div {
@@ -122,14 +117,10 @@
 }
 
 .hla-hero-icon {
-    display: grid;
-    place-items: center;
-    width: 62px;
-    height: 62px;
+    display: block;
     margin: 0 auto 14px;
-    border-radius: 20px;
-    background: rgba(139, 92, 246, .2);
-    color: #c4b5fd;
+    border-radius: 22px;
+    box-shadow: 0 14px 34px -14px rgba(0, 0, 0, .85);
 }
 
 .hla-hero h2 { margin: 0 0 9px; font-size: 1.15rem; font-weight: 700; }
@@ -520,14 +511,10 @@
 }
 
 .hla-empty-icon {
-    display: grid;
-    place-items: center;
-    width: 62px;
-    height: 62px;
+    display: block;
     margin: 0 auto 14px;
-    border-radius: 20px;
-    background: rgba(139, 92, 246, .16);
-    color: #c4b5fd;
+    border-radius: 21px;
+    box-shadow: 0 12px 30px -14px rgba(0, 0, 0, .8);
 }
 
 .hla-empty h3 { margin: 0 0 8px; font-size: 1rem; font-weight: 700; color: var(--hla-text); }
