@@ -9,7 +9,7 @@
     --hla-line: rgba(255, 255, 255, .09);
     --hla-text: #f1f5f9;
     --hla-muted: #94a3b8;
-    --hla-accent: #8b5cf6;
+    --hla-accent: #22d3ee;
     --hla-gold: #fbab15;
 
     position: fixed;
@@ -81,7 +81,7 @@
 
 .hla-icon:hover { background: rgba(255, 255, 255, .09); }
 .hla-icon:active { transform: scale(.93); }
-.hla-icon.is-on { border-color: rgba(139, 92, 246, .5); color: #c4b5fd; }
+.hla-icon.is-on { border-color: rgba(34, 211, 238, .5); color: #67e8f9; }
 
 /* ── الإطار ── */
 .hla-frame {
@@ -111,8 +111,8 @@
 .hla-hero {
     padding: 26px 22px;
     border-radius: 22px;
-    border: 1px solid rgba(139, 92, 246, .28);
-    background: linear-gradient(150deg, rgba(139, 92, 246, .14), rgba(139, 92, 246, .04));
+    border: 1px solid rgba(34, 211, 238, .28);
+    background: linear-gradient(150deg, rgba(34, 211, 238, .12), rgba(34, 211, 238, .03));
     text-align: center;
 }
 
@@ -171,7 +171,7 @@
     padding: 2px 7px;
     border-radius: 6px;
     background: rgba(0, 0, 0, .35);
-    color: #c4b5fd;
+    color: #67e8f9;
     font-size: .78rem;
 }
 
@@ -195,7 +195,7 @@
     outline: none;
 }
 
-.hla-connect input:focus { border-color: rgba(139, 92, 246, .55); }
+.hla-connect input:focus { border-color: rgba(34, 211, 238, .55); }
 
 .hla-btn {
     display: inline-flex;
@@ -221,10 +221,10 @@
 .hla-btn-primary {
     background: var(--hla-accent);
     border-color: transparent;
-    color: #fff;
+    color: #062430;
 }
 
-.hla-btn-primary:hover:not(:disabled) { background: #a78bfa; }
+.hla-btn-primary:hover:not(:disabled) { background: #67e8f9; }
 
 .hla-unlink {
     margin-top: 11px;
@@ -360,8 +360,8 @@
     height: 60px;
     margin: 0 auto 14px;
     border-radius: 20px;
-    background: rgba(139, 92, 246, .16);
-    color: #c4b5fd;
+    background: rgba(34, 211, 238, .14);
+    color: #67e8f9;
 }
 
 .hla-card h3 { margin: 0 0 9px; font-size: 1rem; font-weight: 700; }
@@ -410,13 +410,13 @@
     gap: 10px;
     padding: 11px 20px;
     border-radius: 999px;
-    border: 1px solid rgba(139, 92, 246, .45);
-    background: rgba(139, 92, 246, .16);
+    border: 1px solid rgba(34, 211, 238, .45);
+    background: rgba(34, 211, 238, .16);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     font-size: .84rem;
     font-weight: 600;
-    color: #c4b5fd;
+    color: #67e8f9;
 }
 
 .hla-spin {
@@ -425,7 +425,7 @@
     flex-shrink: 0;
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, .2);
-    border-top-color: #c4b5fd;
+    border-top-color: #67e8f9;
     animation: hlaSpin .8s linear infinite;
 }
 
@@ -466,7 +466,7 @@
     transition: border-color .18s ease, transform .16s ease;
 }
 
-.hla-simcard:hover { border-color: rgba(139, 92, 246, .45); transform: translateY(-2px); }
+.hla-simcard:hover { border-color: rgba(34, 211, 238, .45); transform: translateY(-2px); }
 
 .hla-simcard-head {
     display: flex;
@@ -546,7 +546,7 @@
     resize: vertical;
 }
 
-.hla-field textarea:focus { border-color: rgba(139, 92, 246, .55); }
+.hla-field textarea:focus { border-color: rgba(34, 211, 238, .55); }
 .hla-field input[type="range"] { accent-color: var(--hla-accent); cursor: pointer; }
 
 .hla-row {
@@ -771,7 +771,7 @@
 }
 
 .hla-inject-row input:focus,
-.hla-chatbar input:focus { border-color: rgba(139, 92, 246, .55); }
+.hla-chatbar input:focus { border-color: rgba(34, 211, 238, .55); }
 
 .hla-actions {
     display: flex;
