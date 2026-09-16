@@ -28,6 +28,7 @@ const NewsModal             = React.lazy(() => import('../components/NewsModal')
 const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShopsModal'));
 const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
 const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
+const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
 const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
@@ -830,6 +831,7 @@ const MapComponent = () => {
 
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
+    const [showHellyAgents, setShowHellyAgents] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
     // Auto-center map on user's active fitness tracking coordinates
@@ -2544,6 +2546,22 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
+                        {/* محرّك المحاكاة متعدّد الوكلاء — للأدمن العام وحده */}
+                        {user?.role === 'admin' && (
+                            <button onClick={() => { setShowMoreMenu(false); setShowHellyAgents(true); }}>
+                                <div className="menu-item-content">
+                                    <div className="menu-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
+                                            <circle cx="7" cy="7" r="2.6" /><circle cx="17" cy="7" r="2.6" />
+                                            <circle cx="12" cy="17" r="2.6" /><circle cx="12" cy="4.5" r="1.6" />
+                                            <path d="M9.4 8.4 11 15M14.6 8.4 13 15M9.3 6.4h5.4" />
+                                        </svg>
+                                    </div>
+                                    <span>HellyAgents</span>
+                                </div>
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                            </button>
+                        )}
                         {/* الأخبار - مخفي بطلب من المستخدم */}
                         {false && (
                             <button onClick={() => { setShowNews(true); setShowMoreMenu(false); }}>
@@ -3798,6 +3816,11 @@ const MapComponent = () => {
                 }}
             />}
             {showChat && <ChatModal onClose={() => setShowChat(false)} />}
+            {showHellyAgents && user?.role === 'admin' && (
+                <React.Suspense fallback={null}>
+                    <HellyAgents onClose={() => setShowHellyAgents(false)} />
+                </React.Suspense>
+            )}
             {showFriends && <FriendsModal
                 onClose={() => setShowFriends(false)}
                 onShopFollowed={handleShopFollowed}
