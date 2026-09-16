@@ -105,6 +105,7 @@ app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/ar-models', require('./routes/arModels'));
+app.use('/api/helly', require('./routes/helly'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
@@ -177,6 +178,65 @@ app.use('/api/fitness', fitnessRoutes);
         console.log('✅ storefront product tables ready');
     } catch (err) {
         console.warn('⚠️ storefront migration warning:', err.message);
+    }
+})();
+
+// Auto-migrate: محرّك HellyAgents للمحاكاة متعدّدة الوكلاء
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS helly_simulations (
+                id SERIAL PRIMARY KEY,
+                topic TEXT NOT NULL,
+                seed TEXT,
+                agent_count INTEGER NOT NULL DEFAULT 0,
+                total_rounds INTEGER NOT NULL DEFAULT 6,
+                current_round INTEGER NOT NULL DEFAULT 0,
+                report TEXT,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS helly_agents (
+                id SERIAL PRIMARY KEY,
+                simulation_id INTEGER NOT NULL REFERENCES helly_simulations(id) ON DELETE CASCADE,
+                name VARCHAR(120) NOT NULL,
+                persona TEXT NOT NULL,
+                stance VARCHAR(40) NOT NULL,
+                initial_stance VARCHAR(40) NOT NULL,
+                influence INTEGER NOT NULL DEFAULT 5,
+                shifts INTEGER NOT NULL DEFAULT 0,
+                last_said TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS helly_events (
+                id SERIAL PRIMARY KEY,
+                simulation_id INTEGER NOT NULL REFERENCES helly_simulations(id) ON DELETE CASCADE,
+                agent_id INTEGER REFERENCES helly_agents(id) ON DELETE CASCADE,
+                round INTEGER NOT NULL DEFAULT 0,
+                kind VARCHAR(20) NOT NULL DEFAULT 'post',
+                content TEXT NOT NULL,
+                stance_after VARCHAR(40),
+                shifted BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_helly_events_sim
+            ON helly_events (simulation_id, round DESC, id DESC);
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_helly_agents_sim
+            ON helly_agents (simulation_id);
+        `);
+        console.log('✅ HellyAgents tables ready');
+    } catch (err) {
+        console.warn('⚠️ HellyAgents migration warning:', err.message);
     }
 })();
 

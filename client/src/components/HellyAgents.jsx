@@ -1,33 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { hellyService } from '../services/hellyApi';
 import './HellyAgents.css';
 
 /* ============================================================
-   HellyAgents — واجهة محرّك المحاكاة متعدّد الوكلاء (MiroFish)
+   HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
 
-   المحرّك خدمة Python/Flask مستقلّة تعمل في حاوية Docker خاصّة بها،
-   وهذه الصفحة تصله وتعرضه داخل بالنوفا. أبقيناه منفصلاً لسببين:
+   نبني مجتمعاً من وكلاء مستقلّين، لكلٍّ شخصيته وموقفه، ثم نمضي بهم
+   جولةً جولة: كل وكيل يسمع ما قاله الآخرون فيتكلّم وقد يتحوّل موقفه.
+   يمكن حقن حدث في منتصف الطريق لرؤية أثره، ومحادثة أي وكيل، ثم
+   استخراج تقرير يحلّل كيف تحرّك الرأي.
 
-   • تقني : بالنوفا تطبيق Node يعمل على دوال Vercel قصيرة العمر،
-            والمحرّك عملية Python طويلة تُشغّل آلاف الوكلاء لدقائق.
-   • قانوني: رخصة المحرّك AGPL-3.0، وهي تُلزم بنشر الشيفرة كاملةً
-            لو دُمج داخل التطبيق. وصله كخدمة مستقلّة يتجنّب ذلك.
+   الجولة الواحدة نداء مستقلّ والحالة في قاعدة البيانات، فالمحاكاة
+   تُستأنف ولا تصطدم بمهلة الطلب.
    ============================================================ */
 
-const STORAGE_KEY = 'helly_agents_url';
-
-// نتحقّق أن العنوان صالح قبل محاولة الوصل
-const normalizeUrl = (value) => {
-    const raw = String(value || '').trim().replace(/\/+$/, '');
-    if (!raw) return '';
-    const withScheme = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
-    try {
-        // eslint-disable-next-line no-new
-        new URL(withScheme);
-        return withScheme;
-    } catch {
-        return '';
-    }
+const STANCE_TONE = {
+    'مؤيّد بشدّة': '#22c55e',
+    'مؤيّد': '#4ade80',
+    'محايد': '#94a3b8',
+    'معارض': '#fb923c',
+    'معارض بشدّة': '#ef4444'
 };
+
+const STANCES = Object.keys(STANCE_TONE);
 
 const Icon = {
     Close: (p) => (
@@ -42,86 +37,210 @@ const Icon = {
             <path d="M9.4 8.4 11 15M14.6 8.4 13 15M9.3 6.4h5.4" />
         </svg>
     ),
-    Link: (p) => (
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
-            <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    Back: (p) => (
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polyline points="9 18 15 12 9 6" />
         </svg>
     ),
-    Gear: (p) => (
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    Play: (p) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" {...p}>
+            <polygon points="6 4 20 12 6 20" />
         </svg>
     ),
-    Copy: (p) => (
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
-            <rect x="9" y="9" width="12" height="12" rx="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    Bolt: (p) => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+    ),
+    Doc: (p) => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" />
+        </svg>
+    ),
+    Trash: (p) => (
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
     )
 };
 
-// ── كتلة أوامر قابلة للنسخ ───────────────────────────────────
-const Command = ({ children }) => {
-    const [copied, setCopied] = useState(false);
-
-    const copy = async () => {
-        try {
-            await navigator.clipboard.writeText(children);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1600);
-        } catch { /* حافظة غير متاحة */ }
-    };
-
-    return (
-        <div className="hla-cmd">
-            <code dir="ltr">{children}</code>
-            <button onClick={copy} aria-label="نسخ">
-                {copied ? '✓' : <Icon.Copy />}
-            </button>
-        </div>
-    );
-};
+// ── شريط توزيع المواقف ───────────────────────────────────────
+const StanceBar = ({ distribution, total }) => (
+    <div className="hla-bar">
+        {STANCES.map(stance => {
+            const count = distribution?.[stance] || 0;
+            if (!count) return null;
+            return (
+                <span
+                    key={stance}
+                    className="hla-bar-seg"
+                    style={{ width: `${(count / total) * 100}%`, background: STANCE_TONE[stance] }}
+                    title={`${stance}: ${count}`}
+                />
+            );
+        })}
+    </div>
+);
 
 // ============================================================
 const HellyAgents = ({ onClose }) => {
-    // الأولوية لمتغيّر البيئة، ثم ما حفظه الأدمن في هذا المتصفح
-    const envUrl = normalizeUrl(import.meta.env.VITE_HELLY_AGENTS_URL);
-    const [url, setUrl] = useState(() => envUrl || normalizeUrl(localStorage.getItem(STORAGE_KEY)));
-    const [draft, setDraft] = useState(url);
-    const [settingsOpen, setSettingsOpen] = useState(false);
-    const [frameError, setFrameError] = useState(false);
-    const frameRef = useRef(null);
+    const [view, setView] = useState('list');        // list | form | sim
+    const [sims, setSims] = useState([]);
+    const [sim, setSim] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState(null);          // نصّ العملية الجارية
+    const [notice, setNotice] = useState(null);
+    const [chatWith, setChatWith] = useState(null);  // { agent, messages }
+    const [chatDraft, setChatDraft] = useState('');
+    const [injectDraft, setInjectDraft] = useState('');
+    const [showReport, setShowReport] = useState(false);
+
+    const [form, setForm] = useState({ topic: '', seed: '', agent_count: 12, total_rounds: 6 });
+    const feedRef = useRef(null);
+
+    const flash = (message, kind = 'ok') => {
+        setNotice({ message, kind });
+        setTimeout(() => setNotice(null), 3200);
+    };
 
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => { document.body.style.overflow = ''; };
     }, []);
 
-    const connect = () => {
-        const clean = normalizeUrl(draft);
-        if (!clean) return;
-        localStorage.setItem(STORAGE_KEY, clean);
-        setUrl(clean);
-        setDraft(clean);
-        setFrameError(false);
-        setSettingsOpen(false);
+    const loadList = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await hellyService.list();
+            setSims(data.simulations || []);
+        } catch (e) {
+            flash(e?.response?.data?.error || 'تعذّر تحميل المحاكاات', 'err');
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { loadList(); }, [loadList]);
+
+    // ── إنشاء ──────────────────────────────────────────────────
+    const create = async () => {
+        if (!form.topic.trim()) return flash('اكتب الموضوع أولاً', 'err');
+        setBusy('يبني المجتمع ويولّد الشخصيات…');
+        try {
+            const created = await hellyService.create(form);
+            setSim(created);
+            setView('sim');
+            flash(`جاهز — ${created.agents.length} وكيلاً`);
+        } catch (e) {
+            flash(e?.response?.data?.error || 'تعذّر إنشاء المحاكاة', 'err');
+        } finally {
+            setBusy(null);
+        }
     };
 
-    const disconnect = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        setUrl('');
-        setDraft('');
-        setSettingsOpen(false);
+    const open = async (id) => {
+        setBusy('يفتح المحاكاة…');
+        try {
+            setSim(await hellyService.get(id));
+            setView('sim');
+            setShowReport(false);
+        } catch (e) {
+            flash('تعذّر فتح المحاكاة', 'err');
+        } finally {
+            setBusy(null);
+        }
     };
 
-    const showSetup = !url || settingsOpen;
+    const remove = async (id, e) => {
+        e?.stopPropagation();
+        if (!window.confirm('حذف هذه المحاكاة وكل ما فيها؟')) return;
+        try {
+            await hellyService.remove(id);
+            setSims(prev => prev.filter(s => s.id !== id));
+            flash('حُذفت');
+        } catch { flash('تعذّر الحذف', 'err'); }
+    };
+
+    // ── الجولة ─────────────────────────────────────────────────
+    const step = async () => {
+        setBusy(`يُجري الجولة ${sim.current_round + 1}…`);
+        try {
+            const next = await hellyService.step(sim.id);
+            setSim(next);
+            feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            flash(e?.response?.data?.error || 'تعذّرت الجولة', 'err');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const inject = async () => {
+        const content = injectDraft.trim();
+        if (!content) return;
+        setBusy('يحقن الحدث…');
+        try {
+            setSim(await hellyService.inject(sim.id, content));
+            setInjectDraft('');
+            flash('حُقن الحدث — نفّذ الجولة التالية لترى أثره');
+        } catch {
+            flash('تعذّر الحقن', 'err');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const makeReport = async () => {
+        setBusy('يحلّل النتائج…');
+        try {
+            const { report } = await hellyService.report(sim.id);
+            setSim(prev => ({ ...prev, report }));
+            setShowReport(true);
+        } catch {
+            flash('تعذّر إنشاء التقرير', 'err');
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    // ── محادثة وكيل ────────────────────────────────────────────
+    const sendChat = async () => {
+        const message = chatDraft.trim();
+        if (!message || busy) return;
+
+        setChatWith(prev => ({ ...prev, messages: [...prev.messages, { from: 'me', text: message }] }));
+        setChatDraft('');
+        setBusy('يفكّر…');
+
+        try {
+            const { reply } = await hellyService.chat(sim.id, chatWith.agent.id, message);
+            setChatWith(prev => ({ ...prev, messages: [...prev.messages, { from: 'agent', text: reply }] }));
+        } catch {
+            setChatWith(prev => ({ ...prev, messages: [...prev.messages, { from: 'agent', text: '(تعذّر الردّ)' }] }));
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const shifted = sim?.agents?.filter(a => a.stance !== a.initial_stance).length || 0;
+    const done = sim && sim.current_round >= sim.total_rounds;
 
     return (
         <div className="hla" dir="rtl">
+            {/* ── الشريط العلوي ── */}
             <header className="hla-top">
                 <div className="hla-brand">
+                    {view !== 'list' && (
+                        <button
+                            className="hla-icon"
+                            onClick={() => { setView('list'); setSim(null); loadList(); }}
+                            aria-label="رجوع"
+                        >
+                            <Icon.Back />
+                        </button>
+                    )}
                     <span className="hla-brand-mark"><Icon.Brain width="20" height="20" /></span>
                     <div>
                         <b>HellyAgents</b>
@@ -129,132 +248,276 @@ const HellyAgents = ({ onClose }) => {
                     </div>
                 </div>
 
-                <div className="hla-top-actions">
-                    {url && (
-                        <button
-                            className={`hla-icon ${settingsOpen ? 'is-on' : ''}`}
-                            onClick={() => setSettingsOpen(o => !o)}
-                            title="إعدادات الاتصال"
-                        >
-                            <Icon.Gear />
-                        </button>
-                    )}
-                    <button className="hla-icon" onClick={onClose} aria-label="إغلاق"><Icon.Close /></button>
-                </div>
+                <button className="hla-icon" onClick={onClose} aria-label="إغلاق"><Icon.Close /></button>
             </header>
 
-            {/* ── المحرّك موصول: نعرضه ── */}
-            {url && !showSetup && !frameError && (
-                <iframe
-                    ref={frameRef}
-                    className="hla-frame"
-                    src={url}
-                    title="HellyAgents"
-                    allow="clipboard-write; fullscreen"
-                    onError={() => setFrameError(true)}
-                />
+            {notice && <div className={`hla-flash is-${notice.kind}`}>{notice.message}</div>}
+            {busy && <div className="hla-busy"><span className="hla-spin" />{busy}</div>}
+
+            {/* ── القائمة ── */}
+            {view === 'list' && (
+                <div className="hla-body">
+                    <div className="hla-listhead">
+                        <div>
+                            <h2>المحاكاات</h2>
+                            <p>اطرح سيناريو، ودع مجتمعاً من الوكلاء يعيشه أمامك</p>
+                        </div>
+                        <button className="hla-btn hla-btn-primary" onClick={() => setView('form')}>
+                            + محاكاة جديدة
+                        </button>
+                    </div>
+
+                    {loading ? (
+                        <div className="hla-empty"><p>جاري التحميل…</p></div>
+                    ) : sims.length === 0 ? (
+                        <div className="hla-empty">
+                            <span className="hla-empty-icon"><Icon.Brain /></span>
+                            <h3>لا محاكاات بعد</h3>
+                            <p>ابدأ بسيناريو: قرار تفكّر فيه، أو خبر تريد قياس أثره.</p>
+                        </div>
+                    ) : (
+                        <div className="hla-simlist">
+                            {sims.map(s => (
+                                <button className="hla-simcard" key={s.id} onClick={() => open(s.id)}>
+                                    <div className="hla-simcard-head">
+                                        <h3>{s.topic}</h3>
+                                        <span
+                                            className="hla-del"
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={(e) => remove(s.id, e)}
+                                            onKeyDown={(e) => e.key === 'Enter' && remove(s.id, e)}
+                                        >
+                                            <Icon.Trash />
+                                        </span>
+                                    </div>
+                                    <div className="hla-simmeta">
+                                        <span>{s.agent_count} وكيلاً</span>
+                                        <span>الجولة {s.current_round}/{s.total_rounds}</span>
+                                        <span>{s.event_count || 0} حدث</span>
+                                        {s.report && <em>تقرير جاهز</em>}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
 
-            {/* ── تعذّر العرض داخل الإطار ── */}
-            {url && !showSetup && frameError && (
+            {/* ── نموذج الإنشاء ── */}
+            {view === 'form' && (
                 <div className="hla-body">
-                    <div className="hla-card">
-                        <span className="hla-card-icon"><Icon.Link /></span>
-                        <h3>تعذّر عرض المحرّك داخل الصفحة</h3>
-                        <p>قد يمنع المحرّك التضمين. افتحه في تبويب مستقلّ:</p>
-                        <a className="hla-btn hla-btn-primary" href={url} target="_blank" rel="noreferrer">
-                            فتح HellyAgents في تبويب جديد
-                        </a>
+                    <div className="hla-setup">
+                        <div className="hla-hero">
+                            <span className="hla-hero-icon"><Icon.Brain /></span>
+                            <h2>محاكاة جديدة</h2>
+                            <p>سيُبنى مجتمع من وكلاء مستقلّين، لكلٍّ شخصيته وموقفه، ثم يتفاعلون جولةً بعد جولة.</p>
+                        </div>
+
+                        <div className="hla-block">
+                            <label className="hla-field">
+                                <span>الموضوع أو السيناريو</span>
+                                <textarea
+                                    value={form.topic}
+                                    onChange={(e) => setForm({ ...form, topic: e.target.value })}
+                                    placeholder="مثال: افتتاح سوق شعبي يغلق شارعاً رئيسياً يومي الجمعة والسبت"
+                                    rows={3}
+                                    autoFocus
+                                />
+                            </label>
+
+                            <label className="hla-field">
+                                <span>مادة خلفية <em>(اختياري — تجعل الوكلاء أدقّ)</em></span>
+                                <textarea
+                                    value={form.seed}
+                                    onChange={(e) => setForm({ ...form, seed: e.target.value })}
+                                    placeholder="معطيات، أرقام، آراء سابقة، سياق المكان…"
+                                    rows={5}
+                                />
+                            </label>
+
+                            <div className="hla-row">
+                                <label className="hla-field">
+                                    <span>عدد الوكلاء <b>{form.agent_count}</b></span>
+                                    <input
+                                        type="range" min="3" max="40" step="1"
+                                        value={form.agent_count}
+                                        onChange={(e) => setForm({ ...form, agent_count: +e.target.value })}
+                                    />
+                                </label>
+
+                                <label className="hla-field">
+                                    <span>عدد الجولات <b>{form.total_rounds}</b></span>
+                                    <input
+                                        type="range" min="1" max="40" step="1"
+                                        value={form.total_rounds}
+                                        onChange={(e) => setForm({ ...form, total_rounds: +e.target.value })}
+                                    />
+                                </label>
+                            </div>
+
+                            <p className="hla-note">
+                                كل جولة تستهلك نداءات للنموذج اللغوي. ابدأ بعدد صغير لتقيس الزمن والتكلفة،
+                                ثم وسّع. الجولات تُنفَّذ واحدةً واحدة ويمكنك التوقّف في أي لحظة.
+                            </p>
+
+                            <button className="hla-btn hla-btn-primary hla-wide" onClick={create} disabled={Boolean(busy)}>
+                                ابدأ المحاكاة
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* ── الإعداد ── */}
-            {showSetup && (
-                <div className="hla-body">
-                    <div className="hla-setup">
+            {/* ── المحاكاة ── */}
+            {view === 'sim' && sim && (
+                <div className="hla-sim">
+                    {/* اللوحة الجانبية: الوكلاء */}
+                    <aside className="hla-side">
+                        <div className="hla-side-head">
+                            <b>الوكلاء</b>
+                            <span>{shifted} غيّروا موقفهم</span>
+                        </div>
+                        <div className="hla-agents">
+                            {sim.agents.map(a => (
+                                <button
+                                    className="hla-agent"
+                                    key={a.id}
+                                    onClick={() => setChatWith({ agent: a, messages: [] })}
+                                    style={{ '--tone': STANCE_TONE[a.stance] || '#94a3b8' }}
+                                >
+                                    <span className="hla-agent-dot" />
+                                    <span className="hla-agent-text">
+                                        <b>{a.name}</b>
+                                        <span>{a.stance}{a.stance !== a.initial_stance ? ` ← كان ${a.initial_stance}` : ''}</span>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </aside>
 
-                        <div className="hla-hero">
-                            <span className="hla-hero-icon"><Icon.Brain /></span>
-                            <h2>اربط محرّك HellyAgents</h2>
-                            <p>
-                                المحرّك يبني عالماً رقمياً فيه آلاف الوكلاء المستقلّين، لكلٍّ شخصيته وذاكرته،
-                                ليختبر سيناريوهات المستقبل قبل تنفيذها على أرض الواقع.
-                            </p>
+                    {/* المسرح */}
+                    <section className="hla-stage">
+                        <div className="hla-stage-head">
+                            <h2>{sim.topic}</h2>
+                            <div className="hla-progress">
+                                <span>الجولة {sim.current_round} من {sim.total_rounds}</span>
+                                <StanceBar distribution={sim.distribution} total={sim.agent_count || 1} />
+                                <div className="hla-legend">
+                                    {STANCES.map(s => (sim.distribution?.[s] ? (
+                                        <span key={s}><i style={{ background: STANCE_TONE[s] }} />{s} {sim.distribution[s]}</span>
+                                    ) : null))}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* عنوان الخدمة */}
-                        <div className="hla-block">
-                            <h3><span className="hla-step">1</span> عنوان المحرّك</h3>
-                            <div className="hla-connect">
+                        {/* التغذية */}
+                        <div className="hla-feed" ref={feedRef}>
+                            {sim.events.length === 0 ? (
+                                <div className="hla-empty"><p>لم تبدأ بعد — اضغط «الجولة التالية».</p></div>
+                            ) : sim.events.map(e => {
+                                const agent = sim.agents.find(a => a.id === e.agent_id);
+                                if (e.kind === 'injection') {
+                                    return (
+                                        <div className="hla-inject" key={e.id}>
+                                            <Icon.Bolt /> <b>حدث مُدخَل</b>
+                                            <p>{e.content}</p>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="hla-post" key={e.id} style={{ '--tone': STANCE_TONE[e.stance_after] || '#94a3b8' }}>
+                                        <div className="hla-post-head">
+                                            <b>{agent?.name || 'وكيل'}</b>
+                                            <span className="hla-round">ج{e.round}</span>
+                                            {e.shifted && <em className="hla-shift">غيّر موقفه → {e.stance_after}</em>}
+                                        </div>
+                                        <p>{e.content}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* الأدوات */}
+                        <div className="hla-controls">
+                            <div className="hla-inject-row">
                                 <input
-                                    dir="ltr"
-                                    value={draft}
-                                    onChange={(e) => setDraft(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && connect()}
-                                    placeholder="http://localhost:3000"
+                                    value={injectDraft}
+                                    onChange={(e) => setInjectDraft(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && inject()}
+                                    placeholder="احقن حدثاً: قرار، خبر، إشاعة… ثم نفّذ الجولة التالية"
                                 />
-                                <button className="hla-btn hla-btn-primary" onClick={connect} disabled={!normalizeUrl(draft)}>
-                                    وصل
+                                <button className="hla-btn" onClick={inject} disabled={Boolean(busy) || !injectDraft.trim()}>
+                                    <Icon.Bolt /> حقن
                                 </button>
                             </div>
-                            {url && (
-                                <button className="hla-unlink" onClick={disconnect}>فصل المحرّك الحالي</button>
-                            )}
-                            {envUrl && (
-                                <p className="hla-tiny">
-                                    مضبوط أيضاً في متغيّر البيئة <code dir="ltr">VITE_HELLY_AGENTS_URL</code>.
-                                </p>
-                            )}
+
+                            <div className="hla-actions">
+                                <button
+                                    className="hla-btn hla-btn-primary"
+                                    onClick={step}
+                                    disabled={Boolean(busy) || done}
+                                >
+                                    <Icon.Play /> {done ? 'انتهت الجولات' : 'الجولة التالية'}
+                                </button>
+                                <button className="hla-btn" onClick={makeReport} disabled={Boolean(busy) || !sim.current_round}>
+                                    <Icon.Doc /> تقرير
+                                </button>
+                                {sim.report && (
+                                    <button className="hla-btn" onClick={() => setShowReport(true)}>عرض التقرير</button>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {/* ── محادثة وكيل ── */}
+            {chatWith && (
+                <div className="hla-modal-back" onClick={() => setChatWith(null)}>
+                    <div className="hla-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="hla-modal-head">
+                            <div>
+                                <h3>{chatWith.agent.name}</h3>
+                                <span>{chatWith.agent.stance}</span>
+                            </div>
+                            <button className="hla-icon" onClick={() => setChatWith(null)}><Icon.Close /></button>
                         </div>
 
-                        {/* التشغيل */}
-                        <div className="hla-block">
-                            <h3><span className="hla-step">2</span> تشغيل المحرّك</h3>
-                            <p className="hla-note">
-                                المحرّك تطبيق <b>Python / Flask</b> يعمل في حاوية Docker مستقلّة —
-                                لا يمكن تشغيله داخل بالنوفا نفسها لأنها تعمل على دوال Vercel قصيرة العمر،
-                                بينما تستغرق المحاكاة دقائق إلى ساعات.
-                            </p>
+                        <div className="hla-modal-body">
+                            <p className="hla-persona">{chatWith.agent.persona}</p>
 
-                            <Command>{'git clone https://github.com/666ghj/MiroFish.git'}</Command>
-                            <Command>{'cd MiroFish && cp .env.example .env'}</Command>
-                            <Command>{'docker compose up -d'}</Command>
-
-                            <p className="hla-note">
-                                ثم افتح <code dir="ltr">http://localhost:3000</code> والصقه في الحقل أعلاه.
-                                لتشغيله على خادم، ضع عنوانه بدل <code dir="ltr">localhost</code> واحمِه بشهادة HTTPS.
-                            </p>
+                            {chatWith.messages.map((m, i) => (
+                                <div className={`hla-msg is-${m.from}`} key={i}>{m.text}</div>
+                            ))}
                         </div>
 
-                        {/* المفاتيح */}
-                        <div className="hla-block">
-                            <h3><span className="hla-step">3</span> المفاتيح المطلوبة</h3>
-                            <p className="hla-note">تُوضع في ملف <code dir="ltr">.env</code> داخل مجلّد المحرّك:</p>
-                            <ul className="hla-keys">
-                                <li><code dir="ltr">LLM_API_KEY</code> + <code dir="ltr">LLM_BASE_URL</code> + <code dir="ltr">LLM_MODEL_NAME</code> — نموذج لغوي بواجهة OpenAI</li>
-                                <li><code dir="ltr">ZEP_API_KEY</code> — ذاكرة الوكلاء طويلة الأمد (Zep Cloud)</li>
-                                <li><code dir="ltr">LLM_BOOST_*</code> — نموذج أسرع للمهام الخفيفة <em>(اختياري)</em></li>
-                            </ul>
+                        <div className="hla-chatbar">
+                            <input
+                                value={chatDraft}
+                                onChange={(e) => setChatDraft(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && sendChat()}
+                                placeholder="اسأله عن رأيه…"
+                                autoFocus
+                            />
+                            <button className="hla-btn hla-btn-primary" onClick={sendChat} disabled={Boolean(busy) || !chatDraft.trim()}>
+                                إرسال
+                            </button>
                         </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* تنبيه الرخصة */}
-                        <div className="hla-warn">
-                            <b>ملاحظة عن الرخصة</b>
-                            <p>
-                                MiroFish مرخّص بـ <b>AGPL-3.0</b>، وهي رخصة تُلزم بنشر الشيفرة المصدرية كاملةً
-                                لكل من يستخدم الخدمة عبر الشبكة إن دُمج المشروع داخل تطبيقك.
-                                لذلك نصله هنا <b>كخدمة مستقلّة</b> لا كجزء من بالنوفا —
-                                هكذا يبقى تطبيقك مملوكاً لك، والمحرّك يعمل بكامل طاقته بجواره.
-                            </p>
-                            <a
-                                className="hla-repolink"
-                                href="https://github.com/666ghj/MiroFish"
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Icon.Link /> المستودع الرسمي على GitHub
-                            </a>
+            {/* ── التقرير ── */}
+            {showReport && sim?.report && (
+                <div className="hla-modal-back" onClick={() => setShowReport(false)}>
+                    <div className="hla-modal is-wide" onClick={(e) => e.stopPropagation()}>
+                        <div className="hla-modal-head">
+                            <h3>تقرير المحاكاة</h3>
+                            <button className="hla-icon" onClick={() => setShowReport(false)}><Icon.Close /></button>
+                        </div>
+                        <div className="hla-modal-body">
+                            <pre className="hla-report">{sim.report}</pre>
                         </div>
                     </div>
                 </div>
