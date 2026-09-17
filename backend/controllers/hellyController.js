@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { complete, completeJson } = require('../utils/llm');
+const { scatterInside, contextToText } = require('../utils/osm');
 
 /**
  * HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء.
@@ -33,11 +34,28 @@ const requireAdmin = (req, res) => {
 const ownerId = (req) => req.user?.userId || req.user?.id || null;
 
 // ── توليد المجتمع ────────────────────────────────────────────
-const buildAgents = async ({ topic, seed, count }) => {
+const buildAgents = async ({ topic, seed, count, placeText }) => {
+    // حين تُرسم منطقة على الخريطة نُغذّي النموذج بما فيها فعلاً من
+    // OpenStreetMap، فيصير الوكلاء سكّان ذلك المكان بعينه لا شخصيات عامّة
+    const placeBlock = placeText
+        ? `
+المكان المحدّد على الخريطة — هذه بياناته الحقيقية من OpenStreetMap:
+${placeText}
+
+اجعل كل شخصية من أهل هذا المكان أو عامليه فعلاً: اربطها بشارع أو معلم أو نشاط
+مذكور أعلاه بالاسم، ولا تخترع معالم غير مذكورة.
+`
+        : '';
+
+    // حقل إضافي في مخطّط الإخراج، لا نطلبه إلا حين يكون هناك مكان
+    const roleField = placeText
+        ? ',\n  "place_role": "صلته بالمكان — مثل: صاحب بقالة في شارع اليرموك"'
+        : '';
+
     const prompt = `أنشئ ${count} شخصيات مختلفة تمثّل مجتمعاً واقعياً يتفاعل مع الموضوع التالي.
 
 الموضوع: ${topic}
-${seed ? `\nمادة خلفية:\n${seed}\n` : ''}
+${seed ? `\nمادة خلفية:\n${seed}\n` : ''}${placeBlock}
 اجعل الشخصيات متنوّعة فعلاً: أعمار ومهن وخلفيات ومواقف مختلفة، ومنهم المؤيّد والمعارض والمتردّد.
 
 أعد مصفوفة JSON، كل عنصر:
@@ -45,7 +63,7 @@ ${seed ? `\nمادة خلفية:\n${seed}\n` : ''}
   "name": "اسم عربي واقعي",
   "persona": "سطر أو سطران: العمر والمهنة والطباع وما يهمّه",
   "stance": "واحدة من: ${STANCES.join(' | ')}",
-  "influence": عدد من 1 إلى 10 يمثّل مدى تأثيره في محيطه
+  "influence": عدد من 1 إلى 10 يمثّل مدى تأثيره في محيطه${roleField}
 }`;
 
     const raw = await completeJson(prompt, {
@@ -60,10 +78,55 @@ ${seed ? `\nمادة خلفية:\n${seed}\n` : ''}
             name: String(item?.name || '').trim().slice(0, 120),
             persona: String(item?.persona || '').trim().slice(0, 600),
             stance: STANCES.includes(item?.stance) ? item.stance : 'محايد',
-            influence: Math.min(10, Math.max(1, parseInt(item?.influence, 10) || 5))
+            influence: Math.min(10, Math.max(1, parseInt(item?.influence, 10) || 5)),
+            place_role: String(item?.place_role || '').trim().slice(0, 120) || null
         }))
         .filter(a => a.name && a.persona)
         .slice(0, count);
+};
+
+// ── الطبقة المكانية ──────────────────────────────────────────
+// الأعمدة المكانية أُضيفت لاحقاً، فنفحص وجودها مرّة ونخزّن النتيجة:
+// نسخة أقلعت قبل انتهاء الترحيل تعمل بلا مكان بدل أن تنكسر.
+const SCHEMA_RECHECK_MS = 60000;
+let spatialKnown = false;
+let spatialCheckedAt = 0;
+
+const hasSpatialColumns = async () => {
+    if (spatialKnown) return true;
+    if (Date.now() - spatialCheckedAt < SCHEMA_RECHECK_MS) return false;
+    spatialCheckedAt = Date.now();
+    try {
+        const result = await pool.query(`
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'helly_simulations' AND column_name = 'area'
+        `);
+        spatialKnown = result.rows.length > 0;
+    } catch {
+        spatialKnown = false;
+    }
+    return spatialKnown;
+};
+
+/** يتحقّق من حلقة الإحداثيات القادمة من الرسم على الخريطة */
+const sanitizeRing = (input) => {
+    if (!Array.isArray(input) || input.length < 3) return null;
+
+    const ring = [];
+    for (const point of input) {
+        const lon = Number(Array.isArray(point) ? point[0] : point?.lon ?? point?.lng);
+        const lat = Number(Array.isArray(point) ? point[1] : point?.lat);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+        if (lon < -180 || lon > 180 || lat < -90 || lat > 90) return null;
+        ring.push([lon, lat]);
+    }
+
+    // نُغلق الحلقة إن لم تكن مغلقة، ونحدّ العقد حتى لا يتضخّم استعلام Overpass
+    const [f] = ring;
+    const l = ring[ring.length - 1];
+    if (f[0] !== l[0] || f[1] !== l[1]) ring.push([f[0], f[1]]);
+
+    return ring.length > 200 ? null : ring;
 };
 
 // ── إنشاء محاكاة ─────────────────────────────────────────────
@@ -78,26 +141,63 @@ const createSimulation = async (req, res) => {
         const agentCount = Math.min(MAX_AGENTS, Math.max(3, parseInt(req.body.agent_count, 10) || 12));
         const totalRounds = Math.min(MAX_ROUNDS, Math.max(1, parseInt(req.body.total_rounds, 10) || 6));
 
-        const agents = await buildAgents({ topic, seed, count: agentCount });
+        // مكاني أم لا؟ المسار القديم يبقى كما هو حرفياً حين لا تُرسل منطقة
+        const ring = sanitizeRing(req.body.area?.ring ?? req.body.area);
+        const spatial = ring && await hasSpatialColumns();
+
+        const placeName = spatial
+            ? (String(req.body.area?.place_name || '').trim().slice(0, 240) || null)
+            : null;
+        const placeContext = spatial && req.body.area?.context && typeof req.body.area.context === 'object'
+            ? req.body.area.context
+            : null;
+        const placeText = spatial ? contextToText(placeContext, placeName) : null;
+
+        const agents = await buildAgents({ topic, seed, count: agentCount, placeText });
         if (!agents.length) return res.status(502).json({ error: 'تعذّر توليد الوكلاء، حاول مجدداً' });
+
+        // كل وكيل يسكن نقطة فعليّة داخل المضلّع المرسوم
+        const spots = spatial ? scatterInside(ring, agents.length) : [];
 
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            const sim = await client.query(`
-                INSERT INTO helly_simulations (topic, seed, agent_count, total_rounds, created_by)
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING *
-            `, [topic, seed, agents.length, totalRounds, ownerId(req)]);
+            const sim = spatial
+                ? await client.query(`
+                    INSERT INTO helly_simulations
+                        (topic, seed, agent_count, total_rounds, created_by, area, place_name, place_context)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    RETURNING *
+                `, [
+                    topic, seed, agents.length, totalRounds, ownerId(req),
+                    JSON.stringify({ ring }), placeName,
+                    placeContext ? JSON.stringify(placeContext) : null
+                ])
+                : await client.query(`
+                    INSERT INTO helly_simulations (topic, seed, agent_count, total_rounds, created_by)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING *
+                `, [topic, seed, agents.length, totalRounds, ownerId(req)]);
 
             const simId = sim.rows[0].id;
 
-            for (const agent of agents) {
-                await client.query(`
-                    INSERT INTO helly_agents (simulation_id, name, persona, stance, initial_stance, influence)
-                    VALUES ($1, $2, $3, $4, $4, $5)
-                `, [simId, agent.name, agent.persona, agent.stance, agent.influence]);
+            for (let i = 0; i < agents.length; i++) {
+                const agent = agents[i];
+
+                if (spatial) {
+                    const [lon, lat] = spots[i];
+                    await client.query(`
+                        INSERT INTO helly_agents
+                            (simulation_id, name, persona, stance, initial_stance, influence, lat, lon, place_role)
+                        VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8)
+                    `, [simId, agent.name, agent.persona, agent.stance, agent.influence, lat, lon, agent.place_role]);
+                } else {
+                    await client.query(`
+                        INSERT INTO helly_agents (simulation_id, name, persona, stance, initial_stance, influence)
+                        VALUES ($1, $2, $3, $4, $4, $5)
+                    `, [simId, agent.name, agent.persona, agent.stance, agent.influence]);
+                }
             }
 
             await client.query('COMMIT');

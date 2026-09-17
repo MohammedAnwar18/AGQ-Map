@@ -878,3 +878,74 @@
     line-height: 1.95;
     color: #cbd5e1;
 }
+
+/* ============================================================
+   الطبقة المكانية — إضافات على الشاشة القائمة
+   ============================================================ */
+
+/* تبويب القسمين: المحاكاات والربط المكاني */
+.hla-nav {
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px 0;
+}
+
+.hla-nav button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--hla-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .16s, color .16s;
+}
+
+.hla-nav button:hover { color: var(--hla-text); }
+
+.hla-nav button.is-on {
+    background: rgba(34, 211, 238, .13);
+    border-color: rgba(34, 211, 238, .32);
+    color: var(--hla-accent);
+}
+
+/* وسم المكان على بطاقة المحاكاة وفي رأس المسرح */
+.hla-place {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--hla-accent);
+}
+
+.hla-place.is-head {
+    margin-top: 2px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+/* دور الوكيل في المكان — سطر ثالث خافت داخل البطاقة */
+.hla-agent-role {
+    display: block;
+    margin-top: 2px;
+    font-style: normal;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--hla-muted);
+    opacity: .8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* زرّ الترجيح — ذهبي ليتميّز عن التقرير */
+.hla-btn-gold {
+    border-color: rgba(251, 171, 21, .34);
+    background: rgba(251, 171, 21, .12);
+    color: var(--hla-gold);
+}

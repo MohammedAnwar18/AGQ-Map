@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { hellyService } from '../services/hellyApi';
 import HellyMark from './HellyMark';
+import { STANCE_TONE, STANCES } from './hellyTheme';
+import { AreaStudio, ForecastPanel } from './HellySpatial';
 import './HellyAgents.css';
 
 /* ============================================================
@@ -14,16 +16,6 @@ import './HellyAgents.css';
    الجولة الواحدة نداء مستقلّ والحالة في قاعدة البيانات، فالمحاكاة
    تُستأنف ولا تصطدم بمهلة الطلب.
    ============================================================ */
-
-const STANCE_TONE = {
-    'مؤيّد بشدّة': '#22c55e',
-    'مؤيّد': '#4ade80',
-    'محايد': '#94a3b8',
-    'معارض': '#fb923c',
-    'معارض بشدّة': '#ef4444'
-};
-
-const STANCES = Object.keys(STANCE_TONE);
 
 const Icon = {
     Close: (p) => (
@@ -64,6 +56,19 @@ const Icon = {
             <polyline points="3 6 5 6 21 6" />
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
         </svg>
+    ),
+    Pin: (p) => (
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" />
+            <circle cx="12" cy="10" r="3" />
+        </svg>
+    ),
+    Gauge: (p) => (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+            <path d="M3.5 18a9 9 0 1 1 17 0" />
+            <path d="M12 18l4.6-5.4" />
+            <circle cx="12" cy="18" r="1.6" fill="currentColor" stroke="none" />
+        </svg>
     )
 };
 
@@ -97,6 +102,7 @@ const HellyAgents = ({ onClose }) => {
     const [chatDraft, setChatDraft] = useState('');
     const [injectDraft, setInjectDraft] = useState('');
     const [showReport, setShowReport] = useState(false);
+    const [forecast, setForecast] = useState(null);   // لوحة الترجيح
 
     const [form, setForm] = useState({ topic: '', seed: '', agent_count: 12, total_rounds: 6 });
     const feedRef = useRef(null);
@@ -126,13 +132,20 @@ const HellyAgents = ({ onClose }) => {
     useEffect(() => { loadList(); }, [loadList]);
 
     // ── إنشاء ──────────────────────────────────────────────────
-    const create = async () => {
-        if (!form.topic.trim()) return flash('اكتب الموضوع أولاً', 'err');
-        setBusy('يبني المجتمع ويولّد الشخصيات…');
+    // مسار واحد للإطلاق: بحمولة مكانية أو بدونها
+    const startSimulation = async (payload) => {
+        if (!payload?.topic?.trim()) return flash('اكتب الموضوع أولاً', 'err');
+
+        setBusy(payload.area
+            ? 'يقرأ المكان ويبني سكّانه…'
+            : 'يبني المجتمع ويولّد الشخصيات…');
+
         try {
-            const created = await hellyService.create(form);
+            const created = await hellyService.create(payload);
             setSim(created);
             setView('sim');
+            setShowReport(false);
+            setForecast(null);
             flash(`جاهز — ${created.agents.length} وكيلاً`);
         } catch (e) {
             flash(e?.response?.data?.error || 'تعذّر إنشاء المحاكاة', 'err');
@@ -141,12 +154,15 @@ const HellyAgents = ({ onClose }) => {
         }
     };
 
+    const create = () => startSimulation(form);
+
     const open = async (id) => {
         setBusy('يفتح المحاكاة…');
         try {
             setSim(await hellyService.get(id));
             setView('sim');
             setShowReport(false);
+            setForecast(null);
         } catch (e) {
             flash('تعذّر فتح المحاكاة', 'err');
         } finally {
@@ -207,6 +223,17 @@ const HellyAgents = ({ onClose }) => {
     };
 
     // ── محادثة وكيل ────────────────────────────────────────────
+    const loadForecast = async () => {
+        setBusy('يحسب الترجيح من حالة المحاكاة…');
+        try {
+            setForecast(await hellyService.forecast(sim.id));
+        } catch (e) {
+            flash(e?.response?.data?.error || 'تعذّر حساب الترجيح', 'err');
+        } finally {
+            setBusy(null);
+        }
+    };
+
     const sendChat = async () => {
         const message = chatDraft.trim();
         if (!message || busy) return;
@@ -255,6 +282,29 @@ const HellyAgents = ({ onClose }) => {
             {notice && <div className={`hla-flash is-${notice.kind}`}>{notice.message}</div>}
             {busy && <div className="hla-busy"><span className="hla-spin" />{busy}</div>}
 
+            {/* ── تبويب القسمين ── */}
+            {(view === 'list' || view === 'spatial') && (
+                <nav className="hla-nav">
+                    <button
+                        className={view === 'list' ? 'is-on' : ''}
+                        onClick={() => setView('list')}
+                    >
+                        <Icon.Brain width="17" height="17" /> المحاكاات
+                    </button>
+                    <button
+                        className={view === 'spatial' ? 'is-on' : ''}
+                        onClick={() => setView('spatial')}
+                    >
+                        <Icon.Pin /> الربط المكاني
+                    </button>
+                </nav>
+            )}
+
+            {/* ── الربط المكاني ── */}
+            {view === 'spatial' && (
+                <AreaStudio onLaunch={startSimulation} onFlash={flash} busy={busy} />
+            )}
+
             {/* ── القائمة ── */}
             {view === 'list' && (
                 <div className="hla-body">
@@ -296,6 +346,9 @@ const HellyAgents = ({ onClose }) => {
                                         <span>{s.agent_count} وكيلاً</span>
                                         <span>الجولة {s.current_round}/{s.total_rounds}</span>
                                         <span>{s.event_count || 0} حدث</span>
+                                        {s.place_name && (
+                                            <span className="hla-place"><Icon.Pin width="12" height="12" />{s.place_name}</span>
+                                        )}
                                         {s.report && <em>تقرير جاهز</em>}
                                     </div>
                                 </button>
@@ -391,6 +444,7 @@ const HellyAgents = ({ onClose }) => {
                                     <span className="hla-agent-text">
                                         <b>{a.name}</b>
                                         <span>{a.stance}{a.stance !== a.initial_stance ? ` ← كان ${a.initial_stance}` : ''}</span>
+                                        {a.place_role && <i className="hla-agent-role">{a.place_role}</i>}
                                     </span>
                                 </button>
                             ))}
@@ -401,6 +455,9 @@ const HellyAgents = ({ onClose }) => {
                     <section className="hla-stage">
                         <div className="hla-stage-head">
                             <h2>{sim.topic}</h2>
+                            {sim.place_name && (
+                                <div className="hla-place is-head"><Icon.Pin width="13" height="13" />{sim.place_name}</div>
+                            )}
                             <div className="hla-progress">
                                 <span>الجولة {sim.current_round} من {sim.total_rounds}</span>
                                 <StanceBar distribution={sim.distribution} total={sim.agent_count || 1} />
@@ -461,6 +518,14 @@ const HellyAgents = ({ onClose }) => {
                                 >
                                     <Icon.Play /> {done ? 'انتهت الجولات' : 'الجولة التالية'}
                                 </button>
+                                <button
+                                    className="hla-btn hla-btn-gold"
+                                    onClick={loadForecast}
+                                    disabled={Boolean(busy) || !sim.current_round}
+                                    title="احتمالية محسوبة من حالة المحاكاة، مع أساس كل نقطة فيها"
+                                >
+                                    <Icon.Gauge /> الترجيح
+                                </button>
                                 <button className="hla-btn" onClick={makeReport} disabled={Boolean(busy) || !sim.current_round}>
                                     <Icon.Doc /> تقرير
                                 </button>
@@ -508,6 +573,9 @@ const HellyAgents = ({ onClose }) => {
                     </div>
                 </div>
             )}
+
+            {/* ── لوحة الترجيح ── */}
+            {forecast && <ForecastPanel data={forecast} onClose={() => setForecast(null)} />}
 
             {/* ── التقرير ── */}
             {showReport && sim?.report && (

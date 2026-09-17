@@ -234,6 +234,20 @@ app.use('/api/fitness', fitnessRoutes);
             CREATE INDEX IF NOT EXISTS idx_helly_agents_sim
             ON helly_agents (simulation_id);
         `);
+
+        // الطبقة المكانية — إضافية بالكامل: المحاكاة القديمة تبقى تعمل بلا مكان
+        await pool.query(`
+            ALTER TABLE helly_simulations
+                ADD COLUMN IF NOT EXISTS area JSONB,
+                ADD COLUMN IF NOT EXISTS place_name TEXT,
+                ADD COLUMN IF NOT EXISTS place_context JSONB;
+        `);
+        await pool.query(`
+            ALTER TABLE helly_agents
+                ADD COLUMN IF NOT EXISTS lat NUMERIC(10, 7),
+                ADD COLUMN IF NOT EXISTS lon NUMERIC(10, 7),
+                ADD COLUMN IF NOT EXISTS place_role VARCHAR(120);
+        `);
         console.log('✅ HellyAgents tables ready');
     } catch (err) {
         console.warn('⚠️ HellyAgents migration warning:', err.message);
