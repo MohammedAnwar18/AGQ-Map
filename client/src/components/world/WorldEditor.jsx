@@ -4,6 +4,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 
 import WorldScene from './WorldScene';
 import { useWorld } from './worldStore';
+import { WalkControls } from './walk';
+import MiniMap from './MiniMap';
 import { WorldPanel, NodeEditor, AssetBrowser, Inspector, RecordBar, WorldFile } from './panels';
 import './WorldEditor.css';
 
@@ -62,6 +64,8 @@ const WorldEditor = ({ onClose }) => {
 
     const placementType = useWorld(s => s.placementType);
     const setPlacement = useWorld(s => s.setPlacement);
+    const mode = useWorld(s => s.mode);
+    const setMode = useWorld(s => s.setMode);
     const selectedId = useWorld(s => s.selectedId);
     const removeItem = useWorld(s => s.removeItem);
 
@@ -86,7 +90,10 @@ const WorldEditor = ({ onClose }) => {
     useEffect(() => {
         const onKey = (e) => {
             if (e.key === 'Escape') {
-                if (useWorld.getState().placementType) setPlacement(null);
+                const state = useWorld.getState();
+                // التراجع خطوة واحدة في كل ضغطة، لا إغلاق كل شيء دفعة
+                if (state.placementType) setPlacement(null);
+                else if (state.mode === 'walk') setMode('orbit');
                 else onClose?.();
             }
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId
@@ -97,7 +104,7 @@ const WorldEditor = ({ onClose }) => {
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onClose, selectedId, removeItem, setPlacement]);
+    }, [onClose, selectedId, removeItem, setPlacement, setMode]);
 
     const toggle = (key) => setShown(s => ({ ...s, [key]: !s[key] }));
     const visible = (key) => (narrow ? tab === key : shown[key]);
@@ -168,6 +175,16 @@ const WorldEditor = ({ onClose }) => {
                 {/* أول إطار لم يُرسم بعد: الحزمة تُجلب أو المشهد يُبنى */}
                 {fps === null && <Loading />}
 
+                {/* المشي: التقاط المفاتيح والمؤشّر خارج الـ Canvas */}
+                {mode === 'walk' && (
+                    <WalkControls canvasRef={canvasRef} onExit={() => setMode('orbit')} onFlash={flash} />
+                )}
+
+                {/* تمشي ولوحة الخريطة مخفيّة؟ تظهر مصغّرة في الزاوية */}
+                {mode === 'walk' && !visible('nodes') && (
+                    <div className="we-hudmap"><MiniMap compact /></div>
+                )}
+
                 {placementType && (
                     <div className="we-placing">
                         وضع الوضع مفعّل — انقر المشهد أو الخريطة لإسقاط نسخة
@@ -181,7 +198,7 @@ const WorldEditor = ({ onClose }) => {
                 <div className="we-overlay">
                     <div className="we-col we-col-start">
                         {visible('nodes') && <NodeEditor onClose={narrow ? null : () => toggle('nodes')} />}
-                        {visible('assets') && <AssetBrowser onClose={narrow ? null : () => toggle('assets')} />}
+                        {visible('assets') && <AssetBrowser onFlash={flash} onClose={narrow ? null : () => toggle('assets')} />}
                     </div>
 
                     <div className="we-col we-col-end">

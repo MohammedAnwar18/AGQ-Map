@@ -19,7 +19,12 @@ const DEFAULT_ENVIRONMENT = {
     foliageDensity: 0.55,   // 0-1 → عدد الأشجار
     buildingStyle: 'suburban',
     outlines: true,         // الحدود المحيطة — تُضاعف الرسمات، فتُطفأ عند الحاجة
-    heavyShading: false     // SSAO — ثقيل، فيبقى اختيارياً
+    heavyShading: false,    // SSAO — ثقيل، فيبقى اختيارياً
+
+    // الطريق المبنيّ في المشهد — يُطفأ لمن يرسم شبكته بنفسه
+    defaultRoad: true,
+    gridSnap: true,
+    gridSize: 8            // متر — مقاس قطعة الطريق الواحدة
 };
 
 const DEFAULT_ENTITIES = {
@@ -55,6 +60,52 @@ const seedWorld = () => {
 let counter = 0;
 const nextId = () => `a_${Date.now().toString(36)}_${++counter}`;
 
+/**
+ * البلاطات التي تُبنى منها الشوارع والتضاريس. مذكورة هنا لا في سجلّ
+ * الأصول حتى لا يستورد المخزن طبقة العرض — ويبقى قابلاً للاختبار وحده.
+ */
+export const TILE_TYPES = new Set([
+    'road_straight', 'road_cross', 'road_turn', 'road_tee',
+    'crosswalk', 'sidewalk', 'plaza',
+    'grass_patch', 'dirt_patch', 'water'
+]);
+
+const round2 = (n) => +Number(n).toFixed(2);
+
+const snapFor = (type, x, z, gridSnap, gridSize) => {
+    const size = gridSize || 8;
+    if (!TILE_TYPES.has(type) && !gridSnap) return { x: round2(x), z: round2(z) };
+
+    // البلاطة تُركَّز في خليّتها، فتتلاصق حوافّها مع جاراتها تماماً
+    if (TILE_TYPES.has(type)) {
+        return {
+            x: Math.round((x - size / 2) / size) * size + size / 2,
+            z: Math.round((z - size / 2) / size) * size + size / 2
+        };
+    }
+
+    // وغيرها يلتقط أنصاف الخلايا: دقّة أعلى دون أن يفقد الانتظام
+    const half = size / 2;
+    return { x: Math.round(x / half) * half, z: Math.round(z / half) * half };
+};
+
+/**
+ * موضع المشاهد الحيّ.
+ *
+ * خارج المخزن عمداً: يُكتب في كل إطار أثناء المشي، ولو مرّ
+ * من zustand لأعاد رسم شجرة المكوّنات ستين مرّة في الثانية.
+ * المشهد يكتب هنا والخريطة تقرأ منه في حلقتها الخاصة.
+ */
+export const live = { x: 0, z: 34, heading: 0, moving: false };
+
+/** مدخلات المشي — من لوحة المفاتيح أو عصا اللمس، بلا حالة React */
+export const input = { forward: 0, strafe: 0, run: false, yaw: 0, pitch: 0 };
+
+export const resetInput = () => {
+    input.forward = 0; input.strafe = 0; input.run = false;
+    input.yaw = 0; input.pitch = 0;
+};
+
 export const useWorld = create((set, get) => ({
     // ── البيئة ──
     environment: { ...DEFAULT_ENVIRONMENT },
@@ -81,14 +132,26 @@ export const useWorld = create((set, get) => ({
     })),
 
     place: (type, x, z) => {
-        const item = { id: nextId(), type, x, z, rotation: 0, scale: 1 };
+        const { gridSnap, gridSize } = get().environment;
+
+        // البلاطات تلتقط الشبكة دائماً مهما كان الإعداد: قطعتا شارع
+        // بينهما نصف متر تُقرأ كخطأ لا كتصميم
+        const snapped = snapFor(type, x, z, gridSnap, gridSize);
+
+        const item = { id: nextId(), type, ...snapped, rotation: 0, scale: 1 };
         set(state => ({ placed: [...state.placed, item], selectedId: item.id }));
         return item.id;
     },
 
-    moveItem: (id, x, z) => set(state => ({
-        placed: state.placed.map(p => (p.id === id ? { ...p, x, z } : p))
-    })),
+    moveItem: (id, x, z) => set(state => {
+        const item = state.placed.find(p => p.id === id);
+        if (!item) return {};
+
+        const { gridSnap, gridSize } = state.environment;
+        const snapped = snapFor(item.type, x, z, gridSnap, gridSize);
+
+        return { placed: state.placed.map(p => (p.id === id ? { ...p, ...snapped } : p)) };
+    }),
 
     updateItem: (id, patch) => set(state => ({
         placed: state.placed.map(p => (p.id === id ? { ...p, ...patch } : p))
@@ -100,6 +163,23 @@ export const useWorld = create((set, get) => ({
     })),
 
     select: (id) => set({ selectedId: id, placementType: null }),
+
+    // ── وضع التجوّل ──
+    // orbit: نظرة مدارية للتحرير | walk: منظور الشخص الأوّل
+    mode: 'orbit',
+    setMode: (mode) => set({ mode, placementType: null }),
+
+    // ── مجسماتي المستوردة ──
+    // الملفات نفسها في IndexedDB؛ هذه بطاقاتها فقط
+    customAssets: [],
+    setCustomAssets: (list) => set({ customAssets: list }),
+    addCustomAsset: (card) => set(state => ({ customAssets: [...state.customAssets, card] })),
+    dropCustomAsset: (key) => set(state => ({
+        customAssets: state.customAssets.filter(c => c.key !== key),
+        // ونزيل ما وُضِع منه في المشهد، وإلا بقيت صناديق بديلة معلّقة
+        placed: state.placed.filter(p => p.type !== `custom:${key}`),
+        placementType: state.placementType === `custom:${key}` ? null : state.placementType
+    })),
 
     // ── الكاميرا ──
     // المشهد يقرأ هذا الهدف ويتحرّك إليه بالتنعيم، فلا تقفز الكاميرا

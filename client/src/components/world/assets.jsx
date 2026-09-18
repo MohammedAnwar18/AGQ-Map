@@ -1,7 +1,7 @@
-import React, { Suspense, createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { useGLTF } from '@react-three/drei';
-import { gradientMap, applyToonMaterial, PALETTE } from './toon';
+import { gradientMap, PALETTE } from './toon';
+import { loadCustom, loadUrl } from './customAssets';
 
 /* ============================================================
    خط أنابيب المجسمات
@@ -224,6 +224,114 @@ const Fountain = () => (
     </group>
 );
 
+// ── الطرق والتضاريس ─────────────────────────────────────────
+//
+// بلاطات بمقاس الشبكة نفسه (٨ أمتار) لتتلاصق بلا فجوات. تُرسم
+// صفائح رقيقة مرفوعة قليلاً عن الأرض بدل مستويات بلا سماكة: الحافّة
+// تُقرأ بصرياً، والارتفاع يمنع تزاحم العمق مع الأرضية تحتها.
+
+export const TILE = 8;
+
+const Slab = ({ w = TILE, d = TILE, h = 0.09, y = 0.05, color, ...props }) => (
+    <mesh position={[0, y, 0]} receiveShadow {...props}>
+        <boxGeometry args={[w, h, d]} />
+        <meshToonMaterial color={color} gradientMap={gradientMap()} />
+    </mesh>
+);
+
+/** علامة مسطّحة فوق البلاطة — خطوط ممرّات ومنتصف الطريق */
+const Paint = ({ w, d, x = 0, z = 0, color = PALETTE.roadLine, rot = 0 }) => (
+    <mesh position={[x, 0.105, z]} rotation={[-Math.PI / 2, 0, rot]}>
+        <planeGeometry args={[w, d]} />
+        <meshBasicMaterial color={color} />
+    </mesh>
+);
+
+const RoadStraight = () => (
+    <group>
+        <Slab color={PALETTE.road} />
+        {[-2.6, 0, 2.6].map(z => <Paint key={z} w={0.26} d={1.9} z={z} />)}
+    </group>
+);
+
+const RoadCross = () => (
+    <group>
+        <Slab color={PALETTE.road} />
+        {/* أربعة ممرّات مشاة عند أطراف التقاطع */}
+        {[[0, -3.2, 0], [0, 3.2, 0], [-3.2, 0, Math.PI / 2], [3.2, 0, Math.PI / 2]].map(([x, z, rot], i) => (
+            <group key={i}>
+                {[-1.8, -0.6, 0.6, 1.8].map(o => (
+                    <Paint
+                        key={o} w={0.42} d={1.3}
+                        x={rot ? x : o} z={rot ? o : z}
+                        rot={rot}
+                    />
+                ))}
+            </group>
+        ))}
+    </group>
+);
+
+const RoadTurn = () => (
+    <group>
+        <Slab color={PALETTE.road} />
+        {/* منعطف ربع دائرة: قوس منقّط يوجّه العين */}
+        {[0.2, 0.42, 0.64, 0.86].map((t, i) => {
+            const a = t * (Math.PI / 2);
+            return <Paint key={i} w={0.26} d={0.9} x={-4 + Math.cos(a) * 4} z={4 - Math.sin(a) * 4} rot={a} />;
+        })}
+    </group>
+);
+
+const RoadTee = () => (
+    <group>
+        <Slab color={PALETTE.road} />
+        {[-2.6, 2.6].map(z => <Paint key={z} w={0.26} d={1.9} z={z} />)}
+        {[-1.8, -0.6, 0.6, 1.8].map(o => <Paint key={o} w={0.42} d={1.3} x={3.2} z={o} rot={Math.PI / 2} />)}
+    </group>
+);
+
+const Crosswalk = () => (
+    <group>
+        <Slab color={PALETTE.road} />
+        {[-3, -1.8, -0.6, 0.6, 1.8, 3].map(x => <Paint key={x} w={0.62} d={6.4} x={x} />)}
+    </group>
+);
+
+const Sidewalk = () => (
+    <group>
+        <Slab color={PALETTE.sidewalk} h={0.22} y={0.11} />
+        <Paint w={TILE - 0.5} d={TILE - 0.5} color="#B8B1A2" />
+    </group>
+);
+
+const Plaza = () => (
+    <group>
+        <Slab color="#CFC7B6" h={0.16} y={0.08} />
+        {[-2, 0, 2].map(x => <Paint key={`v${x}`} w={0.14} d={TILE - 0.4} x={x} color="#B0A796" />)}
+        {[-2, 0, 2].map(z => <Paint key={`h${z}`} w={TILE - 0.4} d={0.14} z={z} color="#B0A796" />)}
+    </group>
+);
+
+const GrassPatch = () => <Slab color={PALETTE.grassDark} h={0.07} y={0.04} />;
+const DirtPatch = () => <Slab color="#A98A62" h={0.07} y={0.04} />;
+
+const Water = () => (
+    <group>
+        <Slab color="#4FA3C7" h={0.06} y={0.03} />
+        <Paint w={TILE - 1.2} d={TILE - 1.2} color="#6FC0DE" />
+    </group>
+);
+
+const Hill = () => (
+    <group>
+        <mesh position={[0, 0, 0]} receiveShadow castShadow>
+            <sphereGeometry args={[5.4, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshToonMaterial color={PALETTE.grass} gradientMap={gradientMap()} flatShading />
+        </mesh>
+    </group>
+);
+
 // ── سجلّ الأصول ──────────────────────────────────────────────
 // glb: ضع هنا مسار الملف تحت public/ حين ترفع الأصول الحقيقية،
 // مثال: glb: '/assets/models/tree_01.glb' — ولا شيء آخر يتغيّر.
@@ -243,44 +351,97 @@ export const ASSETS = {
     bench:    { label: 'مقعد',      group: 'street',  Proc: Bench,    glb: null },
     lamp:     { label: 'عمود إنارة', group: 'street', Proc: Lamp,     glb: null },
     fence:    { label: 'سياج',      group: 'street',  Proc: Fence,    glb: null },
-    fountain: { label: 'نافورة',    group: 'street',  Proc: Fountain, glb: null }
+    fountain: { label: 'نافورة',    group: 'street',  Proc: Fountain, glb: null },
+
+    // بلاطات الشبكة — تلتصق ببعضها فتُبنى منها شبكة شوارع كاملة
+    road_straight: { label: 'شارع',      group: 'road', Proc: RoadStraight, glb: null, tile: true },
+    road_cross:    { label: 'تقاطع',     group: 'road', Proc: RoadCross,    glb: null, tile: true },
+    road_turn:     { label: 'منعطف',     group: 'road', Proc: RoadTurn,     glb: null, tile: true },
+    road_tee:      { label: 'تفرّع',      group: 'road', Proc: RoadTee,      glb: null, tile: true },
+    crosswalk:     { label: 'ممرّ مشاة',  group: 'road', Proc: Crosswalk,    glb: null, tile: true },
+    sidewalk:      { label: 'رصيف',      group: 'road', Proc: Sidewalk,     glb: null, tile: true },
+    plaza:         { label: 'ساحة',      group: 'road', Proc: Plaza,        glb: null, tile: true },
+
+    grass_patch:   { label: 'مرج',       group: 'terrain', Proc: GrassPatch, glb: null, tile: true },
+    dirt_patch:    { label: 'تراب',      group: 'terrain', Proc: DirtPatch,  glb: null, tile: true },
+    water:         { label: 'ماء',       group: 'terrain', Proc: Water,      glb: null, tile: true },
+    hill:          { label: 'تلّة',       group: 'terrain', Proc: Hill,       glb: null }
 };
 
 export const ASSET_KEYS = Object.keys(ASSETS);
 
-// ── الجسر إلى ملفات ‎.glb‎ ─────────────────────────────────────
-
-const GLBAsset = ({ url }) => {
-    const { scene } = useGLTF(url);
-    // ننسخ قبل التحويل: نفس الملف قد يُستخدم لعدّة نسخ في المشهد
-    const model = useMemo(() => applyToonMaterial(scene.clone(true)), [scene]);
-    return <primitive object={model} />;
+/**
+ * نصف قطر الاصطدام بالمتر — يمنع المشي عبر المباني في منظور الشخص
+ * الأوّل. صفر يعني أن المجسم يُمشى فوقه أو خلاله: البلاطات والأعشاب
+ * وما يُتجاوز طبيعياً.
+ */
+export const FOOTPRINT = {
+    house: 3.6, cottage: 2.9, tower: 3.4, shop: 3.8, fountain: 2.5,
+    tree: 0.6, pine: 0.55, palm: 0.5, bush: 0.7, rock: 0.9,
+    car: 1.5, van: 1.7, bench: 1.1, lamp: 0.3, fence: 1.9,
+    hill: 5.0
 };
 
-/** ملف ناقص أو تالف يسقط إلى الشكل الإجرائي بدل أن يُفرّغ المشهد */
-class AssetBoundary extends React.Component {
-    constructor(props) { super(props); this.state = { failed: false }; }
-    static getDerivedStateFromError() { return { failed: true }; }
-    componentDidCatch(error) { console.warn('تعذّر تحميل مجسم، سنستخدم الشكل الإجرائي:', error?.message); }
-    render() { return this.state.failed ? this.props.fallback : this.props.children; }
-}
+export const footprintOf = (type) => {
+    if (type?.startsWith('custom:')) return 1.8;   // تقدير معقول لمجسم لا نعرف حجمه
+    return FOOTPRINT[type] || 0;
+};
+
+// ── الجسر إلى ملفات glTF ────────────────────────────────────
+
+/** صندوق شفّاف يشغل مكان مجسم يُحمَّل، أو يُعلن أنه تعذّر */
+const Placeholder = ({ failed }) => (
+    <group>
+        <mesh position={[0, 1.6, 0]}>
+            <boxGeometry args={[2.4, 3.2, 2.4]} />
+            <meshBasicMaterial
+                color={failed ? '#ef4444' : '#38bdf8'}
+                transparent opacity={failed ? 0.28 : 0.16}
+                wireframe
+            />
+        </mesh>
+    </group>
+);
+
+/**
+ * يجلب مجسماً (من مسار مسجّل أو من مخزن المتصفّح) وينسخه لهذه النسخة.
+ * النسخ يتشارك الهندسة والخامات، فعشر نسخ لا تعني عشر عمليات تحميل.
+ */
+const LoadedAsset = ({ source, fromStore }) => {
+    const [state, setState] = useState({ status: 'loading' });
+
+    useEffect(() => {
+        let alive = true;
+        setState({ status: 'loading' });
+
+        (fromStore ? loadCustom(source) : loadUrl(source))
+            .then(({ root }) => { if (alive) setState({ status: 'ok', object: root.clone(true) }); })
+            .catch((err) => {
+                console.warn('تعذّر تحميل المجسم:', source, err?.message);
+                if (alive) setState({ status: 'fail' });
+            });
+
+        return () => { alive = false; };
+    }, [source, fromStore]);
+
+    if (state.status === 'ok') return <primitive object={state.object} />;
+    return <Placeholder failed={state.status === 'fail'} />;
+};
 
 /**
  * المجسم الموحّد. كل ما في المشهد يمرّ من هنا.
+ * النوع إمّا مفتاح من السجلّ، أو ‎custom:<key>‎ لمجسم استورده المستخدم.
  */
 export const Asset = ({ type, ...props }) => {
+    if (typeof type === 'string' && type.startsWith('custom:')) {
+        return <LoadedAsset source={type.slice(7)} fromStore />;
+    }
+
     const def = ASSETS[type] || ASSETS.tree;
+    if (def.glb) return <LoadedAsset source={def.glb} />;
+
     const Proc = def.Proc;
-
-    if (!def.glb) return <Proc {...props} />;
-
-    return (
-        <AssetBoundary fallback={<Proc {...props} />}>
-            <Suspense fallback={<Proc {...props} />}>
-                <GLBAsset url={def.glb} />
-            </Suspense>
-        </AssetBoundary>
-    );
+    return <Proc {...props} />;
 };
 
 // ── مصغّرات متصفّح الأصول ────────────────────────────────────
@@ -333,6 +494,42 @@ export const AssetThumb = ({ type, size = 34 }) => {
         );
         case 'fountain': return (
             <svg {...common}><ellipse cx="16" cy="24" rx="10" ry="4" fill="#BFE2F2" stroke="#22303F" /><path d="M16 20V12" stroke="#9AA3AE" strokeWidth="2.4" /><circle cx="16" cy="9" r="3" fill="#BFE2F2" stroke="#22303F" /></svg>
+        );
+        case 'road_straight': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#5B6270" stroke="#22303F" /><path d="M16 7v5M16 15v5M16 23v3" stroke="#F2E9C9" strokeWidth="2" /></svg>
+        );
+        case 'road_cross': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#5B6270" stroke="#22303F" /><path d="M10 8h12M10 24h12" stroke="#F2E9C9" strokeWidth="2" strokeDasharray="2 2" /><path d="M8 10v12M24 10v12" stroke="#F2E9C9" strokeWidth="2" strokeDasharray="2 2" /></svg>
+        );
+        case 'road_turn': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#5B6270" stroke="#22303F" /><path d="M6 26A20 20 0 0 1 26 6" stroke="#F2E9C9" strokeWidth="2" strokeDasharray="3 3" /></svg>
+        );
+        case 'road_tee': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#5B6270" stroke="#22303F" /><path d="M16 6v20" stroke="#F2E9C9" strokeWidth="2" strokeDasharray="3 3" /><path d="M18 16h8" stroke="#F2E9C9" strokeWidth="2" strokeDasharray="3 3" /></svg>
+        );
+        case 'crosswalk': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#5B6270" stroke="#22303F" /><path d="M9 7v18M13 7v18M17 7v18M21 7v18M25 7v18" stroke="#F2E9C9" strokeWidth="2.2" /></svg>
+        );
+        case 'sidewalk': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#C9C2B2" stroke="#22303F" /><path d="M4 12h24M4 20h24M12 4v24M20 4v24" stroke="#A9A292" /></svg>
+        );
+        case 'plaza': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#CFC7B6" stroke="#22303F" /><path d="M4 11h24M4 18h24M4 25h24M11 4v24M18 4v24M25 4v24" stroke="#B0A796" /></svg>
+        );
+        case 'grass_patch': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#6FAE49" stroke="#22303F" /><path d="M9 22v-4M13 23v-6M17 22v-4M21 23v-5" stroke="#4FA85C" strokeWidth="2" /></svg>
+        );
+        case 'dirt_patch': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#A98A62" stroke="#22303F" /><circle cx="12" cy="13" r="1.6" fill="#8A6F4E" stroke="none" /><circle cx="20" cy="19" r="2" fill="#8A6F4E" stroke="none" /></svg>
+        );
+        case 'water': return (
+            <svg {...common}><rect x="4" y="4" width="24" height="24" rx="2" fill="#4FA3C7" stroke="#22303F" /><path d="M7 13c3-2 5 2 8 0s5-2 8 0M7 20c3-2 5 2 8 0s5-2 8 0" stroke="#BFE2F2" strokeWidth="1.8" /></svg>
+        );
+        case 'hill': return (
+            <svg {...common}><path d="M3 25c4-11 9-15 13-15s9 4 13 15z" fill="#86C45A" stroke="#22303F" /></svg>
+        );
+        case 'custom': return (
+            <svg {...common}><path d="M16 4 27 10v12L16 28 5 22V10z" fill="#38bdf8" fillOpacity=".22" stroke="#38bdf8" /><path d="M5 10l11 6 11-6M16 16v12" stroke="#38bdf8" /></svg>
         );
         default: return (
             <svg {...common}><circle cx="16" cy="13" r="7" fill="#4FA85C" stroke="#22303F" /><path d="M14 20h4v7h-4z" fill="#8A5A36" stroke="#22303F" /></svg>

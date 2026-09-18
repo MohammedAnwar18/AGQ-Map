@@ -5,8 +5,8 @@ import { OrbitControls, Instances, Instance } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, SSAO } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 
-import { useWorld, WORLD_BOUNDS } from './worldStore';
-import { Asset, OutlineContext } from './assets';
+import { useWorld, WORLD_BOUNDS, live, input } from './worldStore';
+import { Asset, OutlineContext, footprintOf } from './assets';
 import { gradientMap, sunFor, skyFor, fogFor, PALETTE } from './toon';
 
 /* ============================================================
@@ -220,9 +220,13 @@ const Clouds = () => {
 const Ground = () => {
     const place = useWorld(s => s.place);
     const select = useWorld(s => s.select);
+    const showRoad = useWorld(s => s.environment.defaultRoad !== false);
 
     const onDown = (e) => {
-        const { placementType } = useWorld.getState();
+        const { placementType, mode } = useWorld.getState();
+
+        // في وضع المشي السحب على المشهد نظر لا وضع؛ الخريطة هي من تضع
+        if (mode === 'walk') return;
         if (!placementType) { select(null); return; }
 
         e.stopPropagation();
@@ -243,7 +247,16 @@ const Ground = () => {
                 <meshToonMaterial color={PALETTE.grass} gradientMap={gradientMap()} />
             </mesh>
 
-            {/* الطريق ورصيفاه مرفوعة قليلاً لتجنّب تزاحم العمق مع الأرض */}
+            {showRoad && <DefaultRoad dashes={dashes} />}
+        </group>
+    );
+};
+
+/** الطريق المبنيّ في المشهد — يُطفأ لمن يرسم شبكته ببلاطاته */
+const DefaultRoad = ({ dashes }) => {
+    return (
+        <group>
+            {/* مرفوعة قليلاً لتجنّب تزاحم العمق مع الأرض */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
                 <planeGeometry args={[ROAD_HALF * 2, ROAD_LEN]} />
                 <meshToonMaterial color={PALETTE.road} gradientMap={gradientMap()} />
@@ -517,6 +530,118 @@ const Placed = () => {
 
 // ── الكاميرا ────────────────────────────────────────────────
 
+const EYE_HEIGHT = 1.68;
+const WALK_SPEED = 6.4;
+const RUN_SPEED = 12;
+const BODY_RADIUS = 0.5;
+
+/**
+ * منظور الشخص الأوّل.
+ *
+ * الحركة تُقرأ من كائن `input` لا من حالة React، فالضغط على المفتاح
+ * لا يُعيد رسم شيء. والموضع يُكتب في `live` ليقرأه المصغّر في حلقته
+ * الخاصّة — الخريطة تتحرّك معك بلا وسيط.
+ */
+const Walker = () => {
+    const { camera } = useThree();
+    const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
+    const pos = useRef(new THREE.Vector3());
+    const dir = useRef(new THREE.Vector3());
+
+    // نبدأ من حيث كانت الكاميرا، فلا يقفز المشهد لحظة التبديل
+    useLayoutEffect(() => {
+        const t = useWorld.getState().cameraTarget;
+        pos.current.set(t.x, EYE_HEIGHT, t.z + 6);
+
+        // نتّجه نحو مركز المشهد لا نحو الأفق عشوائياً
+        euler.current.set(0, Math.atan2(t.x - pos.current.x, t.z - pos.current.z), 0);
+        camera.position.copy(pos.current);
+        camera.quaternion.setFromEuler(euler.current);
+    }, [camera]);
+
+    useFrame((_, dt) => {
+        const step = Math.min(dt, 0.05);   // لقطة طويلة لا تقذف المشاهد عبر جدار
+
+        // النظر
+        euler.current.y -= input.yaw;
+        euler.current.x = THREE.MathUtils.clamp(euler.current.x - input.pitch, -1.35, 1.35);
+        input.yaw = 0;
+        input.pitch = 0;
+        camera.quaternion.setFromEuler(euler.current);
+
+        // الحركة على المستوى الأفقي فقط: النظر لأعلى لا يرفعك عن الأرض
+        const speed = (input.run ? RUN_SPEED : WALK_SPEED) * step;
+        dir.current.set(input.strafe, 0, -input.forward);
+
+        if (dir.current.lengthSq() > 0) {
+            dir.current.normalize().applyAxisAngle(UP, euler.current.y).multiplyScalar(speed);
+
+            const next = pos.current.clone().add(dir.current);
+            resolveCollisions(next);
+
+            const limit = WORLD_BOUNDS + 40;
+            next.x = THREE.MathUtils.clamp(next.x, -limit, limit);
+            next.z = THREE.MathUtils.clamp(next.z, -limit, limit);
+
+            pos.current.copy(next);
+            live.moving = true;
+        } else {
+            live.moving = false;
+        }
+
+        pos.current.y = EYE_HEIGHT + groundAt(pos.current.x, pos.current.z);
+        camera.position.copy(pos.current);
+
+        live.x = pos.current.x;
+        live.z = pos.current.z;
+        live.heading = euler.current.y;
+    });
+
+    return null;
+};
+
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** يدفع المشاهد خارج أي مجسم صلب بدل أن يعبره */
+const resolveCollisions = (next) => {
+    const { placed, environment } = useWorld.getState();
+    const swap = STYLE_SWAP[environment.buildingStyle] || {};
+
+    for (const item of placed) {
+        const radius = footprintOf(swap[item.type] || item.type) * (item.scale || 1);
+        if (!radius) continue;
+
+        const dx = next.x - item.x;
+        const dz = next.z - item.z;
+        const min = radius + BODY_RADIUS;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq < min * min && distSq > 1e-6) {
+            const dist = Math.sqrt(distSq);
+            next.x = item.x + (dx / dist) * min;
+            next.z = item.z + (dz / dist) * min;
+        }
+    }
+};
+
+/** ارتفاع الأرض عند نقطة — التلال وحدها تُغيّره */
+const groundAt = (x, z) => {
+    const { placed } = useWorld.getState();
+    let height = 0;
+
+    for (const item of placed) {
+        if (item.type !== 'hill') continue;
+
+        const r = 5.4 * (item.scale || 1);
+        const d = Math.hypot(x - item.x, z - item.z);
+        if (d >= r) continue;
+
+        // قبّة كروية: نصعدها بارتفاعها الحقيقي لا بمنحدر مستقيم
+        height = Math.max(height, Math.sqrt(Math.max(0, r * r - d * d)));
+    }
+    return height;
+};
+
 /**
  * تتبع هدف الكاميرا القادم من محرّر العقد، بانتقال ناعم لا قفز،
  * مع الحفاظ على زاوية الدوران التي اختارها المستخدم بالفأرة.
@@ -535,15 +660,22 @@ const Rig = () => {
 
         const target = controls.current.target;
 
+        // الخريطة تتابع الكاميرا في وضع التحرير كما تتابع المشاة في المشي
+        live.x = target.x;
+        live.z = target.z;
+        live.heading = Math.atan2(target.x - camera.position.x, target.z - camera.position.z);
+
         // الإزاحة الحالية بين الكاميرا وهدفها هي زاوية المستخدم — نحفظها
         if (target.distanceTo(desired.current) < 0.05) {
             offset.current.copy(camera.position).sub(target);
+            live.moving = false;
             return;
         }
 
         target.lerp(desired.current, 0.07);
         camera.position.copy(target).add(offset.current);
         controls.current.update();
+        live.moving = true;
     });
 
     return (
@@ -592,6 +724,7 @@ const Effects = () => {
 
 const WorldScene = () => {
     const outlines = useWorld(s => s.environment.outlines !== false);
+    const mode = useWorld(s => s.mode);
 
     return (
         <OutlineContext.Provider value={outlines}>
@@ -603,7 +736,7 @@ const WorldScene = () => {
             <Placed />
             <Traffic />
             <NPCs />
-            <Rig />
+            {mode === 'walk' ? <Walker /> : <Rig />}
             <Effects />
         </OutlineContext.Provider>
     );

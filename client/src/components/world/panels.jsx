@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useWorld, WORLD_BOUNDS } from './worldStore';
+import { useWorld } from './worldStore';
 import { ASSETS, ASSET_KEYS, AssetThumb } from './assets';
+import { importFiles, listCustom, deleteCustom, formatSize } from './customAssets';
+import MiniMap from './MiniMap';
 import { saveFile } from '../../utils/download';
 
 /* ============================================================
@@ -74,11 +76,33 @@ const partOfDay = (hour) => {
 export const WorldPanel = ({ onClose }) => {
     const env = useWorld(s => s.environment);
     const entities = useWorld(s => s.entities);
+    const mode = useWorld(s => s.mode);
     const setEnv = useWorld(s => s.setEnv);
+    const setMode = useWorld(s => s.setMode);
     const toggleEntity = useWorld(s => s.toggleEntity);
 
     return (
         <PanelShell title="لوحة تحكم العالم" onClose={onClose} className="we-world">
+            <div className="we-group">
+                <span className="we-group-label">وضع التجوّل</span>
+                <div className="we-seg">
+                    {[['orbit', 'تحرير'], ['walk', 'مشي']].map(([key, label]) => (
+                        <button
+                            key={key}
+                            className={mode === key ? 'is-on' : ''}
+                            onClick={() => setMode(key)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <p className="we-note">
+                    {mode === 'walk'
+                        ? 'انقر المشهد لتثبيت المؤشّر، ثم W A S D للحركة و Shift للركض و Esc للخروج. على الهاتف: العصا للمشي والسحب للنظر.'
+                        : 'دوران حول المشهد بالسحب، وتكبير بالعجلة. بدّل إلى «مشي» لتسير داخل العالم.'}
+                </p>
+            </div>
+
             <Slider
                 label="وقت اليوم"
                 readout={`${clock(env.timeOfDay)} · ${partOfDay(env.timeOfDay)}`}
@@ -119,6 +143,30 @@ export const WorldPanel = ({ onClose }) => {
             </div>
 
             <div className="we-group">
+                <span className="we-group-label">الأرض والشبكة</span>
+                <Switch
+                    label="الطريق الجاهز في المشهد"
+                    checked={env.defaultRoad !== false}
+                    onChange={() => setEnv('defaultRoad', env.defaultRoad === false)}
+                />
+                <Switch
+                    label="الالتقاط إلى الشبكة"
+                    checked={env.gridSnap !== false}
+                    onChange={() => setEnv('gridSnap', env.gridSnap === false)}
+                />
+                <Slider
+                    label="مقاس خليّة الشبكة"
+                    readout={`${env.gridSize || 8} م`}
+                    value={env.gridSize || 8} min={2} max={16} step={1}
+                    onChange={(v) => setEnv('gridSize', v)}
+                />
+                <p className="we-note">
+                    بلاطات الشوارع والتضاريس تلتقط الشبكة دائماً لتتلاصق بلا فجوات،
+                    مهما كان هذا المفتاح. أطفئ «الطريق الجاهز» لترسم شبكتك من الصفر.
+                </p>
+            </div>
+
+            <div className="we-group">
                 <span className="we-group-label">التحكم بالكيانات</span>
                 <Switch label="حركة المرور" checked={entities.traffic} onChange={() => toggleEntity('traffic')} />
                 <Switch label="المشاة" checked={entities.npcs} onChange={() => toggleEntity('npcs')} />
@@ -139,147 +187,150 @@ export const WorldPanel = ({ onClose }) => {
 
 // ── ٢) محرّر عقد الخريطة ────────────────────────────────────
 
-const GROUP_TONE = {
-    nature: '#4FA85C',
-    build: '#D4564B',
-    vehicle: '#4E8FC0',
-    street: '#E8C15A'
-};
-
-export const NodeEditor = ({ onClose }) => {
-    const placed = useWorld(s => s.placed);
-    const selectedId = useWorld(s => s.selectedId);
-    const cameraTarget = useWorld(s => s.cameraTarget);
-    const placementType = useWorld(s => s.placementType);
-
-    const moveItem = useWorld(s => s.moveItem);
-    const setCameraTarget = useWorld(s => s.setCameraTarget);
-    const select = useWorld(s => s.select);
-    const place = useWorld(s => s.place);
-
-    const boardRef = useRef(null);
-    const dragRef = useRef(null);   // 'camera' | معرّف الأصل
-
-    const toPct = (v) => ((v + WORLD_BOUNDS) / (WORLD_BOUNDS * 2)) * 100;
-
-    const fromEvent = useCallback((e) => {
-        const box = boardRef.current.getBoundingClientRect();
-        const px = (e.clientX - box.left) / box.width;
-        const py = (e.clientY - box.top) / box.height;
-
-        const clamp = (v) => Math.min(1, Math.max(0, v));
-        return {
-            x: +((clamp(px) * 2 - 1) * WORLD_BOUNDS).toFixed(2),
-            z: +((clamp(py) * 2 - 1) * WORLD_BOUNDS).toFixed(2)
-        };
-    }, []);
-
-    const startDrag = (id) => (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        dragRef.current = id;
-        boardRef.current.setPointerCapture(e.pointerId);
-        if (id !== 'camera') select(id);
-    };
-
-    const onMove = (e) => {
-        if (!dragRef.current) return;
-        const { x, z } = fromEvent(e);
-
-        if (dragRef.current === 'camera') setCameraTarget(x, z);
-        else moveItem(dragRef.current, x, z);
-    };
-
-    const endDrag = (e) => {
-        if (!dragRef.current) return;
-        dragRef.current = null;
-        try { boardRef.current.releasePointerCapture(e.pointerId); } catch { /* المؤشّر تُرك أصلاً */ }
-    };
-
-    // النقر على فراغ اللوحة: يضع أصلاً إن كان وضع الوضع مفعّلاً، وإلا ينقل الكاميرا
-    const onBoardDown = (e) => {
-        const { x, z } = fromEvent(e);
-        if (placementType) place(placementType, x, z);
-        else setCameraTarget(x, z);
-    };
-
-    return (
-        <PanelShell title="محرّر عقد الخريطة" onClose={onClose} className="we-nodes">
-            <div
-                className={`we-board${placementType ? ' is-placing' : ''}`}
-                ref={boardRef}
-                onPointerDown={onBoardDown}
-                onPointerMove={onMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-            >
-                {/* الطريق: شريط رأسي في منتصف الإسقاط العلوي */}
-                <i className="we-board-road" />
-
-                {placed.map(item => {
-                    const def = ASSETS[item.type];
-                    return (
-                        <button
-                            key={item.id}
-                            className={`we-node${item.id === selectedId ? ' is-sel' : ''}`}
-                            style={{
-                                left: `${toPct(item.x)}%`,
-                                top: `${toPct(item.z)}%`,
-                                '--tone': GROUP_TONE[def?.group] || '#94a3b8'
-                            }}
-                            title={`${def?.label || item.type} — ${item.x}, ${item.z}`}
-                            onPointerDown={startDrag(item.id)}
-                        />
-                    );
-                })}
-
-                <button
-                    className="we-node is-cam"
-                    style={{ left: `${toPct(cameraTarget.x)}%`, top: `${toPct(cameraTarget.z)}%` }}
-                    title="موقع الكاميرا — اسحبه"
-                    onPointerDown={startDrag('camera')}
-                />
-            </div>
-
-            <p className="we-note">
-                {placementType
-                    ? 'وضع الوضع مفعّل — انقر اللوحة أو المشهد لإسقاط نسخة.'
-                    : 'اسحب العقدة الذهبية لتحريك الكاميرا، وأي عقدة ملوّنة لنقل مجسمها.'}
-            </p>
-        </PanelShell>
-    );
-};
+export const NodeEditor = ({ onClose }) => (
+    <PanelShell title="خريطة العالم" onClose={onClose} className="we-nodes">
+        <MiniMap />
+    </PanelShell>
+);
 
 // ── ٣) متصفّح الأصول ────────────────────────────────────────
 
 const GROUP_LABEL = {
-    nature: 'طبيعة',
+    road: 'شوارع',
+    terrain: 'تضاريس',
     build: 'مبانٍ',
+    nature: 'طبيعة',
     vehicle: 'مركبات',
     street: 'أثاث الشارع'
 };
 
-export const AssetBrowser = ({ onClose }) => {
+// الترتيب مقصود: ما تبني به الأرض أولاً، ثم ما تضعه فوقها
+const GROUP_ORDER = ['road', 'terrain', 'build', 'nature', 'vehicle', 'street'];
+
+export const AssetBrowser = ({ onClose, onFlash }) => {
     const placementType = useWorld(s => s.placementType);
     const setPlacement = useWorld(s => s.setPlacement);
+    const customAssets = useWorld(s => s.customAssets);
+    const setCustomAssets = useWorld(s => s.setCustomAssets);
+    const addCustomAsset = useWorld(s => s.addCustomAsset);
+    const dropCustomAsset = useWorld(s => s.dropCustomAsset);
+
+    const fileRef = useRef(null);
+    const [busy, setBusy] = useState(false);
+
+    // مجسمات الجلسات السابقة محفوظة في المتصفّح — نستعيد بطاقاتها عند الفتح
+    useEffect(() => {
+        listCustom()
+            .then(setCustomAssets)
+            .catch(err => console.warn('تعذّر قراءة مخزن المجسمات:', err?.message));
+    }, [setCustomAssets]);
 
     const grouped = useMemo(() => {
         const out = {};
-        ASSET_KEYS.forEach(key => {
-            const g = ASSETS[key].group;
-            (out[g] ||= []).push(key);
-        });
+        ASSET_KEYS.forEach(key => { (out[ASSETS[key].group] ||= []).push(key); });
         return out;
     }, []);
 
+    const onPick = async (e) => {
+        const files = e.target.files;
+        e.target.value = '';
+        if (!files?.length) return;
+
+        setBusy(true);
+        try {
+            const record = await importFiles(files);
+            addCustomAsset({
+                key: record.key, name: record.name,
+                entry: record.entry, size: record.size, addedAt: record.addedAt
+            });
+            setPlacement(`custom:${record.key}`);
+            onFlash?.(`أُضيف ${record.name} — انقر المشهد لوضعه`);
+        } catch (err) {
+            onFlash?.(err.message, 'err');
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const remove = async (card) => {
+        if (!window.confirm(`حذف «${card.name}» وكل نسخه في المشهد؟`)) return;
+        try {
+            await deleteCustom(card.key);
+            dropCustomAsset(card.key);
+            onFlash?.('حُذف المجسم');
+        } catch (err) {
+            onFlash?.(`تعذّر الحذف: ${err.message}`, 'err');
+        }
+    };
+
     return (
         <PanelShell title="متصفّح الأصول" onClose={onClose} className="we-assets">
+            {/* مجسماتك أولاً: هي ما جئت لتضعه */}
+            <div className="we-assetgroup">
+                <span>مجسماتي</span>
+
+                <div>
+                    <button
+                        className="we-thumb we-import"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={busy}
+                        title="استورد ملف glb أو gltf من جهازك"
+                    >
+                        {busy ? <span className="we-spin" /> : (
+                            <svg viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M16 22V7M10 13l6-6 6 6" />
+                                <path d="M5 21v4a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2v-4" />
+                            </svg>
+                        )}
+                        <em>{busy ? 'يستورد…' : 'استورد'}</em>
+                    </button>
+
+                    {customAssets.map(card => {
+                        const type = `custom:${card.key}`;
+                        return (
+                            <button
+                                key={card.key}
+                                className={`we-thumb is-custom${placementType === type ? ' is-on' : ''}`}
+                                onClick={() => setPlacement(type)}
+                                title={`${card.name} · ${formatSize(card.size)}`}
+                            >
+                                <AssetThumb type="custom" />
+                                <em>{card.name}</em>
+                                <i
+                                    className="we-thumb-x"
+                                    role="button"
+                                    tabIndex={0}
+                                    title="حذف"
+                                    onClick={(e) => { e.stopPropagation(); remove(card); }}
+                                    onKeyDown={(e) => e.key === 'Enter' && remove(card)}
+                                >✕</i>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <p className="we-note">
+                    <b>‎.glb‎</b> ملف واحد يكفي. <b>‎.gltf‎</b> يحتاج اختيار ملفاته معه
+                    (‎.bin‎ وصور الخامات) في نفس المرّة. تُحفظ داخل متصفّحك ولا تُرفع
+                    لأي خادم، وتُحوَّل إلى المظهر الكرتوني تلقائياً.
+                </p>
+
+                <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".glb,.gltf,.bin,image/png,image/jpeg,image/webp"
+                    multiple
+                    onChange={onPick}
+                    hidden
+                />
+            </div>
+
             <div className="we-assetrow">
-                {Object.entries(grouped).map(([group, keys]) => (
+                {GROUP_ORDER.filter(g => grouped[g]?.length).map(group => (
                     <div className="we-assetgroup" key={group}>
                         <span>{GROUP_LABEL[group] || group}</span>
                         <div>
-                            {keys.map(key => (
+                            {grouped[group].map(key => (
                                 <button
                                     key={key}
                                     className={`we-thumb${placementType === key ? ' is-on' : ''}`}
@@ -307,18 +358,31 @@ export const Inspector = () => {
     const removeItem = useWorld(s => s.removeItem);
     const select = useWorld(s => s.select);
 
+    const custom = useWorld(s => s.customAssets);
+
     const item = placed.find(p => p.id === selectedId);
     if (!item) return null;
 
-    const def = ASSETS[item.type];
+    const isCustom = item.type.startsWith('custom:');
+    const title = isCustom
+        ? (custom.find(c => `custom:${c.key}` === item.type)?.name || 'مجسم مستورد')
+        : (ASSETS[item.type]?.label || item.type);
+
+    // ربع دورة: الطريقة الوحيدة العملية لتوجيه بلاطة شارع
+    const quarter = () => {
+        const next = (item.rotation + Math.PI / 2) % (Math.PI * 2);
+        updateItem(item.id, { rotation: +next.toFixed(4) });
+    };
 
     return (
         <section className="we-panel we-inspector">
             <header className="we-panel-head">
-                <h3>{def?.label || item.type}</h3>
+                <h3>{title}</h3>
                 <button className="we-x" onClick={() => select(null)} aria-label="إلغاء التحديد">✕</button>
             </header>
             <div className="we-panel-body">
+                <button className="we-btn" onClick={quarter}>أدر ربع دورة (٩٠°)</button>
+
                 <Slider
                     label="الدوران" readout={`${Math.round((item.rotation * 180) / Math.PI)}°`}
                     value={item.rotation} min={0} max={Math.PI * 2} step={0.05}

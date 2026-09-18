@@ -263,7 +263,26 @@
     flex-direction: column;
     gap: 13px;
     padding: 12px;
+
+    /* كل لوحة تمرّر محتواها وحدها: لوحة طويلة لا تدفع جارتها
+       خارج الشاشة، وكل عنصر فيها يبقى قابلاً للوصول */
+    max-height: min(52vh, 460px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, .2) transparent;
 }
+
+.we-panel-body::-webkit-scrollbar { width: 6px; }
+.we-panel-body::-webkit-scrollbar-track { background: transparent; }
+
+.we-panel-body::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .18);
+    border-radius: 3px;
+}
+
+.we-panel-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .3); }
+
 
 /* ── المساطر ── */
 .we-slider { display: flex; flex-direction: column; gap: 5px; }
@@ -590,4 +609,248 @@
 
     .we-board { max-width: 300px; margin-inline: auto; }
     .we-assetgroup > div { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); }
+}
+
+/* ============================================================
+   خريطة العالم — لوحة 2D
+   ============================================================ */
+
+.we-map {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.we-mapbox {
+    position: relative;
+    width: 100%;
+    border-radius: 11px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+}
+
+.we-mapbox.is-placing { border-color: rgba(251, 171, 21, .55); }
+
+.we-mapbox canvas {
+    display: block;
+    width: 100%;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.we-map-scale,
+.we-map-coord,
+.we-map-north {
+    position: absolute;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(10, 15, 28, .78);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.we-map-scale {
+    bottom: 6px;
+    left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* شريط المقياس بعرض خليّة شبكة واحدة فعلاً — لا رقم مكتوب فقط */
+.we-map-scale > i {
+    display: block;
+    height: 3px;
+    min-width: 8px;
+    border-radius: 2px;
+    background: var(--muted);
+}
+
+.we-map-coord {
+    bottom: 6px;
+    right: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.we-map-north {
+    top: 6px;
+    right: 6px;
+    color: var(--accent);
+}
+
+/* الخريطة المصغّرة أثناء المشي */
+.we-hudmap {
+    position: absolute;
+    top: 12px;
+    inset-inline-start: 12px;
+    z-index: 5;
+    width: 148px;
+    padding: 6px;
+    border-radius: 13px;
+    border: 1px solid var(--line);
+    background: rgba(10, 15, 28, .82);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+}
+
+/* ============================================================
+   منظور الشخص الأوّل
+   ============================================================ */
+
+.we-cross {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 4;
+    width: 22px;
+    height: 22px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    opacity: .82;
+}
+
+.we-cross i {
+    position: absolute;
+    background: rgba(255, 255, 255, .9);
+    box-shadow: 0 0 3px rgba(0, 0, 0, .8);
+}
+
+.we-cross i:first-child {
+    top: 50%; left: 0; right: 0;
+    height: 1.5px;
+    transform: translateY(-50%);
+}
+
+.we-cross i:last-child {
+    left: 50%; top: 0; bottom: 0;
+    width: 1.5px;
+    transform: translateX(-50%);
+}
+
+.we-walkhint {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    margin: auto;
+    width: fit-content;
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 18px 26px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: rgba(10, 15, 28, .86);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+}
+
+.we-walkhint b { font-size: 14px; }
+.we-walkhint span { font-size: 11.5px; color: var(--muted); }
+
+.we-walkhint button,
+.we-walkexit {
+    margin-top: 4px;
+    padding: 7px 15px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .06);
+    color: var(--text);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.we-walkexit {
+    position: absolute;
+    top: 12px;
+    inset-inline-end: 12px;
+    z-index: 6;
+    margin: 0;
+    background: rgba(10, 15, 28, .86);
+    backdrop-filter: blur(8px);
+}
+
+/* عصا اللمس — يسار الشاشة فيزيائياً، حيث يقع الإبهام */
+.we-stick {
+    position: absolute;
+    bottom: 22px;
+    left: 18px;
+    z-index: 6;
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .22);
+    background: rgba(10, 15, 28, .5);
+    backdrop-filter: blur(6px);
+    touch-action: none;
+    display: grid;
+    place-items: center;
+}
+
+.we-stick-knob {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, .55);
+    border: 1.5px solid rgba(255, 255, 255, .5);
+    transition: transform .04s linear;
+}
+
+/* ============================================================
+   استيراد المجسمات
+   ============================================================ */
+
+.we-thumb.we-import {
+    border-style: dashed;
+    border-color: rgba(56, 189, 248, .45);
+    color: var(--accent);
+}
+
+.we-thumb.is-custom {
+    position: relative;
+    border-color: rgba(56, 189, 248, .3);
+}
+
+.we-thumb em {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.we-thumb-x {
+    position: absolute;
+    top: 2px;
+    inset-inline-end: 3px;
+    width: 14px;
+    height: 14px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, .85);
+    color: #fff;
+    font-size: 8px;
+    font-style: normal;
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+
+.we-thumb.is-custom:hover .we-thumb-x,
+.we-thumb.is-custom:focus-within .we-thumb-x { opacity: 1; }
+
+@media (pointer: coarse) {
+    .we-thumb-x { opacity: 1; }
+}
+
+@media (max-width: 900px) {
+    /* اللوحة الواحدة تأخذ ارتفاعها كاملاً على الجوال، وتمرّر داخلها */
+    .we-panel-body { max-height: 38vh; }
+    .we-hudmap { width: 124px; top: 10px; }
+    .we-stick { width: 104px; height: 104px; bottom: calc(46vh + 10px); }
 }
