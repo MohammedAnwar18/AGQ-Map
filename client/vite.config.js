@@ -14,6 +14,23 @@ export default defineConfig({
                         if (id.includes('maplibre-gl') || id.includes('react-map-gl')) {
                             return 'vendor-maplibre';
                         }
+                        // طبقة React Three Fiber وكل ما تجرّه معها تذهب إلى
+                        // حزمة مستقلّة لا يحمّلها إلا محرّر العالم. لولا هذا
+                        // لسقطت في vendor-three — لأن أسماءها تحتوي «three» —
+                        // فدفع ثمنَها كل من يفتح الواقع المعزّز أو الجولة
+                        // الافتراضية. (threebox-plugin القديمة تبقى حيث كانت.)
+                        // المسار مُطبَّع لأن ويندوز يعطي شرطات معكوسة.
+                        // القائمة صريحة عمداً: هذه الحزم دخلت مع R3F ولا
+                        // يستعملها شيء آخر في الموقع. (hls.js مستثناة —
+                        // بثّ الكاميرات يستعملها من قبل، وscheduler وbuffer
+                        // مشتركتان فتبقيان حيث كانتا.)
+                        const R3F_STACK = /node_modules\/(@react-three\/|@react-spring\/|@use-gesture\/|@monogrid\/|@mediapipe\/|react-composer\/|react-reconciler\/|react-use-measure\/|suspend-react\/|its-fine\/|three-stdlib\/|three-mesh-bvh\/|troika-[\w-]+\/|camera-controls\/|maath\/|meshline\/|postprocessing\/|zustand\/|n8ao\/|detect-gpu\/|glsl-noise\/|stats-gl\/|stats\.js\/|tunnel-rat\/)/;
+                        // نُعيد undefined عمداً: حزمة مسمّاة هنا تصير استيراداً
+                        // ثابتاً من نقطة البدء فيحمّلها كل زائر. تركها لتقسيم
+                        // Rollup التلقائي يُبقيها خلف الاستيراد الكسول للمحرّر.
+                        if (R3F_STACK.test(id.replace(/\\/g, '/'))) {
+                            return;
+                        }
                         if (id.includes('three')) {
                             return 'vendor-three';
                         }

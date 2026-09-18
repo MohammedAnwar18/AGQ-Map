@@ -29,6 +29,7 @@ const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShop
 const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
 const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
 const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
+const WorldEditor           = React.lazy(() => import('../components/world/WorldEditor'));
 import HellyMark from '../components/HellyMark';
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
@@ -833,6 +834,7 @@ const MapComponent = () => {
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [showHellyAgents, setShowHellyAgents] = useState(false);
+    const [showWorldEditor, setShowWorldEditor] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
     // Auto-center map on user's active fitness tracking coordinates
@@ -2402,6 +2404,20 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    {/* محرّر العالم ثلاثي الأبعاد — للأدمن العام وحده */}
+                    {user?.role === 'admin' && (
+                        <button
+                            className={`top-nav-icon ${showWorldEditor ? 'active' : ''}`}
+                            onClick={() => setShowWorldEditor(true)}
+                            title="محرّر العالم ثلاثي الأبعاد"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                                <path d="M12 2.6 21 7.3v9.4L12 21.4 3 16.7V7.3z" />
+                                <path d="M3 7.3 12 12l9-4.7M12 12v9.4" />
+                            </svg>
+                        </button>
+                    )}
+
                     {/* الإشعارات - ملغاة ومخفية بطلب من المستخدم */}
                     {false && (
                         <button className={`top-nav-icon ${showNotifications ? 'active' : ''}`} onClick={() => setShowNotifications(true)} style={{ position: 'relative' }}>
@@ -3816,6 +3832,11 @@ const MapComponent = () => {
             {showHellyAgents && user?.role === 'admin' && (
                 <React.Suspense fallback={null}>
                     <HellyAgents onClose={() => setShowHellyAgents(false)} />
+                </React.Suspense>
+            )}
+            {showWorldEditor && user?.role === 'admin' && (
+                <React.Suspense fallback={null}>
+                    <WorldEditor onClose={() => setShowWorldEditor(false)} />
                 </React.Suspense>
             )}
             {showFriends && <FriendsModal
