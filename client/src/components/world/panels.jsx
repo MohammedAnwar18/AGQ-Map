@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useWorld } from './worldStore';
 import { ASSETS, ASSET_KEYS, AssetThumb } from './assets';
-import { importFiles, listCustom, deleteCustom, formatSize } from './customAssets';
+import { importFiles, listCustom, deleteCustom, formatSize, describeStats, forgetStyled } from './customAssets';
 import MiniMap from './MiniMap';
 import { saveFile } from '../../utils/download';
 
@@ -128,6 +128,30 @@ export const WorldPanel = ({ onClose }) => {
             />
 
             <div className="we-group">
+                <span className="we-group-label">نمط العرض</span>
+                <div className="we-seg">
+                    {[['toon', 'كرتوني'], ['real', 'واقعي']].map(([key, label]) => (
+                        <button
+                            key={key}
+                            className={(env.renderStyle || 'toon') === key ? 'is-on' : ''}
+                            onClick={() => {
+                                // النسخ المُنمّطة مُخزّنة؛ نُبطلها لتُبنى بالخامات الجديدة
+                                forgetStyled();
+                                setEnv('renderStyle', key);
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <p className="we-note">
+                    الواقعي يُبقي خامات glTF كما صُدّرت — خرائط الخشونة والمعدنية
+                    والانحناء — ويُضيف إضاءة بيئة تنعكس عليها، ويُطفئ الحدود المحيطة.
+                    أثقل من الكرتوني، وأليق بحزمة فيها خرائط ORM.
+                </p>
+            </div>
+
+            <div className="we-group">
                 <span className="we-group-label">نمط المباني</span>
                 <div className="we-seg">
                     {[['suburban', 'ضواحٍ'], ['urban', 'مدينة']].map(([key, label]) => (
@@ -216,7 +240,9 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
     const dropCustomAsset = useWorld(s => s.dropCustomAsset);
 
     const fileRef = useRef(null);
-    const [busy, setBusy] = useState(false);
+    const folderRef = useRef(null);
+    const [busy, setBusy] = useState(null);
+    const [problem, setProblem] = useState(null);
 
     // مجسمات الجلسات السابقة محفوظة في المتصفّح — نستعيد بطاقاتها عند الفتح
     useEffect(() => {
@@ -236,19 +262,28 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
         e.target.value = '';
         if (!files?.length) return;
 
-        setBusy(true);
+        setProblem(null);
+        setBusy(`يقرأ ${files.length} ملفاً…`);
+
         try {
             const record = await importFiles(files);
+
             addCustomAsset({
-                key: record.key, name: record.name,
-                entry: record.entry, size: record.size, addedAt: record.addedAt
+                key: record.key, name: record.name, entry: record.entry,
+                size: record.size, addedAt: record.addedAt, stats: record.stats
             });
             setPlacement(`custom:${record.key}`);
-            onFlash?.(`أُضيف ${record.name} — انقر المشهد لوضعه`);
+
+            const extra = record.extras
+                ? ` (تجاهلتُ ${record.extras} مشهداً آخر في الاختيار)`
+                : '';
+            onFlash?.(`جاهز: ${record.name} — ${describeStats(record.stats)}${extra}. انقر المشهد لوضعه.`);
         } catch (err) {
+            // الرسالة تُعرض في اللوحة أيضاً: الوميض يختفي قبل أن تُقرأ كاملة
+            setProblem(err.message);
             onFlash?.(err.message, 'err');
         } finally {
-            setBusy(false);
+            setBusy(null);
         }
     };
 
@@ -269,22 +304,26 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
             <div className="we-assetgroup">
                 <span>مجسماتي</span>
 
-                <div>
-                    <button
-                        className="we-thumb we-import"
-                        onClick={() => fileRef.current?.click()}
-                        disabled={busy}
-                        title="استورد ملف glb أو gltf من جهازك"
-                    >
-                        {busy ? <span className="we-spin" /> : (
-                            <svg viewBox="0 0 32 32" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M16 22V7M10 13l6-6 6 6" />
-                                <path d="M5 21v4a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2v-4" />
-                            </svg>
-                        )}
-                        <em>{busy ? 'يستورد…' : 'استورد'}</em>
+                <div className="we-importbtns">
+                    <button className="we-btn" onClick={() => folderRef.current?.click()} disabled={Boolean(busy)}>
+                        استورد مجلّداً
                     </button>
+                    <button className="we-btn" onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>
+                        اختر ملفات
+                    </button>
+                </div>
 
+                {busy && <p className="we-note we-working"><span className="we-spin" />{busy}</p>}
+
+                {problem && (
+                    <div className="we-problem">
+                        <b>لم يُستورد</b>
+                        <p>{problem}</p>
+                        <button onClick={() => setProblem(null)}>حسناً</button>
+                    </div>
+                )}
+
+                <div>
                     {customAssets.map(card => {
                         const type = `custom:${card.key}`;
                         return (
@@ -292,7 +331,7 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
                                 key={card.key}
                                 className={`we-thumb is-custom${placementType === type ? ' is-on' : ''}`}
                                 onClick={() => setPlacement(type)}
-                                title={`${card.name} · ${formatSize(card.size)}`}
+                                title={`${card.name} · ${formatSize(card.size)}${card.stats ? ' · ' + describeStats(card.stats) : ''}`}
                             >
                                 <AssetThumb type="custom" />
                                 <em>{card.name}</em>
@@ -307,12 +346,17 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
                             </button>
                         );
                     })}
+
+                    {!customAssets.length && !busy && (
+                        <p className="we-note we-empty">لم تستورد مجسماً بعد.</p>
+                    )}
                 </div>
 
                 <p className="we-note">
-                    <b>‎.glb‎</b> ملف واحد يكفي. <b>‎.gltf‎</b> يحتاج اختيار ملفاته معه
-                    (‎.bin‎ وصور الخامات) في نفس المرّة. تُحفظ داخل متصفّحك ولا تُرفع
-                    لأي خادم، وتُحوَّل إلى المظهر الكرتوني تلقائياً.
+                    <b>‎.glb‎</b> ملف واحد ويكفي. <b>‎.gltf‎</b> يحتاج ملف ‎.bin‎ وصور خاماته
+                    معه — لذلك <b>«استورد مجلّداً»</b> هو الأضمن مع الحزم الجاهزة: اختر
+                    مجلّد التصدير كلّه ونحن نلتقط ما يلزم ونتجاهل الباقي. إن نقص ملف
+                    سنُسمّيه لك بدل أن يُوضع مجسم فارغ.
                 </p>
 
                 <input
@@ -322,6 +366,15 @@ export const AssetBrowser = ({ onClose, onFlash }) => {
                     multiple
                     onChange={onPick}
                     hidden
+                />
+                {/* webkitdirectory يُمرَّر بالاسم الصريح: React لا يعرفه كخاصيّة */}
+                <input
+                    ref={folderRef}
+                    type="file"
+                    multiple
+                    onChange={onPick}
+                    hidden
+                    {...{ webkitdirectory: '', directory: '' }}
                 />
             </div>
 

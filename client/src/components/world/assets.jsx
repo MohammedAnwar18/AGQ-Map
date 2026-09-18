@@ -18,7 +18,24 @@ import { loadCustom, loadUrl } from './customAssets';
 // الحدود السوداء المحيطة تُضاعف عدد الرسومات، فتبقى قابلة للإطفاء
 export const OutlineContext = createContext(true);
 
+/** نمط العرض الساري على المشهد: 'toon' أو 'real' */
+export const StyleContext = createContext('toon');
+
 const OUTLINE = 0.04;
+
+/**
+ * خامة السطح بحسب النمط.
+ *
+ * الكرتوني: تظليل بأربع درجات حادّة بلا انعكاس.
+ * الواقعي: خامة فيزيائية تقرأ إضاءة البيئة وتعكسها.
+ */
+export const Surface = ({ color, flat = false, roughness = 0.88, metalness = 0, ...rest }) => {
+    const style = useContext(StyleContext);
+
+    return style === 'real'
+        ? <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} flatShading={flat} {...rest} />
+        : <meshToonMaterial color={color} gradientMap={gradientMap()} flatShading={flat} {...rest} />;
+};
 
 const Geo = ({ kind, args }) => {
     switch (kind) {
@@ -38,15 +55,19 @@ const Geo = ({ kind, args }) => {
  */
 const Part = ({ kind = 'box', args, color, outline = OUTLINE, flat = false, ...props }) => {
     const outlines = useContext(OutlineContext);
+    const style = useContext(StyleContext);
+
+    // الحدود المحيطة لغة رسم كرتونية بحتة؛ في النمط الواقعي تُفسده
+    const drawOutline = outlines && style !== 'real' && outline > 0;
 
     return (
         <group {...props}>
             <mesh castShadow receiveShadow>
                 <Geo kind={kind} args={args} />
-                <meshToonMaterial color={color} gradientMap={gradientMap()} flatShading={flat} />
+                <Surface color={color} flat={flat} />
             </mesh>
 
-            {outlines && outline > 0 && (
+            {drawOutline && (
                 <mesh scale={1 + outline} renderOrder={-1}>
                     <Geo kind={kind} args={args} />
                     <meshBasicMaterial color={PALETTE.outline} side={THREE.BackSide} />
@@ -235,7 +256,7 @@ export const TILE = 8;
 const Slab = ({ w = TILE, d = TILE, h = 0.09, y = 0.05, color, ...props }) => (
     <mesh position={[0, y, 0]} receiveShadow {...props}>
         <boxGeometry args={[w, h, d]} />
-        <meshToonMaterial color={color} gradientMap={gradientMap()} />
+        <Surface color={color} />
     </mesh>
 );
 
@@ -327,7 +348,7 @@ const Hill = () => (
     <group>
         <mesh position={[0, 0, 0]} receiveShadow castShadow>
             <sphereGeometry args={[5.4, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshToonMaterial color={PALETTE.grass} gradientMap={gradientMap()} flatShading />
+            <Surface color={PALETTE.grass} flat />
         </mesh>
     </group>
 );
@@ -389,17 +410,31 @@ export const footprintOf = (type) => {
 
 // ── الجسر إلى ملفات glTF ────────────────────────────────────
 
-/** صندوق شفّاف يشغل مكان مجسم يُحمَّل، أو يُعلن أنه تعذّر */
+/**
+ * علامة مكان المجسم ريثما يُحمَّل، أو مكان فشله.
+ *
+ * الفشل صلب ومضيء لا شبكي باهت: مجسم لم يظهر وشيء شبه شفّاف مكانه
+ * يُقرأ كـ«لم يحدث شيء»، فيظنّ المستخدم أن الوضع نفسه لم ينجح.
+ */
 const Placeholder = ({ failed }) => (
     <group>
-        <mesh position={[0, 1.6, 0]}>
-            <boxGeometry args={[2.4, 3.2, 2.4]} />
-            <meshBasicMaterial
-                color={failed ? '#ef4444' : '#38bdf8'}
-                transparent opacity={failed ? 0.28 : 0.16}
-                wireframe
-            />
-        </mesh>
+        {failed ? (
+            <>
+                <mesh position={[0, 1.7, 0]} castShadow>
+                    <boxGeometry args={[2, 3.4, 2]} />
+                    <meshBasicMaterial color="#ef4444" />
+                </mesh>
+                <mesh position={[0, 4.2, 0]}>
+                    <coneGeometry args={[0.55, 1.1, 4]} />
+                    <meshBasicMaterial color="#fbbf24" />
+                </mesh>
+            </>
+        ) : (
+            <mesh position={[0, 1.6, 0]}>
+                <boxGeometry args={[2.2, 3.2, 2.2]} />
+                <meshBasicMaterial color="#38bdf8" transparent opacity={0.35} wireframe />
+            </mesh>
+        )}
     </group>
 );
 
@@ -408,13 +443,14 @@ const Placeholder = ({ failed }) => (
  * النسخ يتشارك الهندسة والخامات، فعشر نسخ لا تعني عشر عمليات تحميل.
  */
 const LoadedAsset = ({ source, fromStore }) => {
+    const style = useContext(StyleContext);
     const [state, setState] = useState({ status: 'loading' });
 
     useEffect(() => {
         let alive = true;
         setState({ status: 'loading' });
 
-        (fromStore ? loadCustom(source) : loadUrl(source))
+        (fromStore ? loadCustom(source, style) : loadUrl(source, style))
             .then(({ root }) => { if (alive) setState({ status: 'ok', object: root.clone(true) }); })
             .catch((err) => {
                 console.warn('تعذّر تحميل المجسم:', source, err?.message);
@@ -422,7 +458,7 @@ const LoadedAsset = ({ source, fromStore }) => {
             });
 
         return () => { alive = false; };
-    }, [source, fromStore]);
+    }, [source, fromStore, style]);
 
     if (state.status === 'ok') return <primitive object={state.object} />;
     return <Placeholder failed={state.status === 'fail'} />;

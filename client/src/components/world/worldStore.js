@@ -18,6 +18,9 @@ const DEFAULT_ENVIRONMENT = {
     climate: 0.25,          // 0 مشمس ← 1 غائم
     foliageDensity: 0.55,   // 0-1 → عدد الأشجار
     buildingStyle: 'suburban',
+
+    // toon: تظليل مسطّح بدرجات حادّة | real: خامات PBR كما صُدّرت
+    renderStyle: 'toon',
     outlines: true,         // الحدود المحيطة — تُضاعف الرسمات، فتُطفأ عند الحاجة
     heavyShading: false,    // SSAO — ثقيل، فيبقى اختيارياً
 

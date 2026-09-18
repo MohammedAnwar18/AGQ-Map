@@ -1,12 +1,12 @@
 import React, { useRef, useMemo, useLayoutEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Instances, Instance } from '@react-three/drei';
+import { OrbitControls, Instances, Instance, Environment, Lightformer } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, SSAO } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 
 import { useWorld, WORLD_BOUNDS, live, input } from './worldStore';
-import { Asset, OutlineContext, footprintOf } from './assets';
+import { Asset, OutlineContext, StyleContext, Surface, footprintOf } from './assets';
 import { gradientMap, sunFor, skyFor, fogFor, PALETTE } from './toon';
 
 /* ============================================================
@@ -201,12 +201,7 @@ const Clouds = () => {
                     {c.lobes.map((l, j) => (
                         <mesh key={j} position={[l.dx, l.dy, l.dz]} scale={l.sc}>
                             <icosahedronGeometry args={[1, 0]} />
-                            <meshToonMaterial
-                                color="#FFFFFF"
-                                gradientMap={gradientMap()}
-                                flatShading
-                                fog={false}
-                            />
+                            <Surface color="#FFFFFF" flat fog={false} roughness={1} />
                         </mesh>
                     ))}
                 </group>
@@ -244,7 +239,7 @@ const Ground = () => {
         <group>
             <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onPointerDown={onDown}>
                 <planeGeometry args={[520, 520]} />
-                <meshToonMaterial color={PALETTE.grass} gradientMap={gradientMap()} />
+                <Surface color={PALETTE.grass} />
             </mesh>
 
             {showRoad && <DefaultRoad dashes={dashes} />}
@@ -259,7 +254,7 @@ const DefaultRoad = ({ dashes }) => {
             {/* مرفوعة قليلاً لتجنّب تزاحم العمق مع الأرض */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
                 <planeGeometry args={[ROAD_HALF * 2, ROAD_LEN]} />
-                <meshToonMaterial color={PALETTE.road} gradientMap={gradientMap()} />
+                <Surface color={PALETTE.road} />
             </mesh>
 
             {[-1, 1].map(side => (
@@ -270,7 +265,7 @@ const DefaultRoad = ({ dashes }) => {
                     receiveShadow
                 >
                     <planeGeometry args={[WALK_W, ROAD_LEN]} />
-                    <meshToonMaterial color={PALETTE.sidewalk} gradientMap={gradientMap()} />
+                    <Surface color={PALETTE.sidewalk} />
                 </mesh>
             ))}
 
@@ -305,13 +300,13 @@ const FoliageGroup = ({ items, count, crown, crownColor, crownY }) => {
         <>
             <Instances limit={items.length} range={count} castShadow receiveShadow>
                 <cylinderGeometry args={[0.22, 0.3, 2, 6]} />
-                <meshToonMaterial color={PALETTE.trunk} gradientMap={gradientMap()} />
+                <Surface color={PALETTE.trunk} />
                 {trunks}
             </Instances>
 
             <Instances limit={items.length} range={count} castShadow receiveShadow>
                 {crown}
-                <meshToonMaterial color={crownColor} gradientMap={gradientMap()} flatShading />
+                <Surface color={crownColor} flat />
                 {crowns}
             </Instances>
         </>
@@ -467,11 +462,11 @@ const NPCs = () => {
                 <group key={i} position={[w.x, 0, w.z]} rotation={[0, w.dir > 0 ? 0 : Math.PI, 0]}>
                     <mesh position={[0, 0.62, 0]} castShadow>
                         <capsuleGeometry args={[0.24, 0.62, 4, 8]} />
-                        <meshToonMaterial color={w.color} gradientMap={gradientMap()} />
+                        <Surface color={w.color} />
                     </mesh>
                     <mesh position={[0, 1.34, 0]} castShadow>
                         <sphereGeometry args={[0.25, 10, 8]} />
-                        <meshToonMaterial color={PALETTE.skin} gradientMap={gradientMap()} />
+                        <Surface color={PALETTE.skin} />
                     </mesh>
                 </group>
             ))}
@@ -722,12 +717,51 @@ const Effects = () => {
 
 // ============================================================
 
+/**
+ * إضاءة البيئة للنمط الواقعي.
+ *
+ * الخامات الفيزيائية تحتاج ما تعكسه: بدونها يبدو المعدن طلاءً باهتاً
+ * والزجاج لوحاً مصمتاً. نبنيها من مصادر ضوء مرسومة هنا لا من ملف HDRI
+ * يُنزَّل من الإنترنت — لا انتظار ولا اعتماد على شبكة.
+ *
+ * المفتاح مربوط بساعة تقريبية: تتجدّد مع تقدّم النهار ولا تُعاد في كل إطار.
+ */
+const WorldEnvironment = () => {
+    const hour = useWorld(s => Math.round(s.environment.timeOfDay));
+    const climate = useWorld(s => Math.round(s.environment.climate * 3));
+
+    const sky = skyFor(hour, climate / 3);
+    const sun = sunFor(hour);
+
+    return (
+        <Environment key={`${hour}_${climate}`} resolution={128}>
+            {/* القبّة: لون السماء من فوق والأفق من الجانب */}
+            <Lightformer form="rect" intensity={1.1} color={sky.top}
+                position={[0, 12, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[30, 30, 1]} />
+            <Lightformer form="ring" intensity={0.55} color={sky.bottom}
+                position={[0, 0, -14]} scale={[26, 10, 1]} />
+            <Lightformer form="ring" intensity={0.55} color={sky.bottom}
+                position={[0, 0, 14]} rotation={[0, Math.PI, 0]} scale={[26, 10, 1]} />
+
+            {/* قرص الشمس: مصدر الوهج الحادّ في الانعكاسات */}
+            <Lightformer
+                form="circle" intensity={4.5} color={sky.sun}
+                position={sun.position.map(v => (v / 120) * 16)}
+                scale={5}
+            />
+        </Environment>
+    );
+};
+
 const WorldScene = () => {
     const outlines = useWorld(s => s.environment.outlines !== false);
+    const style = useWorld(s => s.environment.renderStyle || 'toon');
     const mode = useWorld(s => s.mode);
 
     return (
+        <StyleContext.Provider value={style}>
         <OutlineContext.Provider value={outlines}>
+            {style === 'real' && <WorldEnvironment />}
             <Sky />
             <Sun />
             <Clouds />
@@ -739,6 +773,7 @@ const WorldScene = () => {
             {mode === 'walk' ? <Walker /> : <Rig />}
             <Effects />
         </OutlineContext.Provider>
+        </StyleContext.Provider>
     );
 };
 

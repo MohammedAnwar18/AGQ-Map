@@ -1,18 +1,17 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { applyToonMaterial } from './toon';
+import { applyToonMaterial } from './toon.js';
 
 /* ============================================================
    المجسمات المستوردة من جهازك
 
    تُخزَّن في IndexedDB داخل المتصفّح، فتبقى بعد إغلاق الصفحة ولا
-   تُرفع إلى أي خادم. العالم المحفوظ يشير إليها بمفتاحها، فإن فُتح
-   على جهاز آخر ظهرت كصندوق بديل بدل أن ينكسر المشهد.
+   تُرفع إلى أي خادم.
 
-   صيغتان:
-   • ‎.glb‎  — ملف واحد مكتفٍ بذاته، وهو الأسهل والأوصى به.
-   • ‎.gltf‎ — يشير إلى ‎.bin‎ وصور خارجية، فنطلب اختيارها معه ونحلّ
-     مساراتها النسبية إلى روابط blob عبر مُعدّل الروابط في المدير.
+   ملف ‎.gltf‎ ليس مكتفياً بذاته: هو JSON يشير بالاسم إلى ملف هندسة
+   ‎.bin‎ وإلى صور الخامات. لذلك نقرأ الـ JSON عند الاستيراد ونُقارن
+   ما يطلبه بما اخترته، فنقول لك باسمه ما ينقص — بدل أن نُحمّل مجسماً
+   ناقصاً ثم لا يظهر شيء ولا تعرف لماذا.
    ============================================================ */
 
 const DB_NAME = 'palnovaa_world_models';
@@ -44,102 +43,196 @@ const tx = async (mode, run) => {
     return new Promise((resolve, reject) => {
         const t = db.transaction(STORE, mode);
         const store = t.objectStore(STORE);
-        let result;
-        try { result = run(store); } catch (e) { return reject(e); }
+        let request;
+        try { request = run(store); } catch (e) { return reject(e); }
 
-        t.oncomplete = () => resolve(result?.result !== undefined ? result.result : result);
-        t.onerror = () => reject(t.error);
+        t.oncomplete = () => resolve(request?.result);
+        t.onerror = () => reject(t.error || new Error('فشلت عملية التخزين'));
+        t.onabort = () => reject(t.error || new Error('أُلغيت عملية التخزين — قد تكون مساحة المتصفّح ممتلئة'));
     });
 };
 
 export const listCustom = () => tx('readonly', s => s.getAll())
-    .then(rows => (rows || []).map(({ key, name, entry, addedAt, size }) => ({ key, name, entry, addedAt, size })));
+    .then(rows => (rows || []).map(({ key, name, entry, addedAt, size, stats }) =>
+        ({ key, name, entry, addedAt, size, stats })));
 
 export const getCustom = (key) => tx('readonly', s => s.get(key));
-export const deleteCustom = (key) => { cache.delete(key); return tx('readwrite', s => s.delete(key)); };
 export const putCustom = (record) => tx('readwrite', s => s.put(record));
 
-// ── الاستيراد ───────────────────────────────────────────────
+export const deleteCustom = (key) => {
+    forgetCache(key);
+    return tx('readwrite', s => s.delete(key));
+};
+
+// ── فحص ما يطلبه الملف ──────────────────────────────────────
 
 const GEOMETRY_EXT = /\.(glb|gltf)$/i;
 
+/** الاسم المجرّد من مساره ومن حالة أحرفه — ويندوز لا يُفرّق بينها */
+export const plainName = (path) => decodeURIComponent(
+    String(path).split(/[\\/]/).pop().split('?')[0].split('#')[0]
+).toLowerCase();
+
 /**
- * يبني سجلّاً من الملفات التي اختارها المستخدم.
- * يقبل ‎.glb‎ وحده، أو ‎.gltf‎ ومعه ‎.bin‎ وصوره.
+ * يقرأ الـ JSON ويُعيد أسماء كل ما يشير إليه من ملفات خارجية.
+ * الروابط المضمّنة (data:) ليست ملفات فنتجاهلها.
+ */
+export const requiredFiles = (json) => {
+    const wanted = new Set();
+
+    const collect = (list) => {
+        for (const item of list || []) {
+            const uri = item?.uri;
+            if (!uri || uri.startsWith('data:')) continue;
+            wanted.add(plainName(uri));
+        }
+    };
+
+    collect(json.buffers);
+    collect(json.images);
+    return [...wanted];
+};
+
+// ── الاستيراد ───────────────────────────────────────────────
+
+/**
+ * يبني سجلّاً من الملفات التي اختارها المستخدم، بعد التحقّق من
+ * اكتمالها. يرمي خطأً مفصّلاً يذكر الملفات الناقصة بأسمائها.
  */
 export const importFiles = async (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) throw new Error('لم تُختَر ملفات');
 
     const entries = files.filter(f => GEOMETRY_EXT.test(f.name));
-    if (!entries.length) throw new Error('اختر ملف ‎.glb‎ أو ‎.gltf‎ — ومعه ملفاته إن كان gltf');
-    if (entries.length > 1) throw new Error(`اخترت ${entries.length} مجسمات دفعةً واحدة — استورد واحداً في كل مرّة`);
 
+    if (!entries.length) {
+        const kinds = [...new Set(files.map(f => (f.name.match(/\.[^.]+$/) || ['بلا امتداد'])[0]))];
+        throw new Error(
+            `لا ملف ‎.glb‎ أو ‎.gltf‎ بين ما اخترت (وجدتُ: ${kinds.slice(0, 5).join('، ')}). `
+            + 'ملفات الصور و‎.bin‎ وحدها ليست مجسماً — اختر معها ملف المشهد نفسه.'
+        );
+    }
+
+    // مجلّد كامل قد يحوي عدّة مشاهد: نأخذ الأكبر ونُخبر بما فعلنا
+    entries.sort((a, b) => b.size - a.size);
     const entry = entries[0];
     const isGlb = /\.glb$/i.test(entry.name);
-
-    // ‎.gltf‎ بلا ملفاته يُحمَّل ناقصاً بلا هندسة ولا خامات
-    if (!isGlb && !files.some(f => /\.bin$/i.test(f.name))) {
-        throw new Error('ملف gltf يحتاج ملف ‎.bin‎ وصوره — اخترها كلّها معاً');
-    }
 
     const stored = {};
     let size = 0;
     for (const file of files) {
-        // نُسقط المسار ونُبقي الاسم: مُعدّل الروابط يبحث بالاسم وحده
-        stored[file.name] = file;
+        stored[plainName(file.name)] = file;
         size += file.size;
+    }
+
+    let missing = [];
+
+    if (!isGlb) {
+        let json;
+        try {
+            json = JSON.parse(await entry.text());
+        } catch {
+            throw new Error(`تعذّر قراءة ${entry.name} — الملف ليس glTF صالحاً`);
+        }
+
+        missing = requiredFiles(json).filter(name => !stored[name]);
+
+        if (missing.length) {
+            const shown = missing.slice(0, 6).join('، ');
+            throw new Error(
+                `ينقص ${missing.length} ملف${missing.length > 1 ? 'اً' : ''} يطلبها ${entry.name}: ${shown}`
+                + `${missing.length > 6 ? ' وغيرها' : ''}. `
+                + 'الأسهل: اضغط «استورد مجلّداً» واختر المجلّد كلّه دفعة واحدة.'
+            );
+        }
     }
 
     const record = {
         key: `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
         name: entry.name.replace(GEOMETRY_EXT, ''),
-        entry: entry.name,
+        entry: plainName(entry.name),
         files: stored,
         size,
-        addedAt: new Date().toISOString()
+        addedAt: new Date().toISOString(),
+        extras: entries.length - 1
     };
 
     await putCustom(record);
+
+    // نُحمّله فوراً بدل انتظار أوّل وضع: إن كان معطوباً فليُعرَف الآن
+    try {
+        const { stats } = await loadCustom(record.key, 'toon');
+        record.stats = stats;
+        await putCustom(record);
+    } catch (err) {
+        await deleteCustom(record.key);
+        throw new Error(`تعذّر تحميل ${entry.name}: ${err.message}`);
+    }
+
     return record;
 };
 
 // ── التحميل ─────────────────────────────────────────────────
 
-// نُحمّل الملف مرّة واحدة ونستنسخه لكل نسخة في المشهد
-const cache = new Map();
+// نُحمّل الملف مرّة واحدة (raw) ونبني منه نسخة لكل نمط عرض (styled)،
+// والمشهد يستنسخ من المُنمَّطة — فعشر نسخ لا تعني عشر عمليات تحميل
+const rawCache = new Map();
+const styledCache = new Map();
 
-const MAX_SPAN = 60;   // متر — أكبر من هذا يُرجَّح أنه بالسنتيمترات
-const MIN_SPAN = 0.2;
-
-/**
- * يُوسّط المجسم على محوريه الأفقيين، ويُنزله ليقف على الأرض،
- * ويُعيده إلى مقياس معقول إن كان مصدَّراً بوحدة أخرى.
- */
-const normalize = (object) => {
-    const box = new THREE.Box3().setFromObject(object);
-    if (!box.isEmpty()) {
-        const size = box.getSize(new THREE.Vector3());
-        const span = Math.max(size.x, size.y, size.z);
-
-        let scale = 1;
-        if (span > MAX_SPAN || (span > 0 && span < MIN_SPAN)) {
-            scale = 8 / span;
-            object.scale.multiplyScalar(scale);
-            box.setFromObject(object);
-        }
-
-        const center = box.getCenter(new THREE.Vector3());
-        object.position.x -= center.x;
-        object.position.z -= center.z;
-        object.position.y -= box.min.y;
-
-        return { scale, span };
-    }
-    return { scale: 1, span: 0 };
+const forgetCache = (key) => {
+    rawCache.delete(key);
+    styledCache.delete(`${key}|toon`);
+    styledCache.delete(`${key}|real`);
 };
 
-const loadFromRecord = async (record) => {
+/** تغيير نمط العرض يُبطل النسخ المُنمَّطة وحدها، لا الملفات المحمَّلة */
+export const forgetStyled = () => styledCache.clear();
+
+const MAX_SPAN = 120;   // متر — أكبر من هذا يُرجَّح أنه بالسنتيمترات
+const MIN_SPAN = 0.15;
+
+const normalize = (object) => {
+    const box = new THREE.Box3().setFromObject(object);
+    if (box.isEmpty()) return { scale: 1, dims: [0, 0, 0], empty: true };
+
+    let size = box.getSize(new THREE.Vector3());
+    let span = Math.max(size.x, size.y, size.z);
+    let scale = 1;
+
+    if (span > MAX_SPAN || (span > 0 && span < MIN_SPAN)) {
+        scale = 8 / span;
+        object.scale.multiplyScalar(scale);
+        box.setFromObject(object);
+        size = box.getSize(new THREE.Vector3());
+        span = Math.max(size.x, size.y, size.z);
+    }
+
+    const center = box.getCenter(new THREE.Vector3());
+    object.position.x -= center.x;
+    object.position.z -= center.z;
+    object.position.y -= box.min.y;
+
+    return {
+        scale,
+        dims: [+size.x.toFixed(1), +size.y.toFixed(1), +size.z.toFixed(1)],
+        empty: span === 0
+    };
+};
+
+const countMeshes = (root) => {
+    let meshes = 0;
+    let triangles = 0;
+    root.traverse((child) => {
+        if (!child.isMesh) return;
+        meshes++;
+        const index = child.geometry?.index;
+        const pos = child.geometry?.attributes?.position;
+        triangles += Math.round(((index?.count ?? pos?.count) || 0) / 3);
+    });
+    return { meshes, triangles };
+};
+
+const loadRaw = async (record) => {
     const urls = new Map();
     const revoke = [];
 
@@ -152,62 +245,101 @@ const loadFromRecord = async (record) => {
     const manager = new THREE.LoadingManager();
 
     // glTF يشير إلى ملفاته بمسارات نسبية؛ نردّ كل اسم إلى رابط blob
-    // الخاص به. رابط الملف الرئيسي نفسه لا يُطابق شيئاً فيمرّ كما هو.
-    manager.setURLModifier((url) => {
-        const base = decodeURIComponent(String(url).split(/[\\/]/).pop().split('?')[0]);
-        return urls.get(base) || url;
-    });
+    // الخاص به، بلا حساسية لحالة الأحرف ولا للمجلّدات التي سبقته.
+    manager.setURLModifier((url) => urls.get(plainName(url)) || url);
+
+    const entryUrl = urls.get(record.entry);
+    if (!entryUrl) throw new Error('ملف المشهد مفقود من السجلّ');
 
     try {
         const loader = new GLTFLoader(manager);
-        const gltf = await loader.loadAsync(urls.get(record.entry));
+        const gltf = await loader.loadAsync(entryUrl);
 
         const root = gltf.scene || gltf.scenes?.[0];
         if (!root) throw new Error('الملف لا يحتوي مشهداً');
 
-        applyToonMaterial(root);
-        const info = normalize(root);
+        const counts = countMeshes(root);
+        if (!counts.meshes) throw new Error('الملف لا يحتوي أي شبكة قابلة للرسم');
 
-        return { root, info };
+        return { root, counts };
     } finally {
-        // الهندسة والصور صارت في الذاكرة، فلا حاجة للروابط بعدها
-        revoke.forEach(url => URL.revokeObjectURL(url));
+        // لا نُحرّر فوراً: فكّ ضغط بعض الصور يتأخّر عن وعد التحميل،
+        // والتحرير المبكّر يُنتج مجسماً بلا خامات بلا رسالة خطأ
+        setTimeout(() => revoke.forEach(url => URL.revokeObjectURL(url)), 30000);
     }
 };
 
-/** يُرجع وعداً بالمجسم — مُخزَّن، فالنسخة العاشرة لا تُعيد التحميل */
-export const loadCustom = (key) => {
-    if (cache.has(key)) return cache.get(key);
+/**
+ * يُعيد نسخة أصلاً جاهزة بالنمط المطلوب، مع إحصاءاته.
+ * النمط «الواقعي» يُبقي خامات glTF كما صُدِّرت — الخرائط المعدنية
+ * والخشونة والانحناء — والنمط الكرتوني يستبدلها بتظليل مسطّح.
+ */
+export const loadCustom = (key, style = 'toon') => {
+    const cacheKey = `${key}|${style}`;
+    if (styledCache.has(cacheKey)) return styledCache.get(cacheKey);
 
-    const promise = getCustom(key)
-        .then(record => {
-            if (!record) throw new Error('المجسم غير موجود في هذا المتصفّح');
-            return loadFromRecord(record);
-        })
-        .catch(err => {
-            cache.delete(key);   // نسمح بإعادة المحاولة
-            throw err;
-        });
+    if (!rawCache.has(key)) {
+        rawCache.set(
+            key,
+            getCustom(key)
+                .then(record => {
+                    if (!record) throw new Error('المجسم غير موجود في هذا المتصفّح');
+                    return loadRaw(record);
+                })
+                .catch(err => { rawCache.delete(key); throw err; })
+        );
+    }
 
-    cache.set(key, promise);
+    const promise = rawCache.get(key).then(({ root, counts }) => {
+        const styled = root.clone(true);
+        if (style === 'toon') applyToonMaterial(styled);
+        else prepareRealistic(styled);
+
+        const info = normalize(styled);
+        return {
+            root: styled,
+            stats: { ...counts, dims: info.dims, rescaled: info.scale !== 1 }
+        };
+    }).catch(err => { styledCache.delete(cacheKey); throw err; });
+
+    styledCache.set(cacheKey, promise);
     return promise;
 };
 
+/** النمط الواقعي: نُبقي الخامة الأصلية ونُفعّل الظلال فقط */
+const prepareRealistic = (root) => {
+    root.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+
+        const list = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of list) {
+            if (!material) continue;
+            // انعكاس البيئة يجعل المعدن معدناً؛ بدونه يبدو طلاءً باهتاً
+            if ('envMapIntensity' in material) material.envMapIntensity = 1;
+        }
+    });
+    return root;
+};
+
 /** تحميل ملف ‎.glb‎ من مسار عادي — يخدم الأصول المسجّلة في ASSETS */
-export const loadUrl = (url) => {
-    if (cache.has(url)) return cache.get(url);
+export const loadUrl = (url, style = 'toon') => {
+    const cacheKey = `${url}|${style}`;
+    if (styledCache.has(cacheKey)) return styledCache.get(cacheKey);
 
     const promise = new GLTFLoader().loadAsync(url).then(gltf => {
         const root = gltf.scene || gltf.scenes?.[0];
         if (!root) throw new Error('الملف لا يحتوي مشهداً');
-        applyToonMaterial(root);
-        return { root, info: normalize(root) };
-    }).catch(err => {
-        cache.delete(url);
-        throw err;
-    });
 
-    cache.set(url, promise);
+        if (style === 'toon') applyToonMaterial(root);
+        else prepareRealistic(root);
+
+        const info = normalize(root);
+        return { root, stats: { ...countMeshes(root), dims: info.dims } };
+    }).catch(err => { styledCache.delete(cacheKey); throw err; });
+
+    styledCache.set(cacheKey, promise);
     return promise;
 };
 
@@ -215,4 +347,11 @@ export const formatSize = (bytes) => {
     if (!bytes) return '';
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} كب`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} مب`;
+};
+
+export const describeStats = (stats) => {
+    if (!stats) return '';
+    const [x, y, z] = stats.dims || [];
+    const size = x ? ` · ${x}×${y}×${z} م` : '';
+    return `${stats.meshes} شبكة${size}`;
 };
