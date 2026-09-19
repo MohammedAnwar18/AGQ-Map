@@ -220,8 +220,18 @@
     scrollbar-width: thin;
 }
 
-.we-col::-webkit-scrollbar { width: 5px; }
-.we-col::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.we-col {
+    padding-bottom: 14px;   /* آخر لوحة لا تلتصق بحافّة الشاشة */
+    scrollbar-color: rgba(255, 255, 255, .22) transparent;
+}
+
+.we-col::-webkit-scrollbar { width: 6px; }
+.we-col::-webkit-scrollbar-track { background: transparent; }
+
+.we-col::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, .2);
+    border-radius: 3px;
+}
 
 /* ── البطاقة ── */
 .we-panel {
@@ -264,25 +274,10 @@
     gap: 13px;
     padding: 12px;
 
-    /* كل لوحة تمرّر محتواها وحدها، فلا تدفع طويلة جارتها خارج الشاشة.
-       ولا نُحتجز التمرير هنا (overscroll: contain): عند بلوغ النهاية
-       يجب أن ينتقل الدور إلى العمود، وإلّا تعذّر بلوغ آخر لوحة. */
-    max-height: min(52vh, 460px);
-    overflow-y: auto;
-    padding-bottom: 20px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, .2) transparent;
+    /* ممرّر واحد في الواجهة كلّها: العمود. جسم اللوحة لا يمرّر
+       ولا يُحدّ ارتفاعه — ممرّر داخل ممرّر يجعل بلوغ آخر عنصر
+       مسألة حظّ بحسب موضع المؤشّر لحظة التمرير. */
 }
-
-.we-panel-body::-webkit-scrollbar { width: 6px; }
-.we-panel-body::-webkit-scrollbar-track { background: transparent; }
-
-.we-panel-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, .18);
-    border-radius: 3px;
-}
-
-.we-panel-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .3); }
 
 
 /* ── المساطر ── */
@@ -602,7 +597,7 @@
 
     .we-col {
         width: 100%;
-        max-height: 44vh;
+        max-height: 46vh;
     }
 
     .we-col-start:empty,
@@ -850,14 +845,6 @@
 }
 
 @media (max-width: 900px) {
-    /* على الجوال تُعرض لوحة واحدة، فيكفي ممرّر واحد: العمود.
-       ممرّر داخل ممرّر هو سبب عدم بلوغ آخر عنصر في القائمة. */
-    .we-panel-body {
-        max-height: none;
-        overflow-y: visible;
-    }
-
-    .we-col { max-height: 52vh; }
     .we-hudmap { width: 124px; top: 10px; }
     .we-stick { width: 104px; height: 104px; bottom: calc(46vh + 10px); }
 }
@@ -915,3 +902,96 @@
     font-weight: 700;
     cursor: pointer;
 }
+
+/* ── تبويب فئات الأصول ── */
+.we-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 2px;
+}
+
+.we-cats button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .04);
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.we-cats button.is-on {
+    border-color: rgba(56, 189, 248, .45);
+    background: rgba(56, 189, 248, .16);
+    color: var(--accent);
+}
+
+.we-cats i {
+    display: grid;
+    place-items: center;
+    min-width: 15px;
+    height: 15px;
+    padding-inline: 3px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #051018;
+    font-style: normal;
+    font-size: 9px;
+}
+
+.we-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+    gap: 6px;
+}
+
+/* ── تقرير الاستيراد ── */
+.we-report {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, .04);
+}
+
+.we-report header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.we-report b { font-size: 12px; }
+
+.we-report header button {
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.we-report p {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.75;
+    color: var(--muted);
+    word-break: break-word;
+}
+
+.we-report.is-ok { border-color: rgba(74, 222, 128, .38); background: rgba(74, 222, 128, .09); }
+.we-report.is-ok b { color: #86efac; }
+.we-report.is-err { border-color: rgba(239, 68, 68, .42); background: rgba(239, 68, 68, .1); }
+.we-report.is-err b { color: #fca5a5; }
+.we-report.is-info b { color: var(--accent); }

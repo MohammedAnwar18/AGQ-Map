@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useWorld } from './worldStore';
-import { ASSETS, ASSET_KEYS, AssetThumb } from './assets';
-import { importFiles, listCustom, deleteCustom, formatSize, describeStats, forgetStyled } from './customAssets';
+import { ASSETS } from './assets';
+import { forgetStyled } from './customAssets';
 import MiniMap from './MiniMap';
+import Browser from './AssetBrowser';
 import { saveFile } from '../../utils/download';
 
 /* ============================================================
@@ -219,188 +220,11 @@ export const NodeEditor = ({ onClose }) => (
 
 // ── ٣) متصفّح الأصول ────────────────────────────────────────
 
-const GROUP_LABEL = {
-    road: 'شوارع',
-    terrain: 'تضاريس',
-    build: 'مبانٍ',
-    nature: 'طبيعة',
-    vehicle: 'مركبات',
-    street: 'أثاث الشارع'
-};
-
-// الترتيب مقصود: ما تبني به الأرض أولاً، ثم ما تضعه فوقها
-const GROUP_ORDER = ['road', 'terrain', 'build', 'nature', 'vehicle', 'street'];
-
-export const AssetBrowser = ({ onClose, onFlash }) => {
-    const placementType = useWorld(s => s.placementType);
-    const setPlacement = useWorld(s => s.setPlacement);
-    const customAssets = useWorld(s => s.customAssets);
-    const setCustomAssets = useWorld(s => s.setCustomAssets);
-    const addCustomAsset = useWorld(s => s.addCustomAsset);
-    const dropCustomAsset = useWorld(s => s.dropCustomAsset);
-
-    const fileRef = useRef(null);
-    const folderRef = useRef(null);
-    const [busy, setBusy] = useState(null);
-    const [problem, setProblem] = useState(null);
-
-    // مجسمات الجلسات السابقة محفوظة في المتصفّح — نستعيد بطاقاتها عند الفتح
-    useEffect(() => {
-        listCustom()
-            .then(setCustomAssets)
-            .catch(err => console.warn('تعذّر قراءة مخزن المجسمات:', err?.message));
-    }, [setCustomAssets]);
-
-    const grouped = useMemo(() => {
-        const out = {};
-        ASSET_KEYS.forEach(key => { (out[ASSETS[key].group] ||= []).push(key); });
-        return out;
-    }, []);
-
-    const onPick = async (e) => {
-        const files = e.target.files;
-        e.target.value = '';
-        if (!files?.length) return;
-
-        setProblem(null);
-        setBusy(`يقرأ ${files.length} ملفاً…`);
-
-        try {
-            const record = await importFiles(files);
-
-            addCustomAsset({
-                key: record.key, name: record.name, entry: record.entry,
-                size: record.size, addedAt: record.addedAt, stats: record.stats
-            });
-            setPlacement(`custom:${record.key}`);
-
-            const extra = record.extras
-                ? ` (تجاهلتُ ${record.extras} مشهداً آخر في الاختيار)`
-                : '';
-            onFlash?.(`جاهز: ${record.name} — ${describeStats(record.stats)}${extra}. انقر المشهد لوضعه.`);
-        } catch (err) {
-            // الرسالة تُعرض في اللوحة أيضاً: الوميض يختفي قبل أن تُقرأ كاملة
-            setProblem(err.message);
-            onFlash?.(err.message, 'err');
-        } finally {
-            setBusy(null);
-        }
-    };
-
-    const remove = async (card) => {
-        if (!window.confirm(`حذف «${card.name}» وكل نسخه في المشهد؟`)) return;
-        try {
-            await deleteCustom(card.key);
-            dropCustomAsset(card.key);
-            onFlash?.('حُذف المجسم');
-        } catch (err) {
-            onFlash?.(`تعذّر الحذف: ${err.message}`, 'err');
-        }
-    };
-
-    return (
-        <PanelShell title="متصفّح الأصول" onClose={onClose} className="we-assets">
-            {/* مجسماتك أولاً: هي ما جئت لتضعه */}
-            <div className="we-assetgroup">
-                <span>مجسماتي</span>
-
-                <div className="we-importbtns">
-                    <button className="we-btn" onClick={() => folderRef.current?.click()} disabled={Boolean(busy)}>
-                        استورد مجلّداً
-                    </button>
-                    <button className="we-btn" onClick={() => fileRef.current?.click()} disabled={Boolean(busy)}>
-                        اختر ملفات
-                    </button>
-                </div>
-
-                {busy && <p className="we-note we-working"><span className="we-spin" />{busy}</p>}
-
-                {problem && (
-                    <div className="we-problem">
-                        <b>لم يُستورد</b>
-                        <p>{problem}</p>
-                        <button onClick={() => setProblem(null)}>حسناً</button>
-                    </div>
-                )}
-
-                <div>
-                    {customAssets.map(card => {
-                        const type = `custom:${card.key}`;
-                        return (
-                            <button
-                                key={card.key}
-                                className={`we-thumb is-custom${placementType === type ? ' is-on' : ''}`}
-                                onClick={() => setPlacement(type)}
-                                title={`${card.name} · ${formatSize(card.size)}${card.stats ? ' · ' + describeStats(card.stats) : ''}`}
-                            >
-                                <AssetThumb type="custom" />
-                                <em>{card.name}</em>
-                                <i
-                                    className="we-thumb-x"
-                                    role="button"
-                                    tabIndex={0}
-                                    title="حذف"
-                                    onClick={(e) => { e.stopPropagation(); remove(card); }}
-                                    onKeyDown={(e) => e.key === 'Enter' && remove(card)}
-                                >✕</i>
-                            </button>
-                        );
-                    })}
-
-                    {!customAssets.length && !busy && (
-                        <p className="we-note we-empty">لم تستورد مجسماً بعد.</p>
-                    )}
-                </div>
-
-                <p className="we-note">
-                    <b>‎.glb‎</b> ملف واحد ويكفي. <b>‎.gltf‎</b> يحتاج ملف ‎.bin‎ وصور خاماته
-                    معه — لذلك <b>«استورد مجلّداً»</b> هو الأضمن مع الحزم الجاهزة: اختر
-                    مجلّد التصدير كلّه ونحن نلتقط ما يلزم ونتجاهل الباقي. إن نقص ملف
-                    سنُسمّيه لك بدل أن يُوضع مجسم فارغ.
-                </p>
-
-                <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".glb,.gltf,.bin,image/png,image/jpeg,image/webp"
-                    multiple
-                    onChange={onPick}
-                    hidden
-                />
-                {/* webkitdirectory يُمرَّر بالاسم الصريح: React لا يعرفه كخاصيّة */}
-                <input
-                    ref={folderRef}
-                    type="file"
-                    multiple
-                    onChange={onPick}
-                    hidden
-                    {...{ webkitdirectory: '', directory: '' }}
-                />
-            </div>
-
-            <div className="we-assetrow">
-                {GROUP_ORDER.filter(g => grouped[g]?.length).map(group => (
-                    <div className="we-assetgroup" key={group}>
-                        <span>{GROUP_LABEL[group] || group}</span>
-                        <div>
-                            {grouped[group].map(key => (
-                                <button
-                                    key={key}
-                                    className={`we-thumb${placementType === key ? ' is-on' : ''}`}
-                                    onClick={() => setPlacement(key)}
-                                    title={ASSETS[key].label}
-                                >
-                                    <AssetThumb type={key} />
-                                    <em>{ASSETS[key].label}</em>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </PanelShell>
-    );
-};
+export const AssetBrowser = ({ onClose, onFlash }) => (
+    <PanelShell title="متصفّح الأصول" onClose={onClose} className="we-assets">
+        <Browser onFlash={onFlash} />
+    </PanelShell>
+);
 
 // ── محدّد العنصر المختار ────────────────────────────────────
 

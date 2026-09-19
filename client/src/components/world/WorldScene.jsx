@@ -408,7 +408,7 @@ const Traffic = () => {
                         rotation={[0, c.lane.dir > 0 ? 0 : Math.PI, 0]}
                         scale={0.92}
                     >
-                        <Asset type={c.type} />
+                        <Asset type={c.type} simple />
                     </group>
                 ))}
             </group>
@@ -416,60 +416,136 @@ const Traffic = () => {
     );
 };
 
-const NPC_COLORS = ['#E06C75', '#61AFEF', '#E5C07B', '#98C379', '#C678DD', '#56B6C2'];
+const SHIRT = ['#E06C75', '#61AFEF', '#E5C07B', '#98C379', '#C678DD', '#56B6C2', '#D19A66'];
+const PANTS = ['#3B4252', '#4C566A', '#2E3440', '#5E6472'];
+const HAIR = ['#2B2118', '#4A3527', '#6B4A2F', '#1C1612', '#8A6B45'];
+const SKIN = ['#F0C39A', '#E0AC83', '#C68B62', '#8D5C3D'];
 
-const NPCs = () => {
-    const on = useWorld(s => s.entities.npcs);
+/**
+ * مارّ.
+ *
+ * جسد مفصّل بأطراف تتأرجح: الكتلة الواحدة المتحرّكة تُقرأ كعلبة تنزلق،
+ * والساق التي تتقدّم والذراع التي تقابلها هما ما يجعل المشي مشياً.
+ * كل مارّ يحمل حلقته الخاصّة — الموضع والخطوة معاً — فلا يقود المكوّن
+ * الأب عشرة أجساد من مكان واحد.
+ */
+const Pedestrian = ({ seed }) => {
     const group = useRef();
+    const legL = useRef();
+    const legR = useRef();
+    const armL = useRef();
+    const armR = useRef();
 
-    const walkers = useMemo(() => {
-        const r = rng(909);
-        return Array.from({ length: 10 }, () => {
-            const side = r() > 0.5 ? 1 : -1;
-            return {
-                x: side * (ROAD_HALF + 0.5 + r() * (WALK_W - 0.9)),
-                z: (r() - 0.5) * ROAD_LEN,
-                dir: r() > 0.5 ? 1 : -1,
-                speed: 1.5 + r() * 1.4,
-                color: NPC_COLORS[Math.floor(r() * NPC_COLORS.length)],
-                phase: r() * Math.PI * 2
-            };
-        });
-    }, []);
+    const self = useMemo(() => {
+        const r = rng(seed);
+        const side = r() > 0.5 ? 1 : -1;
+        return {
+            x: side * (ROAD_HALF + 0.6 + r() * (WALK_W - 1.0)),
+            z: (r() - 0.5) * ROAD_LEN,
+            dir: r() > 0.5 ? 1 : -1,
+            speed: 1.3 + r() * 1.3,
+            phase: r() * Math.PI * 2,
+            height: 0.92 + r() * 0.16,
+            shirt: SHIRT[Math.floor(r() * SHIRT.length)],
+            pants: PANTS[Math.floor(r() * PANTS.length)],
+            hair: HAIR[Math.floor(r() * HAIR.length)],
+            skin: SKIN[Math.floor(r() * SKIN.length)],
+            bag: r() > 0.62
+        };
+    }, [seed]);
 
     useFrame((state, dt) => {
-        if (!on || !group.current) return;
-        const t = state.clock.elapsedTime;
+        const g = group.current;
+        if (!g) return;
 
-        group.current.children.forEach((npc, i) => {
-            const w = walkers[i];
-            npc.position.z += w.dir * w.speed * dt;
+        g.position.z += self.dir * self.speed * dt;
 
-            const limit = ROAD_LEN / 2;
-            if (npc.position.z > limit) npc.position.z = -limit;
-            if (npc.position.z < -limit) npc.position.z = limit;
+        const limit = ROAD_LEN / 2;
+        if (g.position.z > limit) g.position.z = -limit;
+        if (g.position.z < -limit) g.position.z = limit;
 
-            // نطّة خفيفة تقرأ كمشي دون هيكل عظمي
-            npc.position.y = Math.abs(Math.sin(t * w.speed * 2.1 + w.phase)) * 0.12;
-        });
+        // تردّد الخطوة يتبع السرعة: السريع يخطو أكثر لا أوسع فقط
+        const t = state.clock.elapsedTime * self.speed * 3.1 + self.phase;
+        const swing = Math.sin(t) * 0.62;
+
+        legL.current.rotation.x = swing;
+        legR.current.rotation.x = -swing;
+        armL.current.rotation.x = -swing * 0.72;
+        armR.current.rotation.x = swing * 0.72;
+
+        // ارتفاع الجسم يعلو مرّتين في كل دورة — عند كل خطوة
+        g.position.y = Math.abs(Math.cos(t)) * 0.045;
     });
 
-    if (!on) return null;
+    const s = self.height;
 
     return (
-        <group ref={group}>
-            {walkers.map((w, i) => (
-                <group key={i} position={[w.x, 0, w.z]} rotation={[0, w.dir > 0 ? 0 : Math.PI, 0]}>
-                    <mesh position={[0, 0.62, 0]} castShadow>
-                        <capsuleGeometry args={[0.24, 0.62, 4, 8]} />
-                        <Surface color={w.color} />
+        <group ref={group} position={[self.x, 0, self.z]} rotation={[0, self.dir > 0 ? 0 : Math.PI, 0]} scale={s}>
+            {/* الساقان: المحور عند الورك والقطعة معلّقة تحته */}
+            {[[legL, -0.11], [legR, 0.11]].map(([ref, x], i) => (
+                <group key={i} ref={ref} position={[x, 0.82, 0]}>
+                    <mesh position={[0, -0.36, 0]} castShadow>
+                        <boxGeometry args={[0.17, 0.72, 0.19]} />
+                        <Surface color={self.pants} />
                     </mesh>
-                    <mesh position={[0, 1.34, 0]} castShadow>
-                        <sphereGeometry args={[0.25, 10, 8]} />
-                        <Surface color={PALETTE.skin} />
+                    <mesh position={[0, -0.74, 0.04]} castShadow>
+                        <boxGeometry args={[0.19, 0.1, 0.29]} />
+                        <Surface color="#2A2E36" roughness={0.6} />
                     </mesh>
                 </group>
             ))}
+
+            {/* الجذع */}
+            <mesh position={[0, 1.13, 0]} castShadow>
+                <boxGeometry args={[0.43, 0.62, 0.25]} />
+                <Surface color={self.shirt} />
+            </mesh>
+
+            {/* الذراعان */}
+            {[[armL, -0.29], [armR, 0.29]].map(([ref, x], i) => (
+                <group key={i} ref={ref} position={[x, 1.4, 0]}>
+                    <mesh position={[0, -0.26, 0]} castShadow>
+                        <boxGeometry args={[0.13, 0.52, 0.14]} />
+                        <Surface color={self.shirt} />
+                    </mesh>
+                    <mesh position={[0, -0.57, 0]} castShadow>
+                        <boxGeometry args={[0.12, 0.13, 0.13]} />
+                        <Surface color={self.skin} />
+                    </mesh>
+                </group>
+            ))}
+
+            {/* الرقبة والرأس والشعر */}
+            <mesh position={[0, 1.49, 0]} castShadow>
+                <cylinderGeometry args={[0.07, 0.08, 0.1, 7]} />
+                <Surface color={self.skin} />
+            </mesh>
+            <mesh position={[0, 1.66, 0]} castShadow>
+                <boxGeometry args={[0.26, 0.28, 0.25]} />
+                <Surface color={self.skin} />
+            </mesh>
+            <mesh position={[0, 1.78, -0.01]} castShadow>
+                <boxGeometry args={[0.28, 0.13, 0.27]} />
+                <Surface color={self.hair} roughness={0.95} />
+            </mesh>
+
+            {self.bag && (
+                <mesh position={[0, 1.16, -0.2]} castShadow>
+                    <boxGeometry args={[0.32, 0.4, 0.16]} />
+                    <Surface color="#4C566A" />
+                </mesh>
+            )}
+        </group>
+    );
+};
+
+const NPCs = () => {
+    const on = useWorld(s => s.entities.npcs);
+    if (!on) return null;
+
+    return (
+        <group>
+            {Array.from({ length: 10 }, (_, i) => <Pedestrian key={i} seed={909 + i * 137} />)}
         </group>
     );
 };

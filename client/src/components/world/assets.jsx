@@ -129,36 +129,98 @@ const Bush = () => (
     </group>
 );
 
+/** نافذة بإطار وعارضة — الإطار هو ما يفصلها عن مربّع أزرق على جدار */
+const Window = ({ w = 1.1, h = 1.1, x = 0, y = 0, z = 0, ry = 0, sill = true }) => (
+    <group position={[x, y, z]} rotation={[0, ry, 0]}>
+        <Part kind="box" args={[w + 0.18, h + 0.18, 0.1]} color="#E8E2D4" outline={0.04} />
+        <Part kind="box" args={[w, h, 0.12]} color={PALETTE.glass} position={[0, 0, 0.04]} outline={0} />
+        <Part kind="box" args={[0.06, h, 0.15]} color="#E8E2D4" position={[0, 0, 0.05]} outline={0} />
+        <Part kind="box" args={[w, 0.06, 0.15]} color="#E8E2D4" position={[0, 0, 0.05]} outline={0} />
+        {sill && <Part kind="box" args={[w + 0.3, 0.1, 0.22]} color="#D8D2C4" position={[0, -h / 2 - 0.14, 0.06]} outline={0.03} />}
+    </group>
+);
+
+/** باب بإطار ومقبض ودرجة */
+const Door = ({ x = 0, z = 0, color = PALETTE.wood }) => (
+    <group position={[x, 0, z]}>
+        <Part kind="box" args={[1.12, 2.12, 0.1]} color="#E8E2D4" position={[0, 1.02, 0]} outline={0.04} />
+        <Part kind="box" args={[0.92, 1.96, 0.14]} color={color} position={[0, 0.98, 0.04]} outline={0} />
+        <Part kind="box" args={[0.7, 0.7, 0.16]} color="#8A6240" position={[0, 1.34, 0.06]} outline={0} />
+        <Part kind="sphere" args={[0.07, 8, 6]} color="#C9A227" position={[0.33, 0.98, 0.14]} outline={0} />
+        <Part kind="box" args={[1.5, 0.14, 0.7]} color={PALETTE.sidewalk} position={[0, 0.07, 0.42]} outline={0.03} />
+    </group>
+);
+
 const House = ({ wall = PALETTE.wallA, roof = PALETTE.roofA }) => (
     <group>
-        <Part kind="box" args={[6, 3.4, 5]} color={wall} position={[0, 1.7, 0]} />
-        <Part kind="cone" args={[4.7, 2.3, 4]} color={roof} position={[0, 4.55, 0]} rotation={[0, Math.PI / 4, 0]} />
-        <Part kind="box" args={[0.9, 1.9, 0.18]} color={PALETTE.wood} position={[0, 0.95, 2.55]} outline={0.05} />
-        <Part kind="box" args={[1.1, 1.1, 0.16]} color={PALETTE.glass} position={[-2, 2.1, 2.55]} outline={0.05} />
-        <Part kind="box" args={[1.1, 1.1, 0.16]} color={PALETTE.glass} position={[2, 2.1, 2.55]} outline={0.05} />
-        <Part kind="box" args={[0.7, 1.3, 0.7]} color={PALETTE.roofC} position={[1.7, 5.2, -0.9]} outline={0.05} />
+        {/* أساس بارز: يمنع المنزل من أن يبدو ملصقاً على الأرض */}
+        <Part kind="box" args={[6.24, 0.36, 5.24]} color="#B9B2A3" position={[0, 0.18, 0]} outline={0.03} />
+        <Part kind="box" args={[6, 3.4, 5]} color={wall} position={[0, 2, 0]} />
+
+        {/* السقف وطنفه البارز عن الجدار */}
+        <Part kind="box" args={[6.5, 0.16, 5.5]} color={PALETTE.roofC} position={[0, 3.78, 0]} outline={0.03} />
+        <Part kind="cone" args={[4.9, 2.3, 4]} color={roof} position={[0, 5.0, 0]} rotation={[0, Math.PI / 4, 0]} />
+
+        <Door z={2.52} />
+        <Window w={1.05} h={1.05} x={-2} y={2.5} z={2.55} />
+        <Window w={1.05} h={1.05} x={2} y={2.5} z={2.55} />
+        <Window w={1.05} h={1.05} x={-3.05} y={2.5} z={0} ry={-Math.PI / 2} />
+        <Window w={1.05} h={1.05} x={3.05} y={2.5} z={0} ry={Math.PI / 2} />
+
+        {/* المدخنة بغطائها */}
+        <Part kind="box" args={[0.66, 1.5, 0.66]} color={PALETTE.roofC} position={[1.7, 5.5, -0.9]} outline={0.04} />
+        <Part kind="box" args={[0.86, 0.14, 0.86]} color="#8A7A68" position={[1.7, 6.3, -0.9]} outline={0.03} />
     </group>
 );
 
 const Cottage = () => (
     <group>
-        <Part kind="box" args={[4.6, 2.7, 4.2]} color={PALETTE.wallC} position={[0, 1.35, 0]} />
-        <Part kind="cone" args={[3.8, 1.8, 4]} color={PALETTE.roofB} position={[0, 3.6, 0]} rotation={[0, Math.PI / 4, 0]} />
-        <Part kind="box" args={[0.85, 1.7, 0.16]} color={PALETTE.wood} position={[0, 0.85, 2.15]} outline={0.05} />
-        <Part kind="box" args={[1.5, 0.9, 0.16]} color={PALETTE.glass} position={[-1.4, 1.9, 2.15]} outline={0.05} />
+        <Part kind="box" args={[4.84, 0.32, 4.44]} color="#B9B2A3" position={[0, 0.16, 0]} outline={0.03} />
+        <Part kind="box" args={[4.6, 2.7, 4.2]} color={PALETTE.wallC} position={[0, 1.65, 0]} />
+        <Part kind="box" args={[5.1, 0.14, 4.7]} color={PALETTE.roofC} position={[0, 3.08, 0]} outline={0.03} />
+        <Part kind="cone" args={[3.9, 1.9, 4]} color={PALETTE.roofB} position={[0, 4.1, 0]} rotation={[0, Math.PI / 4, 0]} />
+
+        <Door z={2.12} color="#8A6240" />
+        <Window w={1.2} h={0.85} x={-1.5} y={2.1} z={2.15} />
+        <Window w={1.2} h={0.85} x={1.5} y={2.1} z={2.15} />
+
+        {/* شرفة صغيرة بعمودين */}
+        {[-1.4, 1.4].map(x => (
+            <Part key={x} kind="cyl" args={[0.1, 0.12, 2.1, 7]} color="#E8E2D4" position={[x, 1.05, 3.0]} outline={0.04} />
+        ))}
+        <Part kind="box" args={[3.4, 0.14, 1.9]} color={PALETTE.roofB} position={[0, 2.18, 3.0]} outline={0.03} />
     </group>
 );
 
+const TOWER_FLOORS = [2.6, 5.4, 8.2, 11];
+
 const Tower = () => (
     <group>
-        <Part kind="box" args={[5.4, 13, 5.4]} color={PALETTE.tower} position={[0, 6.5, 0]} />
-        <Part kind="box" args={[5.6, 0.7, 5.6]} color={PALETTE.wallB} position={[0, 13.3, 0]} outline={0.03} />
-        {[2.6, 5.4, 8.2, 11].map((y, i) => (
-            <Part key={i} kind="box" args={[5.0, 1.3, 0.14]} color={PALETTE.towerGlass} position={[0, y, 2.73]} outline={0} />
+        {/* طابق أرضي أغمق، وهو ما يميّز البرج عن العمود المصمت */}
+        <Part kind="box" args={[5.6, 1.6, 5.6]} color="#8E99A6" position={[0, 0.8, 0]} />
+        <Part kind="box" args={[5.4, 11.6, 5.4]} color={PALETTE.tower} position={[0, 7.4, 0]} />
+        <Part kind="box" args={[5.7, 0.7, 5.7]} color={PALETTE.wallB} position={[0, 13.4, 0]} outline={0.03} />
+
+        {/* غرفة المعدّات على السطح */}
+        <Part kind="box" args={[2.2, 1.1, 2.2]} color="#A7B0BB" position={[-1.2, 14.3, 1.2]} outline={0.04} />
+        <Part kind="cyl" args={[0.09, 0.09, 2.4, 6]} color="#6B7280" position={[1.6, 14.9, -1.4]} outline={0} />
+
+        {TOWER_FLOORS.map((y, i) => (
+            <group key={i}>
+                {/* شريط زجاجي على كل واجهة، يفصله حزام أفقي */}
+                <Part kind="box" args={[5.0, 1.3, 0.14]} color={PALETTE.towerGlass} position={[0, y, 2.73]} outline={0} />
+                <Part kind="box" args={[0.14, 1.3, 5.0]} color={PALETTE.towerGlass} position={[2.73, y, 0]} outline={0} />
+                <Part kind="box" args={[0.14, 1.3, 5.0]} color={PALETTE.towerGlass} position={[-2.73, y, 0]} outline={0} />
+                <Part kind="box" args={[5.5, 0.22, 5.5]} color="#9AA5B1" position={[0, y - 0.85, 0]} outline={0} />
+
+                {/* أعمدة رأسية تقطع الزجاج فيُقرأ نوافذ لا مرآة */}
+                {[-1.6, 0, 1.6].map(x => (
+                    <Part key={x} kind="box" args={[0.16, 1.3, 0.16]} color={PALETTE.tower} position={[x, y, 2.76]} outline={0} />
+                ))}
+            </group>
         ))}
-        {[2.6, 5.4, 8.2, 11].map((y, i) => (
-            <Part key={`s${i}`} kind="box" args={[0.14, 1.3, 5.0]} color={PALETTE.towerGlass} position={[2.73, y, 0]} outline={0} />
-        ))}
+
+        <Door z={2.86} color="#3E4A57" />
     </group>
 );
 
@@ -173,49 +235,232 @@ const Shop = () => (
     </group>
 );
 
-const Car = ({ body = PALETTE.carA }) => (
-    <group>
-        <Part kind="box" args={[1.9, 0.72, 4.3]} color={body} position={[0, 0.72, 0]} />
-        <Part kind="box" args={[1.66, 0.72, 2.1]} color={body} position={[0, 1.4, -0.24]} outline={0.045} />
-        <Part kind="box" args={[1.5, 0.5, 0.12]} color={PALETTE.glass} position={[0, 1.45, 0.83]} outline={0} />
-        <Part kind="box" args={[1.5, 0.5, 0.12]} color={PALETTE.glass} position={[0, 1.45, -1.3]} outline={0} />
-        {[[-0.95, 1.4], [0.95, 1.4], [-0.95, -1.4], [0.95, -1.4]].map(([x, z], i) => (
-            <Part key={i} kind="cyl" args={[0.42, 0.42, 0.34, 9]} color="#2B3440"
-                position={[x, 0.42, z]} rotation={[0, 0, Math.PI / 2]} outline={0.05} />
-        ))}
-        <Part kind="box" args={[0.4, 0.22, 0.12]} color={PALETTE.roofA} position={[-0.6, 0.78, -2.2]} outline={0} />
-        <Part kind="box" args={[0.4, 0.22, 0.12]} color={PALETTE.roofA} position={[0.6, 0.78, -2.2]} outline={0} />
-        <Part kind="box" args={[0.42, 0.24, 0.12]} color="#FFF3C4" position={[-0.6, 0.78, 2.18]} outline={0} />
-        <Part kind="box" args={[0.42, 0.24, 0.12]} color="#FFF3C4" position={[0.6, 0.78, 2.18]} outline={0} />
+/** عجلة: إطار داكن وجنط فاتح — الفرق بينهما هو ما يجعلها تُقرأ عجلةً */
+const Wheel = ({ x, z, r = 0.37, width = 0.3 }) => (
+    <group position={[x, r, z]} rotation={[0, 0, Math.PI / 2]}>
+        <Part kind="cyl" args={[r, r, width, 12]} color="#20262F" outline={0.04} />
+        <Part kind="cyl" args={[r * 0.56, r * 0.56, width + 0.04, 10]} color="#9AA3AE" outline={0} />
+        <Part kind="cyl" args={[r * 0.22, r * 0.22, width + 0.07, 8]} color="#6B7280" outline={0} />
     </group>
 );
 
-const Van = () => (
+/**
+ * سيارة.
+ *
+ * الواقعية هنا ليست مضلّعات أكثر بل العلامات التي تقرأها العين أوّلاً:
+ * زجاج أمامي مائل لا قائم، قوس عجلة يفصل الهيكل عن الإطار، مصدّان
+ * بارزان، ومرايا جانبية. كلّها قطع صغيرة بلا حدود محيطة، فلا تُضاعف
+ * الرسمات على المركبات المتحرّكة.
+ *
+ * simple: نسخة مختصرة لحركة المرور — تسير ولا يُحدَّق فيها.
+ */
+const Car = ({ body = PALETTE.carA, simple = false }) => (
     <group>
-        <Part kind="box" args={[2.1, 2.2, 5]} color={PALETTE.wallA} position={[0, 1.6, -0.5]} />
-        <Part kind="box" args={[2.05, 1.5, 1.7]} color={PALETTE.carB} position={[0, 1.25, 2.35]} outline={0.045} />
-        <Part kind="box" args={[1.8, 0.62, 0.12]} color={PALETTE.glass} position={[0, 1.6, 3.2]} outline={0} />
-        {[[-1.02, 1.9], [1.02, 1.9], [-1.02, -1.9], [1.02, -1.9]].map(([x, z], i) => (
-            <Part key={i} kind="cyl" args={[0.46, 0.46, 0.36, 9]} color="#2B3440"
-                position={[x, 0.46, z]} rotation={[0, 0, Math.PI / 2]} outline={0.05} />
+        {/* الهيكل: قاعدة عريضة وحزام أغمق يكسر الكتلة */}
+        <Part kind="box" args={[1.88, 0.5, 4.2]} color={body} position={[0, 0.66, 0]} />
+        <Part kind="box" args={[1.92, 0.22, 3.9]} color="#2F3742" position={[0, 0.38, 0]} outline={0} />
+
+        {/* غطاء المحرّك وصندوق الخلف أخفض من المقصورة */}
+        <Part kind="box" args={[1.78, 0.3, 1.25]} color={body} position={[0, 1.04, 1.4]} outline={0.035} />
+        <Part kind="box" args={[1.76, 0.26, 0.95]} color={body} position={[0, 1.02, -1.6]} outline={0.035} />
+
+        {/* المقصورة وسقفها */}
+        <Part kind="box" args={[1.62, 0.6, 2.0]} color={body} position={[0, 1.3, -0.12]} outline={0.035} />
+        <Part kind="box" args={[1.5, 0.1, 1.72]} color={body} position={[0, 1.63, -0.2]} outline={0.03} />
+
+        {/* الزجاج: الأمامي مائل، والخلفي بميل معاكس */}
+        <Part kind="box" args={[1.48, 0.62, 0.09]} color={PALETTE.glass}
+            position={[0, 1.34, 0.86]} rotation={[-0.42, 0, 0]} outline={0} />
+        <Part kind="box" args={[1.44, 0.5, 0.09]} color={PALETTE.glass}
+            position={[0, 1.34, -1.1]} rotation={[0.4, 0, 0]} outline={0} />
+        {[-0.8, 0.8].map(x => (
+            <Part key={x} kind="box" args={[0.08, 0.42, 1.5]} color={PALETTE.glass}
+                position={[x, 1.36, -0.16]} outline={0} />
+        ))}
+
+        {/* أقواس العجلات: تفصل الهيكل عن الإطار فيبدو محمولاً لا ملتصقاً */}
+        {[[-0.94, 1.35], [0.94, 1.35], [-0.94, -1.35], [0.94, -1.35]].map(([x, z], i) => (
+            <Part key={i} kind="box" args={[0.1, 0.42, 1.12]} color="#2F3742"
+                position={[x, 0.72, z]} outline={0} />
+        ))}
+
+        <Wheel x={-0.95} z={1.35} />
+        <Wheel x={0.95} z={1.35} />
+        <Wheel x={-0.95} z={-1.35} />
+        <Wheel x={0.95} z={-1.35} />
+
+        {/* مصدّان بارزان عن الهيكل */}
+        <Part kind="box" args={[1.9, 0.26, 0.24]} color="#3A434F" position={[0, 0.55, 2.12]} outline={0.03} />
+        <Part kind="box" args={[1.9, 0.26, 0.24]} color="#3A434F" position={[0, 0.55, -2.08]} outline={0.03} />
+
+        {/* الأنوار — بخامة غير مضاءة فتتوهّج ليلاً تحت Bloom */}
+        {[-0.62, 0.62].map(x => (
+            <group key={`h${x}`}>
+                <mesh position={[x, 0.86, 2.16]}>
+                    <boxGeometry args={[0.44, 0.2, 0.1]} />
+                    <meshBasicMaterial color="#FFF6D0" />
+                </mesh>
+                <mesh position={[x, 0.86, -2.14]}>
+                    <boxGeometry args={[0.38, 0.18, 0.1]} />
+                    <meshBasicMaterial color="#F0533F" />
+                </mesh>
+            </group>
+        ))}
+
+        {!simple && (
+            <>
+                <Part kind="box" args={[1.05, 0.18, 0.08]} color="#20262F" position={[0, 0.64, 2.18]} outline={0} />
+                <Part kind="box" args={[0.52, 0.16, 0.05]} color="#E8E4D8" position={[0, 0.5, 2.24]} outline={0} />
+                <Part kind="box" args={[0.52, 0.16, 0.05]} color="#E8E4D8" position={[0, 0.5, -2.2]} outline={0} />
+
+                {/* مرايا على ساق قصيرة، كما هي فعلاً */}
+                {[-1.0, 1.0].map(x => (
+                    <group key={`m${x}`}>
+                        <Part kind="box" args={[0.14, 0.05, 0.05]} color="#2F3742" position={[x * 0.95, 1.28, 0.68]} outline={0} />
+                        <Part kind="box" args={[0.1, 0.16, 0.2]} color={body} position={[x, 1.28, 0.68]} outline={0} />
+                    </group>
+                ))}
+
+                {/* خطّ الباب ومقبضه */}
+                {[-0.95, 0.95].map(x => (
+                    <group key={`d${x}`}>
+                        <Part kind="box" args={[0.03, 0.5, 0.04]} color="#2F3742" position={[x, 0.82, -0.1]} outline={0} />
+                        <Part kind="box" args={[0.06, 0.06, 0.24]} color="#B9C3CE" position={[x, 0.98, -0.42]} outline={0} />
+                    </group>
+                ))}
+            </>
+        )}
+    </group>
+);
+
+const Van = ({ simple = false }) => (
+    <group>
+        <Part kind="box" args={[2.08, 2.1, 4.6]} color={PALETTE.wallA} position={[0, 1.62, -0.7]} />
+        <Part kind="box" args={[2.12, 0.3, 4.4]} color="#2F3742" position={[0, 0.62, -0.7]} outline={0} />
+
+        {/* المقصورة أخفض من الصندوق، بزجاج مائل */}
+        <Part kind="box" args={[2.04, 1.5, 1.6]} color={PALETTE.carB} position={[0, 1.3, 2.3]} outline={0.035} />
+        <Part kind="box" args={[1.8, 0.7, 0.1]} color={PALETTE.glass}
+            position={[0, 1.62, 3.06]} rotation={[-0.3, 0, 0]} outline={0} />
+        {[-1.0, 1.0].map(x => (
+            <Part key={x} kind="box" args={[0.08, 0.5, 1.1]} color={PALETTE.glass}
+                position={[x, 1.55, 2.3]} outline={0} />
+        ))}
+
+        {/* باب خلفي وشريط جانبي */}
+        <Part kind="box" args={[0.05, 1.6, 0.05]} color="#C3BCAD" position={[0, 1.6, -3.0]} outline={0} />
+        {[-1.05, 1.05].map(x => (
+            <Part key={`s${x}`} kind="box" args={[0.05, 0.22, 4.2]} color={PALETTE.carB}
+                position={[x, 1.2, -0.7]} outline={0} />
+        ))}
+
+        <Wheel x={-1.0} z={1.85} r={0.42} width={0.34} />
+        <Wheel x={1.0} z={1.85} r={0.42} width={0.34} />
+        <Wheel x={-1.0} z={-1.9} r={0.42} width={0.34} />
+        <Wheel x={1.0} z={-1.9} r={0.42} width={0.34} />
+
+        <Part kind="box" args={[2.1, 0.26, 0.22]} color="#3A434F" position={[0, 0.58, 3.12]} outline={0.03} />
+
+        {[-0.7, 0.7].map(x => (
+            <group key={`l${x}`}>
+                <mesh position={[x, 0.92, 3.16]}>
+                    <boxGeometry args={[0.42, 0.22, 0.1]} />
+                    <meshBasicMaterial color="#FFF6D0" />
+                </mesh>
+                <mesh position={[x, 1.0, -3.02]}>
+                    <boxGeometry args={[0.32, 0.4, 0.1]} />
+                    <meshBasicMaterial color="#F0533F" />
+                </mesh>
+            </group>
+        ))}
+
+        {!simple && [-1.04, 1.04].map(x => (
+            <Part key={`m${x}`} kind="box" args={[0.1, 0.22, 0.18]} color="#2F3742"
+                position={[x * 1.06, 1.6, 2.86]} outline={0} />
         ))}
     </group>
 );
 
 const Bench = () => (
     <group>
-        <Part kind="box" args={[2.4, 0.16, 0.7]} color={PALETTE.wood} position={[0, 0.62, 0]} outline={0.05} />
-        <Part kind="box" args={[2.4, 0.62, 0.14]} color={PALETTE.wood} position={[0, 0.98, -0.32]} outline={0.05} />
-        <Part kind="box" args={[0.16, 0.62, 0.62]} color={PALETTE.metal} position={[-1.05, 0.31, 0]} outline={0.05} />
-        <Part kind="box" args={[0.16, 0.62, 0.62]} color={PALETTE.metal} position={[1.05, 0.31, 0]} outline={0.05} />
+        {/* ألواح منفصلة لا لوح واحد: الفواصل هي ما يجعله مقعد حديقة */}
+        {[-0.24, 0, 0.24].map(z => (
+            <Part key={`s${z}`} kind="box" args={[2.4, 0.1, 0.2]} color={PALETTE.wood} position={[0, 0.62, z]} outline={0.04} />
+        ))}
+        {[0.85, 1.12].map(y => (
+            <Part key={`b${y}`} kind="box" args={[2.4, 0.2, 0.1]} color={PALETTE.wood} position={[0, y, -0.32]} outline={0.04} />
+        ))}
+        {[-1.05, 1.05].map(x => (
+            <group key={x}>
+                <Part kind="box" args={[0.12, 0.62, 0.6]} color={PALETTE.metal} position={[x, 0.31, 0]} outline={0.04} />
+                <Part kind="box" args={[0.12, 0.62, 0.12]} color={PALETTE.metal} position={[x, 0.92, -0.32]} outline={0.04} />
+                <Part kind="box" args={[0.12, 0.1, 0.7]} color="#6B7280" position={[x, 0.05, 0]} outline={0} />
+            </group>
+        ))}
     </group>
 );
 
 const Lamp = () => (
     <group>
-        <Part kind="cyl" args={[0.14, 0.2, 5, 7]} color={PALETTE.metal} position={[0, 2.5, 0]} />
-        <Part kind="box" args={[1.3, 0.14, 0.14]} color={PALETTE.metal} position={[0.55, 4.95, 0]} outline={0.04} />
-        <Part kind="box" args={[0.7, 0.3, 0.42]} color="#FFF3C4" position={[1.1, 4.75, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.26, 0.3, 0.3, 8]} color="#6B7280" position={[0, 0.15, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.11, 0.16, 5, 8]} color={PALETTE.metal} position={[0, 2.6, 0]} />
+        {/* ذراع منحنية: قطعتان بزاوية بدل عارضة أفقية جافّة */}
+        <Part kind="box" args={[0.6, 0.12, 0.12]} color={PALETTE.metal} position={[0.28, 5.02, 0]} rotation={[0, 0, -0.5]} outline={0.04} />
+        <Part kind="box" args={[0.7, 0.12, 0.12]} color={PALETTE.metal} position={[0.88, 5.12, 0]} outline={0.04} />
+        <Part kind="box" args={[0.72, 0.16, 0.44]} color="#4B5563" position={[1.16, 5.0, 0]} outline={0.04} />
+        {/* الكشّاف بخامة غير مضاءة: يتوهّج ليلاً تحت Bloom */}
+        <mesh position={[1.16, 4.86, 0]}>
+            <boxGeometry args={[0.6, 0.14, 0.34]} />
+            <meshBasicMaterial color="#FFF3C4" />
+        </mesh>
+    </group>
+);
+
+const TrafficLight = () => (
+    <group>
+        <Part kind="cyl" args={[0.3, 0.34, 0.24, 8]} color="#4B5563" position={[0, 0.12, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.1, 0.13, 4.4, 8]} color="#3E4A57" position={[0, 2.2, 0]} />
+        <Part kind="box" args={[0.4, 1.1, 0.34]} color="#2B3440" position={[0, 3.9, 0]} outline={0.04} />
+        {[['#F0533F', 4.24], ['#F5C542', 3.9], ['#4ADE80', 3.56]].map(([color, y]) => (
+            <mesh key={y} position={[0, y, 0.2]}>
+                <cylinderGeometry args={[0.12, 0.12, 0.06, 10]} />
+                <meshBasicMaterial color={color} />
+            </mesh>
+        ))}
+    </group>
+);
+
+const TrashBin = () => (
+    <group>
+        <Part kind="cyl" args={[0.34, 0.28, 0.9, 10]} color="#3F6B52" position={[0, 0.45, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.37, 0.37, 0.08, 10]} color="#2F5340" position={[0, 0.94, 0]} outline={0.04} />
+        <Part kind="box" args={[0.4, 0.12, 0.05]} color="#1F3A2C" position={[0, 0.98, 0.18]} outline={0} />
+        <Part kind="cyl" args={[0.05, 0.05, 1.1, 6]} color={PALETTE.metal} position={[0.4, 0.55, 0]} outline={0} />
+    </group>
+);
+
+const Hydrant = () => (
+    <group>
+        <Part kind="cyl" args={[0.26, 0.3, 0.14, 9]} color="#B33A2C" position={[0, 0.07, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.17, 0.2, 0.62, 9]} color="#D4564B" position={[0, 0.45, 0]} outline={0.04} />
+        <Part kind="sphere" args={[0.19, 10, 8]} color="#D4564B" position={[0, 0.8, 0]} outline={0.04} />
+        <Part kind="cyl" args={[0.06, 0.06, 0.18, 7]} color="#B33A2C" position={[0, 0.94, 0]} outline={0} />
+        {[-1, 1].map(side => (
+            <Part key={side} kind="cyl" args={[0.09, 0.09, 0.18, 8]} color="#B33A2C"
+                position={[side * 0.22, 0.55, 0]} rotation={[0, 0, Math.PI / 2]} outline={0} />
+        ))}
+    </group>
+);
+
+const BusStop = () => (
+    <group>
+        {[-1.5, 1.5].map(x => (
+            <Part key={x} kind="box" args={[0.12, 2.5, 0.12]} color={PALETTE.metal} position={[x, 1.25, -0.6]} outline={0.04} />
+        ))}
+        <Part kind="box" args={[3.4, 0.12, 1.5]} color="#4B5563" position={[0, 2.55, -0.1]} outline={0.03} />
+        <Part kind="box" args={[3.2, 2.2, 0.08]} color={PALETTE.glass} position={[0, 1.3, -0.72]} outline={0} />
+        <Part kind="box" args={[3.0, 0.1, 0.24]} color={PALETTE.wood} position={[0, 0.5, -0.5]} outline={0.04} />
+        <Part kind="box" args={[0.7, 0.9, 0.06]} color="#4E8FC0" position={[1.5, 1.9, 0]} outline={0.04} />
     </group>
 );
 
@@ -373,6 +618,10 @@ export const ASSETS = {
     lamp:     { label: 'عمود إنارة', group: 'street', Proc: Lamp,     glb: null },
     fence:    { label: 'سياج',      group: 'street',  Proc: Fence,    glb: null },
     fountain: { label: 'نافورة',    group: 'street',  Proc: Fountain, glb: null },
+    traffic_light: { label: 'إشارة مرور', group: 'street', Proc: TrafficLight, glb: null },
+    bin:      { label: 'سلة مهملات', group: 'street', Proc: TrashBin, glb: null },
+    hydrant:  { label: 'حنفية حريق', group: 'street', Proc: Hydrant, glb: null },
+    bus_stop: { label: 'موقف باص',  group: 'street',  Proc: BusStop,  glb: null },
 
     // بلاطات الشبكة — تلتصق ببعضها فتُبنى منها شبكة شوارع كاملة
     road_straight: { label: 'شارع',      group: 'road', Proc: RoadStraight, glb: null, tile: true },
@@ -400,6 +649,7 @@ export const FOOTPRINT = {
     house: 3.6, cottage: 2.9, tower: 3.4, shop: 3.8, fountain: 2.5,
     tree: 0.6, pine: 0.55, palm: 0.5, bush: 0.7, rock: 0.9,
     car: 1.5, van: 1.7, bench: 1.1, lamp: 0.3, fence: 1.9,
+    traffic_light: 0.32, bin: 0.4, hydrant: 0.3, bus_stop: 1.8,
     hill: 5.0
 };
 
