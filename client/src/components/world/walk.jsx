@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { input, resetInput } from './worldStore';
+import { input, resetInput, drive } from './worldStore';
 
 /* ============================================================
    التحكّم في منظور الشخص الأوّل
@@ -233,6 +233,121 @@ export const WalkControls = ({ canvasRef, onExit, onFlash }) => {
 
             {touch && (
                 <button className="we-walkexit" onClick={onExit}>خروج من المشي</button>
+            )}
+        </>
+    );
+};
+
+/* ============================================================
+   القيادة
+
+   نفس المفاتيح ونفس العصا، بمعنى مختلف: W/S خانق وفرامل،
+   A/D مقود، والمسافة فرملة يد. ولا تثبيت للمؤشّر هنا — الكاميرا
+   تتبع السيارة، فالنظر ليس بيد اللاعب.
+   ============================================================ */
+
+/** عدّاد السرعة — يقرأ من كائن خارج React، فلا يُعاد رسم شيء */
+const Speedometer = () => {
+    const readRef = useRef(null);
+    const gearRef = useRef(null);
+    const gripRef = useRef(null);
+
+    useEffect(() => {
+        let raf = 0;
+        const tick = () => {
+            if (readRef.current) readRef.current.textContent = Math.round(drive.speed);
+            if (gearRef.current) gearRef.current.textContent = drive.gear;
+            if (gripRef.current) gripRef.current.textContent = `${drive.onGround}/4`;
+            raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(raf);
+    }, []);
+
+    return (
+        <div className="we-speedo">
+            <b ref={readRef}>0</b>
+            <span>كم/س</span>
+            <i ref={gearRef}>ط</i>
+            <u ref={gripRef}>0/4</u>
+        </div>
+    );
+};
+
+export const DriveControls = ({ onExit }) => {
+    const [touch] = useState(isCoarse);
+
+    useEffect(() => {
+        const held = new Set();
+
+        const recompute = () => {
+            let forward = 0;
+            let strafe = 0;
+            held.forEach(code => {
+                const [axis, sign] = KEYS[code];
+                if (axis === 'forward') forward += sign;
+                else strafe += sign;
+            });
+            input.forward = Math.sign(forward);
+            input.strafe = Math.sign(strafe);
+        };
+
+        const onDown = (e) => {
+            if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.run = true;
+            if (e.code === 'Space') { e.preventDefault(); input.brake = true; }
+            if (!KEYS[e.code]) return;
+            e.preventDefault();
+            held.add(e.code);
+            recompute();
+        };
+
+        const onUp = (e) => {
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') input.run = false;
+            if (e.code === 'Space') input.brake = false;
+            if (!KEYS[e.code]) return;
+            held.delete(e.code);
+            recompute();
+        };
+
+        const onBlur = () => { held.clear(); resetInput(); };
+
+        window.addEventListener('keydown', onDown);
+        window.addEventListener('keyup', onUp);
+        window.addEventListener('blur', onBlur);
+
+        return () => {
+            window.removeEventListener('keydown', onDown);
+            window.removeEventListener('keyup', onUp);
+            window.removeEventListener('blur', onBlur);
+            resetInput();
+        };
+    }, []);
+
+    return (
+        <>
+            <Speedometer />
+
+            {touch && (
+                <>
+                    <Joystick />
+                    <button
+                        className="we-brake"
+                        onPointerDown={() => { input.brake = true; }}
+                        onPointerUp={() => { input.brake = false; }}
+                        onPointerLeave={() => { input.brake = false; }}
+                    >
+                        فرملة
+                    </button>
+                </>
+            )}
+
+            <button className="we-walkexit" onClick={onExit}>خروج من القيادة</button>
+
+            {!touch && (
+                <p className="we-drivehint">
+                    W خانق · S رجوع وفرملة · A / D مقود · Shift تسارع · مسافة فرملة يد
+                </p>
             )}
         </>
     );

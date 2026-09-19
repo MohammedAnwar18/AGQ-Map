@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useLayoutEffect } from 'react';
+import React, { useRef, useMemo, useLayoutEffect, useCallback, Suspense, lazy } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Instances, Instance, Environment, Lightformer } from '@react-three/drei';
@@ -8,6 +8,17 @@ import { BlendFunction } from 'postprocessing';
 import { useWorld, WORLD_BOUNDS, live, input } from './worldStore';
 import { Asset, OutlineContext, StyleContext, Surface, footprintOf } from './assets';
 import { gradientMap, sunFor, skyFor, fogFor, PALETTE } from './toon';
+import { Terrain, Water, BrushRing } from './terrainView';
+import { heightAt, TERRAIN_SPAN } from './terrain';
+
+/**
+ * طبقة الفيزياء مؤجّلة الجلب.
+ *
+ * حزمة Rapier ثقيلة (محرّك مكتوب بـ Rust ومُصرَّف إلى WebAssembly)،
+ * فلا تُطلب إلا لحظة تشغيل المفتاح. من يفتح المحرّر ليبني مشهداً
+ * ساكناً لا ينتظرها ولا يُنزّلها.
+ */
+const PhysicsLayer = lazy(() => import('./physics'));
 
 /* ============================================================
    المشهد
@@ -212,16 +223,20 @@ const Clouds = () => {
 
 // ── الأرض والطريق ───────────────────────────────────────────
 
-const Ground = () => {
+const Ground = ({ onBrushMove }) => {
     const place = useWorld(s => s.place);
     const select = useWorld(s => s.select);
     const showRoad = useWorld(s => s.environment.defaultRoad !== false);
 
     const onDown = (e) => {
-        const { placementType, mode } = useWorld.getState();
+        const { placementType, mode, brush } = useWorld.getState();
 
         // في وضع المشي السحب على المشهد نظر لا وضع؛ الخريطة هي من تضع
-        if (mode === 'walk') return;
+        if (mode !== 'orbit') return;
+
+        // الفرشاة تعمل داخل المساحة المنحوتة وحدها: ضربة على السهل
+        // البعيد لا تفعل شيئاً، ولا يجوز أن تُفسَّر وضعاً أو إلغاء تحديد
+        if (brush.tool) return;
         if (!placementType) { select(null); return; }
 
         e.stopPropagation();
@@ -237,40 +252,83 @@ const Ground = () => {
 
     return (
         <group>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onPointerDown={onDown}>
+            {/* السهل البعيد: ما وراء المساحة القابلة للنحت. مغروز
+                تحتها بستّة سنتيمترات فلا يتزاحم معها على العمق حين
+                تكون الأرض مستوية. */}
+            <mesh
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, -0.06, 0]}
+                receiveShadow
+                onPointerDown={onDown}
+            >
                 <planeGeometry args={[520, 520]} />
                 <Surface color={PALETTE.grass} />
             </mesh>
+
+            <Terrain onBrushMove={onBrushMove} />
 
             {showRoad && <DefaultRoad dashes={dashes} />}
         </group>
     );
 };
 
+/**
+ * صفيحة تنسدل على التضاريس.
+ *
+ * الطريق المستوي فوق أرض متموّجة يترك حافّته معلّقة في الهواء؛
+ * فنُقسّم الصفيحة ونُنزل كل رأس فيها على ارتفاع الأرض تحته، فتتبع
+ * الأرض كما يفعل الإسفلت. تُعاد عند تغيّر التضاريس لا في كل إطار.
+ */
+const DrapedStrip = ({ w, d, x = 0, lift, color }) => {
+    const revision = useWorld(s => s.terrainRevision);
+
+    const geometry = useMemo(() => {
+        const g = new THREE.PlaneGeometry(w, d, Math.max(1, Math.round(w / 3)), Math.max(1, Math.round(d / 3)));
+        g.rotateX(-Math.PI / 2);
+
+        const pos = g.attributes.position.array;
+        for (let i = 0; i < pos.length; i += 3) {
+            pos[i + 1] = heightAt(pos[i] + x, pos[i + 2]) + lift;
+        }
+        g.computeVertexNormals();
+        return g;
+    }, [w, d, x, lift, revision]);
+
+    useLayoutEffect(() => () => geometry.dispose(), [geometry]);
+
+    return (
+        <mesh geometry={geometry} position={[x, 0, 0]} receiveShadow>
+            <Surface color={color} />
+        </mesh>
+    );
+};
+
 /** الطريق المبنيّ في المشهد — يُطفأ لمن يرسم شبكته ببلاطاته */
 const DefaultRoad = ({ dashes }) => {
+    const revision = useWorld(s => s.terrainRevision);
+
     return (
         <group>
             {/* مرفوعة قليلاً لتجنّب تزاحم العمق مع الأرض */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
-                <planeGeometry args={[ROAD_HALF * 2, ROAD_LEN]} />
-                <Surface color={PALETTE.road} />
-            </mesh>
+            <DrapedStrip w={ROAD_HALF * 2} d={ROAD_LEN} lift={0.03} color={PALETTE.road} />
 
             {[-1, 1].map(side => (
-                <mesh
+                <DrapedStrip
                     key={side}
-                    rotation={[-Math.PI / 2, 0, 0]}
-                    position={[side * (ROAD_HALF + WALK_W / 2), 0.04, 0]}
-                    receiveShadow
-                >
-                    <planeGeometry args={[WALK_W, ROAD_LEN]} />
-                    <Surface color={PALETTE.sidewalk} />
-                </mesh>
+                    w={WALK_W}
+                    d={ROAD_LEN}
+                    x={side * (ROAD_HALF + WALK_W / 2)}
+                    lift={0.06}
+                    color={PALETTE.sidewalk}
+                />
             ))}
 
             {dashes.map(z => (
-                <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, z]}>
+                <mesh
+                    key={`${z}_${revision}`}
+                    rotation={[-Math.PI / 2, 0, 0]}
+                    position={[0, heightAt(0, z) + 0.07, z]}
+                >
                     <planeGeometry args={[0.28, 3.4]} />
                     <meshBasicMaterial color={PALETTE.roadLine} />
                 </mesh>
@@ -289,11 +347,11 @@ const FoliageGroup = ({ items, count, crown, crownColor, crownY }) => {
     // عناصر النسخ ثابتة، ولا يتغيّر مع المسطرة إلا range — وإلا أعدنا
     // بناء ثلاثمئة عنصر React في كل كسر عشري أثناء السحب
     const trunks = useMemo(() => items.map((it, i) => (
-        <Instance key={i} position={[it.x, it.s, it.z]} scale={it.s} rotation={[0, it.rot, 0]} />
+        <Instance key={i} position={[it.x, it.y + it.s, it.z]} scale={it.s} rotation={[0, it.rot, 0]} />
     )), [items]);
 
     const crowns = useMemo(() => items.map((it, i) => (
-        <Instance key={i} position={[it.x, it.s * crownY, it.z]} scale={it.s} rotation={[0, it.rot, 0]} />
+        <Instance key={i} position={[it.x, it.y + it.s * crownY, it.z]} scale={it.s} rotation={[0, it.rot, 0]} />
     )), [items, crownY]);
 
     return (
@@ -315,6 +373,7 @@ const FoliageGroup = ({ items, count, crown, crownColor, crownY }) => {
 
 const Foliage = () => {
     const density = useWorld(s => s.environment.foliageDensity);
+    const revision = useWorld(s => s.terrainRevision);
 
     // نوعان منفصلان منذ التوليد: الجذع وتاجه في نفس الفهرس من نفس
     // المصفوفة، وإلا ظهرت جذوع بلا تيجان حين تُقلَّص الكثافة
@@ -325,17 +384,22 @@ const Foliage = () => {
 
         for (let i = 0; i < FOLIAGE_MAX; i++) {
             const side = r() > 0.5 ? 1 : -1;
+            // نُبعدها عن الطريق وعن شريط البيوت حتى لا تتداخل معهما
+            const x = side * (19 + r() * 46);
+            const z = (r() - 0.5) * ROAD_LEN;
+
             const item = {
-                // نُبعدها عن الطريق وعن شريط البيوت حتى لا تتداخل معهما
-                x: side * (19 + r() * 46),
-                z: (r() - 0.5) * ROAD_LEN,
+                x,
+                z,
+                y: heightAt(x, z),   // الشجرة تنبت من الأرض لا من المستوى صفر
                 s: 0.75 + r() * 0.7,
                 rot: r() * Math.PI * 2
             };
             (r() > 0.45 ? pines : rounds).push(item);
         }
         return { pines, rounds };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [revision]);
 
     return (
         <group>
@@ -392,6 +456,16 @@ const Traffic = () => {
             const limit = ROAD_LEN / 2;
             if (car.position.z > limit) car.position.z = -limit;
             if (car.position.z < -limit) car.position.z = limit;
+
+            // محاذاة السطح: السيارة تتبع ميل الأرض تحتها بدل أن تبقى
+            // أفقية فوق منحدر — وهي أوّل ما تراه العين خطأً في المنحدرات
+            const x = car.position.x;
+            const z = car.position.z;
+            car.position.y = heightAt(x, z);
+
+            const ahead = heightAt(x, z + c.lane.dir * 2.2);
+            const behind = heightAt(x, z - c.lane.dir * 2.2);
+            car.rotation.x = -Math.atan2(ahead - behind, 4.4);
         });
     });
 
@@ -405,7 +479,10 @@ const Traffic = () => {
                     <group
                         key={i}
                         position={[c.lane.x, 0, c.z]}
-                        rotation={[0, c.lane.dir > 0 ? 0 : Math.PI, 0]}
+                        // ترتيب YXZ: الميل يُطبَّق في إطار السيارة بعد
+                        // دورانها، وإلا مالت في اتجاه العالم لا اتجاهها
+                        rotation-order="YXZ"
+                        rotation-y={c.lane.dir > 0 ? 0 : Math.PI}
                         scale={0.92}
                     >
                         <Asset type={c.type} simple />
@@ -473,8 +550,9 @@ const Pedestrian = ({ seed }) => {
         armL.current.rotation.x = -swing * 0.72;
         armR.current.rotation.x = swing * 0.72;
 
-        // ارتفاع الجسم يعلو مرّتين في كل دورة — عند كل خطوة
-        g.position.y = Math.abs(Math.cos(t)) * 0.045;
+        // ارتفاع الجسم يعلو مرّتين في كل دورة — عند كل خطوة، فوق
+        // ارتفاع الأرض تحته لا فوق المستوى صفر
+        g.position.y = heightAt(g.position.x, g.position.z) + Math.abs(Math.cos(t)) * 0.045;
     });
 
     const s = self.height;
@@ -564,6 +642,10 @@ const Placed = () => {
     const style = useWorld(s => s.environment.buildingStyle);
     const select = useWorld(s => s.select);
 
+    // نقرأ العدّاد كي يُعاد الرسم بعد سحبة نحت: البيت يجب أن ينزل
+    // مع الحفرة تحته لا أن يبقى معلّقاً في الهواء
+    useWorld(s => s.terrainRevision);
+
     const swap = STYLE_SWAP[style] || {};
 
     return (
@@ -575,7 +657,7 @@ const Placed = () => {
                 return (
                     <group
                         key={item.id}
-                        position={[item.x, 0, item.z]}
+                        position={[item.x, heightAt(item.x, item.z), item.z]}
                         rotation={[0, item.rotation || 0, 0]}
                         scale={item.scale || 1}
                         onPointerDown={(e) => {
@@ -695,10 +777,10 @@ const resolveCollisions = (next) => {
     }
 };
 
-/** ارتفاع الأرض عند نقطة — التلال وحدها تُغيّره */
+/** ارتفاع الأرض عند نقطة — حقل التضاريس أوّلاً ثم قباب التلال فوقه */
 const groundAt = (x, z) => {
     const { placed } = useWorld.getState();
-    let height = 0;
+    let height = heightAt(x, z);
 
     for (const item of placed) {
         if (item.type !== 'hill') continue;
@@ -707,8 +789,9 @@ const groundAt = (x, z) => {
         const d = Math.hypot(x - item.x, z - item.z);
         if (d >= r) continue;
 
-        // قبّة كروية: نصعدها بارتفاعها الحقيقي لا بمنحدر مستقيم
-        height = Math.max(height, Math.sqrt(Math.max(0, r * r - d * d)));
+        // قبّة كروية فوق الأرض المنحوتة، لا فوق المستوى صفر
+        const dome = heightAt(item.x, item.z) + Math.sqrt(Math.max(0, r * r - d * d));
+        height = Math.max(height, dome);
     }
     return height;
 };
@@ -720,6 +803,11 @@ const groundAt = (x, z) => {
 const Rig = () => {
     const controls = useRef();
     const { camera } = useThree();
+
+    // السحب بالفرشاة والسحب لتدوير الكاميرا حركة واحدة بإصبع واحد:
+    // لو بقي الدوران مفتوحاً لدار المشهد مع كل ضربة نحت. OrbitControls
+    // تستمع للوحة مباشرةً فلا يُوقفها stopPropagation على حدث R3F.
+    const sculpting = useWorld(s => Boolean(s.brush.tool));
     const desired = useRef(new THREE.Vector3(0, 0, 34));
     const offset = useRef(new THREE.Vector3(0, 14, 26));
 
@@ -753,6 +841,7 @@ const Rig = () => {
         <OrbitControls
             ref={controls}
             makeDefault
+            enableRotate={!sculpting}
             enablePan={false}
             minDistance={10}
             maxDistance={120}
@@ -833,6 +922,15 @@ const WorldScene = () => {
     const outlines = useWorld(s => s.environment.outlines !== false);
     const style = useWorld(s => s.environment.renderStyle || 'toon');
     const mode = useWorld(s => s.mode);
+    const physicsOn = useWorld(s => s.physics.enabled);
+
+    // موضع الفرشاة يتغيّر مع كل حركة مؤشّر: مرجع لا حالة، وإلا أعدنا
+    // رسم المشهد كلّه لأجل حلقة تتحرّك
+    const brushPoint = useRef({ x: 0, z: 0 });
+    const onBrushMove = useCallback((x, z) => {
+        brushPoint.current.x = x;
+        brushPoint.current.z = z;
+    }, []);
 
     return (
         <StyleContext.Provider value={style}>
@@ -841,12 +939,25 @@ const WorldScene = () => {
             <Sky />
             <Sun />
             <Clouds />
-            <Ground />
+            <Ground onBrushMove={onBrushMove} />
+            <Water />
+            <BrushRing pointRef={brushPoint} />
             <Foliage />
             <Placed />
             <Traffic />
             <NPCs />
-            {mode === 'walk' ? <Walker /> : <Rig />}
+
+            {/* الكاميرا: مدارية في التحرير، عين في المشي، ومتابِعة في
+                القيادة — والأخيرة تعيش داخل طبقة الفيزياء */}
+            {mode === 'walk' && <Walker />}
+            {mode === 'orbit' && <Rig />}
+
+            {physicsOn && (
+                <Suspense fallback={null}>
+                    <PhysicsLayer />
+                </Suspense>
+            )}
+
             <Effects />
         </OutlineContext.Provider>
         </StyleContext.Provider>

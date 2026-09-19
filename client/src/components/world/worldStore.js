@@ -1,4 +1,10 @@
 import { create } from 'zustand';
+import {
+    field, flattenArea, serializeField, loadField, measureField,
+    generateTerrain as buildField,
+    flattenTerrain as levelField,
+    DEFAULT_GENERATION
+} from './terrain.js';
 
 /* ============================================================
    مخزن العالم — مصدر الحقيقة الوحيد لمحرّر المشهد
@@ -33,6 +39,38 @@ const DEFAULT_ENVIRONMENT = {
 const DEFAULT_ENTITIES = {
     traffic: true,
     npcs: true
+};
+
+/* ── التضاريس والماء ──────────────────────────────────────────
+   الإعدادات هنا؛ أما شبكة الارتفاعات نفسها فخارج المخزن في
+   terrain.js، لأنها تُكتب بالفرشاة ستّين مرّة في الثانية.
+
+   الافتراضي أرض مستوية وبلا ماء: عالم محفوظ قبل هذه الطبقة يُفتح
+   كما كان تماماً، ولا يدفع أحد ثمن ميزة لم يطلبها. */
+const DEFAULT_TERRAIN = {
+    ...DEFAULT_GENERATION,
+    water: false,
+    waterLevel: -1.2,      // متر — ما تحته يمتلئ ماءً
+    waveHeight: 0.45,
+    autoFlatten: true      // تسوية الأرض تحت بلاطة الشارع عند رصفها
+};
+
+/* ── الفيزياء ────────────────────────────────────────────────
+   مُطفأة افتراضياً، وتُحمَّل حزمتها كسولاً عند أول تشغيل: من لا
+   يشغّلها لا يُنزّل منها بايتاً واحداً. */
+const DEFAULT_PHYSICS = {
+    enabled: false,
+    gravity: 9.81,
+    debug: false,
+    vehicle: true,
+    debris: 0,
+    buoyancy: true
+};
+
+const DEFAULT_BRUSH = {
+    tool: null,       // null يعني أن الفرشاة مطفأة والنقر يضع/يحدّد كالعادة
+    radius: 12,
+    strength: 0.7
 };
 
 // مشهد البداية: بيوت على الجانبين وأشجار متفرّقة، كي لا تُفتح اللوحة فارغة
@@ -101,11 +139,20 @@ const snapFor = (type, x, z, gridSnap, gridSize) => {
  */
 export const live = { x: 0, z: 34, heading: 0, moving: false };
 
-/** مدخلات المشي — من لوحة المفاتيح أو عصا اللمس، بلا حالة React */
-export const input = { forward: 0, strafe: 0, run: false, yaw: 0, pitch: 0 };
+/**
+ * حالة المركبة الحيّة.
+ *
+ * هنا لا في طبقة الفيزياء: عدّاد السرعة في الواجهة يقرأ منه، ولو
+ * استورده من هناك لجرّ حزمة Rapier إلى كل من يفتح المحرّر — وهي
+ * حزمة لا يدفع ثمنها إلا من شغّل الفيزياء فعلاً.
+ */
+export const drive = { speed: 0, gear: 'ط', onGround: 0, x: 0, z: 0, heading: 0 };
+
+/** مدخلات المشي والقيادة — من لوحة المفاتيح أو عصا اللمس، بلا حالة React */
+export const input = { forward: 0, strafe: 0, run: false, brake: false, yaw: 0, pitch: 0 };
 
 export const resetInput = () => {
-    input.forward = 0; input.strafe = 0; input.run = false;
+    input.forward = 0; input.strafe = 0; input.run = false; input.brake = false;
     input.yaw = 0; input.pitch = 0;
 };
 
@@ -141,6 +188,15 @@ export const useWorld = create((set, get) => ({
         // بينهما نصف متر تُقرأ كخطأ لا كتصميم
         const snapped = snapFor(type, x, z, gridSnap, gridSize);
 
+        // البلاطة صفيحة مستوية: على منحدر تبقى حافّتها معلّقة في
+        // الهواء. نُسوّي ما تحتها أوّلاً فيصير الشارع مشقوقاً في
+        // الأرض كما يُشقّ فعلاً، لا مرمياً فوقها.
+        const terrain = get().terrain;
+        if (terrain.autoFlatten && field.touched && TILE_TYPES.has(type)) {
+            flattenArea(snapped.x, snapped.z, gridSize || 8);
+            set(state => ({ terrainRevision: state.terrainRevision + 1 }));
+        }
+
         const item = { id: nextId(), type, ...snapped, rotation: 0, scale: 1 };
         set(state => ({ placed: [...state.placed, item], selectedId: item.id }));
         return item.id;
@@ -168,9 +224,74 @@ export const useWorld = create((set, get) => ({
     select: (id) => set({ selectedId: id, placementType: null }),
 
     // ── وضع التجوّل ──
-    // orbit: نظرة مدارية للتحرير | walk: منظور الشخص الأوّل
+    // orbit: نظرة مدارية للتحرير | walk: منظور الشخص الأوّل | drive: قيادة
     mode: 'orbit',
-    setMode: (mode) => set({ mode, placementType: null }),
+    setMode: (mode) => set(state => ({
+        mode,
+        placementType: null,
+        // الفرشاة أداة تحرير: لا معنى لها ونحن داخل العالم
+        brush: mode === 'orbit' ? state.brush : { ...state.brush, tool: null },
+        // القيادة بلا فيزياء ليست قيادة — نُشغّلها معها
+        physics: mode === 'drive'
+            ? { ...state.physics, enabled: true, vehicle: true }
+            : state.physics
+    })),
+
+    // ── التضاريس ──
+    // العدّاد وحده في المخزن؛ الارتفاعات في terrain.js خارج React.
+    // رفعه يُعلم المشهد أن يُعيد بناء الشبكة والهياكل، ويحدث مرّة
+    // عند نهاية السحبة لا مع كل بكسل.
+    terrain: { ...DEFAULT_TERRAIN },
+    terrainRevision: 0,
+
+    setTerrain: (key, value) => set(state => ({
+        terrain: { ...state.terrain, [key]: value }
+    })),
+
+    bumpTerrain: () => set(state => ({ terrainRevision: state.terrainRevision + 1 })),
+
+    generateTerrain: (overrides = {}) => {
+        const state = get();
+        const t = { ...state.terrain, ...overrides };
+
+        // الطريق الجاهز شريط مستقيم: نُسطّح ممرّه كي لا يتسلّق كل نتوء
+        const corridor = state.environment.defaultRoad !== false ? 11 : 0;
+
+        buildField({
+            seed: t.seed,
+            amplitude: t.amplitude,
+            roughness: t.roughness,
+            featureScale: t.featureScale,
+            corridor
+        });
+
+        set(s => ({ terrain: t, terrainRevision: s.terrainRevision + 1 }));
+        return measureField();
+    },
+
+    levelTerrain: () => {
+        levelField();
+        set(s => ({ terrainRevision: s.terrainRevision + 1 }));
+    },
+
+    // ── الفرشاة ──
+    brush: { ...DEFAULT_BRUSH },
+    setBrush: (key, value) => set(state => ({
+        brush: { ...state.brush, [key]: value },
+        // اختيار أداة نحت يُلغي وضع الوضع: النقرة الواحدة لا تفعل شيئين
+        placementType: key === 'tool' && value ? null : state.placementType
+    })),
+
+    // ── الفيزياء ──
+    physics: { ...DEFAULT_PHYSICS },
+    setPhysics: (key, value) => set(state => {
+        const next = { ...state.physics, [key]: value };
+        return {
+            physics: next,
+            // إطفاء الفيزياء ونحن نقود يُعيدنا إلى التحرير بدل كاميرا معلّقة
+            mode: key === 'enabled' && !value && state.mode === 'drive' ? 'orbit' : state.mode
+        };
+    }),
 
     // ── مجسماتي المستوردة ──
     // الملفات نفسها في IndexedDB؛ هذه بطاقاتها فقط
@@ -191,24 +312,38 @@ export const useWorld = create((set, get) => ({
 
     // ── الحفظ والاسترجاع ──
     exportWorld: () => {
-        const { environment, entities, placed, cameraTarget } = get();
+        const { environment, entities, placed, cameraTarget, terrain, physics } = get();
         return {
-            version: 1,
+            version: 2,
             savedAt: new Date().toISOString(),
             environment,
             entities,
             cameraTarget,
-            placed
+            placed,
+            terrain,
+            physics,
+            // null حين تكون الأرض مستوية — لا نُثقل الملف بستّة عشر ألف صفر
+            heightField: serializeField()
         };
     },
 
     importWorld: (data) => {
         if (!data || typeof data !== 'object') throw new Error('ملف غير صالح');
 
+        // ملف من قبل طبقة التضاريس لا يحمل حقل ارتفاعات: نُسوّي الأرض
+        // فيُفتح مستوياً كما حُفظ، لا فوق تضاريس الجلسة السابقة
+        if (data.heightField) loadField(data.heightField);
+        else levelField();
+
         // نُدمج فوق الافتراضي بدل الاستبدال، فملف قديم ينقصه مفتاح لا يكسر المشهد
-        set({
+        set(state => ({
             environment: { ...DEFAULT_ENVIRONMENT, ...(data.environment || {}) },
             entities: { ...DEFAULT_ENTITIES, ...(data.entities || {}) },
+            terrain: { ...DEFAULT_TERRAIN, ...(data.terrain || {}) },
+            physics: { ...DEFAULT_PHYSICS, ...(data.physics || {}) },
+            brush: { ...DEFAULT_BRUSH },
+            terrainRevision: state.terrainRevision + 1,
+            mode: 'orbit',
             cameraTarget: data.cameraTarget || { x: 0, z: 34 },
             placed: Array.isArray(data.placed)
                 ? data.placed
@@ -225,17 +360,25 @@ export const useWorld = create((set, get) => ({
                 : [],
             selectedId: null,
             placementType: null
-        });
+        }));
     },
 
-    resetWorld: () => set({
-        environment: { ...DEFAULT_ENVIRONMENT },
-        entities: { ...DEFAULT_ENTITIES },
-        placed: seedWorld(),
-        cameraTarget: { x: 0, z: 34 },
-        selectedId: null,
-        placementType: null
-    }),
+    resetWorld: () => {
+        levelField();
+        set(state => ({
+            environment: { ...DEFAULT_ENVIRONMENT },
+            entities: { ...DEFAULT_ENTITIES },
+            terrain: { ...DEFAULT_TERRAIN },
+            physics: { ...DEFAULT_PHYSICS },
+            brush: { ...DEFAULT_BRUSH },
+            terrainRevision: state.terrainRevision + 1,
+            mode: 'orbit',
+            placed: seedWorld(),
+            cameraTarget: { x: 0, z: 34 },
+            selectedId: null,
+            placementType: null
+        }));
+    },
 
     clearAll: () => set({ placed: [], selectedId: null, placementType: null })
 }));

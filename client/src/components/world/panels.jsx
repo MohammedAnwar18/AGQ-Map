@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useWorld } from './worldStore';
+import { field, measureField, TERRAIN_SPAN } from './terrain';
 import { ASSETS } from './assets';
 import { forgetStyled } from './customAssets';
 import MiniMap from './MiniMap';
@@ -47,6 +48,28 @@ const Switch = ({ label, checked, onChange }) => (
     </button>
 );
 
+/**
+ * قسم يُطوى.
+ *
+ * لوحة تحكّم العالم صارت أطول من الشاشة على الهاتف، والتمرير وحده
+ * لا يكفي: الطيّ يجعل ما تبحث عنه على بُعد لمستين لا عشرين تمريرة.
+ * المفتوح يبقى مفتوحاً في الجلسة، فلا تُعاد فتح ما تعمل عليه.
+ */
+const Section = ({ label, children, defaultOpen = false, badge }) => {
+    const [open, setOpen] = useState(defaultOpen);
+
+    return (
+        <div className={`we-sec${open ? ' is-open' : ''}`}>
+            <button className="we-sec-head" onClick={() => setOpen(v => !v)} aria-expanded={open}>
+                <span>{label}</span>
+                {badge && <em>{badge}</em>}
+                <i aria-hidden="true">{open ? '−' : '+'}</i>
+            </button>
+            {open && <div className="we-sec-body">{children}</div>}
+        </div>
+    );
+};
+
 const PanelShell = ({ title, children, onClose, className = '' }) => (
     <section className={`we-panel ${className}`}>
         <header className="we-panel-head">
@@ -72,7 +95,19 @@ const partOfDay = (hour) => {
     return 'ليل';
 };
 
-// ── ١) لوحة تحكم العالم ─────────────────────────────────────
+// ── ١) لوحة تحكم العالم ───────────────────────
+
+const MODES = [
+    ['orbit', 'تحرير'],
+    ['walk', 'مشي'],
+    ['drive', 'قيادة']
+];
+
+const MODE_HINT = {
+    orbit: 'دوران حول المشهد بالسحب، وتكبير بالعجلة. بدّل إلى «مشي» لتسير داخل العالم، أو إلى «قيادة» لتقود سيارة فيزيائية على التضاريس.',
+    walk: 'انقر المشهد لتثبيت المؤشّر، ثم W A S D للحركة و Shift للركض و Esc للخروج. على الهاتف: العصا للمشي والسحب للنظر.',
+    drive: 'W خانق · S رجوع وفرملة · A / D مقود · Shift تسارع · مسافة فرملة يد. الفيزياء تُشغّل تلقائياً مع هذا الوضع.'
+};
 
 export const WorldPanel = ({ onClose }) => {
     const env = useWorld(s => s.environment);
@@ -87,7 +122,7 @@ export const WorldPanel = ({ onClose }) => {
             <div className="we-group">
                 <span className="we-group-label">وضع التجوّل</span>
                 <div className="we-seg">
-                    {[['orbit', 'تحرير'], ['walk', 'مشي']].map(([key, label]) => (
+                    {MODES.map(([key, label]) => (
                         <button
                             key={key}
                             className={mode === key ? 'is-on' : ''}
@@ -97,11 +132,7 @@ export const WorldPanel = ({ onClose }) => {
                         </button>
                     ))}
                 </div>
-                <p className="we-note">
-                    {mode === 'walk'
-                        ? 'انقر المشهد لتثبيت المؤشّر، ثم W A S D للحركة و Shift للركض و Esc للخروج. على الهاتف: العصا للمشي والسحب للنظر.'
-                        : 'دوران حول المشهد بالسحب، وتكبير بالعجلة. بدّل إلى «مشي» لتسير داخل العالم.'}
-                </p>
+                <p className="we-note">{MODE_HINT[mode]}</p>
             </div>
 
             <Slider
@@ -128,8 +159,7 @@ export const WorldPanel = ({ onClose }) => {
                 left="خالٍ" right="كثيف"
             />
 
-            <div className="we-group">
-                <span className="we-group-label">نمط العرض</span>
+            <Section label="نمط العرض" badge={(env.renderStyle || 'toon') === 'real' ? 'واقعي' : 'كرتوني'}>
                 <div className="we-seg">
                     {[['toon', 'كرتوني'], ['real', 'واقعي']].map(([key, label]) => (
                         <button
@@ -150,10 +180,9 @@ export const WorldPanel = ({ onClose }) => {
                     والانحناء — ويُضيف إضاءة بيئة تنعكس عليها، ويُطفئ الحدود المحيطة.
                     أثقل من الكرتوني، وأليق بحزمة فيها خرائط ORM.
                 </p>
-            </div>
+            </Section>
 
-            <div className="we-group">
-                <span className="we-group-label">نمط المباني</span>
+            <Section label="نمط المباني" badge={env.buildingStyle === 'urban' ? 'مدينة' : 'ضواحٍ'}>
                 <div className="we-seg">
                     {[['suburban', 'ضواحٍ'], ['urban', 'مدينة']].map(([key, label]) => (
                         <button
@@ -165,10 +194,9 @@ export const WorldPanel = ({ onClose }) => {
                         </button>
                     ))}
                 </div>
-            </div>
+            </Section>
 
-            <div className="we-group">
-                <span className="we-group-label">الأرض والشبكة</span>
+            <Section label="الأرض والشبكة">
                 <Switch
                     label="الطريق الجاهز في المشهد"
                     checked={env.defaultRoad !== false}
@@ -189,23 +217,262 @@ export const WorldPanel = ({ onClose }) => {
                     بلاطات الشوارع والتضاريس تلتقط الشبكة دائماً لتتلاصق بلا فجوات،
                     مهما كان هذا المفتاح. أطفئ «الطريق الجاهز» لترسم شبكتك من الصفر.
                 </p>
-            </div>
+            </Section>
 
-            <div className="we-group">
-                <span className="we-group-label">التحكم بالكيانات</span>
+            <Section label="التحكم بالكيانات">
                 <Switch label="حركة المرور" checked={entities.traffic} onChange={() => toggleEntity('traffic')} />
                 <Switch label="المشاة" checked={entities.npcs} onChange={() => toggleEntity('npcs')} />
-            </div>
+            </Section>
 
-            <div className="we-group">
-                <span className="we-group-label">الجودة والأداء</span>
+            <Section label="الجودة والأداء">
                 <Switch label="الحدود المحيطة" checked={env.outlines !== false} onChange={() => setEnv('outlines', env.outlines === false)} />
                 <Switch label="ظلال الاحتكاك (SSAO)" checked={env.heavyShading} onChange={() => setEnv('heavyShading', !env.heavyShading)} />
                 <p className="we-note">
                     SSAO يُعمّق الالتقاء بين المجسمات والأرض لكنه الأثقل هنا؛
                     أطفئه أولاً إن تعثّرت الحركة على جهاز متوسّط.
                 </p>
+            </Section>
+        </PanelShell>
+    );
+};
+
+// ── لوحة التضاريس والفيزياء ──────────────────
+
+const TOOLS = [
+    { key: null, label: 'إيقاف' },
+    { key: 'raise', label: 'رفع' },
+    { key: 'lower', label: 'خفض' },
+    { key: 'flatten', label: 'تسوية' },
+    { key: 'smooth', label: 'تنعيم' },
+    { key: 'dig', label: 'حفر ماء' }
+];
+
+const TOOL_HINT = {
+    raise: 'اسحب على الأرض لترفعها — طول السحبة هو مقدار الارتفاع، فابنِ التلّة على مهل.',
+    lower: 'يخفض الأرض. للوصول إلى ما تحت منسوب الماء استعمل «حفر ماء» — أسرع ويفتح الماء معه.',
+    flatten: 'يسحب كل ما تحت الفرشاة إلى ارتفاع نقطة البدء — لتمهيد أرض قبل رصف شارع أو بناء.',
+    smooth: 'يذيب الحوافّ الحادّة ويهدّئ المنحدرات. مرّره على ما نحتّه فيبدو طبيعياً.',
+    dig: 'يحفر بقوّة ويفتح الماء تلقائياً: كل ما ينزل تحت المنسوب يمتلئ وحده.'
+};
+
+/**
+ * لوحة التضاريس.
+ *
+ * ثلاث طبقات في واحدة: تشكيل الأرض، ثم ملءها ماء، ثم إطلاق
+ * الفيزياء عليها. الترتيب مقصود — وهو ترتيب العمل نفسه.
+ */
+export const TerrainPanel = ({ onClose, onFlash }) => {
+    const terrain = useWorld(s => s.terrain);
+    const brush = useWorld(s => s.brush);
+    const physics = useWorld(s => s.physics);
+    const mode = useWorld(s => s.mode);
+    const revision = useWorld(s => s.terrainRevision);
+
+    const setTerrain = useWorld(s => s.setTerrain);
+    const setBrush = useWorld(s => s.setBrush);
+    const setPhysics = useWorld(s => s.setPhysics);
+    const setMode = useWorld(s => s.setMode);
+    const generate = useWorld(s => s.generateTerrain);
+    const level = useWorld(s => s.levelTerrain);
+
+    // المدى يُقاس عند كل تغيّر لا في كل إطار
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const range = useMemo(() => measureField(), [revision]);
+
+    const pickTool = (key) => {
+        setBrush('tool', brush.tool === key ? null : key);
+        // الحفر بلا ماء حفرة جافّة لا بركة؛ نفتح الماء معه
+        if (key === 'dig' && !terrain.water) setTerrain('water', true);
+    };
+
+    const fillLow = () => {
+        const { min, max } = measureField();
+        if (max - min < 0.4) {
+            onFlash?.('الأرض مستوية — احفر أوّلاً ثم املأ', 'err');
+            return;
+        }
+        setTerrain('waterLevel', +(min + (max - min) * 0.34).toFixed(2));
+        setTerrain('water', true);
+        onFlash?.('امتلأت المنخفضات');
+    };
+
+    const build = () => {
+        const { min, max } = generate();
+        onFlash?.(`وُلّدت التضاريس — من ${min.toFixed(1)} إلى ${max.toFixed(1)} م`);
+    };
+
+    return (
+        <PanelShell title="التضاريس والفيزياء" onClose={onClose} className="we-land">
+            <div className="we-group">
+                <span className="we-group-label">فرشاة النحت</span>
+                <div className="we-tools">
+                    {TOOLS.map(t => (
+                        <button
+                            key={t.key || 'off'}
+                            className={(brush.tool || null) === t.key ? 'is-on' : ''}
+                            onClick={() => (t.key ? pickTool(t.key) : setBrush('tool', null))}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                {brush.tool ? (
+                    <>
+                        <Slider
+                            label="قطر الفرشاة"
+                            readout={`${Math.round(brush.radius * 2)} م`}
+                            value={brush.radius} min={3} max={48} step={1}
+                            onChange={(v) => setBrush('radius', v)}
+                            left="دقيق" right="واسع"
+                        />
+                        <Slider
+                            label="قوّة الفرشاة"
+                            readout={`${Math.round(brush.strength * 100)}%`}
+                            value={brush.strength} min={0.05} max={1} step={0.05}
+                            onChange={(v) => setBrush('strength', v)}
+                            left="لطيف" right="عنيف"
+                        />
+                        <p className="we-note">{TOOL_HINT[brush.tool]}</p>
+                    </>
+                ) : (
+                    <p className="we-note">
+                        اختر أداة ثم اسحب على الأرض في المشهد. الحلقة تُريك مدى الفرشاة
+                        قبل أن تضرب. ودوران الكاميرا يتجمّد ما دامت أداة مختارة —
+                        السحب للنحت لا للدوران — ويعود بمجرّد إيقافها، والتكبير يبقى.
+                    </p>
+                )}
             </div>
+
+            <div className="we-readout">
+                <span>أخفض <b>{range.min.toFixed(1)}</b> م</span>
+                <span>أعلى <b>{range.max.toFixed(1)}</b> م</span>
+                <span>المساحة <b>{TERRAIN_SPAN}</b> م</span>
+            </div>
+
+            <Section label="التوليد الإجرائي">
+                <Slider
+                    label="ارتفاع التضاريس"
+                    readout={`${terrain.amplitude.toFixed(1)} م`}
+                    value={terrain.amplitude} min={1} max={22} step={0.5}
+                    onChange={(v) => setTerrain('amplitude', v)}
+                    left="سهل" right="جبلي"
+                />
+                <Slider
+                    label="خشونة السطح"
+                    readout={`${Math.round(terrain.roughness * 100)}%`}
+                    value={terrain.roughness} min={0} max={1} step={0.05}
+                    onChange={(v) => setTerrain('roughness', v)}
+                    left="ناعم" right="مكسّر"
+                />
+                <Slider
+                    label="اتّساع التلال"
+                    readout={`${Math.round(terrain.featureScale * 100)}%`}
+                    value={terrain.featureScale} min={0.15} max={1} step={0.05}
+                    onChange={(v) => setTerrain('featureScale', v)}
+                    left="نتوءات" right="تلال عريضة"
+                />
+                <Slider
+                    label="البذرة"
+                    readout={`#${terrain.seed % 1000}`}
+                    value={terrain.seed % 1000} min={0} max={999} step={1}
+                    onChange={(v) => setTerrain('seed', 20260000 + v)}
+                />
+
+                <div className="we-row2">
+                    <button className="we-btn" onClick={build}>ولّد تضاريس</button>
+                    <button className="we-btn" onClick={() => { level(); onFlash?.('عادت الأرض مستوية'); }}>سوِّ الأرض</button>
+                </div>
+
+                <p className="we-note">
+                    ضجيج Simplex على أربع طبقات (fBm): تلال كبيرة عليها نتوءات صغيرة.
+                    وممرّ الطريق الجاهز يُسطّح تلقائياً ما دام مفتوحاً، كما يُشقّ الطريق فعلاً.
+                </p>
+            </Section>
+
+            <Section label="الماء" badge={terrain.water ? 'مفتوح' : null} defaultOpen={terrain.water}>
+                <Switch
+                    label="سطح الماء"
+                    checked={terrain.water}
+                    onChange={() => setTerrain('water', !terrain.water)}
+                />
+                <Slider
+                    label="منسوب الماء"
+                    readout={`${terrain.waterLevel.toFixed(2)} م`}
+                    value={terrain.waterLevel} min={-16} max={12} step={0.1}
+                    onChange={(v) => setTerrain('waterLevel', v)}
+                    left="عميق" right="فائض"
+                />
+                <Slider
+                    label="ارتفاع الموج"
+                    readout={`${Math.round(terrain.waveHeight * 100)}%`}
+                    value={terrain.waveHeight} min={0} max={1.6} step={0.05}
+                    onChange={(v) => setTerrain('waveHeight', v)}
+                    left="ساكن" right="هائج"
+                />
+                <button className="we-btn" onClick={fillLow}>املأ المنخفضات</button>
+                <p className="we-note">
+                    منسوب واحد للعالم كلّه كالمياه الجوفية: ما ينزل تحته يمتلئ،
+                    وما يرتفع فوقه ينحسر. والموج معادلة Gerstner داخل الشيدر —
+                    إزاحة رؤوس لا محاكاة سوائل، فلا تكلفة تُذكر.
+                </p>
+            </Section>
+
+            <Section label="الفيزياء" badge={physics.enabled ? 'تعمل' : null} defaultOpen={physics.enabled}>
+                <Switch
+                    label="محرّك الفيزياء (Rapier)"
+                    checked={physics.enabled}
+                    onChange={() => setPhysics('enabled', !physics.enabled)}
+                />
+
+                {physics.enabled && (
+                    <>
+                        <button
+                            className={`we-btn${mode === 'drive' ? ' we-primary' : ''}`}
+                            onClick={() => setMode(mode === 'drive' ? 'orbit' : 'drive')}
+                        >
+                            {mode === 'drive' ? 'اخرج من القيادة' : 'قُد السيارة'}
+                        </button>
+
+                        <Slider
+                            label="الجاذبية"
+                            readout={`${physics.gravity.toFixed(2)} م/ث²`}
+                            value={physics.gravity} min={0.5} max={25} step={0.25}
+                            onChange={(v) => setPhysics('gravity', v)}
+                            left="قمر" right="ثقيلة"
+                        />
+                        <Slider
+                            label="أجسام حرّة تتدحرج"
+                            readout={`${physics.debris}`}
+                            value={physics.debris} min={0} max={40} step={1}
+                            onChange={(v) => setPhysics('debris', v)}
+                            left="بلا" right="كثير"
+                        />
+                        <Switch label="الطفو على الماء" checked={physics.buoyancy} onChange={() => setPhysics('buoyancy', !physics.buoyancy)} />
+                        <Switch label="إظهار هياكل الاصطدام" checked={physics.debug} onChange={() => setPhysics('debug', !physics.debug)} />
+                    </>
+                )}
+
+                <p className="we-note">
+                    هيكل الأرض Heightfield مبنيّ من نفس حقل الارتفاعات المرئي،
+                    ويُعاد بناؤه عند نهاية كل سحبة نحت. والسيارة Raycast Vehicle:
+                    أربعة أشعّة تحت العجلات ونوابض تحمل الهيكل، فتميل مع ميل الأرض
+                    وتنزل عجلة واحدة في الحفرة. الحزمة تُجلب عند أوّل تشغيل فقط.
+                </p>
+            </Section>
+
+            <Section label="الرصف على التضاريس">
+                <Switch
+                    label="تسوية الأرض تحت البلاطة"
+                    checked={terrain.autoFlatten}
+                    onChange={() => setTerrain('autoFlatten', !terrain.autoFlatten)}
+                />
+                <p className="we-note">
+                    بلاطة الشارع صفيحة مستوية: على منحدر تبقى حافّتها معلّقة في
+                    الهواء. ومع هذا المفتاح تُسوّى الأرض تحتها وتذوب في محيطها،
+                    فيُشقّ الشارع في الأرض لا يُرمى فوقها.
+                </p>
+            </Section>
         </PanelShell>
     );
 };

@@ -236,11 +236,23 @@ const Shop = () => (
 );
 
 /** عجلة: إطار داكن وجنط فاتح — الفرق بينهما هو ما يجعلها تُقرأ عجلةً */
-const Wheel = ({ x, z, r = 0.37, width = 0.3 }) => (
-    <group position={[x, r, z]} rotation={[0, 0, Math.PI / 2]}>
+/**
+ * عجلة حول نقطة أصلها.
+ *
+ * مفصولة عن موضعها عمداً: العجلة المعلّقة على نظام تعليق فيزيائي
+ * تتحرّك وتدور وتنعطف وحدها، فلا يصلح أن يكون موضعها مخبوءاً فيها.
+ */
+export const CarWheel = ({ r = 0.37, width = 0.3 }) => (
+    <group rotation={[0, 0, Math.PI / 2]}>
         <Part kind="cyl" args={[r, r, width, 12]} color="#20262F" outline={0.04} />
         <Part kind="cyl" args={[r * 0.56, r * 0.56, width + 0.04, 10]} color="#9AA3AE" outline={0} />
         <Part kind="cyl" args={[r * 0.22, r * 0.22, width + 0.07, 8]} color="#6B7280" outline={0} />
+    </group>
+);
+
+const Wheel = ({ x, z, r = 0.37, width = 0.3 }) => (
+    <group position={[x, r, z]}>
+        <CarWheel r={r} width={width} />
     </group>
 );
 
@@ -254,7 +266,7 @@ const Wheel = ({ x, z, r = 0.37, width = 0.3 }) => (
  *
  * simple: نسخة مختصرة لحركة المرور — تسير ولا يُحدَّق فيها.
  */
-const Car = ({ body = PALETTE.carA, simple = false }) => (
+const Car = ({ body = PALETTE.carA, simple = false, wheels = true }) => (
     <group>
         {/* الهيكل: قاعدة عريضة وحزام أغمق يكسر الكتلة */}
         <Part kind="box" args={[1.88, 0.5, 4.2]} color={body} position={[0, 0.66, 0]} />
@@ -284,10 +296,14 @@ const Car = ({ body = PALETTE.carA, simple = false }) => (
                 position={[x, 0.72, z]} outline={0} />
         ))}
 
-        <Wheel x={-0.95} z={1.35} />
-        <Wheel x={0.95} z={1.35} />
-        <Wheel x={-0.95} z={-1.35} />
-        <Wheel x={0.95} z={-1.35} />
+        {wheels && (
+            <>
+                <Wheel x={-0.95} z={1.35} />
+                <Wheel x={0.95} z={1.35} />
+                <Wheel x={-0.95} z={-1.35} />
+                <Wheel x={0.95} z={-1.35} />
+            </>
+        )}
 
         {/* مصدّان بارزان عن الهيكل */}
         <Part kind="box" args={[1.9, 0.26, 0.24]} color="#3A434F" position={[0, 0.55, 2.12]} outline={0.03} />
@@ -639,6 +655,14 @@ export const ASSETS = {
 };
 
 export const ASSET_KEYS = Object.keys(ASSETS);
+
+/**
+ * هيكل السيارة بلا عجلات — للمركبة الفيزيائية.
+ *
+ * عجلاتها تُركَّب خارجه على نظام تعليق raycast: ترتفع وتنخفض مع
+ * التضاريس وتنعطف وتدور، وهو ما لا تفعله عجلات ملحومة في الهيكل.
+ */
+export const CarChassis = (props) => <Car {...props} wheels={false} />;
 
 /**
  * نصف قطر الاصطدام بالمتر — يمنع المشي عبر المباني في منظور الشخص

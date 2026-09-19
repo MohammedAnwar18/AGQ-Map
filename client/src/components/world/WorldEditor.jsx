@@ -4,9 +4,9 @@ import { Canvas, useFrame } from '@react-three/fiber';
 
 import WorldScene from './WorldScene';
 import { useWorld } from './worldStore';
-import { WalkControls } from './walk';
+import { WalkControls, DriveControls } from './walk';
 import MiniMap from './MiniMap';
-import { WorldPanel, NodeEditor, AssetBrowser, Inspector, RecordBar, WorldFile } from './panels';
+import { WorldPanel, TerrainPanel, NodeEditor, AssetBrowser, Inspector, RecordBar, WorldFile } from './panels';
 import './WorldEditor.css';
 
 /* ============================================================
@@ -21,6 +21,7 @@ import './WorldEditor.css';
 
 const PANELS = [
     { key: 'world', label: 'العالم' },
+    { key: 'land', label: 'التضاريس' },
     { key: 'nodes', label: 'العقد' },
     { key: 'assets', label: 'الأصول' },
     { key: 'record', label: 'التسجيل' }
@@ -56,7 +57,7 @@ const WorldEditor = ({ onClose }) => {
 
     const [fps, setFps] = useState(null);
     const [notice, setNotice] = useState(null);
-    const [shown, setShown] = useState({ world: true, nodes: true, assets: true, record: true });
+    const [shown, setShown] = useState({ world: true, land: false, nodes: true, assets: true, record: true });
 
     // على الشاشات الضيّقة لوحة واحدة في كل مرّة، وإلا غطّت المشهد كلّه
     const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 900px)').matches);
@@ -93,7 +94,8 @@ const WorldEditor = ({ onClose }) => {
                 const state = useWorld.getState();
                 // التراجع خطوة واحدة في كل ضغطة، لا إغلاق كل شيء دفعة
                 if (state.placementType) setPlacement(null);
-                else if (state.mode === 'walk') setMode('orbit');
+                else if (state.brush.tool) state.setBrush('tool', null);
+                else if (state.mode !== 'orbit') setMode('orbit');
                 else onClose?.();
             }
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId
@@ -180,8 +182,10 @@ const WorldEditor = ({ onClose }) => {
                     <WalkControls canvasRef={canvasRef} onExit={() => setMode('orbit')} onFlash={flash} />
                 )}
 
-                {/* تمشي ولوحة الخريطة مخفيّة؟ تظهر مصغّرة في الزاوية */}
-                {mode === 'walk' && !visible('nodes') && (
+                {mode === 'drive' && <DriveControls onExit={() => setMode('orbit')} />}
+
+                {/* داخل العالم ولوحة الخريطة مخفيّة؟ تظهر مصغّرة في الزاوية */}
+                {mode !== 'orbit' && !visible('nodes') && (
                     <div className="we-hudmap"><MiniMap compact /></div>
                 )}
 
@@ -203,6 +207,9 @@ const WorldEditor = ({ onClose }) => {
 
                     <div className="we-col we-col-end">
                         {visible('world') && <WorldPanel onClose={narrow ? null : () => toggle('world')} />}
+                        {visible('land') && (
+                            <TerrainPanel onFlash={flash} onClose={narrow ? null : () => toggle('land')} />
+                        )}
                         <Inspector />
                         {visible('record') && (
                             <RecordBar canvasRef={canvasRef} onFlash={flash} onClose={narrow ? null : () => toggle('record')} />

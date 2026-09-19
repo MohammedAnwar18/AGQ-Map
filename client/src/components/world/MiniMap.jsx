@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useWorld, WORLD_BOUNDS, live, TILE_TYPES } from './worldStore';
 import { ASSETS, TILE } from './assets';
+import { field, heightAt, TERRAIN_SPAN, TERRAIN_GRID } from './terrain';
 
 /* ============================================================
    خريطة العالم
@@ -38,6 +39,54 @@ const groupOf = (type) => {
     return ASSETS[type]?.group || 'nature';
 };
 
+/**
+ * يرسم التضاريس على لوحة منفصلة.
+ *
+ * خريطة تظليل لا خطوط كنتور: كل خليّة تُلوَّن بارتفاعها وميلها، فتُقرأ
+ * التلّة تلّةً والحفرة حفرة بنظرة واحدة. تُعاد الرسم عند تغيّر الأرض
+ * وحده — لا ستّين مرّة في الثانية — ثم تُنسخ كصورة جاهزة في كل إطار.
+ */
+const paintTerrain = (canvas, waterOn, waterLevel) => {
+    const N = 160;
+    canvas.width = N;
+    canvas.height = N;
+
+    const ctx = canvas.getContext('2d');
+    const image = ctx.createImageData(N, N);
+    const data = image.data;
+
+    const half = TERRAIN_SPAN / 2;
+    const step = TERRAIN_SPAN / (N - 1);
+
+    for (let j = 0; j < N; j++) {
+        const z = -half + j * step;
+
+        for (let i = 0; i < N; i++) {
+            const x = -half + i * step;
+            const h = heightAt(x, z);
+
+            // إضاءة تلّية: نُنير من الشمال الغربي كما تفعل الخرائط
+            const shade = (heightAt(x - step, z - step) - h) * 22;
+            const k = (j * N + i) * 4;
+
+            if (waterOn && h < waterLevel) {
+                const depth = Math.min(1, (waterLevel - h) / 5);
+                data[k] = 34 + (1 - depth) * 60;
+                data[k + 1] = 110 + (1 - depth) * 70;
+                data[k + 2] = 150 + (1 - depth) * 55;
+            } else {
+                const t = Math.max(-1, Math.min(1, h / 12));
+                data[k] = 46 + t * 70 - shade;
+                data[k + 1] = 92 + t * 52 - shade;
+                data[k + 2] = 44 + t * 40 - shade;
+            }
+            data[k + 3] = 255;
+        }
+    }
+
+    ctx.putImageData(image, 0, 0);
+};
+
 const MiniMap = ({ compact = false }) => {
     const canvasRef = useRef(null);
     const boxRef = useRef(null);
@@ -45,12 +94,17 @@ const MiniMap = ({ compact = false }) => {
     const viewRef = useRef({ size: 0, dpr: 1 });
 
     const [readout, setReadout] = useState({ x: 0, z: 0 });
+    const reliefRef = useRef(null);
+    const reliefRev = useRef(-1);
 
     const placed = useWorld(s => s.placed);
     const selectedId = useWorld(s => s.selectedId);
     const placementType = useWorld(s => s.placementType);
     const mode = useWorld(s => s.mode);
     const gridSize = useWorld(s => s.environment.gridSize || TILE);
+    const terrainRevision = useWorld(s => s.terrainRevision);
+    const water = useWorld(s => s.terrain.water);
+    const waterLevel = useWorld(s => s.terrain.waterLevel);
 
     const moveItem = useWorld(s => s.moveItem);
     const setCameraTarget = useWorld(s => s.setCameraTarget);
@@ -58,8 +112,8 @@ const MiniMap = ({ compact = false }) => {
     const place = useWorld(s => s.place);
 
     // أحدث القيم للحلقة: الرسم يقرأ من مرجع لا من إغلاق قديم
-    const dataRef = useRef({ placed, selectedId, gridSize, mode });
-    dataRef.current = { placed, selectedId, gridSize, mode };
+    const dataRef = useRef({ placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision });
+    dataRef.current = { placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision };
 
     // ── تحويل الإحداثيات ──
     const toPx = useCallback((v, size) => ((v + EXTENT) / (EXTENT * 2)) * size, []);
@@ -69,6 +123,7 @@ const MiniMap = ({ compact = false }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
+        reliefRef.current = document.createElement('canvas');
         let raf = 0;
 
         const fit = () => {
@@ -88,6 +143,7 @@ const MiniMap = ({ compact = false }) => {
         const draw = () => {
             const { size, dpr } = fit();
             const { placed: items, selectedId: sel, gridSize: grid } = dataRef.current;
+            const { water: hasWater, waterLevel: wl } = dataRef.current;
 
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, size, size);
@@ -95,6 +151,23 @@ const MiniMap = ({ compact = false }) => {
             // الأرض
             ctx.fillStyle = '#16311f';
             ctx.fillRect(0, 0, size, size);
+
+            // التضاريس: لوحة مساعدة تُرسم عند تغيّر الأرض فقط، ثم
+            // تُمدّد هنا في كل إطار — نسخة صورة أرخص من ٢٥ ألف بكسل
+            if (field.touched && reliefRef.current) {
+                const signature = `${field.revision}_${hasWater ? 1 : 0}_${wl}`;
+                if (reliefRev.current !== signature) {
+                    reliefRev.current = signature;
+                    paintTerrain(reliefRef.current, hasWater, wl);
+                }
+
+                // المساحة المنحوتة أصغر من المعروض، فنضعها في موضعها
+                const span = (TERRAIN_SPAN / (EXTENT * 2)) * size;
+                const origin = (size - span) / 2;
+
+                ctx.imageSmoothingEnabled = true;
+                ctx.drawImage(reliefRef.current, origin, origin, span, span);
+            }
 
             // شبكة البناء — بنفس مقاس البلاطة، فيُقرأ الالتقاط بصرياً
             const step = (grid / (EXTENT * 2)) * size;
