@@ -45,6 +45,56 @@ const FpsProbe = ({ onSample }) => {
     return null;
 };
 
+/**
+ * عمود اللوحات.
+ *
+ * ممرّر لا يُعلن عن نفسه ممرّر لا يوجد: المستخدم لا يجرّب التمرير على
+ * ما يبدو منتهياً. فنقيس بعد كل تمرير وكل تغيّر في المحتوى، ونُضيء
+ * حافّة سفلية متدرّجة وسهماً ما دام تحتها شيء.
+ *
+ * ResizeObserver لأن المحتوى يطول ويقصر بلا تمرير — قسم يُفتح، لوحة
+ * فحص تظهر — ولا حدث تمرير يقع حينها.
+ */
+const ScrollColumn = ({ className, children }) => {
+    const ref = useRef(null);
+    const [more, setMore] = useState(false);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return undefined;
+
+        const measure = () => {
+            setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 8);
+        };
+
+        measure();
+        el.addEventListener('scroll', measure, { passive: true });
+
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        for (const child of el.children) observer.observe(child);
+
+        return () => {
+            el.removeEventListener('scroll', measure);
+            observer.disconnect();
+        };
+    }, [children]);
+
+    return (
+        <div className={`we-colwrap${more ? ' has-more' : ''}`}>
+            <div className={className} ref={ref}>{children}</div>
+            <button
+                className="we-more"
+                aria-hidden={!more}
+                tabIndex={-1}
+                onClick={() => ref.current?.scrollBy({ top: 240, behavior: 'smooth' })}
+            >
+                ▾ تحته مزيد
+            </button>
+        </div>
+    );
+};
+
 const Loading = () => (
     <div className="we-loading">
         <span className="we-spin" />
@@ -54,6 +104,7 @@ const Loading = () => (
 
 const WorldEditor = ({ onClose }) => {
     const canvasRef = useRef(null);
+    const rootRef = useRef(null);
 
     const [fps, setFps] = useState(null);
     const [notice, setNotice] = useState(null);
@@ -62,6 +113,11 @@ const WorldEditor = ({ onClose }) => {
     // على الشاشات الضيّقة لوحة واحدة في كل مرّة، وإلا غطّت المشهد كلّه
     const [narrow, setNarrow] = useState(() => window.matchMedia('(max-width: 900px)').matches);
     const [tab, setTab] = useState('world');
+
+    // ارتفاع ورقة اللوحات على الجوال. الشاشة الصغيرة لا تتّسع للمشهد
+    // واللوحة معاً، والاختيار بينهما يتبدّل بحسب ما تفعل: تنحت فتريد
+    // الأرض، وتضبط فتريد اللوحة. فيكون ارتفاعها بيدك لا رقماً نُقرّره.
+    const [sheet, setSheet] = useState('half');
 
     const placementType = useWorld(s => s.placementType);
     const setPlacement = useWorld(s => s.setPlacement);
@@ -85,6 +141,37 @@ const WorldEditor = ({ onClose }) => {
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => { document.body.style.overflow = ''; };
+    }, []);
+
+    /*
+     * ارتفاع المحرّر بالبكسل من المتصفّح نفسه.
+     *
+     * ‎100dvh‎ في الأنماط تكفي حيث تُفهم، وهذا حزامها: متصفّح قديم
+     * لا يعرفها يقع على ‎100vh‎ — وهي على الجوال «الشاشة الكبيرة»،
+     * أي أطول ممّا يُرى بقدر شريط العنوان. عندها لا يفيض العمود عن
+     * حاويته فلا يظهر له ممرّر، ويبقى أسفل اللوحة خارج الشاشة بلا
+     * سبيل إليه. ‎innerHeight‎ لا يكذب، و‎visualViewport‎ يضبطها حين
+     * تفتح لوحة المفاتيح.
+     */
+    useEffect(() => {
+        const root = rootRef.current;
+        if (!root) return undefined;
+
+        const fit = () => {
+            const h = window.visualViewport?.height || window.innerHeight;
+            if (h > 0) root.style.setProperty('--we-h', `${Math.round(h)}px`);
+        };
+
+        fit();
+        window.addEventListener('resize', fit);
+        window.addEventListener('orientationchange', fit);
+        window.visualViewport?.addEventListener('resize', fit);
+
+        return () => {
+            window.removeEventListener('resize', fit);
+            window.removeEventListener('orientationchange', fit);
+            window.visualViewport?.removeEventListener('resize', fit);
+        };
     }, []);
 
     // Esc يُلغي وضع الوضع أولاً ثم يُغلق، وDelete يحذف المحدّد
@@ -112,7 +199,7 @@ const WorldEditor = ({ onClose }) => {
     const visible = (key) => (narrow ? tab === key : shown[key]);
 
     return (
-        <div className="we" dir="rtl">
+        <div className={`we${narrow ? ` is-${sheet}` : ''}`} dir="rtl" ref={rootRef}>
             <header className="we-top">
                 <div className="we-brand">
                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
@@ -200,12 +287,22 @@ const WorldEditor = ({ onClose }) => {
 
                 {/* اللوحات — تطفو فوق المشهد على الشاشات الواسعة */}
                 <div className="we-overlay">
-                    <div className="we-col we-col-start">
+                    {narrow && (
+                        <button
+                            className="we-grip"
+                            onClick={() => setSheet(v => (v === 'peek' ? 'half' : v === 'half' ? 'full' : 'peek'))}
+                            aria-label="ارتفاع اللوحة"
+                        >
+                            {sheet === 'peek' ? 'وسّع اللوحة' : sheet === 'half' ? 'ملء الشاشة' : 'صغّر اللوحة'}
+                        </button>
+                    )}
+
+                    <ScrollColumn className="we-col we-col-start">
                         {visible('nodes') && <NodeEditor onClose={narrow ? null : () => toggle('nodes')} />}
                         {visible('assets') && <AssetBrowser onFlash={flash} onClose={narrow ? null : () => toggle('assets')} />}
-                    </div>
+                    </ScrollColumn>
 
-                    <div className="we-col we-col-end">
+                    <ScrollColumn className="we-col we-col-end">
                         {visible('world') && <WorldPanel onClose={narrow ? null : () => toggle('world')} />}
                         {visible('land') && (
                             <TerrainPanel onFlash={flash} onClose={narrow ? null : () => toggle('land')} />
@@ -215,7 +312,7 @@ const WorldEditor = ({ onClose }) => {
                             <RecordBar canvasRef={canvasRef} onFlash={flash} onClose={narrow ? null : () => toggle('record')} />
                         )}
                         {(!narrow || tab === 'record') && <WorldFile onFlash={flash} />}
-                    </div>
+                    </ScrollColumn>
                 </div>
             </div>
 

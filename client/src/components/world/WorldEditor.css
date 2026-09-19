@@ -15,6 +15,20 @@
 
     position: fixed;
     inset: 0;
+
+    /* جذر الخطأ الذي منع التمرير:
+       ‎inset: 0‎ على عنصر ثابت يقيس «الشاشة الكبيرة» — الشاشة كما تكون
+       حين ينزوي شريط عنوان المتصفّح. فيصير المحرّر أطول ممّا يُرى:
+       أسفله تحت شريط العنوان، والعمود لا يفيض عن حاويته فلا يظهر له
+       ممرّر أصلاً. النتيجة محتوى لا يُرى ولا سبيل إلى الوصول إليه.
+
+       ‎100dvh‎ هو الارتفاع المرئي الآن، فيُقصّ العمود فعلاً ويُمرَّر.
+       والسطر الذي قبله للمتصفّحات التي لا تعرفها. وحين يُحدَّد
+       ‎top‎ و‎height‎ معاً يُهمَل ‎bottom‎ — وهو المقصود. */
+    height: 100vh;
+    height: 100dvh;
+    height: var(--we-h, 100dvh);
+
     z-index: 5900;
     display: flex;
     flex-direction: column;
@@ -196,6 +210,55 @@
 }
 
 /* ── تخطيط اللوحات ── */
+.we-grip { display: none; }
+
+/*
+ * غلاف العمود.
+ *
+ * وُجد ليحمل مؤشّر «تحته مزيد»: لو وُضع داخل العمود لزحف مع المحتوى
+ * وصار جزءاً ممّا يُمرَّر، ولو وُضع خارج الطبقة لما عرف عرض العمود.
+ * فهو طبقة بينهما لا شكل لها، تنقل قياس العمود ولا تُغيّره.
+ */
+.we-colwrap {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    pointer-events: none;
+}
+
+.we-colwrap:empty { display: none; }
+
+.we-more {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    padding: 20px 0 8px;
+    border: 0;
+    background: linear-gradient(to top, rgba(10, 15, 28, .96) 42%, rgba(10, 15, 28, 0));
+    color: var(--accent);
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+
+    /* مخفيّ إلى أن يبقى تحته شيء فعلاً — لا زينة دائمة */
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity .18s, transform .18s;
+}
+
+.we-colwrap.has-more .we-more {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+}
+
 .we-overlay {
     position: absolute;
     inset: 0;
@@ -212,12 +275,19 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+
+    /* الممرّر الوحيد في الواجهة. ‎min-height: 0‎ لازم: عنصر مرن
+       يرفض بالافتراض أن يصغر عن محتواه، فيتمدّد بدل أن يُمرّر. */
     max-height: 100%;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+
     width: 272px;
+
+    /* الطبقة كلّها ‎pointer-events: none‎ ليمرّ السحب إلى المشهد بين
+       اللوحات؛ العمود يستعيدها لنفسه كي يُمرَّر ويُسحب شريطه */
     pointer-events: auto;
-    scrollbar-width: thin;
 
     /* التمرير باللمس: بلا هذين يبتلع المتصفّح الحركة أحياناً ويُمرّر
        الصفحة خلف اللوحة بدل اللوحة نفسها */
@@ -232,16 +302,28 @@
 
 .we-col {
     padding-bottom: 14px;   /* آخر لوحة لا تلتصق بحافّة الشاشة */
-    scrollbar-color: rgba(255, 255, 255, .22) transparent;
+
+    /* ملوّن لا رمادي باهت: الممرّر ليس زينة بل هو الإشارة الوحيدة
+       إلى أن تحت ما تراه شيئاً آخر */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, .6) rgba(255, 255, 255, .06);
 }
 
-.we-col::-webkit-scrollbar { width: 6px; }
-.we-col::-webkit-scrollbar-track { background: transparent; }
+.we-col::-webkit-scrollbar { width: 9px; }
+
+.we-col::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, .05);
+    border-radius: 999px;
+}
 
 .we-col::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, .2);
-    border-radius: 3px;
+    background: rgba(56, 189, 248, .55);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
 }
+
+.we-col::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, .85); background-clip: padding-box; }
 
 /* ── البطاقة ── */
 .we-panel {
@@ -250,17 +332,26 @@
     background: var(--panel);
     backdrop-filter: blur(12px);
     box-shadow: 0 18px 40px -22px rgba(0, 0, 0, .95);
-    overflow: hidden;
+
+    /* بلا ‎overflow: hidden‎ عمداً: هي تجعل اللوحة منفذَ تمرير خاصّاً
+       بها، فيتعطّل التصاق رأسها بأعلى العمود. الزوايا تُدوَّر على
+       الرأس والجسم بدل قصّها على البطاقة. */
 }
 
 .we-panel-head {
+    /* الرأس يبقى ظاهراً مهما طال القسم، فتعرف أين أنت */
+    position: sticky;
+    top: 0;
+    z-index: 3;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     padding: 9px 12px;
     border-bottom: 1px solid var(--line);
-    background: rgba(255, 255, 255, .03);
+    border-radius: 13px 13px 0 0;
+    background: var(--panel-solid);
 }
 
 .we-panel-head h3 { margin: 0; font-size: 12.5px; font-weight: 800; }
@@ -283,6 +374,7 @@
     flex-direction: column;
     gap: 13px;
     padding: 12px;
+    border-radius: 0 0 13px 13px;
 
     /* ممرّر واحد في الواجهة كلّها: العمود. جسم اللوحة لا يمرّر
        ولا يُحدّ ارتفاعه — ممرّر داخل ممرّر يجعل بلوغ آخر عنصر
@@ -605,16 +697,51 @@
         padding: 8px;
     }
 
-    .we-col {
-        width: 100%;
-        /* كان ٤٦ لوحة واحدة؛ صارت اللوحة أطول بعد أقسام التضاريس،
-           وأقلّ من ذلك يعني تمريراً لا ينتهي */
-        max-height: 58vh;
-        padding-bottom: 18px;
+    .we-colwrap { width: 100%; max-height: var(--sheet, 62%); }
+
+    /* النسبة من المسرح لا من الشاشة: ‎vh‎ لا يعرف شيئاً عن الشريط
+       العلوي ولا شريط التبويب فيُخطئ بقدرهما دائماً. والمقبض فوق
+       اللوحة يُبدّل هذه النسبة. */
+    .we-col { width: 100%; padding-bottom: 18px; }
+
+    /* المتغيّر معرّف على الجذر: العصا وزرّ الفرملة أخوان للطبقة
+       لا ابناها، فلن يرثا منها شيئاً لو عُرّف فيها */
+    .we.is-peek { --sheet: 32%; }
+    .we.is-full { --sheet: calc(100% - 46px); }
+
+    /* مقبض الورقة — خارج الممرّر فلا يزحف مع المحتوى */
+    .we-grip {
+        flex-shrink: 0;
+        align-self: center;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        padding: 6px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(10, 15, 28, .88);
+        backdrop-filter: blur(10px);
+        color: var(--muted);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        pointer-events: auto;
+        cursor: pointer;
     }
 
-    .we-col-start:empty,
-    .we-col-end:empty { display: none; }
+    .we-grip::before {
+        content: '';
+        width: 26px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .35);
+    }
+
+    .we-grip:active { background: rgba(10, 15, 28, .98); }
+
+    /* العمود صار داخل غلافه، فالفراغ يُقاس على الغلاف لا عليه */
+    .we-colwrap:has(> .we-col:empty) { display: none; }
 
     /* خمسة تبويبات على شاشة ٣٦٠ بكسل: نُضيّق الحشو لا الأسماء */
     .we-tabs { gap: 3px; padding-inline: 6px; }
@@ -863,7 +990,7 @@
 
 @media (max-width: 900px) {
     .we-hudmap { width: 124px; top: 10px; }
-    .we-stick { width: 104px; height: 104px; bottom: calc(58vh + 10px); }
+    .we-stick { width: 104px; height: 104px; bottom: calc(var(--sheet, 62%) + 16px); }
 }
 
 /* ── استيراد: الأزرار والحالة والمشكلة ── */
@@ -1227,12 +1354,12 @@
 
 @media (max-width: 900px) {
     .we-speedo {
-        bottom: calc(58vh + 12px);
+        bottom: calc(var(--sheet, 62%) + 18px);
         inset-inline-end: 12px;
         padding: 7px 12px;
     }
 
     .we-speedo b { font-size: 22px; min-width: 40px; }
-    .we-brake { bottom: calc(58vh + 14px); inset-inline-end: 14px; width: 68px; height: 68px; }
+    .we-brake { bottom: calc(var(--sheet, 62%) + 20px); inset-inline-end: 14px; width: 68px; height: 68px; }
     .we-tools { grid-template-columns: repeat(3, 1fr); }
 }
