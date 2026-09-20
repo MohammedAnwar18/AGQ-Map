@@ -1363,3 +1363,32 @@
     .we-brake { bottom: calc(var(--sheet, 62%) + 20px); inset-inline-end: 14px; width: 68px; height: 68px; }
     .we-tools { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ── أحياء المدينة في اللوحة ── */
+.we-zones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.we-zones span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .05);
+    font-size: 10px;
+    color: var(--muted);
+}
+
+.we-zones i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.we-zones b {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}

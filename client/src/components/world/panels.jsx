@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useWorld } from './worldStore';
 import { field, measureField, TERRAIN_SPAN } from './terrain';
+import { cityPlan, DISTRICTS } from './city';
 import { ASSETS } from './assets';
 import { forgetStyled } from './customAssets';
 import MiniMap from './MiniMap';
@@ -263,12 +264,15 @@ const TOOL_HINT = {
  */
 export const TerrainPanel = ({ onClose, onFlash }) => {
     const terrain = useWorld(s => s.terrain);
+    const cityCfg = useWorld(s => s.city);
     const brush = useWorld(s => s.brush);
     const physics = useWorld(s => s.physics);
     const mode = useWorld(s => s.mode);
     const revision = useWorld(s => s.terrainRevision);
 
     const setTerrain = useWorld(s => s.setTerrain);
+    const setCity = useWorld(s => s.setCity);
+    const rollCity = useWorld(s => s.rollCity);
     const setBrush = useWorld(s => s.setBrush);
     const setPhysics = useWorld(s => s.setPhysics);
     const setMode = useWorld(s => s.setMode);
@@ -278,6 +282,7 @@ export const TerrainPanel = ({ onClose, onFlash }) => {
     // المدى يُقاس عند كل تغيّر لا في كل إطار
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const range = useMemo(() => measureField(), [revision]);
+    const plan = useMemo(() => cityPlan(cityCfg), [cityCfg]);
 
     const pickTool = (key) => {
         setBrush('tool', brush.tool === key ? null : key);
@@ -458,6 +463,64 @@ export const TerrainPanel = ({ onClose, onFlash }) => {
                     ويُعاد بناؤه عند نهاية كل سحبة نحت. والسيارة Raycast Vehicle:
                     أربعة أشعّة تحت العجلات ونوابض تحمل الهيكل، فتميل مع ميل الأرض
                     وتنزل عجلة واحدة في الحفرة. الحزمة تُجلب عند أوّل تشغيل فقط.
+                </p>
+            </Section>
+
+            <Section label="المدينة" badge={cityCfg.enabled ? `${plan?.counts.buildings || 0} مبنى` : null} defaultOpen={cityCfg.enabled}>
+                <Switch
+                    label="المدينة المولّدة"
+                    checked={cityCfg.enabled}
+                    onChange={() => setCity('enabled', !cityCfg.enabled)}
+                />
+
+                {cityCfg.enabled && plan && (
+                    <>
+                        <div className="we-readout">
+                            <span>مبانٍ <b>{plan.counts.buildings}</b></span>
+                            <span>أثاث <b>{plan.counts.props}</b></span>
+                            <span>مركبات <b>{plan.counts.cars}</b></span>
+                        </div>
+
+                        <div className="we-zones">
+                            {Object.entries(DISTRICTS).map(([key, d]) => {
+                                const n = plan.blocks.filter(b => b.district === key).length;
+                                if (!n) return null;
+                                return (
+                                    <span key={key}>
+                                        <i style={{ background: d.tone }} />
+                                        {d.short} <b>{n}</b>
+                                    </span>
+                                );
+                            })}
+                        </div>
+
+                        <Slider
+                            label="كثافة البناء"
+                            readout={`${Math.round(cityCfg.density * 100)}%`}
+                            value={cityCfg.density} min={0.4} max={1} step={0.05}
+                            onChange={(v) => setCity('density', v)}
+                            left="خفيف" right="كامل"
+                        />
+
+                        <div className="we-row2">
+                            <button className="we-btn" onClick={() => {
+                                rollCity();
+                                onFlash?.('مدينة جديدة بنفس الشوارع');
+                            }}>مدينة أخرى</button>
+                            <button className="we-btn" onClick={() => {
+                                setCity('seed', 20260920);
+                                onFlash?.('عادت المدينة الأصلية');
+                            }}>الأصلية</button>
+                        </div>
+                    </>
+                )}
+
+                <p className="we-note">
+                    مدينة بـ {plan ? plan.span : 0} متراً على الضلع: وسط بلد بأبراج، وسوق
+                    تجاري، وأحياء سكنية، وحديقة، ومنطقة صناعية — ومسجد ومدرسة
+                    وعيادة معالم يُهتدى بها. ولا يُحفظ منها في ملف العالم إلا
+                    بذرتها: من يفتح عالمك يرى المدينة نفسها بلا أن يُنزّل مخطّطها.
+                    وما تضعه أنت يبقى فوقها مستقلاً.
                 </p>
             </Section>
 

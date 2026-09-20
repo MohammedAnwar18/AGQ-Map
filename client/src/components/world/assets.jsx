@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState, useEffect } from 'react';
 import * as THREE from 'three';
-import { gradientMap, PALETTE } from './toon';
+import { PALETTE } from './toon';
 import { loadCustom, loadUrl } from './customAssets';
+import { OutlineContext, StyleContext, Surface, Part } from './primitives';
+import * as DISTRICT from './districts';
+
+// تُعاد من هنا كما كانت: من يستورد ‎Surface‎ من سجلّ الأصول لا يعنيه
+// أنها انتقلت إلى وحدة اللبنات
+export { OutlineContext, StyleContext, Surface, Part } from './primitives';
 
 /* ============================================================
    خط أنابيب المجسمات
@@ -14,68 +20,6 @@ import { loadCustom, loadUrl } from './customAssets';
    الأشكال الإجرائية ليست مؤقّتة رديئة: مبنية بنفس لوحة الألوان
    ونفس حدّة الحواف، فتصلح للعرض حتى لو لم تُرفع أصول حقيقية أبداً.
    ============================================================ */
-
-// الحدود السوداء المحيطة تُضاعف عدد الرسومات، فتبقى قابلة للإطفاء
-export const OutlineContext = createContext(true);
-
-/** نمط العرض الساري على المشهد: 'toon' أو 'real' */
-export const StyleContext = createContext('toon');
-
-const OUTLINE = 0.04;
-
-/**
- * خامة السطح بحسب النمط.
- *
- * الكرتوني: تظليل بأربع درجات حادّة بلا انعكاس.
- * الواقعي: خامة فيزيائية تقرأ إضاءة البيئة وتعكسها.
- */
-export const Surface = ({ color, flat = false, roughness = 0.88, metalness = 0, ...rest }) => {
-    const style = useContext(StyleContext);
-
-    return style === 'real'
-        ? <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} flatShading={flat} {...rest} />
-        : <meshToonMaterial color={color} gradientMap={gradientMap()} flatShading={flat} {...rest} />;
-};
-
-const Geo = ({ kind, args }) => {
-    switch (kind) {
-        case 'box': return <boxGeometry args={args} />;
-        case 'cone': return <coneGeometry args={args} />;
-        case 'cyl': return <cylinderGeometry args={args} />;
-        case 'sphere': return <sphereGeometry args={args} />;
-        case 'ico': return <icosahedronGeometry args={args} />;
-        case 'dodeca': return <dodecahedronGeometry args={args} />;
-        default: return <boxGeometry args={args} />;
-    }
-};
-
-/**
- * قطعة واحدة من مجسم: شبكة كرتونية، ومعها — إن كانت الحدود مفعّلة —
- * نسخة مقلوبة الوجوه أكبر قليلاً بلون داكن، فتظهر كخطّ محيط.
- */
-const Part = ({ kind = 'box', args, color, outline = OUTLINE, flat = false, ...props }) => {
-    const outlines = useContext(OutlineContext);
-    const style = useContext(StyleContext);
-
-    // الحدود المحيطة لغة رسم كرتونية بحتة؛ في النمط الواقعي تُفسده
-    const drawOutline = outlines && style !== 'real' && outline > 0;
-
-    return (
-        <group {...props}>
-            <mesh castShadow receiveShadow>
-                <Geo kind={kind} args={args} />
-                <Surface color={color} flat={flat} />
-            </mesh>
-
-            {drawOutline && (
-                <mesh scale={1 + outline} renderOrder={-1}>
-                    <Geo kind={kind} args={args} />
-                    <meshBasicMaterial color={PALETTE.outline} side={THREE.BackSide} />
-                </mesh>
-            )}
-        </group>
-    );
-};
 
 // ── الأشكال الإجرائية ───────────────────────────────────────
 
@@ -639,6 +583,24 @@ export const ASSETS = {
     hydrant:  { label: 'حنفية حريق', group: 'street', Proc: Hydrant, glb: null },
     bus_stop: { label: 'موقف باص',  group: 'street',  Proc: BusStop,  glb: null },
 
+    // ── عمارة الأحياء ──
+    // كتلة واحدة تحمل واجهتها في خامتها بدل عشرات النوافذ المرسومة،
+    // فتبقى المدينة كلّها في حدود ما يرسمه الكرت في إطار واحد
+    tower_glass: { label: 'برج زجاجي', group: 'district', Proc: DISTRICT.TowerGlass, glb: null, lit: true },
+    tower_brick: { label: 'برج مكاتب', group: 'district', Proc: DISTRICT.TowerBrick, glb: null, lit: true },
+    apartment:   { label: 'عمارة',     group: 'district', Proc: DISTRICT.Apartment,  glb: null, lit: true },
+    villa:       { label: 'فيلّا',      group: 'district', Proc: DISTRICT.Villa,      glb: null, lit: true },
+    shop_row:    { label: 'صفّ محلات', group: 'district', Proc: DISTRICT.ShopRow,    glb: null, lit: true },
+    market_hall: { label: 'قاعة سوق',  group: 'district', Proc: DISTRICT.MarketHall, glb: null, lit: true },
+    kiosk:       { label: 'كشك',       group: 'district', Proc: DISTRICT.Kiosk,      glb: null },
+    warehouse:   { label: 'مستودع',    group: 'district', Proc: DISTRICT.Warehouse,  glb: null },
+    mosque:      { label: 'مسجد',      group: 'district', Proc: DISTRICT.Mosque,     glb: null },
+    school:      { label: 'مدرسة',     group: 'district', Proc: DISTRICT.School,     glb: null, lit: true },
+    clinic:      { label: 'عيادة',     group: 'district', Proc: DISTRICT.Clinic,     glb: null, lit: true },
+
+    pickup:      { label: 'بيك أب',    group: 'vehicle',  Proc: DISTRICT.Pickup,     glb: null },
+    bus:         { label: 'باص',       group: 'vehicle',  Proc: DISTRICT.Bus,        glb: null },
+
     // بلاطات الشبكة — تلتصق ببعضها فتُبنى منها شبكة شوارع كاملة
     road_straight: { label: 'شارع',      group: 'road', Proc: RoadStraight, glb: null, tile: true },
     road_cross:    { label: 'تقاطع',     group: 'road', Proc: RoadCross,    glb: null, tile: true },
@@ -674,7 +636,35 @@ export const FOOTPRINT = {
     tree: 0.6, pine: 0.55, palm: 0.5, bush: 0.7, rock: 0.9,
     car: 1.5, van: 1.7, bench: 1.1, lamp: 0.3, fence: 1.9,
     traffic_light: 0.32, bin: 0.4, hydrant: 0.3, bus_stop: 1.8,
-    hill: 5.0
+    hill: 5.0,
+
+    // عمارة الأحياء — نصف القطر تقريب دائري لبصمة مستطيلة، فنأخذ
+    // نصف الضلع الأقصر: أوسع منه يمنع المرور بين مبنيين متجاورين
+    tower_glass: 5.4, tower_brick: 5.2, apartment: 4.4, villa: 4.4,
+    shop_row: 4.6, market_hall: 6.2, kiosk: 1.7, warehouse: 6.8,
+    mosque: 6.8, school: 5.6, clinic: 5.2,
+    pickup: 1.6, bus: 2.4
+};
+
+/**
+ * ارتفاع المجسم بالمتر — لهيكل الاصطدام وللخريطة.
+ *
+ * لا يُرى، فيكفي أن يقارب. صفر يعني ما يُمشى فوقه.
+ */
+export const HEIGHTS = {
+    house: 6.4, cottage: 5, tower: 18, shop: 5.6, fountain: 1.4,
+    tree: 5, pine: 6, palm: 6.5, bush: 1.2, rock: 1.6,
+    bench: 0.9, lamp: 5, fence: 1.4, bus_stop: 2.8,
+    traffic_light: 3.6, bin: 1, hydrant: 0.9, hill: 5,
+    car: 1.6, van: 2.4, pickup: 1.9, bus: 3.4,
+    tower_glass: 48, tower_brick: 30, apartment: 14.5, villa: 8.6,
+    shop_row: 9.4, market_hall: 9, kiosk: 3, warehouse: 9.8,
+    mosque: 17, school: 10.4, clinic: 8.3
+};
+
+export const heightOf = (type) => {
+    if (type?.startsWith('custom:')) return 3;
+    return HEIGHTS[type] || 3;
 };
 
 export const footprintOf = (type) => {

@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useWorld, WORLD_BOUNDS, live, TILE_TYPES } from './worldStore';
 import { ASSETS, TILE } from './assets';
 import { field, heightAt, TERRAIN_SPAN, TERRAIN_GRID } from './terrain';
+import { cityPlan, DISTRICTS, LANE, SIDEWALK } from './city';
 
 /* ============================================================
    خريطة العالم
@@ -102,7 +103,10 @@ const MiniMap = ({ compact = false }) => {
     const placementType = useWorld(s => s.placementType);
     const mode = useWorld(s => s.mode);
     const gridSize = useWorld(s => s.environment.gridSize || TILE);
+    const cityCfg = useWorld(s => s.city);
     const terrainRevision = useWorld(s => s.terrainRevision);
+
+    const city = useMemo(() => cityPlan(cityCfg), [cityCfg]);
     const water = useWorld(s => s.terrain.water);
     const waterLevel = useWorld(s => s.terrain.waterLevel);
 
@@ -112,8 +116,8 @@ const MiniMap = ({ compact = false }) => {
     const place = useWorld(s => s.place);
 
     // أحدث القيم للحلقة: الرسم يقرأ من مرجع لا من إغلاق قديم
-    const dataRef = useRef({ placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision });
-    dataRef.current = { placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision };
+    const dataRef = useRef({ placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision, city });
+    dataRef.current = { placed, selectedId, gridSize, mode, water, waterLevel, terrainRevision, city };
 
     // ── تحويل الإحداثيات ──
     const toPx = useCallback((v, size) => ((v + EXTENT) / (EXTENT * 2)) * size, []);
@@ -169,9 +173,43 @@ const MiniMap = ({ compact = false }) => {
                 ctx.drawImage(reliefRef.current, origin, origin, span, span);
             }
 
+            // المدينة: الشوارع أولاً ثم المربّعات ملوّنة بحيّها. هذه
+            // هي الخريطة التي يُقرأ منها المكان — لا نقاط متفرّقة
+            const plan = dataRef.current.city;
+            if (plan) {
+                const m = (v) => toPx(v, size);
+                const w = (v) => (v / (EXTENT * 2)) * size;
+
+                ctx.fillStyle = '#2C333D';
+                ctx.fillRect(m(-plan.span / 2), m(-plan.span / 2), w(plan.span), w(plan.span));
+
+                for (const b of plan.blocks) {
+                    const tone = DISTRICTS[b.district]?.tone || '#7FB069';
+                    ctx.fillStyle = tone;
+                    ctx.globalAlpha = 0.62;
+                    ctx.fillRect(m(b.x0), m(b.z0), w(b.x1 - b.x0), w(b.z1 - b.z0));
+                    ctx.globalAlpha = 1;
+                }
+
+                // خطّ منتصف رفيع على كل شارع — يُقرأ شبكةً لا فراغاً
+                ctx.strokeStyle = 'rgba(255,255,255,.2)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (const road of plan.roads) {
+                    if (road.axis === 'x') {
+                        ctx.moveTo(m(road.at), m(-plan.span / 2));
+                        ctx.lineTo(m(road.at), m(plan.span / 2));
+                    } else {
+                        ctx.moveTo(m(-plan.span / 2), m(road.at));
+                        ctx.lineTo(m(plan.span / 2), m(road.at));
+                    }
+                }
+                ctx.stroke();
+            }
+
             // شبكة البناء — بنفس مقاس البلاطة، فيُقرأ الالتقاط بصرياً
             const step = (grid / (EXTENT * 2)) * size;
-            if (step > 5) {
+            if (step > 5 && !plan) {
                 ctx.strokeStyle = 'rgba(255,255,255,.055)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();

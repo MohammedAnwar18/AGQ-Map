@@ -7,7 +7,8 @@ import {
 } from '@react-three/rapier';
 
 import { useWorld, live, input, drive } from './worldStore';
-import { CarChassis, CarWheel, Surface, footprintOf, OutlineContext } from './assets';
+import { CarChassis, CarWheel, Surface, footprintOf, heightOf, OutlineContext } from './assets';
+import { cityPlan } from './city';
 import { PALETTE } from './toon';
 import {
     heightAt, heightsForRapier,
@@ -38,6 +39,10 @@ import {
 
 // ── ١) الأرض ────────────────────────────────────────────────
 
+// إزاحة هيكل الأرض — انظر الشرح في ‎TerrainBody‎
+const GRID_NUDGE_X = 0.013;
+const GRID_NUDGE_Z = 0.017;
+
 const TerrainBody = () => {
     const revision = useWorld(s => s.terrainRevision);
 
@@ -46,7 +51,27 @@ const TerrainBody = () => {
     const heights = useMemo(() => heightsForRapier(), [revision]);
 
     return (
-        <RigidBody key={revision} type="fixed" friction={1.15} restitution={0.02} colliders={false}>
+        /*
+         * مُزاح بسنتيمتر ونصف عن خطوط شبكته.
+         *
+         * الشعاع النازل الذي يسقط تماماً على خطّ من الشبكة لا يُصيب
+         * شيئاً: ينزلق على الحافّة المشتركة بين مثلّثين فلا يُبلّغ
+         * أيّهما عن إصابة. قِسناه: ٩٩٢ من ٤٣٥٦ شعاعاً على إحداثيات
+         * صحيحة فاتت الأرض. وعجلات السيارة أشعّة كهذه، والمدينة
+         * مبنية على شبكة أعدادها صحيحة — فالسيارة الواقفة على رقم
+         * مستدير تغوص في الأرض.
+         *
+         * إزاحة لا تقبل القسمة على الخليّة تُخرج كل إحداثية مستديرة
+         * من الحافّة. الثمن سنتيمتر ونصف بين ما تراه وما تصطدم به.
+         */
+        <RigidBody
+            key={revision}
+            type="fixed"
+            friction={1.15}
+            restitution={0.02}
+            colliders={false}
+            position={[GRID_NUDGE_X, 0, GRID_NUDGE_Z]}
+        >
             <HeightfieldCollider
                 args={[
                     TERRAIN_GRID - 1,
@@ -86,41 +111,55 @@ const OuterGround = () => {
 
 // ── ٢) الهياكل الثابتة ──────────────────────────────────────
 
-// ارتفاع تقريبي للاصطدام — لا يُرى، فيكفي أن يكون قريباً
-const SOLID_HEIGHT = {
-    house: 6.4, cottage: 5, tower: 18, shop: 5.6, fountain: 1.4,
-    tree: 5, pine: 6, palm: 6.5, bush: 1.2, rock: 1.6,
-    bench: 0.9, lamp: 5, fence: 1.4, bus_stop: 2.8,
-    traffic_light: 3.6, bin: 1, hydrant: 0.9, hill: 5
-};
-
+/**
+ * كل الصلب في المشهد داخل جسم ثابت واحد.
+ *
+ * ثلاثمئة مبنى تعني ثلاثمئة مكوّن React لو صار لكل واحد جسمه، وكلّها
+ * ثابتة لا تتحرّك ولا يعني فصلها شيئاً. الهياكل تُعلَّق على جسم واحد
+ * بإزاحاتها — نفس الاصطدام بجزء من الكلفة.
+ *
+ * ويُعاد بناؤه عند تغيّر الأرض أو المدينة أو ما وُضع، لا في كل إطار.
+ */
 const StaticBodies = () => {
     const placed = useWorld(s => s.placed);
+    const cityCfg = useWorld(s => s.city);
     const revision = useWorld(s => s.terrainRevision);
 
-    const solids = useMemo(() => placed
-        .map(item => {
-            const radius = footprintOf(item.type) * (item.scale || 1);
-            if (!radius) return null;
-            const height = (SOLID_HEIGHT[item.type] || 3) * (item.scale || 1);
-            return { id: item.id, x: item.x, z: item.z, radius, height };
-        })
-        .filter(Boolean), [placed]);
+    const solids = useMemo(() => {
+        const plan = cityPlan(cityCfg);
+        const source = plan
+            ? [...placed, ...plan.buildings, ...plan.props]
+            : placed;
+
+        return source
+            .map((item, i) => {
+                const scale = item.scale || 1;
+                const radius = footprintOf(item.type) * scale;
+                if (!radius) return null;
+
+                return {
+                    key: item.id || `s${i}`,
+                    x: item.x,
+                    z: item.z,
+                    y: heightAt(item.x, item.z),
+                    radius,
+                    height: heightOf(item.type) * scale
+                };
+            })
+            .filter(Boolean);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [placed, cityCfg, revision]);
 
     return (
-        <group key={revision}>
+        <RigidBody key={`${revision}_${solids.length}`} type="fixed" colliders={false} friction={0.9}>
             {solids.map(s => (
-                <RigidBody
-                    key={s.id}
-                    type="fixed"
-                    colliders={false}
-                    friction={0.9}
-                    position={[s.x, heightAt(s.x, s.z), s.z]}
-                >
-                    <CylinderCollider args={[s.height / 2, s.radius]} position={[0, s.height / 2, 0]} />
-                </RigidBody>
+                <CylinderCollider
+                    key={s.key}
+                    args={[s.height / 2, s.radius]}
+                    position={[s.x, s.y + s.height / 2, s.z]}
+                />
             ))}
-        </group>
+        </RigidBody>
     );
 };
 

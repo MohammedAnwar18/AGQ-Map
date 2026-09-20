@@ -10,6 +10,14 @@ import { Asset, OutlineContext, StyleContext, Surface, footprintOf } from './ass
 import { gradientMap, sunFor, skyFor, fogFor, PALETTE } from './toon';
 import { Terrain, Water, BrushRing } from './terrainView';
 import { heightAt, TERRAIN_SPAN } from './terrain';
+import City from './cityView';
+import { cityPlan, districtAt, buildSolidIndex, CITY_SPAN, BLOCK, ROAD, LANE, SIDEWALK } from './city';
+
+/** خطّة المدينة الجارية — مشتركة بين كل ما يسأل عنها */
+export const useCity = () => {
+    const city = useWorld(s => s.city);
+    return useMemo(() => cityPlan(city), [city]);
+};
 
 /**
  * طبقة الفيزياء مؤجّلة الجلب.
@@ -374,6 +382,7 @@ const FoliageGroup = ({ items, count, crown, crownColor, crownY }) => {
 const Foliage = () => {
     const density = useWorld(s => s.environment.foliageDensity);
     const revision = useWorld(s => s.terrainRevision);
+    const hasCity = useWorld(s => s.city.enabled);
 
     // نوعان منفصلان منذ التوليد: الجذع وتاجه في نفس الفهرس من نفس
     // المصفوفة، وإلا ظهرت جذوع بلا تيجان حين تُقلَّص الكثافة
@@ -384,9 +393,27 @@ const Foliage = () => {
 
         for (let i = 0; i < FOLIAGE_MAX; i++) {
             const side = r() > 0.5 ? 1 : -1;
-            // نُبعدها عن الطريق وعن شريط البيوت حتى لا تتداخل معهما
-            const x = side * (19 + r() * 46);
-            const z = (r() - 0.5) * ROAD_LEN;
+            // مع المدينة يصير الشجر ريفاً حولها لا داخلها: حزام بين
+            // آخر مربّع سكني وحافّة العالم. وبلا مدينة يبقى كما كان،
+            // شريطين على جانبي الطريق الجاهز.
+            let x;
+            let z;
+
+            if (hasCity) {
+                const inner = CITY_SPAN / 2 + 6;
+                const outer = WORLD_BOUNDS + 34;
+                const ring = inner + r() * (outer - inner);
+                const angle = r() * Math.PI * 2;
+
+                // مربّع لا دائرة: الحزام يتبع شكل المدينة المربّع
+                const edge = Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle));
+                x = edge ? Math.sign(Math.cos(angle)) * ring : (r() - 0.5) * 2 * outer;
+                z = edge ? (r() - 0.5) * 2 * outer : Math.sign(Math.sin(angle)) * ring;
+            } else {
+                // نُبعدها عن الطريق وعن شريط البيوت حتى لا تتداخل معهما
+                x = side * (19 + r() * 46);
+                z = (r() - 0.5) * ROAD_LEN;
+            }
 
             const item = {
                 x,
@@ -399,7 +426,7 @@ const Foliage = () => {
         }
         return { pines, rounds };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [revision]);
+    }, [revision, hasCity]);
 
     return (
         <group>
@@ -428,48 +455,95 @@ const TRAFFIC_LANES = [
     { x: 2.3, dir: -1, speed: 11 }
 ];
 
+const TRAFFIC_PAINT = ['#D45B4A', '#4E8FC0', '#E8C15A', '#EDEDED', '#5B9B6E', '#2F3742'];
+
+/**
+ * حركة المرور.
+ *
+ * مع المدينة تسير المركبات على شبكة شوارعها: لكل مركبة شارع ومسرب
+ * واتجاه، وتلفّ من طرفه إلى طرفه. وبلا مدينة تعود إلى الشريط
+ * المستقيم الذي كان — فمن أطفأ المدينة لم يفقد الحركة.
+ *
+ * والمركبة تميل مع ميل الأرض تحتها: السيارة الأفقية فوق منحدر أوّل
+ * ما تلتقطه العين خطأً.
+ */
 const Traffic = () => {
     const on = useWorld(s => s.entities.traffic);
+    const city = useCity();
     const group = useRef();
 
     const cars = useMemo(() => {
         const r = rng(4242);
-        return Array.from({ length: 6 }, (_, i) => {
-            const lane = TRAFFIC_LANES[i % 2];
+
+        if (!city) {
+            return Array.from({ length: 6 }, (_, i) => {
+                const lane = TRAFFIC_LANES[i % 2];
+                return {
+                    axis: 'z', at: lane.x, dir: lane.dir,
+                    speed: lane.speed * (0.85 + r() * 0.35),
+                    start: (r() - 0.5) * ROAD_LEN,
+                    limit: ROAD_LEN / 2,
+                    type: r() > 0.75 ? 'van' : 'car',
+                    color: TRAFFIC_PAINT[i % TRAFFIC_PAINT.length]
+                };
+            });
+        }
+
+        const half = city.span / 2;
+        return Array.from({ length: 18 }, (_, i) => {
+            const road = city.roads[Math.floor(r() * city.roads.length)];
+            const dir = r() > 0.5 ? 1 : -1;
+
+            // المسرب الأيمن باتجاه السير — كما تُقاد السيارة فعلاً
+            const lane = dir > 0 ? LANE * 0.45 : -LANE * 0.45;
+            const roll = r();
+
             return {
-                lane,
-                z: (r() - 0.5) * ROAD_LEN,
-                speed: lane.speed * (0.85 + r() * 0.35),
-                type: r() > 0.75 ? 'van' : 'car'
+                axis: road.axis === 'x' ? 'z' : 'x',
+                at: road.at + (road.axis === 'x' ? lane : -lane),
+                dir,
+                speed: 7 + r() * 7,
+                start: (r() - 0.5) * 2 * half,
+                limit: half,
+                type: roll > 0.9 ? 'bus' : roll > 0.78 ? 'van' : roll > 0.66 ? 'pickup' : 'car',
+                color: TRAFFIC_PAINT[Math.floor(r() * TRAFFIC_PAINT.length)]
             };
         });
-    }, []);
+    }, [city]);
 
     useFrame((_, dt) => {
         if (!on || !group.current) return;
 
         group.current.children.forEach((car, i) => {
             const c = cars[i];
-            car.position.z += c.lane.dir * c.speed * dt;
+            if (!c) return;
+
+            const axis = c.axis;
+            car.position[axis] += c.dir * c.speed * dt;
 
             // لفّ دائري: الخارج من طرف يدخل من الطرف المقابل
-            const limit = ROAD_LEN / 2;
-            if (car.position.z > limit) car.position.z = -limit;
-            if (car.position.z < -limit) car.position.z = limit;
+            if (car.position[axis] > c.limit) car.position[axis] = -c.limit;
+            if (car.position[axis] < -c.limit) car.position[axis] = c.limit;
 
-            // محاذاة السطح: السيارة تتبع ميل الأرض تحتها بدل أن تبقى
-            // أفقية فوق منحدر — وهي أوّل ما تراه العين خطأً في المنحدرات
+            // محاذاة السطح: تتبع ميل الأرض تحتها بدل أن تبقى أفقية
             const x = car.position.x;
             const z = car.position.z;
             car.position.y = heightAt(x, z);
 
-            const ahead = heightAt(x, z + c.lane.dir * 2.2);
-            const behind = heightAt(x, z - c.lane.dir * 2.2);
-            car.rotation.x = -Math.atan2(ahead - behind, 4.4);
+            const fx = axis === 'x' ? c.dir * 2.4 : 0;
+            const fz = axis === 'z' ? c.dir * 2.4 : 0;
+            const ahead = heightAt(x + fx, z + fz);
+            const behind = heightAt(x - fx, z - fz);
+            car.rotation.x = -Math.atan2(ahead - behind, 4.8);
         });
     });
 
     if (!on) return null;
+
+    // زاوية الرأس: المجسم ينظر إلى ‎+Z‎، فنُديره نحو اتجاه سيره
+    const headingOf = (c) => (c.axis === 'z'
+        ? (c.dir > 0 ? 0 : Math.PI)
+        : (c.dir > 0 ? Math.PI / 2 : -Math.PI / 2));
 
     return (
         // المركبات المتحرّكة بلا حدود محيطة: الحركة تُخفيها، والمقابل رسمات مضاعفة
@@ -478,14 +552,14 @@ const Traffic = () => {
                 {cars.map((c, i) => (
                     <group
                         key={i}
-                        position={[c.lane.x, 0, c.z]}
+                        position={[c.axis === 'x' ? c.start : c.at, 0, c.axis === 'z' ? c.start : c.at]}
                         // ترتيب YXZ: الميل يُطبَّق في إطار السيارة بعد
                         // دورانها، وإلا مالت في اتجاه العالم لا اتجاهها
                         rotation-order="YXZ"
-                        rotation-y={c.lane.dir > 0 ? 0 : Math.PI}
+                        rotation-y={headingOf(c)}
                         scale={0.92}
                     >
-                        <Asset type={c.type} simple />
+                        <Asset type={c.type} body={c.color} simple />
                     </group>
                 ))}
             </group>
@@ -506,7 +580,7 @@ const SKIN = ['#F0C39A', '#E0AC83', '#C68B62', '#8D5C3D'];
  * كل مارّ يحمل حلقته الخاصّة — الموضع والخطوة معاً — فلا يقود المكوّن
  * الأب عشرة أجساد من مكان واحد.
  */
-const Pedestrian = ({ seed }) => {
+const Pedestrian = ({ seed, lane = null }) => {
     const group = useRef();
     const legL = useRef();
     const legR = useRef();
@@ -516,9 +590,27 @@ const Pedestrian = ({ seed }) => {
     const self = useMemo(() => {
         const r = rng(seed);
         const side = r() > 0.5 ? 1 : -1;
+
+        // مع المدينة يمشون على أرصفتها، وبلا مدينة على رصيف الطريق
+        // الجاهز كما كانوا
+        let x;
+        let z;
+        let axis = 'z';
+
+        if (lane) {
+            axis = lane.axis;
+            const at = lane.at + (r() - 0.5) * (SIDEWALK - 1.1);
+            const along = (r() - 0.5) * lane.length;
+            x = axis === 'x' ? along : at;
+            z = axis === 'x' ? at : along;
+        } else {
+            x = side * (ROAD_HALF + 0.6 + r() * (WALK_W - 1.0));
+            z = (r() - 0.5) * ROAD_LEN;
+        }
+
         return {
-            x: side * (ROAD_HALF + 0.6 + r() * (WALK_W - 1.0)),
-            z: (r() - 0.5) * ROAD_LEN,
+            x, z, axis,
+            limit: lane ? lane.length / 2 : ROAD_LEN / 2,
             dir: r() > 0.5 ? 1 : -1,
             speed: 1.3 + r() * 1.3,
             phase: r() * Math.PI * 2,
@@ -529,17 +621,16 @@ const Pedestrian = ({ seed }) => {
             skin: SKIN[Math.floor(r() * SKIN.length)],
             bag: r() > 0.62
         };
-    }, [seed]);
+    }, [seed, lane]);
 
     useFrame((state, dt) => {
         const g = group.current;
         if (!g) return;
 
-        g.position.z += self.dir * self.speed * dt;
+        g.position[self.axis] += self.dir * self.speed * dt;
 
-        const limit = ROAD_LEN / 2;
-        if (g.position.z > limit) g.position.z = -limit;
-        if (g.position.z < -limit) g.position.z = limit;
+        if (g.position[self.axis] > self.limit) g.position[self.axis] = -self.limit;
+        if (g.position[self.axis] < -self.limit) g.position[self.axis] = self.limit;
 
         // تردّد الخطوة يتبع السرعة: السريع يخطو أكثر لا أوسع فقط
         const t = state.clock.elapsedTime * self.speed * 3.1 + self.phase;
@@ -558,7 +649,14 @@ const Pedestrian = ({ seed }) => {
     const s = self.height;
 
     return (
-        <group ref={group} position={[self.x, 0, self.z]} rotation={[0, self.dir > 0 ? 0 : Math.PI, 0]} scale={s}>
+        <group
+            ref={group}
+            position={[self.x, 0, self.z]}
+            rotation={[0, self.axis === 'x'
+                ? (self.dir > 0 ? Math.PI / 2 : -Math.PI / 2)
+                : (self.dir > 0 ? 0 : Math.PI), 0]}
+            scale={s}
+        >
             {/* الساقان: المحور عند الورك والقطعة معلّقة تحته */}
             {[[legL, -0.11], [legR, 0.11]].map(([ref, x], i) => (
                 <group key={i} ref={ref} position={[x, 0.82, 0]}>
@@ -619,11 +717,38 @@ const Pedestrian = ({ seed }) => {
 
 const NPCs = () => {
     const on = useWorld(s => s.entities.npcs);
+    const city = useCity();
+
+    // مسارات المشي: خطّ على كل جانب من كل شارع، في منتصف رصيفه
+    const lanes = useMemo(() => {
+        if (!city) return null;
+
+        const out = [];
+        for (const road of city.roads) {
+            for (const side of [-1, 1]) {
+                out.push({
+                    axis: road.axis === 'x' ? 'z' : 'x',
+                    at: road.at + side * (LANE + SIDEWALK * 0.5),
+                    length: city.span
+                });
+            }
+        }
+        return out;
+    }, [city]);
+
+    const walkers = useMemo(() => {
+        const count = lanes ? 26 : 10;
+        return Array.from({ length: count }, (_, i) => ({
+            seed: 909 + i * 137,
+            lane: lanes ? lanes[(i * 7) % lanes.length] : null
+        }));
+    }, [lanes]);
+
     if (!on) return null;
 
     return (
         <group>
-            {Array.from({ length: 10 }, (_, i) => <Pedestrian key={i} seed={909 + i * 137} />)}
+            {walkers.map((w, i) => <Pedestrian key={i} seed={w.seed} lane={w.lane} />)}
         </group>
     );
 };
@@ -755,26 +880,62 @@ const Walker = () => {
 
 const UP = new THREE.Vector3(0, 1, 0);
 
-/** يدفع المشاهد خارج أي مجسم صلب بدل أن يعبره */
+/**
+ * يدفع المشاهد خارج أي مجسم صلب بدل أن يعبره.
+ *
+ * مباني المدينة تمرّ عبر فهرس مكاني لا عبر حلقة على ثلاثمئة مبنى:
+ * السؤال يتكرّر ستّين مرّة في الثانية، والفهرس يُجيبه من تسع خلايا.
+ */
 const resolveCollisions = (next) => {
     const { placed, environment } = useWorld.getState();
     const swap = STYLE_SWAP[environment.buildingStyle] || {};
 
-    for (const item of placed) {
-        const radius = footprintOf(swap[item.type] || item.type) * (item.scale || 1);
-        if (!radius) continue;
-
-        const dx = next.x - item.x;
-        const dz = next.z - item.z;
+    const push = (cx, cz, radius) => {
+        const dx = next.x - cx;
+        const dz = next.z - cz;
         const min = radius + BODY_RADIUS;
         const distSq = dx * dx + dz * dz;
 
         if (distSq < min * min && distSq > 1e-6) {
             const dist = Math.sqrt(distSq);
-            next.x = item.x + (dx / dist) * min;
-            next.z = item.z + (dz / dist) * min;
+            next.x = cx + (dx / dist) * min;
+            next.z = cz + (dz / dist) * min;
         }
+    };
+
+    for (const item of placed) {
+        const radius = footprintOf(swap[item.type] || item.type) * (item.scale || 1);
+        if (radius) push(item.x, item.z, radius);
     }
+
+    const index = citySolids();
+    if (index) {
+        for (const solid of index.near(next.x, next.z)) push(solid.x, solid.z, solid.radius);
+    }
+};
+
+/**
+ * فهرس صلبة المدينة.
+ *
+ * يُبنى مرّة لكل مخطّط ويُحفظ: المشي يسأله في كل إطار، وبناؤه في كل
+ * سؤال يعني المرور على المدينة كلّها ستّين مرّة في الثانية.
+ */
+let solidCache = null;
+
+export const citySolids = () => {
+    const plan = cityPlan(useWorld.getState().city);
+    if (!plan) return null;
+
+    if (!solidCache || solidCache.plan !== plan) {
+        solidCache = {
+            plan,
+            index: buildSolidIndex(
+                [...plan.buildings, ...plan.props, ...plan.cars],
+                (item) => footprintOf(item.type) * (item.scale || 1)
+            )
+        };
+    }
+    return solidCache.index;
 };
 
 /** ارتفاع الأرض عند نقطة — حقل التضاريس أوّلاً ثم قباب التلال فوقه */
@@ -918,11 +1079,12 @@ const WorldEnvironment = () => {
     );
 };
 
-const WorldScene = () => {
+const WorldScene = ({ hiddenCarId = null }) => {
     const outlines = useWorld(s => s.environment.outlines !== false);
     const style = useWorld(s => s.environment.renderStyle || 'toon');
     const mode = useWorld(s => s.mode);
     const physicsOn = useWorld(s => s.physics.enabled);
+    const city = useCity();
 
     // موضع الفرشاة يتغيّر مع كل حركة مؤشّر: مرجع لا حالة، وإلا أعدنا
     // رسم المشهد كلّه لأجل حلقة تتحرّك
@@ -940,6 +1102,7 @@ const WorldScene = () => {
             <Sun />
             <Clouds />
             <Ground onBrushMove={onBrushMove} />
+            {city && <City city={city} hiddenCarId={hiddenCarId} />}
             <Water />
             <BrushRing pointRef={brushPoint} />
             <Foliage />

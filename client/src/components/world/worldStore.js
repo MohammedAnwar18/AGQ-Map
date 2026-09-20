@@ -16,8 +16,9 @@ import {
    أربعة أقسام كما في خطة المشروع: البيئة، الكيانات، الأصول، التسجيل.
    ============================================================ */
 
-// حدود العالم بالمتر — تُستخدم في المشهد وفي محرّر العقد معاً
-export const WORLD_BOUNDS = 70;
+// حدود العالم بالمتر — تُستخدم في المشهد وفي محرّر العقد معاً.
+// اتّسعت مع المدينة: شبكة ستّة مربّعات سكنية تمتدّ ٤٢٢ متراً.
+export const WORLD_BOUNDS = 200;
 
 const DEFAULT_ENVIRONMENT = {
     timeOfDay: 17.2,        // ساعة (0-24) — الافتراضي غروب دافئ
@@ -30,8 +31,9 @@ const DEFAULT_ENVIRONMENT = {
     outlines: true,         // الحدود المحيطة — تُضاعف الرسمات، فتُطفأ عند الحاجة
     heavyShading: false,    // SSAO — ثقيل، فيبقى اختيارياً
 
-    // الطريق المبنيّ في المشهد — يُطفأ لمن يرسم شبكته بنفسه
-    defaultRoad: true,
+    // الطريق المبنيّ في المشهد — شريط مستقيم واحد من قبل المدينة.
+    // مطفأ الآن لأن للمدينة شبكة شوارعها، ويبقى لمن يبني من الصفر.
+    defaultRoad: false,
     gridSnap: true,
     gridSize: 8            // متر — مقاس قطعة الطريق الواحدة
 };
@@ -67,36 +69,30 @@ const DEFAULT_PHYSICS = {
     buoyancy: true
 };
 
+/* ── المدينة ──────────────────────────────────────────────────
+   المخطّط كلّه يُولَّد من هذه الأرقام، فلا يُحفظ منه في ملف العالم
+   إلا هي. ثلاثمئة مبنى تُصبح ثلاثة أسطر، ومن يفتح عالمك يرى
+   المدينة نفسها بلا أن يُنزّل مخطّطها. */
+const DEFAULT_CITY = {
+    enabled: true,
+    seed: 20260920,
+    density: 1        // 0.5 إلى 1 — تُخفّف المباني على الأجهزة الضعيفة
+};
+
 const DEFAULT_BRUSH = {
     tool: null,       // null يعني أن الفرشاة مطفأة والنقر يضع/يحدّد كالعادة
     radius: 12,
     strength: 0.7
 };
 
-// مشهد البداية: بيوت على الجانبين وأشجار متفرّقة، كي لا تُفتح اللوحة فارغة
-const seedWorld = () => {
-    const placed = [];
-    let n = 0;
-    const id = () => `seed_${++n}`;
-
-    for (let i = 0; i < 6; i++) {
-        const z = -42 + i * 17;
-        placed.push({ id: id(), type: 'house', x: -15.5, z, rotation: Math.PI / 2, scale: 1 });
-        placed.push({ id: id(), type: 'house', x: 15.5, z: z + 8, rotation: -Math.PI / 2, scale: 1 });
-    }
-
-    placed.push({ id: id(), type: 'pine', x: -24, z: -30, rotation: 0, scale: 1.2 });
-    placed.push({ id: id(), type: 'pine', x: -27, z: -12, rotation: 0, scale: 1 });
-    placed.push({ id: id(), type: 'palm', x: 23, z: -18, rotation: 0, scale: 1.1 });
-    placed.push({ id: id(), type: 'palm', x: 26, z: 4, rotation: 0, scale: 1 });
-    placed.push({ id: id(), type: 'tree', x: -22, z: 14, rotation: 0, scale: 1.15 });
-    placed.push({ id: id(), type: 'tree', x: 22, z: 26, rotation: 0, scale: 1 });
-    placed.push({ id: id(), type: 'bench', x: -9.5, z: -4, rotation: Math.PI / 2, scale: 1 });
-    placed.push({ id: id(), type: 'lamp', x: -9.5, z: 20, rotation: 0, scale: 1 });
-    placed.push({ id: id(), type: 'car', x: 3.2, z: -26, rotation: 0, scale: 1 });
-
-    return placed;
-};
+/**
+ * المشهد الابتدائي.
+ *
+ * فارغ عمداً منذ أن صارت المدينة تُولَّد: كانت هنا اثنا عشر بيتاً
+ * تملأ الفراغ، وهي الآن تقع وسط الشوارع. ما يضعه المستخدم بيده
+ * يبقى وحده في ‎placed‎، والمدينة خلفية تحته.
+ */
+const seedWorld = () => [];
 
 let counter = 0;
 const nextId = () => `a_${Date.now().toString(36)}_${++counter}`;
@@ -137,7 +133,7 @@ const snapFor = (type, x, z, gridSnap, gridSize) => {
  * من zustand لأعاد رسم شجرة المكوّنات ستين مرّة في الثانية.
  * المشهد يكتب هنا والخريطة تقرأ منه في حلقتها الخاصة.
  */
-export const live = { x: 0, z: 34, heading: 0, moving: false };
+export const live = { x: 0, z: 96, heading: 0, moving: false };
 
 /**
  * حالة المركبة الحيّة.
@@ -237,6 +233,18 @@ export const useWorld = create((set, get) => ({
             : state.physics
     })),
 
+    // ── المدينة ──
+    // المخطّط نفسه يُبنى في المشهد بـ useMemo من هذه الأرقام: المخزن
+    // لا يحمل ثلاثمئة مبنى، بل البذرة التي تُولّدها
+    city: { ...DEFAULT_CITY },
+
+    setCity: (key, value) => set(state => ({ city: { ...state.city, [key]: value } })),
+
+    /** مدينة جديدة كاملة — نفس الشوارع بأحياء مختلفة */
+    rollCity: () => set(state => ({
+        city: { ...state.city, seed: Math.floor(Math.random() * 900000) + 1000 }
+    })),
+
     // ── التضاريس ──
     // العدّاد وحده في المخزن؛ الارتفاعات في terrain.js خارج React.
     // رفعه يُعلم المشهد أن يُعيد بناء الشبكة والهياكل، ويحدث مرّة
@@ -307,12 +315,12 @@ export const useWorld = create((set, get) => ({
 
     // ── الكاميرا ──
     // المشهد يقرأ هذا الهدف ويتحرّك إليه بالتنعيم، فلا تقفز الكاميرا
-    cameraTarget: { x: 0, z: 34 },
+    cameraTarget: { x: 0, z: 0 },
     setCameraTarget: (x, z) => set({ cameraTarget: { x, z } }),
 
     // ── الحفظ والاسترجاع ──
     exportWorld: () => {
-        const { environment, entities, placed, cameraTarget, terrain, physics } = get();
+        const { environment, entities, placed, cameraTarget, terrain, physics, city } = get();
         return {
             version: 2,
             savedAt: new Date().toISOString(),
@@ -320,6 +328,7 @@ export const useWorld = create((set, get) => ({
             entities,
             cameraTarget,
             placed,
+            city,
             terrain,
             physics,
             // null حين تكون الأرض مستوية — لا نُثقل الملف بستّة عشر ألف صفر
@@ -339,12 +348,13 @@ export const useWorld = create((set, get) => ({
         set(state => ({
             environment: { ...DEFAULT_ENVIRONMENT, ...(data.environment || {}) },
             entities: { ...DEFAULT_ENTITIES, ...(data.entities || {}) },
+            city: { ...DEFAULT_CITY, ...(data.city || {}) },
             terrain: { ...DEFAULT_TERRAIN, ...(data.terrain || {}) },
             physics: { ...DEFAULT_PHYSICS, ...(data.physics || {}) },
             brush: { ...DEFAULT_BRUSH },
             terrainRevision: state.terrainRevision + 1,
             mode: 'orbit',
-            cameraTarget: data.cameraTarget || { x: 0, z: 34 },
+            cameraTarget: data.cameraTarget || { x: 0, z: 0 },
             placed: Array.isArray(data.placed)
                 ? data.placed
                     .filter(p => p && typeof p.type === 'string'
@@ -368,13 +378,14 @@ export const useWorld = create((set, get) => ({
         set(state => ({
             environment: { ...DEFAULT_ENVIRONMENT },
             entities: { ...DEFAULT_ENTITIES },
+            city: { ...DEFAULT_CITY },
             terrain: { ...DEFAULT_TERRAIN },
             physics: { ...DEFAULT_PHYSICS },
             brush: { ...DEFAULT_BRUSH },
             terrainRevision: state.terrainRevision + 1,
             mode: 'orbit',
             placed: seedWorld(),
-            cameraTarget: { x: 0, z: 34 },
+            cameraTarget: { x: 0, z: 0 },
             selectedId: null,
             placementType: null
         }));
