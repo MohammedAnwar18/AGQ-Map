@@ -7,6 +7,7 @@ import { forgetStyled } from './customAssets';
 import MiniMap from './MiniMap';
 import Browser from './AssetBrowser';
 import { saveFile } from '../../utils/download';
+import gameService, { gameError } from '../../services/gameApi';
 
 /* ============================================================
    لوحات المحرّر الأربع
@@ -722,6 +723,26 @@ export const WorldFile = ({ onFlash }) => {
     const count = useWorld(s => s.placed.length);
 
     const fileRef = useRef(null);
+    const [publishing, setPublishing] = useState(false);
+
+    /**
+     * النشر.
+     *
+     * الحفظ إلى ملف يُبقي العالم عندك؛ النشر يجعله **العالم** الذي
+     * يفتحه كل من يُدخل رقمك. هو الخطوة التي تُحوّل ما بنيته من
+     * مسوّدة إلى مكان يزوره الناس.
+     */
+    const publish = async () => {
+        setPublishing(true);
+        try {
+            const result = await gameService.saveWorld(exportWorld(), null);
+            onFlash?.(`نُشر العالم — ${(result.size / 1024).toFixed(0)} ك.بايت`);
+        } catch (err) {
+            onFlash?.(gameError(err, 'تعذّر النشر'), 'err');
+        } finally {
+            setPublishing(false);
+        }
+    };
 
     const save = async () => {
         const blob = new Blob([JSON.stringify(exportWorld(), null, 2)], { type: 'application/json' });
@@ -744,6 +765,15 @@ export const WorldFile = ({ onFlash }) => {
 
     return (
         <div className="we-filebar">
+            <button
+                className="we-btn we-publish"
+                onClick={publish}
+                disabled={publishing}
+                title="يجعل ما بنيته هو العالم الذي يفتحه من يُدخل رقمك"
+            >
+                {publishing ? 'ينشر…' : '◈ انشر العالم للاعبين'}
+            </button>
+
             <button className="we-btn" onClick={save}>حفظ world.json</button>
             <button className="we-btn" onClick={() => fileRef.current?.click()}>تحميل ملف</button>
             <button className="we-btn" onClick={() => { clearAll(); onFlash?.('أُفرغ العالم'); }}>إفراغ</button>

@@ -83,7 +83,7 @@ export const Joystick = () => {
     );
 };
 
-export const WalkControls = ({ canvasRef, onExit, onFlash }) => {
+export const WalkControls = ({ canvasRef, onExit, onFlash, bare = false }) => {
     const [locked, setLocked] = useState(false);
     const [touch] = useState(isCoarse);
     const lookRef = useRef(null);
@@ -217,21 +217,25 @@ export const WalkControls = ({ canvasRef, onExit, onFlash }) => {
 
     return (
         <>
-            <div className="we-cross" aria-hidden="true" ref={lookRef}>
-                <i /><i />
-            </div>
+            {/* الصليب لمنظور الشخص الأوّل: في الشخص الثالث لا تُصوّب
+                إلى ما في منتصف الشاشة، فوجوده يُضلّل */}
+            {!bare && (
+                <div className="we-cross" aria-hidden="true" ref={lookRef}>
+                    <i /><i />
+                </div>
+            )}
 
             {touch && <Joystick />}
 
             {!touch && !locked && (
-                <div className="we-walkhint">
-                    <b>انقر المشهد للسير فيه</b>
-                    <span>W A S D للحركة · Shift للركض · الفأرة للنظر</span>
-                    <button onClick={onExit}>عُد إلى التحرير</button>
+                <div className={bare ? 'gw-lockhint' : 'we-walkhint'}>
+                    <b>{bare ? 'انقر لتسير في العالم' : 'انقر المشهد للسير فيه'}</b>
+                    <span>W A S D للحركة · Shift للركض · E للركوب · الفأرة للنظر</span>
+                    {!bare && <button onClick={onExit}>عُد إلى التحرير</button>}
                 </div>
             )}
 
-            {touch && (
+            {touch && !bare && (
                 <button className="we-walkexit" onClick={onExit}>خروج من المشي</button>
             )}
         </>

@@ -106,6 +106,7 @@ app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/ar-models', require('./routes/arModels'));
 app.use('/api/helly', require('./routes/helly'));
+app.use('/api/game', require('./routes/game'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
@@ -251,6 +252,68 @@ app.use('/api/fitness', fitnessRoutes);
         console.log('✅ HellyAgents tables ready');
     } catch (err) {
         console.warn('⚠️ HellyAgents migration warning:', err.message);
+    }
+})();
+
+// Auto-migrate: عالم اللعب — هوية اللاعب وعالمه وحضوره
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_players (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                code VARCHAR(8) NOT NULL UNIQUE,
+                display_name VARCHAR(40) NOT NULL,
+                appearance JSONB NOT NULL DEFAULT '{}'::jsonb,
+                stats JSONB NOT NULL DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_game_players_code ON game_players (code);
+        `);
+
+        // عالم واحد لكل مالك — ولهذا القيد على owner_id: الحفظ
+        // upsert لا إدراج متكرّر
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_worlds (
+                id SERIAL PRIMARY KEY,
+                owner_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                data JSONB NOT NULL,
+                title VARCHAR(80),
+                is_open BOOLEAN DEFAULT TRUE,
+                visits INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // الحضور: صفّ واحد لكل لاعب في كل عالم، يُحدَّث كل ثانية
+        // ويُحذف بعد عشرين من الصمت
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS game_presence (
+                id SERIAL PRIMARY KEY,
+                world_code VARCHAR(8) NOT NULL,
+                player_id INTEGER NOT NULL REFERENCES game_players(id) ON DELETE CASCADE,
+                x NUMERIC(9, 2) DEFAULT 0,
+                y NUMERIC(9, 2) DEFAULT 0,
+                z NUMERIC(9, 2) DEFAULT 0,
+                heading NUMERIC(8, 4) DEFAULT 0,
+                mode VARCHAR(12) DEFAULT 'walk',
+                vehicle VARCHAR(24),
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (world_code, player_id)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_game_presence_world
+                ON game_presence (world_code, updated_at DESC);
+        `);
+
+        console.log('✅ game world tables ready');
+    } catch (err) {
+        console.warn('⚠️ game world migration warning:', err.message);
     }
 })();
 

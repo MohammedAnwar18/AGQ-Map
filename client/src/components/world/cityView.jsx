@@ -220,13 +220,17 @@ const Props = ({ city }) => {
  * اللاعب تختفي من هنا ويحلّ محلّها جسم فيزيائي — ولهذا تُستثنى
  * بمعرّفها لا بموضعها.
  */
-const ParkedCars = ({ city, hiddenId }) => {
+const ParkedCars = ({ city, hiddenId, overrides }) => {
     const revision = useWorld(s => s.terrainRevision);
 
+    // التجاوزات: مركبة ركبها اللاعب وتركها في مكان آخر تبقى هناك
+    // لا تعود إلى موقفها الأوّل بقفزة
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const items = useMemo(() => city.cars.map(c => ({
-        ...c, y: heightAt(c.x, c.z)
-    })), [city, revision]);
+    const items = useMemo(() => city.cars.map(c => {
+        const moved = overrides?.[c.id];
+        const at = moved ? { ...c, ...moved } : c;
+        return { ...at, y: heightAt(at.x, at.z) };
+    }), [city, revision, overrides]);
 
     return (
         // المركبات بلا حدود محيطة: قِطع صغيرة كثيرة، والحدود تُضاعف رسمها
@@ -244,7 +248,7 @@ const ParkedCars = ({ city, hiddenId }) => {
 
 // ── التجميع ─────────────────────────────────────────────────
 
-const City = ({ city, hiddenCarId = null }) => {
+const City = ({ city, hiddenCarId = null, overrides = null }) => {
     const hour = useWorld(s => s.environment.timeOfDay);
 
     // شدّة الليل مقسّمة إلى ثماني درجات: تتدرّج مع الغروب، ولا
@@ -258,7 +262,7 @@ const City = ({ city, hiddenCarId = null }) => {
             <CityGround city={city} />
             <Buildings city={city} night={night} />
             <Props city={city} />
-            <ParkedCars city={city} hiddenId={hiddenCarId} />
+            <ParkedCars city={city} hiddenId={hiddenCarId} overrides={overrides} />
         </group>
     );
 };

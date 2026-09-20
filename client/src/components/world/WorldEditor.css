@@ -1392,3 +1392,13 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
 }
+
+/* ── النشر: الزرّ الذي يُحوّل ما بنيتَه إلى مكان يُزار ── */
+.we-publish {
+    grid-column: 1 / -1;
+    border-color: rgba(74, 222, 128, .42);
+    background: rgba(74, 222, 128, .14);
+    color: #86efac;
+}
+
+.we-publish:hover:not(:disabled) { background: rgba(74, 222, 128, .22); }

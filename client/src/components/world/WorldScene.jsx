@@ -1079,7 +1079,7 @@ const WorldEnvironment = () => {
     );
 };
 
-const WorldScene = ({ hiddenCarId = null }) => {
+const WorldScene = ({ hiddenCarId = null, carOverrides = null }) => {
     const outlines = useWorld(s => s.environment.outlines !== false);
     const style = useWorld(s => s.environment.renderStyle || 'toon');
     const mode = useWorld(s => s.mode);
@@ -1102,7 +1102,7 @@ const WorldScene = ({ hiddenCarId = null }) => {
             <Sun />
             <Clouds />
             <Ground onBrushMove={onBrushMove} />
-            {city && <City city={city} hiddenCarId={hiddenCarId} />}
+            {city && <City city={city} hiddenCarId={hiddenCarId} overrides={carOverrides} />}
             <Water />
             <BrushRing pointRef={brushPoint} />
             <Foliage />

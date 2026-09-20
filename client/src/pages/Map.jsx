@@ -30,6 +30,7 @@ const ShopProfileModal      = React.lazy(() => import('../components/ShopProfile
 const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
 const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
 const WorldEditor           = React.lazy(() => import('../components/world/WorldEditor'));
+const WorldGame             = React.lazy(() => import('../components/world/WorldGame'));
 import HellyMark from '../components/HellyMark';
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
@@ -835,6 +836,7 @@ const MapComponent = () => {
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [showHellyAgents, setShowHellyAgents] = useState(false);
     const [showWorldEditor, setShowWorldEditor] = useState(false);
+    const [showWorldGame, setShowWorldGame] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
     // Auto-center map on user's active fitness tracking coordinates
@@ -2404,6 +2406,22 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    {/* العالم — لكل من له حساب: يدخل فيمشي ويقود.
+                        والبناء في المحرّر المجاور، وهو للأدمن وحده. */}
+                    {user && (
+                        <button
+                            className={`top-nav-icon ${showWorldGame ? 'active' : ''}`}
+                            onClick={() => setShowWorldGame(true)}
+                            title="ادخل العالم"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                                <circle cx="12" cy="12" r="9.2" />
+                                <ellipse cx="12" cy="12" rx="4" ry="9.2" />
+                                <path d="M3.2 9.2h17.6M3.2 14.8h17.6" />
+                            </svg>
+                        </button>
+                    )}
+
                     {/* محرّر العالم ثلاثي الأبعاد — للأدمن العام وحده */}
                     {user?.role === 'admin' && (
                         <button
@@ -3837,6 +3855,11 @@ const MapComponent = () => {
             {showWorldEditor && user?.role === 'admin' && (
                 <React.Suspense fallback={null}>
                     <WorldEditor onClose={() => setShowWorldEditor(false)} />
+                </React.Suspense>
+            )}
+            {showWorldGame && user && (
+                <React.Suspense fallback={null}>
+                    <WorldGame onClose={() => setShowWorldGame(false)} />
                 </React.Suspense>
             )}
             {showFriends && <FriendsModal

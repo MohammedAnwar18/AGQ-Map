@@ -7,6 +7,7 @@ import {
 } from '@react-three/rapier';
 
 import { useWorld, live, input, drive } from './worldStore';
+import { useGame } from './gameStore';
 import { CarChassis, CarWheel, Surface, footprintOf, heightOf, OutlineContext } from './assets';
 import { cityPlan } from './city';
 import { PALETTE } from './toon';
@@ -196,7 +197,7 @@ const tmpEuler = new THREE.Euler(0, 0, 0, 'YXZ');
  * ومنه قوّة دفع رأسية بمعادلة نابض-مخمّد. لذلك تميل السيارة مع ميل
  * الأرض وحدها، وتنزل عجلة في حفرة بينما الثلاث الأخرى على المستوي.
  */
-const Vehicle = ({ start }) => {
+const Vehicle = ({ start, heading = 0 }) => {
     const bodyRef = useRef(null);
     const wheelRefs = useRef([]);
     const spinRefs = useRef([]);
@@ -346,6 +347,7 @@ const Vehicle = ({ start }) => {
                 ref={bodyRef}
                 colliders={false}
                 position={start}
+                rotation={[0, heading, 0]}
                 canSleep={false}
                 linearDamping={0.05}
                 angularDamping={0.6}
@@ -504,12 +506,17 @@ const PhysicsLayer = () => {
     const debris = useWorld(s => s.physics.debris);
     const mode = useWorld(s => s.mode);
 
-    // نقطة انطلاق السيارة: على الطريق أمام الكاميرا، فوق الأرض
+    // المركبة التي ركبها اللاعب تُولَد في مكانها لا في نقطة ثابتة:
+    // تضغط ‎E‎ عند سيارة فتجد نفسك فيها، لا في سيارة أخرى بعيدة
+    const boarded = useGame(s => s.vehicleAt);
+
     const start = useMemo(() => {
-        const x = 3.2;
-        const z = 10;
+        const x = boarded?.x ?? 3.2;
+        const z = boarded?.z ?? 10;
         return [x, heightAt(x, z) + 1.3, z];
-    }, []);
+    }, [boarded]);
+
+    const heading = boarded?.rotation ?? 0;
 
     return (
         <Physics
@@ -521,7 +528,7 @@ const PhysicsLayer = () => {
             <OuterGround />
             <StaticBodies />
 
-            {wantVehicle && <Vehicle start={start} />}
+            {wantVehicle && <Vehicle key={boarded?.id || 'free'} start={start} heading={heading} />}
             {mode === 'drive' && <ChaseCamera />}
             {debris > 0 && <Debris count={debris} />}
         </Physics>
