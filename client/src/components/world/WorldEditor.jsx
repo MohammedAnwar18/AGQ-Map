@@ -7,6 +7,7 @@ import { useWorld } from './worldStore';
 import { WalkControls, DriveControls } from './walk';
 import MiniMap from './MiniMap';
 import { WorldPanel, TerrainPanel, NodeEditor, AssetBrowser, Inspector, RecordBar, WorldFile } from './panels';
+import { AdaptiveResolution } from './quality';
 import './WorldEditor.css';
 
 /* ============================================================
@@ -259,6 +260,7 @@ const WorldEditor = ({ onClose }) => {
                         <WorldScene />
                     </Suspense>
                     <FpsProbe onSample={setFps} />
+                    <AdaptiveResolution max={1.8} />
                 </Canvas>
 
                 {/* أول إطار لم يُرسم بعد: الحزمة تُجلب أو المشهد يُبنى */}

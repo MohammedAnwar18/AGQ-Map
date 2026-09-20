@@ -125,10 +125,17 @@ const Sky = () => {
 
 // ── الشمس والإضاءة والضباب ──────────────────────────────────
 
+// نصف عرض صندوق الظلّ بالمتر لكل مستوى جودة
+const SHADOW_SPAN = { medium: 44, high: 78 };
+const SHADOW_MAP = { medium: 1024, high: 2048 };
+
 const Sun = () => {
     const light = useRef();
     const ambient = useRef();
     const { scene } = useThree();
+
+    const quality = useWorld(s => s.environment.shadows ?? 'medium');
+    const span = SHADOW_SPAN[quality] || SHADOW_SPAN.medium;
 
     useLayoutEffect(() => {
         scene.fog = new THREE.FogExp2('#CFEBFF', 0.002);
@@ -147,7 +154,28 @@ const Sun = () => {
         const [sx, sy, sz] = sun.position;
         const dusk = THREE.MathUtils.clamp((sy + 10) / 26, 0.06, 1);
 
-        light.current.position.set(sx, Math.max(sy, 2.5), sz);
+        /*
+         * الظلّ يسافر معك.
+         *
+         * كان صندوق الظلّ ثابتاً عند نقطة الأصل بنصف عرض خمسة
+         * وثمانين متراً — كافٍ لشارع واحد، ضائع في مدينة عرضها
+         * أربعمئة. فمن يمشي في طرفها لا ظلّ عنده، وكرت الرسم مع
+         * ذلك يرسم كل ما في الصندوق البعيد.
+         *
+         * صندوق أضيق يتبع اللاعب يُعطي ظلالاً أحدّ وأرخص معاً:
+         * نفس عدد البكسلات موزّعاً على مساحة أصغر.
+         */
+        const cam = light.current.shadow.camera;
+        light.current.position.set(live.x + sx * 0.35, Math.max(sy, 2.5), live.z + sz * 0.35);
+        light.current.target.position.set(live.x, 0, live.z);
+        light.current.target.updateMatrixWorld();
+
+        if (cam.right !== span) {
+            cam.left = -span; cam.right = span;
+            cam.top = span; cam.bottom = -span;
+            cam.updateProjectionMatrix();
+        }
+
         light.current.color.set(sky.light);
         light.current.intensity = sky.intensity * dusk;
 
@@ -165,16 +193,12 @@ const Sun = () => {
         <>
             <directionalLight
                 ref={light}
-                castShadow
-                shadow-mapSize={[2048, 2048]}
+                castShadow={quality !== 'off'}
+                shadow-mapSize={[SHADOW_MAP[quality] || 1024, SHADOW_MAP[quality] || 1024]}
                 shadow-bias={-0.0006}
-                shadow-normalBias={0.03}
+                shadow-normalBias={0.04}
                 shadow-camera-near={1}
-                shadow-camera-far={340}
-                shadow-camera-left={-85}
-                shadow-camera-right={85}
-                shadow-camera-top={85}
-                shadow-camera-bottom={-85}
+                shadow-camera-far={260}
             />
             <ambientLight ref={ambient} />
         </>
@@ -348,7 +372,7 @@ const DefaultRoad = ({ dashes }) => {
 // ── الأشجار المكرّرة (instancing) ────────────────────────────
 // عدد كبير من الأشجار برسمتين فقط بدل رسمة لكل شجرة
 
-const FOLIAGE_MAX = 300;
+const FOLIAGE_MAX = 220;
 
 /** مجموعة شجر واحدة: جذوع وتيجان يتقاسمان نفس المواضع والترتيب */
 const FoliageGroup = ({ items, count, crown, crownColor, crownY }) => {
@@ -1016,11 +1040,16 @@ const Rig = () => {
 
 const Effects = () => {
     const heavy = useWorld(s => s.environment.heavyShading);
+    const bloom = useWorld(s => s.environment.bloom !== false);
+
+    // مرور المعالجة نفسه له ثمن قبل أي تأثير: نسخ اللوحة كلّها
+    // مرّتين. فإن أُطفئ كل ما فيه، نُسقطه كلّه لا نتركه فارغاً.
+    if (!bloom && !heavy) return null;
 
     return (
         <EffectComposer enableNormalPass={heavy} multisampling={0}>
             {/* عتبة إضاءة عالية: تتوهّج الشمس والغيوم والأنوار، لا المشهد كلّه */}
-            <Bloom intensity={0.42} luminanceThreshold={0.86} luminanceSmoothing={0.25} mipmapBlur />
+            {bloom && <Bloom intensity={0.42} luminanceThreshold={0.86} luminanceSmoothing={0.25} mipmapBlur />}
 
             {heavy ? (
                 <SSAO
@@ -1036,7 +1065,7 @@ const Effects = () => {
                 />
             ) : null}
 
-            <Vignette eskil={false} offset={0.24} darkness={0.55} />
+            {bloom && <Vignette eskil={false} offset={0.24} darkness={0.55} />}
         </EffectComposer>
     );
 };

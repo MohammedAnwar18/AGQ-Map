@@ -1,4 +1,5 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 import { useWorld } from './worldStore';
@@ -165,84 +166,117 @@ const CityGround = ({ city }) => {
 // ── المباني ─────────────────────────────────────────────────
 
 /**
- * مبانٍ ثابتة لا تُحدَّد ولا تُنقل.
+ * محتوى مربّع سكني واحد.
  *
- * منفصلة عن ‎Placed‎ عمداً: تلك للمجسمات التي يضعها المستخدم بيده
- * ويحرّكها ويحذفها، وهذه خلفية مولّدة من بذرة. خلطهما يعني أن كل
- * نقرة على المشهد تمرّ على ثلاثمئة مبنى تبحث عمّا نُقِر.
+ * التقسيم على المربّعات هو ما يجعل القصّ بالمسافة ممكناً: إخفاء
+ * ستّ وثلاثين مجموعة أرخص من اختبار ألف مجسم، والمشهد يتخطّى
+ * الشجرة المخفيّة وما تحتها كلّه دفعةً واحدة.
+ *
+ * والمقارنة بمربّع المسافة لا بجذرها: جذر تربيعي ستّاً وثلاثين مرّة
+ * في كل إطار ثمنٌ بلا مقابل.
  */
-const Buildings = ({ city, night }) => {
-    const revision = useWorld(s => s.terrainRevision);
+const Block = ({ block, buildings, props, cars, hiddenId, overrides, night, rangeRef }) => {
+    const ref = useRef();
+    const shown = useRef(true);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const items = useMemo(() => city.buildings.map((b, i) => ({
-        ...b, y: heightAt(b.x, b.z), seed: i + 1
-    })), [city, revision]);
+    useFrame(({ camera }) => {
+        const g = ref.current;
+        if (!g) return;
+
+        const dx = camera.position.x - block.cx;
+        const dz = camera.position.z - block.cz;
+        const range = rangeRef.current;
+
+        const near = dx * dx + dz * dz < range * range;
+        if (near !== shown.current) {
+            shown.current = near;
+            g.visible = near;
+        }
+    });
 
     return (
-        <group>
-            {items.map(b => (
+        <group ref={ref}>
+            {buildings.map(b => (
                 <group key={b.id} position={[b.x, b.y, b.z]} rotation={[0, b.rotation, 0]} scale={b.scale}>
                     <Asset type={b.type} night={night} seed={b.seed} />
+                </group>
+            ))}
+
+            {props.map(p => (
+                <group key={p.id} position={[p.x, p.y, p.z]} rotation={[0, p.rotation, 0]} scale={p.scale}>
+                    <Asset type={p.type} />
+                </group>
+            ))}
+
+            {cars.filter(c => c.id !== hiddenId).map(c => (
+                <group key={c.id} position={[c.x, c.y, c.z]} rotation={[0, c.rotation, 0]}>
+                    <Asset type={c.type} body={c.color} simple />
                 </group>
             ))}
         </group>
     );
 };
 
-const Props = ({ city }) => {
-    const revision = useWorld(s => s.terrainRevision);
+/**
+ * يوزّع المخطّط على مربّعاته.
+ *
+ * مرّة واحدة لكل مخطّط: المرور على ألف عنصر في كل إطار بحثاً عمّا
+ * يقع في مربّع هو نفس الكلفة التي نهرب منها.
+ */
+const groupByBlock = (city, overrides, revision) => {
+    const size = BLOCK + ROAD;
+    const half = city.span / 2;
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const items = useMemo(() => city.props.map(p => ({
-        ...p, y: heightAt(p.x, p.z)
-    })), [city, revision]);
+    const indexOf = (x, z) => {
+        const bx = Math.min(city.grid - 1, Math.max(0, Math.floor((x + half) / size)));
+        const bz = Math.min(city.grid - 1, Math.max(0, Math.floor((z + half) / size)));
+        return bz * city.grid + bx;
+    };
 
-    return (
-        // بلا حدود محيطة: أربعمئة قطعة صغيرة، والحدّ المحيط يعني
-        // رسمة ثانية لكل قطعة مقابل خطّ لا يُرى على عمود إنارة
-        <OutlineContext.Provider value={false}>
-            <group>
-                {items.map(p => (
-                    <group key={p.id} position={[p.x, p.y, p.z]} rotation={[0, p.rotation, 0]} scale={p.scale}>
-                        <Asset type={p.type} />
-                    </group>
-                ))}
-            </group>
-        </OutlineContext.Provider>
-    );
+    const cells = city.blocks.map(block => ({ block, buildings: [], props: [], cars: [] }));
+
+    for (const b of city.buildings) {
+        cells[indexOf(b.x, b.z)].buildings.push({ ...b, y: heightAt(b.x, b.z) });
+    }
+    for (const p of city.props) {
+        cells[indexOf(p.x, p.z)].props.push({ ...p, y: heightAt(p.x, p.z) });
+    }
+    for (const c of city.cars) {
+        const at = overrides?.[c.id] ? { ...c, ...overrides[c.id] } : c;
+        cells[indexOf(at.x, at.z)].cars.push({ ...at, y: heightAt(at.x, at.z) });
+    }
+
+    // بذرة معدّات السطح: ثابتة لكل مبنى فلا تتبدّل حين يُعاد الرسم
+    let seed = 0;
+    for (const cell of cells) for (const b of cell.buildings) b.seed = ++seed;
+
+    return cells;
 };
 
-/**
- * المركبات المتوقّفة.
- *
- * كل واحدة قابلة للركوب لاحقاً، فتحمل معرّفها. والمركبة التي يركبها
- * اللاعب تختفي من هنا ويحلّ محلّها جسم فيزيائي — ولهذا تُستثنى
- * بمعرّفها لا بموضعها.
- */
-const ParkedCars = ({ city, hiddenId, overrides }) => {
+const Blocks = ({ city, night, hiddenId, overrides }) => {
     const revision = useWorld(s => s.terrainRevision);
+    const viewDistance = useWorld(s => s.environment.viewDistance || 170);
 
-    // التجاوزات: مركبة ركبها اللاعب وتركها في مكان آخر تبقى هناك
-    // لا تعود إلى موقفها الأوّل بقفزة
+    // المدى يُقرأ من مرجع داخل الحلقة: تغييره بالمسطرة لا يُعيد
+    // بناء ستّ وثلاثين مجموعة مع كل كسر عشري
+    const rangeRef = useRef(viewDistance);
+    rangeRef.current = viewDistance;
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    const items = useMemo(() => city.cars.map(c => {
-        const moved = overrides?.[c.id];
-        const at = moved ? { ...c, ...moved } : c;
-        return { ...at, y: heightAt(at.x, at.z) };
-    }), [city, revision, overrides]);
+    const cells = useMemo(() => groupByBlock(city, overrides, revision), [city, overrides, revision]);
 
     return (
-        // المركبات بلا حدود محيطة: قِطع صغيرة كثيرة، والحدود تُضاعف رسمها
-        <OutlineContext.Provider value={false}>
-            <group>
-                {items.filter(c => c.id !== hiddenId).map(c => (
-                    <group key={c.id} position={[c.x, c.y, c.z]} rotation={[0, c.rotation, 0]}>
-                        <Asset type={c.type} body={c.color} simple />
-                    </group>
-                ))}
-            </group>
-        </OutlineContext.Provider>
+        <group>
+            {cells.map(cell => (
+                <Block
+                    key={`${cell.block.bx}_${cell.block.bz}`}
+                    {...cell}
+                    night={night}
+                    hiddenId={hiddenId}
+                    rangeRef={rangeRef}
+                />
+            ))}
+        </group>
     );
 };
 
@@ -251,19 +285,24 @@ const ParkedCars = ({ city, hiddenId, overrides }) => {
 const City = ({ city, hiddenCarId = null, overrides = null }) => {
     const hour = useWorld(s => s.environment.timeOfDay);
 
-    // شدّة الليل مقسّمة إلى ثماني درجات: تتدرّج مع الغروب، ولا
-    // تُعيد رسم ثلاثمئة مبنى مع كل كسر عشري تسحبه في المسطرة
-    const night = useMemo(() => Math.round(nightFactor(hour) * 8) / 8, [hour]);
+    // شدّة الليل مقسّمة إلى أربع درجات: تتدرّج مع الغروب، ولا
+    // تُعيد رسم مئتي مبنى مع كل كسر عشري تسحبه في المسطرة
+    const night = useMemo(() => Math.round(nightFactor(hour) * 4) / 4, [hour]);
 
     if (!city) return null;
 
     return (
-        <group>
-            <CityGround city={city} />
-            <Buildings city={city} night={night} />
-            <Props city={city} />
-            <ParkedCars city={city} hiddenId={hiddenCarId} overrides={overrides} />
-        </group>
+        // المدينة كلّها بلا حدود محيطة.
+        //
+        // الحدّ المحيط قطعةٌ ثانية لكل قطعة — مجسم مقلوب الوجوه أكبر
+        // قليلاً — فهو يُضاعف ما يُرسَم حرفياً. يليق بمجسم قريب
+        // تُحدّق فيه، لا بمئتي مبنى في الخلفية.
+        <OutlineContext.Provider value={false}>
+            <group>
+                <CityGround city={city} />
+                <Blocks city={city} night={night} hiddenId={hiddenCarId} overrides={overrides} />
+            </group>
+        </OutlineContext.Provider>
     );
 };
 

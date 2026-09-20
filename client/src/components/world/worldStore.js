@@ -31,11 +31,47 @@ const DEFAULT_ENVIRONMENT = {
     outlines: true,         // الحدود المحيطة — تُضاعف الرسمات، فتُطفأ عند الحاجة
     heavyShading: false,    // SSAO — ثقيل، فيبقى اختيارياً
 
+    /* مدى الرؤية بالمتر.
+       المدينة ٤٢٢ متراً ولا تُرى كلّها أبداً: ما وراء هذا المدى
+       يُخفى مربّعاً مربّعاً. هو أثقل رقم في المشهد وأكثره أثراً. */
+    viewDistance: 170,
+
+    // الظلال: الأثقل بعد المدى. متوسّطة تكفي، والعالية للحاسوب.
+    shadows: 'medium',      // off | medium | high
+    bloom: true,
+    quality: 'medium',
+
     // الطريق المبنيّ في المشهد — شريط مستقيم واحد من قبل المدينة.
     // مطفأ الآن لأن للمدينة شبكة شوارعها، ويبقى لمن يبني من الصفر.
     defaultRoad: false,
     gridSnap: true,
     gridSize: 8            // متر — مقاس قطعة الطريق الواحدة
+};
+
+/* ── مستويات الجودة ───────────────────────────────────────────
+   أربعة أرقام تُحدّد ما إن كان المشهد ينساب أو يتعثّر. مجموعةً
+   لا واحداً واحداً: من يشكو من البطء لا يعرف أيّها السبب، ويعرف
+   أنه يريد «أخفّ». */
+export const QUALITY = {
+    low: { viewDistance: 105, shadows: 'off', bloom: false, outlines: false, foliageDensity: 0.3, npcs: false },
+    medium: { viewDistance: 165, shadows: 'medium', bloom: true, outlines: false, foliageDensity: 0.5, npcs: true },
+    high: { viewDistance: 260, shadows: 'high', bloom: true, outlines: true, foliageDensity: 0.7, npcs: true }
+};
+
+/**
+ * الجودة الابتدائية.
+ *
+ * الهاتف يبدأ منخفضاً لا متوسّطاً: أوّل انطباع عن مشهد يتعثّر لا
+ * يُصلحه ضبطٌ لاحق، والمنخفض على الهاتف يبدو جيّداً أصلاً.
+ */
+const guessQuality = () => {
+    if (typeof window === 'undefined') return 'medium';
+
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+    const cores = navigator.hardwareConcurrency || 4;
+
+    if (coarse || cores <= 4) return 'low';
+    return cores >= 8 ? 'high' : 'medium';
 };
 
 const DEFAULT_ENTITIES = {
@@ -154,13 +190,32 @@ export const resetInput = () => {
 
 export const useWorld = create((set, get) => ({
     // ── البيئة ──
-    environment: { ...DEFAULT_ENVIRONMENT },
+    environment: (() => {
+        const level = guessQuality();
+        // ‎npcs‎ من المستوى تخصّ الكيانات لا البيئة، فلا تُسكب هنا
+        const { npcs, ...env } = QUALITY[level];
+        return { ...DEFAULT_ENVIRONMENT, ...env, quality: level };
+    })(),
+
     setEnv: (key, value) => set(state => ({
-        environment: { ...state.environment, [key]: value }
+        // أيّ تعديل يدوي يُخرجنا من المستوى الجاهز إلى «مخصّص»
+        environment: { ...state.environment, [key]: value, quality: 'custom' }
     })),
 
+    /** يضبط المشهد كلّه على مستوى واحد */
+    setQuality: (level) => set(state => {
+        const preset = QUALITY[level];
+        if (!preset) return {};
+
+        const { npcs, ...env } = preset;
+        return {
+            environment: { ...state.environment, ...env, quality: level },
+            entities: { ...state.entities, npcs }
+        };
+    }),
+
     // ── الكيانات ──
-    entities: { ...DEFAULT_ENTITIES },
+    entities: { ...DEFAULT_ENTITIES, npcs: QUALITY[guessQuality()].npcs },
     toggleEntity: (key) => set(state => ({
         entities: { ...state.entities, [key]: !state.entities[key] }
     })),

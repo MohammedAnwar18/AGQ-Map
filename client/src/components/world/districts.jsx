@@ -1,4 +1,4 @@
-import React, { useMemo, useContext, useEffect } from 'react';
+import React, { useMemo, useContext } from 'react';
 import * as THREE from 'three';
 
 import { Part, StyleContext } from './primitives';
@@ -32,9 +32,8 @@ const Block = ({
 }) => {
     const style = useContext(StyleContext);
     const maps = useMemo(() => facadeMaps(kind), [kind]);
+    // مشتركة بين كل مبنى بنفس القياس، فلا يُتلفها من يزول منهم
     const geometry = useMemo(() => facadeBox(w, h, d), [w, h, d]);
-
-    useEffect(() => () => geometry.dispose(), [geometry]);
 
     const common = {
         map: maps.map || null,

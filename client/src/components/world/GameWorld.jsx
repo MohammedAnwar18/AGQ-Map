@@ -11,6 +11,7 @@ import { cityPlan, districtAt } from './city';
 import { WalkControls, DriveControls } from './walk';
 import MiniMap from './MiniMap';
 import GameHud from './GameHud';
+import { AdaptiveResolution } from './quality';
 import './GameWorld.css';
 
 /* ============================================================
@@ -47,7 +48,7 @@ const CAM_HIGH = 1.05;
  * بدل أن تدخله.
  */
 const Player = ({ look, onInteract }) => {
-    const { camera, scene } = useThree();
+    const { camera } = useThree();
 
     const pos = useRef(new THREE.Vector3(0, 0, 96));
     const yaw = useRef(0);
@@ -56,7 +57,6 @@ const Player = ({ look, onInteract }) => {
     const dir = useRef(new THREE.Vector3());
     const target = useRef(new THREE.Vector3());
     const desired = useRef(new THREE.Vector3());
-    const ray = useRef(new THREE.Raycaster());
 
     const poseRef = useRef({ x: 0, z: 96, heading: 0 });
 
@@ -128,17 +128,22 @@ const Player = ({ look, onInteract }) => {
             pos.current.z - Math.cos(yaw.current) * back
         );
 
-        // جدار خلفك؟ تقترب الكاميرا بدل أن تدخله
+        // جدار خلفك؟ تقترب الكاميرا بدل أن تدخله.
+        //
+        // بالحساب لا بشعاع يمسح المشهد: الشعاع كان يختبر كل مجسم في
+        // العالم — بما فيه شبكة الأرض وخمسون ألف مثلّث — ستّين مرّة
+        // في الثانية. هو وحده كان يُنزل المشهد إلى ثلاثة إطارات.
+        // والمباني دوائر نعرف مراكزها وأنصاف أقطارها أصلاً، فاختبار
+        // قطعة مستقيمة مع عشر دوائر يكفي ويكلّف لا شيء.
         target.current.set(pos.current.x, pos.current.y + EYE, pos.current.z);
         const toCam = desired.current.clone().sub(target.current);
         const reach = toCam.length();
-        ray.current.set(target.current, toCam.normalize());
-        ray.current.far = reach;
 
-        const blocked = ray.current.intersectObjects(scene.children, true)
-            .find(hit => hit.distance > 0.4 && hit.object.visible && !hit.object.userData.noClip);
-
-        if (blocked) desired.current.copy(target.current).addScaledVector(toCam, blocked.distance - 0.3);
+        if (reach > 0.01) {
+            toCam.divideScalar(reach);
+            const free = freeDistance(target.current, toCam, reach);
+            if (free < reach) desired.current.copy(target.current).addScaledVector(toCam, free);
+        }
 
         camera.position.lerp(desired.current, 1 - Math.exp(-step / 0.05));
         camera.lookAt(target.current);
@@ -162,6 +167,49 @@ const Player = ({ look, onInteract }) => {
     if (riding) return null;
 
     return <SelfAvatar look={look} positionRef={poseRef} walking={walking} />;
+};
+
+/**
+ * كم يمكن للكاميرا أن تبتعد قبل أن تدخل جداراً.
+ *
+ * تقاطع قطعة مستقيمة مع دائرة، حلّاً لمعادلة من الدرجة الثانية:
+ * أصغر جذر موجب هو مكان الدخول. ونستثني ما نصف قطره صغير — عمود
+ * إنارة ومقعد وشجرة لا تحجب، ودفع الكاميرا عنها يجعلها ترتجف
+ * كلّما مررتَ بجانب رصيف.
+ */
+const CAM_MARGIN = 0.35;
+const BLOCKING_RADIUS = 1.6;
+
+const freeDistance = (from, dirUnit, maxDistance) => {
+    const plan = cityPlan(useWorld.getState().city);
+    if (!plan) return maxDistance;
+
+    const dx = dirUnit.x;
+    const dz = dirUnit.z;
+
+    // القطعة قد تخرج من خليّة الفهرس، فنسأل عن طرفيها معاً
+    const mid = { x: from.x + dx * maxDistance * 0.5, z: from.z + dz * maxDistance * 0.5 };
+    let best = maxDistance;
+
+    for (const solid of nearbySolids(plan, mid.x, mid.z)) {
+        if (solid.radius < BLOCKING_RADIUS) continue;
+
+        const ox = from.x - solid.x;
+        const oz = from.z - solid.z;
+
+        // |O + t·D|² = r²  →  t² + 2(O·D)t + (|O|² − r²) = 0
+        const b = ox * dx + oz * dz;
+        const c = ox * ox + oz * oz - solid.radius * solid.radius;
+        if (c < 0) return CAM_MARGIN;          // الكاميرا داخله أصلاً
+
+        const disc = b * b - c;
+        if (disc <= 0) continue;               // لا تقاطع
+
+        const t = -b - Math.sqrt(disc);
+        if (t > 0 && t < best) best = t;
+    }
+
+    return Math.max(CAM_MARGIN, best - CAM_MARGIN);
 };
 
 /** يدفع اللاعب خارج مباني المدينة وما وُضع فيها */
@@ -492,7 +540,7 @@ const GameWorld = ({ onClose, service }) => {
             <div className="gw-stage">
                 <Canvas
                     shadows
-                    dpr={[1, 1.75]}
+                    dpr={[1, 1.6]}
                     camera={{ position: [0, 6, 104], fov: 58, near: 0.3, far: 900 }}
                     gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.12 }}
                     onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
@@ -501,6 +549,7 @@ const GameWorld = ({ onClose, service }) => {
                         <GameScene look={look} codes={codes} carOverrides={carOverrides} />
                     </Suspense>
                     <FpsProbe onSample={setFps} />
+                    <AdaptiveResolution max={1.6} />
                 </Canvas>
 
                 {fps === null && (

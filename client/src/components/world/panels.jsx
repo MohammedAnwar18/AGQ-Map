@@ -105,6 +105,8 @@ const MODES = [
     ['drive', 'قيادة']
 ];
 
+const QUALITY_LABEL = { low: 'خفيف', medium: 'متوسّط', high: 'عالٍ' };
+
 const MODE_HINT = {
     orbit: 'دوران حول المشهد بالسحب، وتكبير بالعجلة. بدّل إلى «مشي» لتسير داخل العالم، أو إلى «قيادة» لتقود سيارة فيزيائية على التضاريس.',
     walk: 'انقر المشهد لتثبيت المؤشّر، ثم W A S D للحركة و Shift للركض و Esc للخروج. على الهاتف: العصا للمشي والسحب للنظر.',
@@ -118,6 +120,7 @@ export const WorldPanel = ({ onClose }) => {
     const setEnv = useWorld(s => s.setEnv);
     const setMode = useWorld(s => s.setMode);
     const toggleEntity = useWorld(s => s.toggleEntity);
+    const setQuality = useWorld(s => s.setQuality);
 
     return (
         <PanelShell title="لوحة تحكم العالم" onClose={onClose} className="we-world">
@@ -226,12 +229,41 @@ export const WorldPanel = ({ onClose }) => {
                 <Switch label="المشاة" checked={entities.npcs} onChange={() => toggleEntity('npcs')} />
             </Section>
 
-            <Section label="الجودة والأداء">
+            <Section label="الجودة والأداء" badge={QUALITY_LABEL[env.quality] || 'مخصّص'} defaultOpen>
+                <div className="we-seg">
+                    {[['low', 'خفيف'], ['medium', 'متوسّط'], ['high', 'عالٍ']].map(([key, label]) => (
+                        <button key={key} className={env.quality === key ? 'is-on' : ''} onClick={() => setQuality(key)}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                <Slider
+                    label="مدى الرؤية"
+                    readout={`${Math.round(env.viewDistance || 170)} م`}
+                    value={env.viewDistance || 170} min={70} max={320} step={5}
+                    onChange={(v) => setEnv('viewDistance', v)}
+                    left="قريب" right="بعيد"
+                />
+
+                <div className="we-group">
+                    <span className="we-group-label">الظلال</span>
+                    <div className="we-seg">
+                        {[['off', 'بلا'], ['medium', 'متوسّطة'], ['high', 'حادّة']].map(([key, label]) => (
+                            <button key={key} className={(env.shadows || 'medium') === key ? 'is-on' : ''} onClick={() => setEnv('shadows', key)}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <Switch label="التوهّج والتظليل الطرفي" checked={env.bloom !== false} onChange={() => setEnv('bloom', env.bloom === false)} />
                 <Switch label="الحدود المحيطة" checked={env.outlines !== false} onChange={() => setEnv('outlines', env.outlines === false)} />
                 <Switch label="ظلال الاحتكاك (SSAO)" checked={env.heavyShading} onChange={() => setEnv('heavyShading', !env.heavyShading)} />
                 <p className="we-note">
-                    SSAO يُعمّق الالتقاء بين المجسمات والأرض لكنه الأثقل هنا؛
-                    أطفئه أولاً إن تعثّرت الحركة على جهاز متوسّط.
+                    مدى الرؤية أثقل رقم هنا: ما وراءه يُخفى مربّعاً مربّعاً،
+                    وإنقاصه خمسين متراً يُسقِط ثلث المشهد. ثم الظلال، ثم SSAO.
+                    والدقّة تُخفّض نفسها تلقائياً إن تعثّر المشهد رغم ذلك.
                 </p>
             </Section>
         </PanelShell>

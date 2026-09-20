@@ -172,7 +172,16 @@ export const disposeFacades = () => {
  *
  * ترتيب أوجه ‎BoxGeometry‎: ‎+x, -x, +y, -y, +z, -z‎.
  */
+const boxCache = new Map();
+
 export const facadeBox = (w, h, d, cell = FACADE_CELL) => {
+    // المقاسات محدودة: كل طراز مبنى قياس واحد، والتفاوت بينها في
+    // مقياس المجموعة لا في الهندسة. فمئتان وستّون مبنى تتقاسم نحو
+    // خمس عشرة هندسة لا مئتين وستّين.
+    const key = `${w}|${h}|${d}|${cell}`;
+    const cached = boxCache.get(key);
+    if (cached) return cached;
+
     const geometry = new THREE.BoxGeometry(w, h, d);
     const uv = geometry.attributes.uv;
 
@@ -197,6 +206,7 @@ export const facadeBox = (w, h, d, cell = FACADE_CELL) => {
     }
 
     uv.needsUpdate = true;
+    boxCache.set(key, geometry);
     return geometry;
 };
 
