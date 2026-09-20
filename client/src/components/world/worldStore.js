@@ -16,9 +16,8 @@ import {
    أربعة أقسام كما في خطة المشروع: البيئة، الكيانات، الأصول، التسجيل.
    ============================================================ */
 
-// حدود العالم بالمتر — تُستخدم في المشهد وفي محرّر العقد معاً.
-// اتّسعت مع المدينة: شبكة ستّة مربّعات سكنية تمتدّ ٤٢٢ متراً.
-export const WORLD_BOUNDS = 200;
+// حدود العالم بالمتر — تُستخدم في المشهد وفي محرّر العقد معاً
+export const WORLD_BOUNDS = 70;
 
 const DEFAULT_ENVIRONMENT = {
     timeOfDay: 17.2,        // ساعة (0-24) — الافتراضي غروب دافئ
@@ -41,9 +40,8 @@ const DEFAULT_ENVIRONMENT = {
     bloom: true,
     quality: 'medium',
 
-    // الطريق المبنيّ في المشهد — شريط مستقيم واحد من قبل المدينة.
-    // مطفأ الآن لأن للمدينة شبكة شوارعها، ويبقى لمن يبني من الصفر.
-    defaultRoad: false,
+    // الطريق المبنيّ في المشهد — يُطفأ لمن يرسم شبكته بنفسه
+    defaultRoad: true,
     gridSnap: true,
     gridSize: 8            // متر — مقاس قطعة الطريق الواحدة
 };
@@ -53,9 +51,9 @@ const DEFAULT_ENVIRONMENT = {
    لا واحداً واحداً: من يشكو من البطء لا يعرف أيّها السبب، ويعرف
    أنه يريد «أخفّ». */
 export const QUALITY = {
-    low: { viewDistance: 105, shadows: 'off', bloom: false, outlines: false, foliageDensity: 0.3, npcs: false },
-    medium: { viewDistance: 165, shadows: 'medium', bloom: true, outlines: false, foliageDensity: 0.5, npcs: true },
-    high: { viewDistance: 260, shadows: 'high', bloom: true, outlines: true, foliageDensity: 0.7, npcs: true }
+    low: { viewDistance: 110, shadows: 'off', bloom: false, outlines: true, foliageDensity: 0.35, npcs: true },
+    medium: { viewDistance: 170, shadows: 'medium', bloom: true, outlines: true, foliageDensity: 0.55, npcs: true },
+    high: { viewDistance: 260, shadows: 'high', bloom: true, outlines: true, foliageDensity: 0.75, npcs: true }
 };
 
 /**
@@ -110,7 +108,10 @@ const DEFAULT_PHYSICS = {
    إلا هي. ثلاثمئة مبنى تُصبح ثلاثة أسطر، ومن يفتح عالمك يرى
    المدينة نفسها بلا أن يُنزّل مخطّطها. */
 const DEFAULT_CITY = {
-    enabled: true,
+    /* مطفأة افتراضياً.
+       العالم يبدأ كما كان: شارع واحد وبيوت على جانبيه. والحيّ
+       المولّد يبقى مفتاحاً في لوحة التضاريس لمن أراده. */
+    enabled: false,
     seed: 20260920,
     density: 1        // 0.5 إلى 1 — تُخفّف المباني على الأجهزة الضعيفة
 };
@@ -122,13 +123,37 @@ const DEFAULT_BRUSH = {
 };
 
 /**
- * المشهد الابتدائي.
+ * المشهد الابتدائي: بيوت على جانبي الشارع وأشجار متفرّقة.
  *
- * فارغ عمداً منذ أن صارت المدينة تُولَّد: كانت هنا اثنا عشر بيتاً
- * تملأ الفراغ، وهي الآن تقع وسط الشوارع. ما يضعه المستخدم بيده
- * يبقى وحده في ‎placed‎، والمدينة خلفية تحته.
+ * هذا هو العالم كما يُفتح: بسيط ومقروء، تُضيف إليه ما شئت. ومن
+ * أراد حيّاً كاملاً يُشغّل المولّد من لوحة التضاريس.
  */
-const seedWorld = () => [];
+const seedWorld = () => {
+    const placed = [];
+    let n = 0;
+    const id = () => `seed_${++n}`;
+
+    for (let i = 0; i < 6; i++) {
+        const z = -42 + i * 17;
+        placed.push({ id: id(), type: 'house', x: -15.5, z, rotation: Math.PI / 2, scale: 1 });
+        placed.push({ id: id(), type: 'house', x: 15.5, z: z + 8, rotation: -Math.PI / 2, scale: 1 });
+    }
+
+    placed.push({ id: id(), type: 'pine', x: -24, z: -30, rotation: 0, scale: 1.2 });
+    placed.push({ id: id(), type: 'pine', x: -27, z: -12, rotation: 0, scale: 1 });
+    placed.push({ id: id(), type: 'palm', x: 23, z: -18, rotation: 0, scale: 1.1 });
+    placed.push({ id: id(), type: 'palm', x: 26, z: 4, rotation: 0, scale: 1 });
+    placed.push({ id: id(), type: 'tree', x: -22, z: 14, rotation: 0, scale: 1.15 });
+    placed.push({ id: id(), type: 'tree', x: 22, z: 26, rotation: 0, scale: 1 });
+    placed.push({ id: id(), type: 'bench', x: -9.5, z: -4, rotation: Math.PI / 2, scale: 1 });
+    placed.push({ id: id(), type: 'lamp', x: -9.5, z: 20, rotation: 0, scale: 1 });
+
+    // مركبتان على جانب الطريق — تُركَبان في اللعبة
+    placed.push({ id: id(), type: 'car', x: 6.6, z: -26, rotation: 0, scale: 1 });
+    placed.push({ id: id(), type: 'van', x: -6.6, z: 12, rotation: Math.PI, scale: 1 });
+
+    return placed;
+};
 
 let counter = 0;
 const nextId = () => `a_${Date.now().toString(36)}_${++counter}`;
@@ -169,7 +194,7 @@ const snapFor = (type, x, z, gridSnap, gridSize) => {
  * من zustand لأعاد رسم شجرة المكوّنات ستين مرّة في الثانية.
  * المشهد يكتب هنا والخريطة تقرأ منه في حلقتها الخاصة.
  */
-export const live = { x: 0, z: 96, heading: 0, moving: false };
+export const live = { x: 0, z: 34, heading: 0, moving: false };
 
 /**
  * حالة المركبة الحيّة.
@@ -370,7 +395,7 @@ export const useWorld = create((set, get) => ({
 
     // ── الكاميرا ──
     // المشهد يقرأ هذا الهدف ويتحرّك إليه بالتنعيم، فلا تقفز الكاميرا
-    cameraTarget: { x: 0, z: 0 },
+    cameraTarget: { x: 0, z: 34 },
     setCameraTarget: (x, z) => set({ cameraTarget: { x, z } }),
 
     // ── الحفظ والاسترجاع ──
@@ -409,7 +434,7 @@ export const useWorld = create((set, get) => ({
             brush: { ...DEFAULT_BRUSH },
             terrainRevision: state.terrainRevision + 1,
             mode: 'orbit',
-            cameraTarget: data.cameraTarget || { x: 0, z: 0 },
+            cameraTarget: data.cameraTarget || { x: 0, z: 34 },
             placed: Array.isArray(data.placed)
                 ? data.placed
                     .filter(p => p && typeof p.type === 'string'
@@ -440,7 +465,7 @@ export const useWorld = create((set, get) => ({
             terrainRevision: state.terrainRevision + 1,
             mode: 'orbit',
             placed: seedWorld(),
-            cameraTarget: { x: 0, z: 0 },
+            cameraTarget: { x: 0, z: 34 },
             selectedId: null,
             placementType: null
         }));

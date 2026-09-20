@@ -2406,9 +2406,10 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    {/* العالم — لكل من له حساب: يدخل فيمشي ويقود.
-                        والبناء في المحرّر المجاور، وهو للأدمن وحده. */}
-                    {user && (
+                    {/* العالم — محصور بالأدمن العام في هذه المرحلة.
+                        طبقة اللاعبين كاملة تحته (رقم تعريفي وزيارة
+                        وحضور)، ويكفي رفع هذا الشرط لفتحه للجميع. */}
+                    {user?.role === 'admin' && (
                         <button
                             className={`top-nav-icon ${showWorldGame ? 'active' : ''}`}
                             onClick={() => setShowWorldGame(true)}
@@ -3857,7 +3858,7 @@ const MapComponent = () => {
                     <WorldEditor onClose={() => setShowWorldEditor(false)} />
                 </React.Suspense>
             )}
-            {showWorldGame && user && (
+            {showWorldGame && user?.role === 'admin' && (
                 <React.Suspense fallback={null}>
                     <WorldGame onClose={() => setShowWorldGame(false)} />
                 </React.Suspense>

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 
 import WorldScene from './WorldScene';
-import { useWorld, live, input, drive, resetInput } from './worldStore';
+import { useWorld, live, input, drive, resetInput, WORLD_BOUNDS } from './worldStore';
 import { useGame, self, remotes, fullAppearance } from './gameStore';
 import { RemotePlayers, SelfAvatar } from './avatar';
 import { heightAt } from './terrain';
@@ -50,7 +50,7 @@ const CAM_HIGH = 1.05;
 const Player = ({ look, onInteract }) => {
     const { camera } = useThree();
 
-    const pos = useRef(new THREE.Vector3(0, 0, 96));
+    const pos = useRef(new THREE.Vector3(0, 0, 34));
     const yaw = useRef(0);
     const pitch = useRef(0.22);
     const walking = useRef(false);
@@ -58,11 +58,11 @@ const Player = ({ look, onInteract }) => {
     const target = useRef(new THREE.Vector3());
     const desired = useRef(new THREE.Vector3());
 
-    const poseRef = useRef({ x: 0, z: 96, heading: 0 });
+    const poseRef = useRef({ x: 0, z: 34, heading: 0 });
 
     useEffect(() => {
-        // نبدأ على حافّة المدينة ناظرين إليها
-        pos.current.set(0, heightAt(0, 96), 96);
+        // نبدأ على الرصيف عند طرف الشارع، ناظرين إلى داخله
+        pos.current.set(6.2, heightAt(6.2, 34), 34);
         yaw.current = Math.PI;
     }, []);
 
@@ -96,7 +96,7 @@ const Player = ({ look, onInteract }) => {
             const next = pos.current.clone().add(dir.current);
             resolveWalls(next);
 
-            const limit = 236;
+            const limit = WORLD_BOUNDS + 40;
             next.x = THREE.MathUtils.clamp(next.x, -limit, limit);
             next.z = THREE.MathUtils.clamp(next.z, -limit, limit);
             pos.current.copy(next);
@@ -283,8 +283,12 @@ const nearbySolids = (plan, x, z) => {
 
 // ── الجسر بين الواجهة والمشهد ───────────────────────────────
 
+// ما يُركَب: المركبات وحدها من بين ما يضعه الأدمن
+const RIDEABLE = new Set(['car', 'van', 'pickup', 'taxi', 'bus']);
+
 const GameScene = ({ look, codes, carOverrides }) => {
     const cityCfg = useWorld(s => s.city);
+    const placed = useWorld(s => s.placed);
     const plan = useMemo(() => cityPlan(cityCfg), [cityCfg]);
 
     const setPrompt = useGame(s => s.setPrompt);
@@ -306,19 +310,28 @@ const GameScene = ({ look, codes, carOverrides }) => {
 
         if (plan) setDistrict(districtAt(plan, x, z));
 
-        if (vehicleId || !plan) { setPrompt(null); return; }
+        if (vehicleId) { setPrompt(null); return; }
 
         let best = null;
         let bestDist = REACH;
 
-        for (const car of plan.cars) {
+        const consider = (car) => {
             const place = carOverrides[car.id] || car;
             const d = Math.hypot(place.x - x, place.z - z);
             if (d < bestDist) { bestDist = d; best = { ...car, ...place }; }
+        };
+
+        // مركبات الحيّ المولّد إن كان مفتوحاً…
+        if (plan) plan.cars.forEach(consider);
+
+        // …ومركبات وضعها الأدمن بيده. هذه هي الأهمّ في عالم بسيط:
+        // سيارة على جانب الشارع تُركَب كما تُركَب أيّ سيارة أخرى.
+        for (const item of placed) {
+            if (RIDEABLE.has(item.type)) consider(item);
         }
 
         setPrompt(best ? { kind: 'enter', label: 'اركب', car: best } : null);
-    }, [plan, vehicleId, carOverrides, setPrompt, setDistrict]);
+    }, [plan, placed, vehicleId, carOverrides, setPrompt, setDistrict]);
 
     return (
         <>

@@ -18,7 +18,11 @@ export const BLOCK = 54;
 export const ROAD = 14;
 export const LANE = 3.4;          // نصف عرض الإسفلت بلا الرصيف
 export const SIDEWALK = 2.6;
-export const CITY_GRID = 6;       // مربّعات على الضلع
+/* مربّعات على الضلع.
+   كانت ستّاً — مدينة بأربعمئة متر. وهي الآن ثلاثة: حيّ يسع داخل
+   حدود التضاريس ولا يبتلع المشهد. والمدينة كلّها خيار مطفأ
+   افتراضياً، فالعالم يبدأ شارعاً وبيوتاً على جانبيه. */
+export const CITY_GRID = 3;
 
 /** عرض المدينة الكامل بالمتر */
 export const CITY_SPAN = CITY_GRID * BLOCK + (CITY_GRID + 1) * ROAD;
@@ -69,9 +73,10 @@ const zoneFor = (bx, bz, r) => {
     const c = (CITY_GRID - 1) / 2;
     const ring = Math.max(Math.abs(bx - c), Math.abs(bz - c));
 
-    if (ring <= 1) return 'downtown';
-    if (ring <= 2) return r() > 0.25 ? 'commercial' : 'downtown';
-    return r() > 0.82 ? 'commercial' : 'residential';
+    // المركز واحد، وما حوله سوق وسكن. الشبكة صغيرة فلا مجال
+    // لثلاث حلقات: حلقة المركز وحلقة حوله.
+    if (ring < 1) return 'downtown';
+    return r() > 0.45 ? 'commercial' : 'residential';
 };
 
 // ── سجلّ المباني لكل حيّ ────────────────────────────────────
@@ -105,7 +110,7 @@ const CATALOG = {
 };
 
 // معالم تُوضع مرّة واحدة في المدينة كلّها — بها يُعرف المكان
-const LANDMARKS = ['mosque', 'school', 'clinic'];
+const LANDMARKS = ['mosque'];
 
 // ── أضلاع المربّع ───────────────────────────────────────────
 //
@@ -244,13 +249,16 @@ export const buildCity = ({ seed = 20260920, density = 1 } = {}) => {
 
     // ٢) حديقة وصناعة في الحلقة الخارجية — المدينة بلا متنفّس
     //    ولا ظهرٍ صناعي ليست مدينة
-    const outer = blocks.filter(b => b.ring > 2);
+    const outer = blocks.filter(b => b.ring >= 1);
     const shuffled = outer.slice().sort(() => r() - 0.5);
-    shuffled.slice(0, 2).forEach(b => { b.district = 'park'; });
-    shuffled.slice(2, 5).forEach(b => { b.district = 'industrial'; });
+
+    // حديقة وصناعة واحدة لكل شبكة صغيرة: أكثر من ذلك يجعل الحيّ
+    // كلّه استثناءات بلا سكن
+    shuffled.slice(0, 1).forEach(b => { b.district = 'park'; });
+    shuffled.slice(1, 2).forEach(b => { b.district = 'industrial'; });
 
     // ٣) المعالم: مربّع لكل معلم، يُنتزع من السكني
-    const hosts = blocks.filter(b => b.district === 'residential').slice(0, 30);
+    const hosts = blocks.filter(b => b.district === 'residential');
     LANDMARKS.forEach((type, i) => {
         const host = hosts[Math.floor(r() * hosts.length)];
         if (!host || host.landmark) return;

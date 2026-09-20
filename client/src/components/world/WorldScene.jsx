@@ -785,7 +785,7 @@ const STYLE_SWAP = {
     urban: { house: 'tower', cottage: 'shop' }
 };
 
-const Placed = () => {
+const Placed = ({ hiddenId = null, overrides = null }) => {
     const placed = useWorld(s => s.placed);
     const selectedId = useWorld(s => s.selectedId);
     const style = useWorld(s => s.environment.buildingStyle);
@@ -799,7 +799,12 @@ const Placed = () => {
 
     return (
         <group>
-            {placed.map(item => {
+            {placed.map(raw => {
+                // المركبة التي يقودها اللاعب تختفي من هنا: جسمها
+                // الفيزيائي حلّ محلّها. وحين يترجّل تعود حيث أوقفها.
+                if (raw.id === hiddenId) return null;
+
+                const item = overrides?.[raw.id] ? { ...raw, ...overrides[raw.id] } : raw;
                 const type = swap[item.type] || item.type;
                 const isSelected = item.id === selectedId;
 
@@ -1135,7 +1140,7 @@ const WorldScene = ({ hiddenCarId = null, carOverrides = null }) => {
             <Water />
             <BrushRing pointRef={brushPoint} />
             <Foliage />
-            <Placed />
+            <Placed hiddenId={hiddenCarId} overrides={carOverrides} />
             <Traffic />
             <NPCs />
 
