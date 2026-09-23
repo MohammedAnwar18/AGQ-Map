@@ -7,7 +7,7 @@ import {
 } from './indoorGeo';
 import {
     drawRoute, drawChevrons, drawMarker, drawOffscreenArrow, drawPill,
-    guidanceState, PALETTE
+    drawNearby, guidanceState, PALETTE
 } from './arPainter';
 
 /* ============================================================
@@ -53,7 +53,7 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
     const [query, setQuery] = useState('');
     const [destination, setDestination] = useState(null);
     const [origin, setOrigin] = useState(null);       // النقطة التي انطلقنا منها
-    const [picking, setPicking] = useState('start');  // start | search | none
+    const [picking, setPicking] = useState('none');   // start | search | none
     const [status, setStatus] = useState(null);
     const [plan, setPlan] = useState(false);
     const [arrived, setArrived] = useState(false);
@@ -109,6 +109,23 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
 
     const noRoute = Boolean(origin && destination && !polyline);
 
+    /*
+     * نبدأ من أقرب مدخل تلقائياً.
+     *
+     * السؤال «من أين تبدأ؟» كان يسبق الكاميرا ويسدّها — والمطلوب أن
+     * تُفتح فيرى ما أمامه. فنبدأ من المدخل — وهو صحيح في أغلب
+     * الأحوال لأن من يفتح الرابط يقف عنده — ونقول من أين بدأنا في
+     * شارة صغيرة تُغيَّر بلمسة.
+     */
+    useEffect(() => {
+        if (origin || !entrances.length) return;
+        setOrigin(entrances[0]);
+    }, [origin, entrances]);
+
+    useEffect(() => {
+        if (origin) stage.current?.anchor(origin);
+    }, [origin]);
+
     // ── بدء الرحلة ──
     const startFrom = (node) => {
         setOrigin(node);
@@ -136,27 +153,29 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
     const paint = useCallback((ctx, view) => {
         const line = polyline;
 
+        // ما حولك يُعرض دائماً، بمسار أو بلا مسار: هذا هو المقصود
+        // من فتح الكاميرا — أن ترى ما في المكان لا أن تبحث عنه
+        for (const node of nodes) {
+            if (node.kind === 'junction') continue;
+            const away = distance2D(view.origin, node);
+            if (away > 26) continue;
+
+            drawMarker(ctx, node, view, {
+                tone: node.id === destination?.id ? PALETTE.target : 'rgba(148,163,184,.8)',
+                label: node.id === destination?.id || away < 14,
+                highlight: node.id === destination?.id
+            });
+        }
+
+        drawNearby(ctx, nodes, view);
+
         if (!line || line.length < 2) {
-            if (destination) {
-                drawMarker(ctx, destination, view, { tone: PALETTE.target, highlight: true });
-            }
+            if (destination) drawMarker(ctx, destination, view, { tone: PALETTE.target, highlight: true });
             return;
         }
 
         drawRoute(ctx, line, view);
         drawChevrons(ctx, line, view, { spacing: 2.2, phase: (performance.now() / 1400) % 1 });
-
-        // النقاط القريبة فقط: لافتات المبنى كلّه تُغرق الشاشة
-        for (const node of nodes) {
-            if (node.kind === 'junction') continue;
-            if (distance2D(view.origin, node) > 22) continue;
-
-            drawMarker(ctx, node, view, {
-                tone: node.id === destination?.id ? PALETTE.target : 'rgba(148,163,184,.75)',
-                label: node.id === destination?.id || distance2D(view.origin, node) < 12,
-                highlight: node.id === destination?.id
-            });
-        }
 
         const guide = guidanceState(line, view.origin, view.pose);
         if (!guide) return;
@@ -217,10 +236,17 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                 eyeHeight={venue.eyeHeight}
                 fov={venue.fov}
                 onDraw={paint}
-                onTap={() => setPicking(p => (p === 'none' ? 'search' : p))}
+                onTap={(at) => {
+                    // لمسة على مكان قريب تجعله وجهتك مباشرةً
+                    if (!at) return;
+                    const hit = nodes
+                        .filter(n => n.kind !== 'junction')
+                        .find(n => distance2D(n, at) < 2.2);
+                    if (hit) goTo(hit);
+                }}
                 hint={{
                     title: venue.title,
-                    note: 'سنفتح الكاميرا ونرسم لك الطريق على الأرض. ابحث عن وجهتك ثم امشِ على الخطّ.'
+                    note: 'نفتح الكاميرا الخلفية فترى ما أمامك ومعه ما في المكان. ابحث عن وجهتك ثم امشِ على الخطّ.'
                 }}
             >
                 {/* ── الشريط العلوي ── */}
@@ -240,6 +266,13 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                         </svg>
                     </button>
                 </header>
+
+                {/* من أين بدأنا — شارة تُصحَّح بلمسة، لا نافذة تسدّ */}
+                {origin && !destination && (
+                    <button className="ai-from" onClick={() => setPicking('start')}>
+                        بدأنا من <b>{origin.name}</b> — غيّرها
+                    </button>
+                )}
 
                 {/* ── لافتة التوجيه ── */}
                 {polyline && status && !arrived && (

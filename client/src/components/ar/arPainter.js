@@ -219,8 +219,12 @@ export const drawMarker = (ctx, node, view, {
 } = {}) => {
     const { pose, origin, eye, fov, aspect, width, height } = view;
 
+    // ما حُدّد على رفّ أو جدار له ارتفاعه: عموده يصعد من الأرض
+    // إليه لا إلى ارتفاع ثابت — وإلا طفت اللافتة في غير مكانها
+    const top = Math.max(poleHeight, (node.y || 0) + 0.25);
+
     const foot = worldToScreen({ x: node.x, y: 0, z: node.z }, pose, origin, eye, fov, aspect);
-    const head = worldToScreen({ x: node.x, y: poleHeight, z: node.z }, pose, origin, eye, fov, aspect);
+    const head = worldToScreen({ x: node.x, y: top, z: node.z }, pose, origin, eye, fov, aspect);
     if (!foot || !head) return null;
 
     const a = toPixels(foot, width, height);
@@ -420,4 +424,105 @@ export const pointAt = (points, along) => {
     }
 
     return points[points.length - 1];
+};
+
+
+/**
+ * شاخص التصويب.
+ *
+ * حلقة في منتصف الشاشة على النقطة التي تُشير إليها الكاميرا، ومعها
+ * مسافتها وارتفاعها. هو ما يجعل التحديد دقيقاً: تُوجّه الهاتف
+ * فترى بالضبط أين ستقع النقطة قبل أن تضعها — بدل أن تلمس الشاشة
+ * بإبهامك وتتمنّى.
+ *
+ * وهي حلقة بيضوية على الأرض ودائرة في الهواء: المسقط يقول أيّهما.
+ */
+export const drawReticle = (ctx, aim, view, { tone = PALETTE.target, label = true } = {}) => {
+    const { pose, origin, eye, fov, aspect, width, height } = view;
+
+    const at = worldToScreen({ x: aim.x, y: aim.y || 0, z: aim.z }, pose, origin, eye, fov, aspect);
+    if (!at) return null;
+
+    const p = toPixels(at, width, height);
+    const radius = Math.max(9, Math.min(42, 44 / Math.max(1, at.depth)));
+
+    ctx.save();
+    ctx.strokeStyle = tone;
+    ctx.lineWidth = 2.4;
+
+    ctx.beginPath();
+    if (aim.onFloor) ctx.ellipse(p.x, p.y, radius, radius * 0.4, 0, 0, Math.PI * 2);
+    else ctx.arc(p.x, p.y, radius * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // صليب صغير في المركز: الحلقة وحدها تُخفي مركزها
+    ctx.beginPath();
+    ctx.moveTo(p.x - 7, p.y);
+    ctx.lineTo(p.x + 7, p.y);
+    ctx.moveTo(p.x, p.y - 7);
+    ctx.lineTo(p.x, p.y + 7);
+    ctx.globalAlpha = 0.9;
+    ctx.stroke();
+
+    // عمود إلى الأرض حين تكون النقطة معلّقة، فتُقرأ مسافتها
+    if (!aim.onFloor && aim.y > 0.3) {
+        const foot = worldToScreen({ x: aim.x, y: 0, z: aim.z }, pose, origin, eye, fov, aspect);
+        if (foot) {
+            const f = toPixels(foot, width, height);
+            ctx.globalAlpha = 0.45;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(f.x, f.y);
+            ctx.stroke();
+        }
+    }
+
+    ctx.restore();
+
+    if (label) {
+        const text = aim.onFloor
+            ? `${readableDistance(aim.distance)} · على الأرض`
+            : `${readableDistance(aim.distance)} · ارتفاع ${aim.y.toFixed(1)} م`;
+        drawPill(ctx, p.x, p.y + radius + 20, text, { tone, size: 12 });
+    }
+
+    return p;
+};
+
+/**
+ * ما حولك الآن — شريط اتّجاهات على حافّة الشاشة.
+ *
+ * ليس كل ما وضعتَه أمامك: بعضه خلفك وبعضه عن يمينك. هذا الشريط
+ * يقول أين هي بلا أن تدور تبحث، وهو ما يُحوّل الكاميرا من «نافذة
+ * على ما أمامي» إلى «إحساس بما حولي».
+ */
+export const drawNearby = (ctx, nodes, view, { max = 5, range = 30, tone = '#94A3B8' } = {}) => {
+    const { pose, origin, width } = view;
+
+    const around = nodes
+        .filter(n => n.kind !== 'junction')
+        .map(n => ({ node: n, distance: distance2D(origin, n), turn: angleDelta(pose.heading, bearingTo(origin, n)) }))
+        .filter(n => n.distance <= range)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, max);
+
+    if (!around.length) return [];
+
+    ctx.save();
+    around.forEach((item, i) => {
+        // الموضع الأفقي يتبع الاتّجاه: ما هو أمامك في الوسط، وما عن
+        // يمينك إلى اليمين — شريط يُقرأ كبوصلة لا كقائمة
+        const t = Math.max(-1, Math.min(1, item.turn / 90));
+        const x = width / 2 + t * (width / 2 - 62);
+        const y = 118 + i * 30;
+
+        ctx.globalAlpha = Math.abs(item.turn) > 90 ? 0.45 : 0.95;
+        drawPill(ctx, x, y, `${item.node.name} · ${readableDistance(item.distance)}`, {
+            tone, size: 11.5, weight: 700, padding: 8
+        });
+    });
+    ctx.restore();
+
+    return around;
 };

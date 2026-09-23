@@ -7,7 +7,8 @@ import {
     simplifyPath, distance2D, polylineLength, bearingTo, readableDistance
 } from './indoorGeo';
 import {
-    drawFloorGrid, drawRoute, drawChevrons, drawMarker, drawDraft, drawPill, PALETTE
+    drawFloorGrid, drawRoute, drawChevrons, drawMarker, drawDraft, drawPill,
+    drawReticle, drawNearby, PALETTE
 } from './arPainter';
 
 /* ============================================================
@@ -64,6 +65,21 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
 
     const [form, setForm] = useState({ name: '', kind: 'place', category: '' });
 
+    /*
+     * التصويب.
+     *
+     * ‎auto‎ يُفضّل الأرض حين تنظر إليها — وهي مقاسة لا مُخمَّنة.
+     * و‎ray‎ لما ليس على الأرض: رفّ، لافتة محلّ، باب مصعد. عندها
+     * تقول أنت المسافة بالمسطرة حتى تستقرّ الحلقة على الشيء، لأن
+     * كاميرا الهاتف في المتصفّح لا تقيس عمقاً.
+     */
+    const [aimMode, setAimMode] = useState('auto');
+    const [aimDistance, setAimDistance] = useState(3);
+    const [aimInfo, setAimInfo] = useState(null);
+
+    // آخر ما أشارت إليه الكاميرا — يُقرأ لحظة الضغط على «أضف»
+    const aim = useRef({ x: 0, y: 0, z: 0, distance: 3, onFloor: true });
+
     // مرجع للرسم: الحلقة تقرأ منه ولا تُعاد بإغلاق قديم
     const live = useRef({ nodes, edges, draft, selected });
     live.current = { nodes, edges, draft, selected };
@@ -110,29 +126,48 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
 
     // ── الأدوات ──
 
+    /**
+     * يضع نقطة حيث تُشير الكاميرا.
+     *
+     * بالزرّ لا باللمس: لمس الشاشة بالإبهام يضع النقطة حيث وقع
+     * الإبهام لا حيث تنظر — والفرق نصف متر على الأقلّ. أمّا التصويب
+     * بالجهاز كلّه ثم الضغط فيضعها حيث تراها بالضبط.
+     */
+    const addHere = useCallback(() => {
+        const at = aim.current;
+        if (!at || !Number.isFinite(at.x)) {
+            flash('وجّه الكاميرا إلى ما تريد تحديده', 'err');
+            return;
+        }
+
+        const existing = nearestNode(at, 1.1);
+        if (existing) { setSelected(existing.id); setSheet(true); return; }
+
+        setNaming({
+            x: +at.x.toFixed(2),
+            z: +at.z.toFixed(2),
+            y: +(at.y || 0).toFixed(2),
+            onFloor: at.onFloor,
+            distance: at.distance
+        });
+        setForm({ name: '', kind: at.onFloor ? 'place' : 'place', category: '' });
+    }, [nearestNode, flash]);
+
+    /** لمسة على الشاشة: تُحدّد نقطة موجودة أو تُثبّت الموضع عليها */
     const onTap = useCallback((at) => {
-        if (!at) {
-            flash('وجّه الكاميرا إلى الأرض لا إلى الأفق', 'err');
-            return;
-        }
+        if (!at) return;
 
-        if (tool === 'place') {
-            const existing = nearestNode(at, 1.2);
-            if (existing) { setSelected(existing.id); setSheet(true); return; }
-
-            setNaming({ x: +at.x.toFixed(2), z: +at.z.toFixed(2) });
-            setForm({ name: '', kind: 'place', category: '' });
-            return;
-        }
+        const node = nearestNode(at, 2.4);
+        if (!node) return;
 
         if (tool === 'here') {
-            const node = nearestNode(at, 4);
-            if (!node) { flash('لا نقطة قريبة لتثبيت الموضع عليها', 'err'); return; }
-
             stage.current?.anchor(node);
             flash(`ثُبّت موضعك عند ${node.name}`);
             setTool('place');
+            return;
         }
+
+        setSelected(node.id);
     }, [tool, nearestNode, flash]);
 
     // ── رسم المسار بالإصبع ──
@@ -221,6 +256,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
             category: form.category.trim() || null,
             x: naming.x,
             z: naming.z,
+            y: naming.y || 0,
             floor: 0,
             note: null
         };
@@ -271,9 +307,10 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     };
 
     // ── الرسم على الكاميرا ──
-    const paint = useCallback((ctx, view) => {
+    const paint = useCallback((ctx, view, aiming) => {
         const { nodes: ns, edges: es, draft: dr, selected: sel } = live.current;
 
+        if (aiming) aim.current = aiming;
         drawFloorGrid(ctx, view);
 
         // المسارات المحفوظة
@@ -308,12 +345,25 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
             });
         }
 
-        // شارة الأداة في منتصف الشاشة السفلي — تذكير دائم بما يفعله اللمس
+        // ما حولك: ما وضعتَه ولو كان خارج الشاشة
+        drawNearby(ctx, ns, view);
+
+        // الشاخص — ما تُشير إليه الكاميرا الآن
+        if (tool === 'place' && aiming) drawReticle(ctx, aiming, view);
+
         if (tool === 'draw' && dr.length === 0) {
-            drawPill(ctx, view.width / 2, view.height - 96, 'اسحب إصبعك على الأرض لرسم الممرّ', {
+            drawPill(ctx, view.width / 2, view.height - 118, 'اسحب إصبعك على الأرض لرسم الممرّ', {
                 tone: PALETTE.draw
             });
         }
+    }, [tool]);
+
+    // القراءة تُحدَّث خمس مرّات في الثانية لا ستّين: الرقم على
+    // الشاشة لا يحتاج أكثر، وإعادة الرسم بكل إطار تُتعب الهاتف
+    useEffect(() => {
+        if (tool !== 'place') { setAimInfo(null); return undefined; }
+        const tick = setInterval(() => setAimInfo({ ...aim.current }), 200);
+        return () => clearInterval(tick);
     }, [tool]);
 
     const places = useMemo(() => nodes.filter(n => n.kind !== 'junction'), [nodes]);
@@ -325,13 +375,15 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                 apiRef={stage}
                 eyeHeight={venue.eyeHeight}
                 fov={venue.fov}
+                aimDistance={aimDistance}
+                aimMode={aimMode}
                 onDraw={paint}
                 onTap={tool === 'draw' ? undefined : onTap}
                 onDrag={tool === 'draw' ? onDrag : undefined}
                 onDragEnd={onDragEnd}
                 hint={{
-                    title: `بناء خريطة: ${venue.title}`,
-                    note: 'قف في المكان، وجّه الكاميرا إلى الأرض، ثم ضع النقاط وارسم الممرّات بينها.'
+                    title: venue.title,
+                    note: 'قف في المكان ووجّه الكاميرا إلى ما تريد تحديده. ما تراه هو ما يُحفظ.'
                 }}
             >
                 {/* ── الشريط العلوي ── */}
@@ -351,6 +403,50 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                         {saving ? '…' : dirty ? 'احفظ' : '✓ محفوظ'}
                     </button>
                 </header>
+
+                {/* ── التصويب ── */}
+                {tool === 'place' && (
+                    <div className="ai-aim">
+                        <div className="ai-aim-read">
+                            <b>{aimInfo ? `${aimInfo.distance.toFixed(1)} م` : '—'}</b>
+                            <span>
+                                {aimInfo?.onFloor
+                                    ? 'على الأرض'
+                                    : `ارتفاع ${(aimInfo?.y || 0).toFixed(1)} م`}
+                            </span>
+                        </div>
+
+                        <div className="ai-aim-mode">
+                            <button
+                                className={aimMode === 'auto' ? 'is-on' : ''}
+                                onClick={() => setAimMode('auto')}
+                            >
+                                أرضية
+                            </button>
+                            <button
+                                className={aimMode === 'ray' ? 'is-on' : ''}
+                                onClick={() => setAimMode('ray')}
+                            >
+                                مرتفع
+                            </button>
+                        </div>
+
+                        {aimMode === 'ray' && (
+                            <label className="ai-aim-range">
+                                <span>بُعد الشيء عنك</span>
+                                <input
+                                    type="range" min="0.5" max="20" step="0.25"
+                                    value={aimDistance}
+                                    onChange={(e) => setAimDistance(parseFloat(e.target.value))}
+                                />
+                            </label>
+                        )}
+
+                        <button className="ai-shutter" onClick={addHere}>
+                            حدّد ما أمامك
+                        </button>
+                    </div>
+                )}
 
                 {/* ── الأدوات ── */}
                 <nav className="ai-tools">
@@ -383,7 +479,8 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                     <div className="ai-modal-card">
                         <b>نقطة جديدة</b>
                         <span className="ai-coords">
-                            على بُعد {readableDistance(distance2D(stage.current?.positionRef?.current || { x: 0, z: 0 }, naming))} منك
+                            على بُعد {readableDistance(naming.distance || 0)} منك
+                            {naming.onFloor ? ' · على الأرض' : ` · بارتفاع ${naming.y.toFixed(1)} م`}
                         </span>
 
                         <label htmlFor="ai-name">الاسم كما يبحث عنه الزائر</label>

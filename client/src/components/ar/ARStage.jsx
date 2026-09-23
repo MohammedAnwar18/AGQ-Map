@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 import { useCameraStream, useDeviceOrientation, usePedestrianTracking, useOverlayLoop } from './useARSensors';
-import { fromPixels, screenToFloor } from './indoorGeo';
+import { fromPixels, screenToFloor, aimPoint } from './indoorGeo';
 
 /* ============================================================
    مسرح الواقع المعزّز
@@ -33,6 +33,8 @@ const ARStage = ({
     height = 1.7,
     tracking = true,
     apiRef,
+    aimDistance = 3,
+    aimMode = 'auto',
     onDraw,
     onTap,
     onDrag,
@@ -50,9 +52,15 @@ const ARStage = ({
 
     // ── الرسم ──
     // النافذة الحالية تُمرَّر للرسّام في كل إطار: الوضعية والموضع
-    // ومقاس اللوحة — وهي كل ما يحتاجه ليُسقط أي نقطة على الشاشة
+    // ومقاس اللوحة — وهي كل ما يحتاجه ليُسقط أي نقطة على الشاشة.
+    //
+    // وما تُشير إليه الكاميرا يُحسب هنا مرّة ويُكتب في مرجع: الأب
+    // يقرأه حين يضغط «أضف»، والرسّام يرسمه — وحسابه مرّتين يعني
+    // اختلافهما يوماً ما بمقدار إطار.
+    const aimRef = useRef({ x: 0, y: 0, z: 0, distance: 3, onFloor: true });
+
     const canvasRef = useOverlayLoop((ctx, width, height2) => {
-        onDraw?.(ctx, {
+        const view = {
             pose: orientation.poseRef.current,
             origin: walker.positionRef.current,
             eye: eyeHeight,
@@ -60,7 +68,15 @@ const ARStage = ({
             aspect: camera.aspect,
             width,
             height: height2
-        });
+        };
+
+        aimRef.current = aimPoint(
+            view.pose, view.origin, eyeHeight,
+            aimDistance, fov, camera.aspect,
+            { preferRay: aimMode === 'ray' }
+        );
+
+        onDraw?.(ctx, view, aimRef.current);
     });
 
     // ── التشغيل ──
@@ -144,6 +160,7 @@ const ARStage = ({
         apiRef.current = {
             poseRef: orientation.poseRef,
             positionRef: walker.positionRef,
+            aimRef,
             anchor: walker.anchor,
             steps: walker.steps,
             aspect: camera.aspect,
@@ -178,8 +195,16 @@ const ARStage = ({
                 </div>
             )}
 
+            {/*
+              * البوّابة.
+              *
+              * كانت بطاقة تملأ الشاشة وتشرح قبل أن يرى شيئاً — وهو
+              * عكس المقصود: المطلوب كاميرا مفتوحة يرى فيها ما أمامه.
+              * صارت لمسة واحدة على شريط سفلي، وما إن يُسمح حتى تختفي
+              * ولا يبقى إلا الصورة.
+              */}
             {phase !== 'ready' && (
-                <div className="ars-gate">
+                <div className={`ars-gate${problem ? ' is-blocked' : ''}`}>
                     <div className="ars-gate-card">
                         <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h2L9 4h6l1.5 2h2A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" />
@@ -187,7 +212,7 @@ const ARStage = ({
                         </svg>
 
                         <b>{hint?.title || 'الواقع المعزّز'}</b>
-                        <p>{hint?.note || 'سنفتح الكاميرا ونقرأ اتّجاه الهاتف لنرسم المسار على الأرض أمامك.'}</p>
+                        <p>{hint?.note || 'نفتح الكاميرا الخلفية ونقرأ اتّجاه الهاتف، فترى ما أمامك ومعه ما وضعتَه عليه.'}</p>
 
                         {problem && <p className="ars-problem">{problem}</p>}
 

@@ -301,6 +301,13 @@ app.use('/api/fitness', fitnessRoutes);
             CREATE INDEX IF NOT EXISTS idx_ar_nodes_venue ON ar_nodes (venue_id);
         `);
 
+        // ارتفاع النقطة عن الأرض: ليس كل ما يُحدَّد على الأرض —
+        // رفّ ولافتة محلّ وباب مصعد كلّها فوقها. إضافة لاحقة، ولذلك
+        // ‎IF NOT EXISTS‎: قاعدة أُنشئت قبلها لا تُكسَر.
+        await pool.query(`
+            ALTER TABLE ar_nodes ADD COLUMN IF NOT EXISTS y NUMERIC(6, 3) NOT NULL DEFAULT 0;
+        `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS ar_edges (
                 id SERIAL PRIMARY KEY,

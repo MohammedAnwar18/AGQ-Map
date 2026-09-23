@@ -102,6 +102,7 @@ const shapeNode = (row) => ({
     kind: row.kind,
     category: row.category,
     x: Number(row.x),
+    y: Number(row.y || 0),
     z: Number(row.z),
     floor: row.floor,
     note: row.note
@@ -330,14 +331,17 @@ exports.saveMap = async (req, res) => {
             const kind = NODE_KINDS.has(raw?.kind) ? raw.kind : 'place';
 
             const inserted = await client.query(
-                `INSERT INTO ar_nodes (venue_id, name, kind, category, x, z, floor, note)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+                `INSERT INTO ar_nodes (venue_id, name, kind, category, x, y, z, floor, note)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
                 [
                     venueId,
                     name || (kind === 'junction' ? 'تقاطع' : 'بلا اسم'),
                     kind,
                     clean(raw?.category, 60) || null,
                     metres(raw?.x),
+                    // الارتفاع موجب دائماً ومحدود: لا نقطة تحت الأرض
+                    // ولا على ارتفاع خمسين متراً داخل مبنى
+                    Math.max(0, Math.min(40, num(raw?.y, 0))),
                     metres(raw?.z),
                     Math.max(-20, Math.min(200, Math.round(num(raw?.floor, 0)))),
                     clean(raw?.note, 300) || null

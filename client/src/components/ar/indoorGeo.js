@@ -172,6 +172,69 @@ export const screenToFloor = (sx, sy, pose, origin = { x: 0, z: 0 }, eye = 1.5, 
 };
 
 /**
+ * اتّجاه الشعاع الخارج من نقطة على الشاشة — متّجه وحدة.
+ *
+ * مفصول عن إسقاط الأرض لأن ليس كل ما نُشير إليه على الأرض: رفّ على
+ * جدار، ولافتة محلّ، وباب مصعد — كلّها فوقها. وهذه تُعطي الاتّجاه
+ * وحده، والمسافة تأتي من مكان آخر.
+ */
+export const screenRay = (sx, sy, pose, fov = 65, aspect = 0.5625) => {
+    const { tanH, tanV } = tangents(fov, aspect);
+    const { forward, right, up } = cameraBasis(pose);
+
+    const r = toRad(pose.roll || 0);
+    const cr = Math.cos(r);
+    const sr = Math.sin(r);
+    const ix = sx * cr - sy * sr;
+    const iy = sx * sr + sy * cr;
+
+    const dx = forward[0] + right[0] * ix * tanH + up[0] * iy * tanV;
+    const dy = forward[1] + right[1] * ix * tanH + up[1] * iy * tanV;
+    const dz = forward[2] + right[2] * ix * tanH + up[2] * iy * tanV;
+
+    const len = Math.hypot(dx, dy, dz) || 1;
+    return [dx / len, dy / len, dz / len];
+};
+
+/**
+ * النقطة التي تقع على مسافة معيّنة في اتّجاه النظر.
+ *
+ * هذه هي طريقة تحديد ما ليس على الأرض: توجّه الكاميرا إلى الشيء،
+ * وتضبط المسافة حتى تستقرّ الحلقة عليه. لا عمق في كاميرا الهاتف
+ * عبر المتصفّح، فالمسافة يقولها من يرى — وهو أصدق من تخمينها.
+ *
+ * @returns ‎{x, y, z, distance}‎ — y ارتفاعها عن الأرض
+ */
+export const pointAlongRay = (sx, sy, pose, origin = { x: 0, z: 0 }, eye = 1.5, distance = 3, fov = 65, aspect = 0.5625) => {
+    const [dx, dy, dz] = screenRay(sx, sy, pose, fov, aspect);
+    const d = Math.max(0.2, distance);
+
+    return {
+        x: origin.x + dx * d,
+        y: Math.max(0, eye + dy * d),
+        z: origin.z + dz * d,
+        distance: d
+    };
+};
+
+/**
+ * ما تُشير إليه الكاميرا الآن.
+ *
+ * تُفضّل الأرض حين تكون في المدى المعقول — فهي مقاسة لا مُخمَّنة —
+ * وإلا فنقطة على الشعاع بالمسافة التي يختارها المستخدم.
+ */
+export const aimPoint = (pose, origin, eye, fallbackDistance, fov, aspect, { preferRay = false, maxFloor = 22 } = {}) => {
+    if (!preferRay) {
+        const floor = screenToFloor(0, 0, pose, origin, eye, fov, aspect);
+        if (floor && floor.distance <= maxFloor) {
+            return { x: floor.x, y: 0, z: floor.z, distance: floor.distance, onFloor: true };
+        }
+    }
+
+    return { ...pointAlongRay(0, 0, pose, origin, eye, fallbackDistance, fov, aspect), onFloor: false };
+};
+
+/**
  * نقطة في العالم ← نقطة على الشاشة.
  *
  * عكس الدالة أعلاه تماماً، وهي ما يرسم المسار على الأرض: كل نقطة
