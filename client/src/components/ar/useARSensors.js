@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     poseFromOrientation, createHeadingFilter, createStepDetector,
     strideFor, advance, DEFAULT_POSE
@@ -38,6 +38,10 @@ export const useCameraStream = () => {
     const [error, setError] = useState(null);
     const [aspect, setAspect] = useState(0.5625);
 
+    // هل مُنع التشغيل التلقائي؟ عندها نعرض «المس لتشغيل الكاميرا»
+    // بدل شاشة سوداء صامتة
+    const [blocked, setBlocked] = useState(false);
+
     const stop = useCallback(() => {
         streamRef.current?.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -69,8 +73,23 @@ export const useCameraStream = () => {
             const video = videoRef.current;
             if (video) {
                 video.srcObject = stream;
-                video.setAttribute('playsinline', 'true');   // iOS: وإلا فُتح مشغّل ملء الشاشة
-                await video.play().catch(() => {});
+
+                // السمات تُضبط على العنصر لا بالخصائص وحدها: iOS
+                // يقرأ ‎playsinline‎ و‎muted‎ من السمة، وبدونهما يفتح
+                // مشغّلاً بملء الشاشة أو يرفض التشغيل أصلاً
+                video.setAttribute('playsinline', 'true');
+                video.setAttribute('webkit-playsinline', 'true');
+                video.setAttribute('muted', '');
+                video.muted = true;
+
+                try {
+                    await video.play();
+                    setBlocked(false);
+                } catch {
+                    // منعُ التشغيل التلقائي ليس فشلاً في الكاميرا:
+                    // التيّار يعمل وينتظر لمسة. نقولها بدل أن نصمت.
+                    setBlocked(true);
+                }
             }
 
             // النسبة الحقيقية للتيّار لا للشاشة: بها يُحسب المجال
@@ -93,9 +112,31 @@ export const useCameraStream = () => {
         }
     }, []);
 
+    /** لمسة تُشغّل التيّار حين يمنعه المتصفّح تلقائياً */
+    const resume = useCallback(async () => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        try {
+            video.muted = true;
+            await video.play();
+            setBlocked(false);
+        } catch { /* تبقى الرسالة ظاهرة */ }
+    }, []);
+
     useEffect(() => () => stop(), [stop]);
 
-    return { videoRef, state, error, aspect, start, stop };
+    /*
+     * كائن ثابت.
+     *
+     * كائن جديد في كل إعادة رسم يجعل أي ‎useEffect‎ يعتمد عليه يعمل
+     * وينظّف في كل مرّة — وهو بالضبط ما أطفأ الكاميرا. التثبيت هنا
+     * يقطع الباب على تكرار العطل من مكان آخر.
+     */
+    return useMemo(
+        () => ({ videoRef, state, error, aspect, blocked, start, stop, resume }),
+        [state, error, aspect, blocked, start, stop, resume]
+    );
 };
 
 // ── ٢) اتّجاه الجهاز ────────────────────────────────────────
@@ -179,7 +220,10 @@ export const useDeviceOrientation = () => {
         handler.current = null;
     }, []);
 
-    return { poseRef, granted, alive, absolute, request };
+    return useMemo(
+        () => ({ poseRef, granted, alive, absolute, request }),
+        [granted, alive, absolute, request]
+    );
 };
 
 // ── ٣) الخطوات والموضع ─────────────────────────────────────
@@ -259,7 +303,10 @@ export const usePedestrianTracking = (poseRef, { height = 1.7, enabled = true } 
         }
     }, []);
 
-    return { positionRef, steps, motion, stride, anchor, request };
+    return useMemo(
+        () => ({ positionRef, steps, motion, stride, anchor, request }),
+        [steps, motion, stride, anchor, request]
+    );
 };
 
 // ── ٤) حلقة الرسم ───────────────────────────────────────────

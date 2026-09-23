@@ -168,7 +168,17 @@ const ARStage = ({
         };
     }, [apiRef, orientation.poseRef, walker.positionRef, walker.anchor, walker.steps, camera.aspect, phase]);
 
-    useEffect(() => () => camera.stop(), [camera]);
+    /*
+     * لا تنظيف هنا.
+     *
+     * كان هنا ‎useEffect(() => () => camera.stop(), [camera])‎ — وهو
+     * سبب الشاشة السوداء: ‎camera‎ كائن جديد يُبنى في كل إعادة رسم،
+     * فتتغيّر تبعيّة الأثر في كل مرّة، فيعمل تنظيفه في كل مرّة —
+     * ومنها الإعادة التي تلي تشغيل الكاميرا مباشرةً. فتُطفأ المسارات
+     * بعد جزء من الثانية من فتحها ولا يبقى إلا السواد.
+     *
+     * والخطاف يُنظّف نفسه أصلاً بأثرٍ تبعيّته ثابتة.
+     */
 
     const busy = phase === 'camera' || phase === 'sensors';
 
@@ -185,7 +195,27 @@ const ARStage = ({
                 onPointerCancel={endDrag}
             />
 
+            {/* التيّار يعمل لكن المتصفّح منع تشغيله تلقائياً */}
+            {camera.blocked && (
+                <button className="ars-resume" onClick={camera.resume}>
+                    المس لتشغيل الكاميرا
+                </button>
+            )}
+
             {phase === 'ready' && children}
+
+            {/*
+              * شارة حالة الكاميرا.
+              *
+              * تظهر حين يُفترض أن تعمل ولا تعمل. الشاشة السوداء
+              * الصامتة أسوأ عطل يمكن تسليمه: لا تقول للمستخدم ما
+              * الخطب ولا لمن يُصلحها أين يبحث.
+              */}
+            {phase === 'ready' && camera.state !== 'live' && (
+                <div className="ars-warn is-bad">
+                    الكاميرا لا تبثّ ({camera.state}). {camera.error || 'أغلق التطبيقات التي قد تستعملها ثم أعد الفتح.'}
+                </div>
+            )}
 
             {/* تحذير البوصلة النسبية: الاتّجاه يدور لكنه لا يعرف الشمال */}
             {phase === 'ready' && orientation.alive && !orientation.absolute && (

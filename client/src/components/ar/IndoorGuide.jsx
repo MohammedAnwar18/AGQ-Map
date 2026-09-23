@@ -174,8 +174,13 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
             return;
         }
 
-        drawRoute(ctx, line, view);
-        drawChevrons(ctx, line, view, { spacing: 2.2, phase: (performance.now() / 1400) % 1 });
+        // خطّ خافت تحت السهام لا فوقها: السهام هي ما يُقرأ، والخطّ
+        // يربطها فقط — عريضاً كان يبتلعها
+        drawRoute(ctx, line, view, {
+            tone: 'rgba(34, 211, 238, .55)',
+            glow: 'rgba(34, 211, 238, .16)'
+        });
+        drawChevrons(ctx, line, view, { spacing: 1.6, phase: (performance.now() / 1600) % 1 });
 
         const guide = guidanceState(line, view.origin, view.pose);
         if (!guide) return;

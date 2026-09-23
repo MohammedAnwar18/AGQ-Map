@@ -19,7 +19,7 @@ import {
 export const PALETTE = {
     route: '#38BDF8',
     routeGlow: 'rgba(56, 189, 248, .35)',
-    chevron: '#7DD3FC',
+    chevron: '#22D3EE',
     target: '#FBAB15',
     node: '#4ADE80',
     junction: '#94A3B8',
@@ -140,7 +140,7 @@ export const drawRoute = (ctx, points, view, { tone = PALETTE.route, glow = PALE
  * صحيحاً في المنظور — تتقارب مع البعد كما يتقارب خطّ السكّة.
  * وتزحف مع الزمن، فيُقرأ الاتجاه بلا قراءة نصّ.
  */
-export const drawChevrons = (ctx, points, view, { spacing = 2.2, phase = 0, tone = PALETTE.chevron } = {}) => {
+export const drawChevrons = (ctx, points, view, { spacing = 1.6, phase = 0, tone = PALETTE.chevron } = {}) => {
     if (points.length < 2) return;
 
     const { pose, origin, eye, fov, aspect, width, height } = view;
@@ -169,39 +169,83 @@ export const drawChevrons = (ctx, points, view, { spacing = 2.2, phase = 0, tone
     }
 };
 
-/** سهم واحد مرسوم على الأرض باتجاه معيّن */
-const drawChevron = (ctx, at, heading, view, tone) => {
+/**
+ * سهم واحد يطفو فوق الأرض.
+ *
+ * ثلاث نقاط على مستوى مرفوع قليلاً عن الأرض ثم تُسقط كلّها — فيميل
+ * مع الأرضية في المنظور بدل أن يبقى مثلّثاً مسطّحاً على الزجاج.
+ *
+ * ويُرسم ثلاث طبقات: هالة عريضة تحته تفصله عن أي أرضية مهما كان
+ * لونها، ثم جسمه، ثم حرف فاتح على حافّته. هذا وحده هو الفرق بين
+ * سهم يُرى في ممرّ مضيء وسهم يضيع فيه.
+ */
+const drawChevron = (ctx, at, heading, view, tone, scale = 1) => {
     const { pose, origin, eye, fov, aspect, width, height } = view;
 
-    // ثلاث نقاط على الأرض تُشكّل رأس سهم، ثم تُسقط كلّها: الإسقاط
-    // هو ما يجعله يميل مع الأرضية بدل أن يبقى مثلّثاً مسطّحاً
     const rad = (heading * Math.PI) / 180;
     const fx = Math.sin(rad);
     const fz = Math.cos(rad);
     const rx = Math.cos(rad);
     const rz = -Math.sin(rad);
 
-    const tip = { x: at.x + fx * 0.55, z: at.z + fz * 0.55 };
-    const left = { x: at.x - fx * 0.2 - rx * 0.42, z: at.z - fz * 0.2 - rz * 0.42 };
-    const right = { x: at.x - fx * 0.2 + rx * 0.42, z: at.z - fz * 0.2 + rz * 0.42 };
+    // رأس سهم مجوّف: خمس نقاط لا ثلاث — الشكل الذي تقرأه العين
+    // اتّجاهاً فوراً، وهو شكل سهام الملاحة في كل مكان
+    const L = 0.62 * scale;     // نصف الطول
+    const W = 0.52 * scale;     // نصف العرض
+    const N = 0.26 * scale;     // عمق التجويف الخلفي
+    const Y = 0.06;             // ارتفاعه عن الأرض — يمنع تزاحم العمق
 
-    const pts = [tip, left, right].map(p =>
-        worldToScreen({ x: p.x, y: 0.015, z: p.z }, pose, origin, eye, fov, aspect));
+    const ground = [
+        [L, 0],
+        [-N, W],
+        [-N * 0.35, 0],
+        [-N, -W]
+    ].map(([f, r]) => ({
+        x: at.x + fx * f + rx * r,
+        y: Y,
+        z: at.z + fz * f + rz * r
+    }));
 
+    const pts = ground.map(p => worldToScreen(p, pose, origin, eye, fov, aspect));
     if (pts.some(p => !p)) return;
 
     const px = pts.map(p => toPixels(p, width, height));
     const depth = pts[0].depth;
 
+    // يخفت مع البعد، لكن لا يختفي: سهم على بُعد عشرين متراً هو ما
+    // يقول إلى أين يمضي الممرّ بعد الباب
+    const alpha = Math.max(0.35, Math.min(1, 16 / Math.max(1, depth)));
+
     ctx.save();
-    ctx.globalAlpha = Math.max(0.25, Math.min(1, 12 / Math.max(1, depth)));
+    ctx.globalAlpha = alpha;
+
+    const path = () => {
+        ctx.beginPath();
+        ctx.moveTo(px[0].x, px[0].y);
+        for (let i = 1; i < px.length; i++) ctx.lineTo(px[i].x, px[i].y);
+        ctx.closePath();
+    };
+
+    // هالة
+    ctx.shadowColor = tone;
+    ctx.shadowBlur = Math.max(6, 40 / Math.max(1, depth));
     ctx.fillStyle = tone;
-    ctx.beginPath();
-    ctx.moveTo(px[0].x, px[0].y);
-    ctx.lineTo(px[1].x, px[1].y);
-    ctx.lineTo(px[2].x, px[2].y);
-    ctx.closePath();
+    path();
     ctx.fill();
+
+    // جسم صلب فوق الهالة
+    ctx.shadowBlur = 0;
+    path();
+    ctx.fill();
+
+    // حرف فاتح
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.strokeStyle = 'rgba(236, 254, 255, .9)';
+    ctx.lineWidth = Math.max(1, Math.min(3, 8 / Math.max(1, depth)));
+    ctx.lineJoin = 'round';
+    path();
+    ctx.stroke();
+
     ctx.restore();
 };
 

@@ -752,3 +752,24 @@
     .ai-aim { bottom: calc(60px + env(safe-area-inset-bottom)); padding: 10px 12px; }
     .ai-shutter { padding: 14px; font-size: 14px; }
 }
+
+/* التيّار حيّ والتشغيل ممنوع تلقائياً — لمسة تكفي */
+.ars-resume {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: rgba(6, 11, 20, .55);
+    color: #f1f5f9;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ars-warn.is-bad {
+    border-color: rgba(251, 113, 133, .5);
+    color: #fecdd3;
+}
