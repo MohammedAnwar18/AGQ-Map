@@ -449,6 +449,53 @@ export const guidanceState = (polyline, position, pose, { offTrack = 6 } = {}) =
     };
 };
 
+/**
+ * كرة تمشي أمامك على المسار.
+ *
+ * السهام تقول الاتّجاه، لكنّها ساكنة على الأرض فلا تقول كم
+ * منها قطعت. وهذه تسبقك بمترين وتتقدّم مع خطوك، فيصير لك شيء
+ * تتبعه بدل أن تقرأ اتّجاهاً. وتطفو قليلاً ثمّ تهبط لأن العين تمسك
+ * الحركة قبل أن تمسك الشكل.
+ */
+export const drawPacer = (ctx, at, view, { tone = PALETTE.node, bob = 0 } = {}) => {
+    const { pose, origin, eye, fov, aspect, width, height } = view;
+
+    const lift = 0.35 + Math.sin(bob) * 0.09;
+
+    const ball = worldToScreen({ x: at.x, y: lift, z: at.z }, pose, origin, eye, fov, aspect);
+    const foot = worldToScreen({ x: at.x, y: 0, z: at.z }, pose, origin, eye, fov, aspect);
+    if (!ball || !foot) return null;
+
+    const b = toPixels(ball, width, height);
+    const g = toPixels(foot, width, height);
+    const radius = Math.max(5, Math.min(30, 22 / Math.max(1, ball.depth)));
+
+    ctx.save();
+
+    // ظلّ على الأرض: بدونه تطفو الكرة بلا مكان
+    ctx.beginPath();
+    ctx.ellipse(g.x, g.y, radius * 0.8, radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.shadow;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, radius, 0, Math.PI * 2);
+    ctx.shadowColor = tone;
+    ctx.shadowBlur = radius * 1.6;
+    ctx.fillStyle = tone;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // بريق أعلى الكرة يجعلها جسماً لا قرصاً
+    ctx.beginPath();
+    ctx.arc(b.x - radius * 0.28, b.y - radius * 0.3, radius * 0.34, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, .7)';
+    ctx.fill();
+
+    ctx.restore();
+    return b;
+};
+
 /** النقطة على الخطّ بعد مسافة معيّنة من بدايته */
 export const pointAt = (points, along) => {
     if (!points.length) return null;

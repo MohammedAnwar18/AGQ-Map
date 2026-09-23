@@ -45,6 +45,7 @@ const LiveCameraModal       = React.lazy(() => import('../components/LiveCameraM
 const FitnessPathModal      = React.lazy(() => import('../components/FitnessPathModal'));
 const StudySpace            = React.lazy(() => import('./StudySpace'));
 const IndoorControl         = React.lazy(() => import('./IndoorControl'));
+const NanoTrack             = React.lazy(() => import('../components/nanotrack/NanoTrack'));
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
@@ -746,6 +747,7 @@ const MapComponent = () => {
     const [showLabModal, setShowLabModal] = useState(false);
     const [showStudySpace, setShowStudySpace] = useState(false);
     const [showIndoorControl, setShowIndoorControl] = useState(false);
+    const [showNanoTrack, setShowNanoTrack] = useState(false);
 
 
 
@@ -2448,6 +2450,25 @@ const MapComponent = () => {
                         </button>
                     )}
 
+                    {/*
+                      * نانوتراك — مسار يُرسم على الأرض مرّة ويبقى.
+                      *
+                      * الأيقونة نقطتان وخطّ بينهما: الشريطان اللذان
+                      * تقوم عليهما الفكرة كلّها.
+                      */}
+                    <button
+                        className={`top-nav-icon ${showNanoTrack ? 'active' : ''}`}
+                        onClick={() => setShowNanoTrack(true)}
+                        title="نانوتراك — مسار محفوظ على الأرض"
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
+                            <circle cx="5.2" cy="18.8" r="2.1" />
+                            <circle cx="18.8" cy="5.2" r="2.1" />
+                            <path d="M7 17 10.5 13.5M13.5 10.5 17 7" strokeDasharray="0.1 3.4" />
+                            <path d="M11.4 15.4 8.6 12.6l2.8-2.8" />
+                        </svg>
+                    </button>
+
                     {/* Search for Users Button */}
                     <button className={`top-nav-icon ${showSearch ? 'active' : ''}`} onClick={() => requireAccount(() => setShowSearch(true))} title="البحث">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
@@ -3786,6 +3807,11 @@ const MapComponent = () => {
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
             {showStudySpace && (
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
+            )}
+            {showNanoTrack && (
+                <React.Suspense fallback={null}>
+                    <NanoTrack onClose={() => setShowNanoTrack(false)} />
+                </React.Suspense>
             )}
             {showIndoorControl && (
                 <IndoorControl user={user} onClose={() => setShowIndoorControl(false)} />
