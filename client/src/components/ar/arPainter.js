@@ -481,8 +481,14 @@ export const pointAt = (points, along) => {
  *
  * وهي حلقة بيضوية على الأرض ودائرة في الهواء: المسقط يقول أيّهما.
  */
-export const drawReticle = (ctx, aim, view, { tone = PALETTE.target, label = true } = {}) => {
+export const drawReticle = (ctx, aim, view, { tone, label = true } = {}) => {
     const { pose, origin, eye, fov, aspect, width, height } = view;
+
+    // المصدر يُلوّن الحلقة: ما قيس ذهبيّ، وما خُمّن باهت. فيُرى
+    // الفرق قبل الضغط لا بعد أن تُحفظ النقطة في غير موضعها
+    const source = aim.source || (aim.onFloor ? 'floor' : 'guess');
+    const onFloor = source === 'floor';
+    const shade = tone || (source === 'guess' ? 'rgba(148, 163, 184, .85)' : PALETTE.target);
 
     const at = worldToScreen({ x: aim.x, y: aim.y || 0, z: aim.z }, pose, origin, eye, fov, aspect);
     if (!at) return null;
@@ -491,13 +497,15 @@ export const drawReticle = (ctx, aim, view, { tone = PALETTE.target, label = tru
     const radius = Math.max(9, Math.min(42, 44 / Math.max(1, at.depth)));
 
     ctx.save();
-    ctx.strokeStyle = tone;
+    ctx.strokeStyle = shade;
     ctx.lineWidth = 2.4;
+    if (source === 'guess') ctx.setLineDash([6, 5]);
 
     ctx.beginPath();
-    if (aim.onFloor) ctx.ellipse(p.x, p.y, radius, radius * 0.4, 0, 0, Math.PI * 2);
+    if (onFloor) ctx.ellipse(p.x, p.y, radius, radius * 0.4, 0, 0, Math.PI * 2);
     else ctx.arc(p.x, p.y, radius * 0.7, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
 
     // صليب صغير في المركز: الحلقة وحدها تُخفي مركزها
     ctx.beginPath();
@@ -509,7 +517,7 @@ export const drawReticle = (ctx, aim, view, { tone = PALETTE.target, label = tru
     ctx.stroke();
 
     // عمود إلى الأرض حين تكون النقطة معلّقة، فتُقرأ مسافتها
-    if (!aim.onFloor && aim.y > 0.3) {
+    if (!onFloor && aim.y > 0.3) {
         const foot = worldToScreen({ x: aim.x, y: 0, z: aim.z }, pose, origin, eye, fov, aspect);
         if (foot) {
             const f = toPixels(foot, width, height);
@@ -525,10 +533,11 @@ export const drawReticle = (ctx, aim, view, { tone = PALETTE.target, label = tru
     ctx.restore();
 
     if (label) {
-        const text = aim.onFloor
-            ? `${readableDistance(aim.distance)} · على الأرض`
-            : `${readableDistance(aim.distance)} · ارتفاع ${aim.y.toFixed(1)} م`;
-        drawPill(ctx, p.x, p.y + radius + 20, text, { tone, size: 12 });
+        const where = aim.y > 0.3 ? `ارتفاع ${aim.y.toFixed(1)} م` : 'على الأرض';
+        const how = source === 'motion' ? ' · بالحركة' : source === 'guess' ? ' · تقديري' : '';
+        drawPill(ctx, p.x, p.y + radius + 20,
+            `${readableDistance(aim.distance)} · ${where}${how}`,
+            { tone: shade, size: 12 });
     }
 
     return p;

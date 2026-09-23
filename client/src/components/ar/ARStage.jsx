@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 import { useCameraStream, useDeviceOrientation, usePedestrianTracking, useOverlayLoop } from './useARSensors';
-import { fromPixels, screenToFloor, aimPoint } from './indoorGeo';
+import {
+    fromPixels, screenToFloor, screenRay, pointAlongRay,
+    createRangeFinder, bearingTo, distance2D
+} from './indoorGeo';
 
 /* ============================================================
    مسرح الواقع المعزّز
@@ -22,6 +25,66 @@ const STEPS = {
     ready: 'جاهز'
 };
 
+/**
+ * البُعد بلا أن يُدخله أحد.
+ *
+ * ثلاثة مصادر مرتّبة بصدقها:
+ *
+ *   ١) الأرض    شعاع ينزل فيلتقي بالمستوى — قياس لا تقدير، ويكفي
+ *               لكل ما يقف على الأرض: باب، خزانة، كرسي.
+ *
+ *   ٢) الحركة   ما لا يلمس الأرض — لافتة، رفّ — يُثلَّث من موضعين
+ *               يفصلهما مشيك. خطوتان تكفيان.
+ *
+ *   ٣) تقدير    حين لا تكفي الحركة بعد، نأخذ آخر مسافة أرضية
+ *               عرفناها في نفس الاتّجاه. ونقولها تقديراً لا قياساً.
+ *
+ * والارتفاع يتبع المسافة مجّاناً: زاوية الشعاع مضروبة فيها.
+ */
+const estimateAim = (pose, origin, eye, fov, aspect, finder, lastSample, mode) => {
+    const bearing = pose.heading;
+    const now = performance.now();
+
+    // ١) الأرض
+    const floor = screenToFloor(0, 0, pose, origin, eye, fov, aspect);
+    const onFloor = floor && floor.distance <= 18;
+
+    if (onFloor && mode !== 'ray') {
+        // نتذكّر آخر مسافة أرضية: تصلح تقديراً لما فوقها لاحقاً
+        lastSample.current = { x: origin.x, z: origin.z, at: now, distance: floor.distance, bearing };
+        finder.current.reset();
+
+        return { x: floor.x, y: 0, z: floor.z, distance: floor.distance, source: 'floor' };
+    }
+
+    // ٢) الحركة
+    // نُغذّي المُقدّر برصد جديد كلّما تحرّكنا نصف متر: أكثر من ذلك
+    // يملأه بأرصاد من نفس الموضع لا تُضيف قاعدة
+    const moved = distance2D(lastSample.current, origin);
+    if (moved > 0.5) {
+        finder.current.push({ x: origin.x, z: origin.z, bearing });
+        lastSample.current = { ...lastSample.current, x: origin.x, z: origin.z, at: now };
+    } else if (!finder.current.estimate) {
+        finder.current.push({ x: origin.x, z: origin.z, bearing });
+    }
+
+    const found = finder.current.estimate;
+    if (found && found.quality > 0.2) {
+        const point = pointAlongRay(0, 0, pose, origin, eye, found.distance, fov, aspect);
+        return { ...point, source: 'motion', quality: found.quality };
+    }
+
+    // ٣) تقدير من آخر مسافة أرضية معروفة
+    const fallback = Number.isFinite(lastSample.current.distance)
+        ? Math.max(1, lastSample.current.distance)
+        : 3;
+
+    return {
+        ...pointAlongRay(0, 0, pose, origin, eye, fallback, fov, aspect),
+        source: 'guess'
+    };
+};
+
 /** الصفحة على اتّصال آمن؟ الكاميرا والمستشعرات لا تعمل بدونه */
 const isSecure = () => typeof window === 'undefined'
     || window.isSecureContext
@@ -33,7 +96,6 @@ const ARStage = ({
     height = 1.7,
     tracking = true,
     apiRef,
-    aimDistance = 3,
     aimMode = 'auto',
     onDraw,
     onTap,
@@ -57,12 +119,23 @@ const ARStage = ({
     // وما تُشير إليه الكاميرا يُحسب هنا مرّة ويُكتب في مرجع: الأب
     // يقرأه حين يضغط «أضف»، والرسّام يرسمه — وحسابه مرّتين يعني
     // اختلافهما يوماً ما بمقدار إطار.
-    const aimRef = useRef({ x: 0, y: 0, z: 0, distance: 3, onFloor: true });
+    const aimRef = useRef({ x: 0, y: 0, z: 0, distance: 3, source: 'floor' });
+
+    /*
+     * مُقدّر البُعد بالحركة.
+     *
+     * يجمع اتّجاه نظرك من مواضع مختلفة وأنت تمشي، ويُثلّث بينها.
+     * لا يلزمه منك شيء: المشي نفسه هو القياس.
+     */
+    const finder = useRef(createRangeFinder());
+    const lastSample = useRef({ x: 0, z: 0, at: 0 });
 
     const canvasRef = useOverlayLoop((ctx, width, height2) => {
+        const pose = orientation.poseRef.current;
+        const origin = walker.positionRef.current;
+
         const view = {
-            pose: orientation.poseRef.current,
-            origin: walker.positionRef.current,
+            pose, origin,
             eye: eyeHeight,
             fov,
             aspect: camera.aspect,
@@ -70,12 +143,7 @@ const ARStage = ({
             height: height2
         };
 
-        aimRef.current = aimPoint(
-            view.pose, view.origin, eyeHeight,
-            aimDistance, fov, camera.aspect,
-            { preferRay: aimMode === 'ray' }
-        );
-
+        aimRef.current = estimateAim(pose, origin, eyeHeight, fov, camera.aspect, finder, lastSample, aimMode);
         onDraw?.(ctx, view, aimRef.current);
     });
 

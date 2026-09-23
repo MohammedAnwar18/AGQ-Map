@@ -663,42 +663,104 @@
 
 .ai-aim-read span { font-size: 11.5px; color: var(--muted); }
 
-.ai-aim-mode {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-    padding: 3px;
-    border: 1px solid var(--line);
-    border-radius: 11px;
-    background: rgba(0, 0, 0, .3);
-}
+/* أثناء المشية لا أدوات تحته — فينزل مكانها */
+.ai-aim.is-solo { bottom: calc(14px + env(safe-area-inset-bottom)); }
 
-.ai-aim-mode button {
-    padding: 8px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
+/*
+ * سطر يُقال حين يكون البُعد تقديراً لا قياساً.
+ *
+ * يظهر ويختفي مع المصدر، فلا يُزاحم الشاشة إلا حين يلزم فعلاً.
+ */
+.ai-aim-hint {
+    margin: 0;
     color: var(--muted);
+    font-size: 11px;
+    line-height: 1.65;
+    text-align: center;
+}
+
+.ai-aim-row {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 7px;
+}
+
+.ai-aim-row .ai-shutter { padding: 13px; font-size: 13.5px; }
+
+.ai-aim-row .ai-stop {
+    padding: 13px;
+    border: 1px solid rgba(251, 113, 133, .45);
+    border-radius: 14px;
+    background: rgba(251, 113, 133, .16);
+    color: #fecdd3;
     font: inherit;
-    font-size: 11.5px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 800;
     cursor: pointer;
 }
 
-.ai-aim-mode button.is-on { background: rgba(56, 189, 248, .2); color: var(--accent); }
+.ai-tools button.is-walk {
+    border-color: rgba(74, 222, 128, .5);
+    background: rgba(74, 222, 128, .18);
+    color: #bbf7d0;
+}
 
-.ai-aim-range {
+/* ============================================================
+   الشارات — المسح والمشية
+   ============================================================ */
+
+.ai-scan,
+.ai-walk {
+    position: absolute;
+    top: calc(66px + env(safe-area-inset-top));
+    left: 50%;
+    z-index: 5;
+    transform: translateX(-50%);
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 9px;
+    max-width: calc(100% - 24px);
+    padding: 8px 15px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(8, 14, 26, .88);
+    backdrop-filter: blur(12px);
+    white-space: nowrap;
 }
 
-.ai-aim-range span { font-size: 10.5px; color: var(--muted); }
+.ai-scan b,
+.ai-walk b { font-size: 12px; font-weight: 800; color: var(--text); }
 
-.ai-aim-range input {
-    width: 100%;
-    accent-color: var(--gold);
-    cursor: pointer;
+.ai-scan span,
+.ai-walk span { font-size: 11px; color: var(--muted); }
+
+.ai-scan i {
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.ai-scan { border-color: rgba(56, 189, 248, .4); }
+.ai-walk { border-color: rgba(74, 222, 128, .45); }
+
+/* نقطة حمراء تنبض: علامة التسجيل المفهومة بلا كلام */
+.ai-walk i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f87171;
+    animation: ai-rec 1.1s ease-in-out infinite;
+}
+
+@keyframes ai-rec {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-walk i { animation: none; }
 }
 
 /* الزرّ الكبير: يُضغط بالإبهام والهاتف مُصوَّب بيد واحدة */
@@ -750,7 +812,9 @@
 
 @media (max-width: 420px) {
     .ai-aim { bottom: calc(60px + env(safe-area-inset-bottom)); padding: 10px 12px; }
+    .ai-aim.is-solo { bottom: calc(12px + env(safe-area-inset-bottom)); }
     .ai-shutter { padding: 14px; font-size: 14px; }
+    .ai-scan, .ai-walk { font-size: 11px; padding: 7px 12px; gap: 7px; }
 }
 
 /* التيّار حيّ والتشغيل ممنوع تلقائياً — لمسة تكفي */

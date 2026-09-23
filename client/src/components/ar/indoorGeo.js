@@ -283,6 +283,110 @@ export const fromPixels = (px, py, width, height) => ({
     sy: 1 - (py / height) * 2
 });
 
+/* ============================================================
+   البُعد بالحركة — تثليث من خطوتين
+
+   الكاميرا الواحدة لا تقيس عمقاً: الشيء القريب الصغير والبعيد
+   الكبير يقعان في نفس موضع الصورة. لكن **الحركة** تفصلهما — امشِ
+   مترين والشيء القريب ينزاح كثيراً والبعيد قليلاً.
+
+   وهذا هو ما يفعله الإنسان بعينيه، وما تفعله ARKit بين إطار
+   وإطار. ونحن نفعله بين موضعين يفصلهما مشيُك.
+
+   ولا يحتاج LiDAR ولا نموذج عمق: زاويتان وقاعدة بينهما.
+   ============================================================ */
+
+/**
+ * تقاطع شعاعين على المستوى الأفقي.
+ *
+ * @param a ‎{ x, z, bearing }‎ الرصد الأوّل
+ * @param b ‎{ x, z, bearing }‎ الرصد الثاني
+ * @returns ‎{ x, z, distance, parallax, quality }‎ أو null
+ *
+ * ‎parallax‎ هي الزاوية بين الشعاعين، وهي مقياس الثقة: شعاعان
+ * متوازيان تقريباً يتقاطعان على بُعد لا معنى له، ورقمٌ من رصدٍ
+ * كهذا أسوأ من لا رقم.
+ */
+export const triangulate = (a, b) => {
+    const ra = toRad(a.bearing);
+    const rb = toRad(b.bearing);
+
+    const d1x = Math.sin(ra);
+    const d1z = Math.cos(ra);
+    const d2x = Math.sin(rb);
+    const d2z = Math.cos(rb);
+
+    // الضرب الاتّجاهي في المستوى: صفره يعني التوازي
+    const cross = d1x * d2z - d1z * d2x;
+
+    const parallax = Math.abs(angleDelta(a.bearing, b.bearing));
+    if (Math.abs(cross) < 1e-4 || parallax < 3) return null;
+
+    const ox = b.x - a.x;
+    const oz = b.z - a.z;
+
+    const t1 = (ox * d2z - oz * d2x) / cross;
+    const t2 = (ox * d1z - oz * d1x) / cross;
+
+    // خلف أحد الراصدَين؟ التقاطع وهمي
+    if (t1 <= 0.2 || t2 <= 0.2) return null;
+
+    const point = { x: a.x + d1x * t1, z: a.z + d1z * t1 };
+
+    /*
+     * الجودة من زاوية الاختلاف.
+     *
+     * خطأ الزاوية ثابت — درجة أو اثنتان من البوصلة — وأثره في
+     * المسافة يتناسب عكسياً مع الاختلاف. فخمس درجات تكفي بالكاد
+     * وعشرون جيّدة، وما فوق الأربعين ممتاز.
+     */
+    const quality = Math.min(1, parallax / 25);
+
+    return { ...point, distance: t1, parallax, quality };
+};
+
+/**
+ * يجمع أرصاداً ويُخرج تقديراً حين تصير قابلة للتثليث.
+ *
+ * يحتفظ بأقدم رصد صالح ويُثلّث معه: القاعدة الأطول تُعطي أدقّ
+ * نتيجة، والمقارنة مع الرصد السابق مباشرةً تُعطي قاعدة بطول خطوة
+ * واحدة — وهي أقصر من أن تفيد.
+ */
+export const createRangeFinder = ({ minBase = 0.7, minParallax = 4, keep = 2.5 } = {}) => {
+    let anchorObs = null;
+    let best = null;
+
+    return {
+        /**
+         * @param observation ‎{ x, z, bearing }‎ — موضعك واتّجاه نظرك
+         * @returns أفضل تقدير حتى الآن أو null
+         */
+        push(observation) {
+            if (!anchorObs) { anchorObs = { ...observation }; return best; }
+
+            const base = Math.hypot(observation.x - anchorObs.x, observation.z - anchorObs.z);
+
+            // لم تتحرّك بعد: القاعدة أقصر من أن تُثلّث
+            if (base < minBase) return best;
+
+            const hit = triangulate(anchorObs, observation);
+
+            if (hit && hit.parallax >= minParallax && (!best || hit.quality > best.quality)) {
+                best = { ...hit, base };
+            }
+
+            // القاعدة الطويلة جداً تعني أن نظرك انتقل إلى شيء آخر
+            if (base > keep * 4) anchorObs = { ...observation };
+
+            return best;
+        },
+
+        get estimate() { return best; },
+
+        reset() { anchorObs = null; best = null; }
+    };
+};
+
 // ── قياسات على الأرض ────────────────────────────────────────
 
 export const distance2D = (a, b) => Math.hypot(b.x - a.x, b.z - a.z);
@@ -390,6 +494,43 @@ export const projectOnPath = (points, p) => {
     best.total = travelled;
     best.remaining = Math.max(0, travelled - best.along);
     return best;
+};
+
+/**
+ * يقصّ جزءاً من خطّ بين مسافتين على طوله.
+ *
+ * تُستعمل لتقطيع المشية الواحدة عند العلامات: من بدايتها إلى أوّل
+ * محلّ، ومن المحلّ إلى الذي يليه — فيصير لكل قطعة طرفان معروفان
+ * يمرّ بهما البحث.
+ */
+export const slicePath = (points, from, to) => {
+    const out = [];
+    let travelled = 0;
+
+    for (let i = 1; i < points.length; i++) {
+        const a = points[i - 1];
+        const b = points[i];
+        const seg = distance2D(a, b);
+        if (seg < 1e-6) continue;
+
+        const segStart = travelled;
+        const segEnd = travelled + seg;
+
+        const at = (d) => {
+            const t = (d - segStart) / seg;
+            return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
+        };
+
+        if (segEnd >= from && segStart <= to) {
+            if (!out.length) out.push(at(Math.max(from, segStart)));
+            out.push(at(Math.min(to, segEnd)));
+        }
+
+        travelled = segEnd;
+        if (travelled > to) break;
+    }
+
+    return out;
 };
 
 /**

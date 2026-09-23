@@ -4,7 +4,7 @@ import ARStage from './ARStage';
 import FloorPlan from './FloorPlan';
 import arIndoorService, { arError } from '../../services/arIndoorApi';
 import {
-    simplifyPath, distance2D, polylineLength, bearingTo, readableDistance
+    simplifyPath, distance2D, polylineLength, projectOnPath, slicePath, readableDistance
 } from './indoorGeo';
 import {
     drawFloorGrid, drawRoute, drawChevrons, drawMarker, drawDraft, drawPill,
@@ -43,6 +43,19 @@ const KINDS = [
     { key: 'exit', label: 'مخرج', tone: '#FB7185' }
 ];
 
+/*
+ * من أين جاء البُعد.
+ *
+ * يُقال للمستخدم صراحةً: ما قيس من الأرض قياس، وما جاء بالحركة
+ * تثليث، وما بقي تقدير. وإخفاء الفرق يجعله يثق بالتقدير كما يثق
+ * بالقياس — ثم يكتشف الفرق عند الملاحة.
+ */
+const SOURCE_LABEL = {
+    floor: 'مقيس من الأرض',
+    motion: 'مقيس بالحركة',
+    guess: 'تقديري — امشِ قليلاً'
+};
+
 const toneOf = (kind) => KINDS.find(k => k.key === kind)?.tone || PALETTE.node;
 
 // كم متراً قبل أن يُعدّ طرف المسار ملتصقاً بنقطة موجودة
@@ -71,17 +84,14 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     /*
      * التصويب.
      *
-     * ‎auto‎ يُفضّل الأرض حين تنظر إليها — وهي مقاسة لا مُخمَّنة.
-     * و‎ray‎ لما ليس على الأرض: رفّ، لافتة محلّ، باب مصعد. عندها
-     * تقول أنت المسافة بالمسطرة حتى تستقرّ الحلقة على الشيء، لأن
-     * كاميرا الهاتف في المتصفّح لا تقيس عمقاً.
+     * لا مسطرة ولا رقم يُدخله أحد: البُعد يأتي من الأرض حين تنظر
+     * إليها، ومن حركتك حين لا تكون كذلك. و‎ray‎ يُجبر الثاني لمن
+     * أراد تحديد شيء مرتفع فوق أرض قريبة.
      */
-    const [aimMode, setAimMode] = useState('auto');
-    const [aimDistance, setAimDistance] = useState(3);
     const [aimInfo, setAimInfo] = useState(null);
 
     // آخر ما أشارت إليه الكاميرا — يُقرأ لحظة الضغط على «أضف»
-    const aim = useRef({ x: 0, y: 0, z: 0, distance: 3, onFloor: true });
+    const aim = useRef({ x: 0, y: 0, z: 0, distance: 3, source: 'floor' });
 
     /*
      * بصمات المكان.
@@ -93,9 +103,27 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     const [scanning, setScanning] = useState(false);
     const [scanInfo, setScanInfo] = useState(null);
 
+    /*
+     * التسجيل بالمشي.
+     *
+     * الطريقة الطبيعية لبناء خريطة مبنى: تمشي فيه والكاميرا تعمل،
+     * فيُرسم الممرّ من خطواتك نفسها، وتضغط «علّم» كلّما مررتَ بشيء
+     * يستحقّ اسماً. ورسمُ الممرّات بالإصبع يبقى للتصحيح.
+     *
+     * والبصمات تُلتقط على الطريق تلقائياً كل مترين — فالمكان
+     * يُمسح وأنت تمشي فيه لا في جولة ثانية.
+     */
+    const [recording, setRecording] = useState(false);
+    const [track, setTrack] = useState([]);
+    const [walked, setWalked] = useState(0);
+
+    const lastPoint = useRef(null);
+    const lastShot = useRef(null);
+    const pending = useRef([]);   // ما عُلّم أثناء المشية
+
     // مرجع للرسم: الحلقة تقرأ منه ولا تُعاد بإغلاق قديم
-    const live = useRef({ nodes, edges, draft, selected, places: [] });
-    live.current = { nodes, edges, draft, selected, places };
+    const live = useRef({ nodes, edges, draft, selected, places: [], track: [], recording: false });
+    live.current = { nodes, edges, draft, selected, places, track, recording };
 
     const flash = useCallback((message, kind = 'ok') => {
         setNotice({ message, kind });
@@ -205,6 +233,146 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
         return () => clearInterval(tick);
     }, [scanning, capture]);
 
+    // ── التسجيل بالمشي ──
+
+    /**
+     * يتتبّع خطواتك ويبني منها الممرّ.
+     *
+     * نقطة كل ثلاثة أرباع المتر: أقلّ منها يملأ المسار بنقاط لا
+     * تصف شيئاً، وأكثر منها يقطع الزوايا. والبصمة كل مترين، فتُغطّى
+     * المشية بما يكفي للتعرّف عليها من أي موضع فيها.
+     */
+    useEffect(() => {
+        if (!recording) return undefined;
+
+        const tick = setInterval(() => {
+            const api = stage.current;
+            if (!api?.positionRef) return;
+
+            const at = { ...api.positionRef.current };
+            const previous = lastPoint.current;
+
+            if (previous && distance2D(previous, at) < 0.75) return;
+
+            lastPoint.current = at;
+            setTrack(prev => [...prev, { x: +at.x.toFixed(2), z: +at.z.toFixed(2) }]);
+            if (previous) setWalked(w => w + distance2D(previous, at));
+
+            if (!lastShot.current || distance2D(lastShot.current, at) >= 2) {
+                const shot = capture(null);
+                if (shot.ok) lastShot.current = at;
+            }
+        }, 260);
+
+        return () => clearInterval(tick);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recording]);
+
+    const startWalk = useCallback(() => {
+        const api = stage.current;
+        const at = api?.positionRef?.current || { x: 0, z: 0 };
+
+        lastPoint.current = { ...at };
+        lastShot.current = null;
+        pending.current = [];
+
+        setTrack([{ x: +at.x.toFixed(2), z: +at.z.toFixed(2) }]);
+        setWalked(0);
+        setRecording(true);
+        setTool('walk');
+        flash('امشِ في الممرّ — الكاميرا تسجّل الطريق');
+    }, [flash]);
+
+    /**
+     * ينهي المشية فيصير ما مشيتَه ممرّات.
+     *
+     * المشية الواحدة تُقطَّع عند كل علامة وضعتَها أثناءها: ممرّ من
+     * البداية إلى أوّل محلّ، ومنه إلى الثاني، وهكذا. وبهذا يصير
+     * لكل قطعة طرفان معروفان، ويستطيع البحث أن يمرّ بها.
+     */
+    const stopWalk = useCallback(() => {
+        setRecording(false);
+        setTool('place');
+
+        const line = simplifyPath(live.current.track, 0.35);
+        const marks = pending.current;
+        pending.current = [];
+
+        if (line.length < 2 || polylineLength(line) < 1.5) {
+            setTrack([]);
+            flash('المشية أقصر من أن تكون ممرّاً', 'err');
+            return;
+        }
+
+        const created = [];
+        const madeEdges = [];
+
+        // عقدة عند بداية المشية ونهايتها إن لم تكن هناك واحدة
+        const anchorAt = (point, name) => {
+            const found = nearestNode(point, SNAP);
+            if (found) return found;
+
+            const node = {
+                id: nextId(), name, kind: 'junction', category: null,
+                x: +point.x.toFixed(2), z: +point.z.toFixed(2), y: 0, floor: 0, note: null
+            };
+            created.push(node);
+            return node;
+        };
+
+        // نُرتّب العلامات بموضعها على الخطّ، فتُقطَّع المشية بترتيب السير
+        const stops = marks
+            .map(mark => ({ mark, along: projectOnPath(line, mark).along }))
+            .sort((a, b) => a.along - b.along);
+
+        let cursor = anchorAt(line[0], 'بداية الممرّ');
+        let fromAlong = 0;
+
+        const cut = (toNode, toAlong) => {
+            const piece = slicePath(line, fromAlong, toAlong);
+            if (piece.length > 1 && cursor.id !== toNode.id) {
+                madeEdges.push({
+                    id: nextId(), from: cursor.id, to: toNode.id,
+                    kind: 'walk', oneWay: false,
+                    path: [{ x: cursor.x, z: cursor.z }, ...piece.slice(1, -1), { x: toNode.x, z: toNode.z }]
+                });
+            }
+            cursor = toNode;
+            fromAlong = toAlong;
+        };
+
+        for (const stop of stops) cut(stop.mark, stop.along);
+        cut(anchorAt(line[line.length - 1], 'نهاية الممرّ'), polylineLength(line));
+
+        if (created.length) setNodes(prev => [...prev, ...created]);
+        if (madeEdges.length) setEdges(prev => [...prev, ...madeEdges]);
+
+        setTrack([]);
+        setDirty(true);
+        flash(`سُجّل ${readableDistance(polylineLength(line))} في ${madeEdges.length} ممرّ`);
+    }, [nearestNode, flash]);
+
+    /**
+     * يضع علامة وأنت تمشي.
+     *
+     * موضعها من التصويب التلقائي — الأرض أو الحركة — لا من رقم
+     * تُدخله. وتُقطَّع المشية عندها حين تنتهي.
+     */
+    const markHere = useCallback(() => {
+        const at = aim.current;
+        if (!at || !Number.isFinite(at.x)) { flash('وجّه الكاميرا إلى ما تُعلّمه', 'err'); return; }
+
+        setNaming({
+            x: +at.x.toFixed(2),
+            z: +at.z.toFixed(2),
+            y: +(at.y || 0).toFixed(2),
+            source: at.source,
+            distance: at.distance,
+            onWalk: true
+        });
+        setForm({ name: '', kind: 'place', category: '' });
+    }, [flash]);
+
     // ── الأدوات ──
 
     /**
@@ -228,10 +396,10 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
             x: +at.x.toFixed(2),
             z: +at.z.toFixed(2),
             y: +(at.y || 0).toFixed(2),
-            onFloor: at.onFloor,
+            source: at.source,
             distance: at.distance
         });
-        setForm({ name: '', kind: at.onFloor ? 'place' : 'place', category: '' });
+        setForm({ name: '', kind: 'place', category: '' });
     }, [nearestNode, flash]);
 
     /** لمسة على الشاشة: تُحدّد نقطة موجودة أو تُثبّت الموضع عليها */
@@ -344,6 +512,9 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
 
         setNodes(prev => [...prev, node]);
 
+        // عُلّمت أثناء مشية؟ تُقطَّع المشية عندها حين تنتهي
+        if (naming.onWalk) pending.current.push(node);
+
         // بصمة تُلتقط مع النقطة: الاسم وحده لا يُعرّف المكان بصرياً،
         // وهذه هي ما تجعل الزائر يعرف أنه هنا
         const shot = capture(node.name);
@@ -421,6 +592,14 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
             });
         }
 
+        // المشية الجارية: خطّ يتبعك على الأرض فترى ما سُجّل
+        if (live.current.recording && live.current.track.length > 1) {
+            drawRoute(ctx, live.current.track, view, {
+                tone: 'rgba(74, 222, 128, .8)',
+                glow: 'rgba(74, 222, 128, .2)'
+            });
+        }
+
         // ما يُرسم الآن
         if (dr.length > 1) {
             drawDraft(ctx, dr, view);
@@ -434,7 +613,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
         drawNearby(ctx, ns, view);
 
         // الشاخص — ما تُشير إليه الكاميرا الآن
-        if (tool === 'place' && aiming) drawReticle(ctx, aiming, view);
+        if ((tool === 'place' || live.current.recording) && aiming) drawReticle(ctx, aiming, view);
 
         if (tool === 'draw' && dr.length === 0) {
             drawPill(ctx, view.width / 2, view.height - 118, 'اسحب إصبعك على الأرض لرسم الممرّ', {
@@ -446,10 +625,10 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     // القراءة تُحدَّث خمس مرّات في الثانية لا ستّين: الرقم على
     // الشاشة لا يحتاج أكثر، وإعادة الرسم بكل إطار تُتعب الهاتف
     useEffect(() => {
-        if (tool !== 'place') { setAimInfo(null); return undefined; }
+        if (tool !== 'place' && !recording) { setAimInfo(null); return undefined; }
         const tick = setInterval(() => setAimInfo({ ...aim.current }), 200);
         return () => clearInterval(tick);
-    }, [tool]);
+    }, [tool, recording]);
 
     const spots = useMemo(() => nodes.filter(n => n.kind !== 'junction'), [nodes]);
     const selectedNode = nodes.find(n => n.id === selected);
@@ -460,8 +639,6 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                 apiRef={stage}
                 eyeHeight={venue.eyeHeight}
                 fov={venue.fov}
-                aimDistance={aimDistance}
-                aimMode={aimMode}
                 onDraw={paint}
                 onTap={tool === 'draw' ? undefined : onTap}
                 onDrag={tool === 'draw' ? onDrag : undefined}
@@ -489,54 +666,45 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                     </button>
                 </header>
 
-                {/* ── التصويب ── */}
-                {tool === 'place' && (
-                    <div className="ai-aim">
+                {/* ── التصويب والتسجيل ── */}
+                {(tool === 'place' || recording) && (
+                    <div className={`ai-aim${recording ? ' is-solo' : ''}`}>
                         <div className="ai-aim-read">
                             <b>{aimInfo ? `${aimInfo.distance.toFixed(1)} م` : '—'}</b>
                             <span>
-                                {aimInfo?.onFloor
-                                    ? 'على الأرض'
-                                    : `ارتفاع ${(aimInfo?.y || 0).toFixed(1)} م`}
+                                {aimInfo?.y > 0.25 ? `ارتفاع ${aimInfo.y.toFixed(1)} م · ` : ''}
+                                {SOURCE_LABEL[aimInfo?.source] || '—'}
                             </span>
                         </div>
 
-                        <div className="ai-aim-mode">
-                            <button
-                                className={aimMode === 'auto' ? 'is-on' : ''}
-                                onClick={() => setAimMode('auto')}
-                            >
-                                أرضية
-                            </button>
-                            <button
-                                className={aimMode === 'ray' ? 'is-on' : ''}
-                                onClick={() => setAimMode('ray')}
-                            >
-                                مرتفع
-                            </button>
-                        </div>
-
-                        {aimMode === 'ray' && (
-                            <label className="ai-aim-range">
-                                <span>بُعد الشيء عنك</span>
-                                <input
-                                    type="range" min="0.5" max="20" step="0.25"
-                                    value={aimDistance}
-                                    onChange={(e) => setAimDistance(parseFloat(e.target.value))}
-                                />
-                            </label>
+                        {aimInfo?.source === 'guess' && (
+                            <p className="ai-aim-hint">
+                                امشِ خطوتين وأنت تنظر إليه فيُقاس بُعده بالحركة،
+                                أو وجّه الكاميرا إلى موضعه على الأرض فيُقاس مباشرةً.
+                            </p>
                         )}
 
-                        <button className="ai-shutter" onClick={addHere}>
-                            حدّد ما أمامك
-                        </button>
+                        {recording ? (
+                            <div className="ai-aim-row">
+                                <button className="ai-shutter" onClick={markHere}>علّم ما أمامك</button>
+                                <button className="ai-btn ai-stop" onClick={stopWalk}>أنهِ المشية</button>
+                            </div>
+                        ) : (
+                            <button className="ai-shutter" onClick={addHere}>حدّد ما أمامك</button>
+                        )}
                     </div>
                 )}
 
                 {/* ── الأدوات ── */}
-                <nav className="ai-tools">
-                    {[
-                        ['place', 'مكان', 'ضع نقطة على الأرض'],
+                <nav className="ai-tools" hidden={recording}>
+                    {!recording && (
+                        <button className="is-walk" onClick={startWalk} title="امشِ في الممرّ فيُرسم من خطواتك">
+                            سجّل مشياً
+                        </button>
+                    )}
+
+                    {!recording && [
+                        ['place', 'مكان', 'وجّه الكاميرا واضغط'],
                         ['draw', 'مسار', 'ارسم الممرّ بإصبعك'],
                         ['here', 'أنا هنا', 'ثبّت موضعك على نقطة']
                     ].map(([key, label, title]) => (
@@ -550,18 +718,30 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                         </button>
                     ))}
 
-                    <button
-                        className={scanning ? 'is-on' : ''}
-                        onClick={() => setScanning(v => !v)}
-                        title="التقط بصمات للمكان وأنت تستدير"
-                    >
-                        {scanning ? `يمسح · ${places.length}` : 'امسح المكان'}
-                    </button>
+                    {!recording && (
+                        <>
+                            <button
+                                className={scanning ? 'is-on' : ''}
+                                onClick={() => setScanning(v => !v)}
+                                title="التقط بصمات للمكان وأنت تستدير"
+                            >
+                                {scanning ? `يمسح · ${places.length}` : 'امسح المكان'}
+                            </button>
 
-                    <button onClick={() => setPlan(true)} title="مخطّط من فوق">مخطّط</button>
-                    <button onClick={() => setSheet(true)} title="قائمة الأماكن">القائمة</button>
-                    {edges.length > 0 && <button onClick={undoEdge} className="ai-undo">تراجع</button>}
+                            <button onClick={() => setPlan(true)} title="مخطّط من فوق">مخطّط</button>
+                            <button onClick={() => setSheet(true)} title="قائمة الأماكن">القائمة</button>
+                            {edges.length > 0 && <button onClick={undoEdge} className="ai-undo">تراجع</button>}
+                        </>
+                    )}
                 </nav>
+
+                {recording && (
+                    <div className="ai-walk">
+                        <i />
+                        <b>يسجّل مشيتك</b>
+                        <span>{readableDistance(walked)} · {places.length} بصمة</span>
+                    </div>
+                )}
 
                 {scanning && (
                     <div className="ai-scan">
@@ -581,7 +761,8 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                         <b>نقطة جديدة</b>
                         <span className="ai-coords">
                             على بُعد {readableDistance(naming.distance || 0)} منك
-                            {naming.onFloor ? ' · على الأرض' : ` · بارتفاع ${naming.y.toFixed(1)} م`}
+                            {naming.y > 0.25 ? ` · بارتفاع ${naming.y.toFixed(1)} م` : ' · على الأرض'}
+                            {' · '}{SOURCE_LABEL[naming.source] || ''}
                         </span>
 
                         <label htmlFor="ai-name">الاسم كما يبحث عنه الزائر</label>
