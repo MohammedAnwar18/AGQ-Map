@@ -9,6 +9,7 @@ import {
     drawRoute, drawChevrons, drawMarker, drawOffscreenArrow, drawPill,
     drawNearby, guidanceState, PALETTE
 } from './arPainter';
+import { describeFrame, unpackDescriptor, createRelocalizer } from './visualPlace';
 
 /* ============================================================
    دليل الزائر
@@ -47,7 +48,7 @@ const fold = (text) => String(text || '')
     .toLowerCase()
     .trim();
 
-const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
+const IndoorGuide = ({ venue, nodes, edges, places = [], onClose }) => {
     const stage = useRef(null);
 
     const [query, setQuery] = useState('');
@@ -59,27 +60,37 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
     const [arrived, setArrived] = useState(false);
     const [notice, setNotice] = useState(null);
 
+    /*
+     * التعرّف البصري على المكان.
+     *
+     * الكاميرا تُصوّر خمس مرّات في الثانية، وكل إطار يُقارَن ببصمات
+     * المكان المحفوظة. تطابقٌ مستقرّ يقول أين أنت — فلا نسألك.
+     */
+    const [located, setLocated] = useState(null);   // آخر ما تعرّفنا عليه
+    const [seeking, setSeeking] = useState(true);
+
     const flash = useCallback((message, kind = 'ok') => {
         setNotice({ message, kind });
         setTimeout(() => setNotice(null), 2600);
     }, []);
 
     // ── الأماكن القابلة للبحث ──
-    const places = useMemo(
+    // ‎spots‎ لا ‎places‎: الأخيرة صارت بصمات المكان التي تأتي خاصّيةً
+    const spots = useMemo(
         () => nodes.filter(n => n.kind !== 'junction'),
         [nodes]
     );
 
     const entrances = useMemo(() => {
-        const doors = places.filter(n => n.kind === 'entrance' || n.kind === 'exit');
-        return doors.length ? doors : places;
-    }, [places]);
+        const doors = spots.filter(n => n.kind === 'entrance' || n.kind === 'exit');
+        return doors.length ? doors : spots;
+    }, [spots]);
 
     const results = useMemo(() => {
         const q = fold(query);
-        if (!q) return places.slice(0, 40);
+        if (!q) return spots.slice(0, 40);
 
-        return places
+        return spots
             .map(node => {
                 const name = fold(node.name);
                 const category = fold(node.category);
@@ -95,7 +106,22 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
             .sort((a, b) => a.score - b.score)
             .slice(0, 40)
             .map(r => r.node);
-    }, [query, places]);
+    }, [query, spots]);
+
+    /*
+     * مكتبة البصمات، مفكوكة مرّة واحدة.
+     *
+     * فكّها في كل إطار يعني فكّ مئتي متّجه خمس مرّات في الثانية —
+     * وهي ثابتة لا تتغيّر أثناء الجلسة.
+     */
+    const library = useMemo(() => places
+        .map(place => {
+            const descriptor = unpackDescriptor(place);
+            return descriptor ? { ...place, descriptor } : null;
+        })
+        .filter(Boolean), [places]);
+
+    const relocalizer = useRef(createRelocalizer());
 
     // ── الطريق ──
     const polyline = useMemo(() => {
@@ -110,6 +136,48 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
     const noRoute = Boolean(origin && destination && !polyline);
 
     /*
+     * حلقة التعرّف.
+     *
+     * خمس مرّات في الثانية: أسرع منها لا يُضيف — المشهد لا يتغيّر
+     * في خُمس ثانية — وأبطأ منها يجعل التعرّف يتأخّر عن خطواتك.
+     *
+     * وحين نتعرّف نُثبّت الموضع على موضع البصمة: هذا هو ما يُصحّح
+     * انحراف عدّ الخطوات كلّما مررتَ بمكان معروف، فلا يتراكم.
+     */
+    useEffect(() => {
+        if (!library.length) { setSeeking(false); return undefined; }
+
+        const tick = setInterval(() => {
+            const api = stage.current;
+            const frame = api?.grab?.();
+            if (!frame) return;
+
+            const query = describeFrame(frame.data, frame.width, frame.height);
+            const result = relocalizer.current.push(query, library);
+
+            if (!result.changed || !result.place) return;
+
+            const place = result.place;
+            api.anchor({ x: place.x, z: place.z });
+
+            setLocated({ ...place, score: result.score });
+            setSeeking(false);
+
+            // أقرب نقطة مسمّاة لموضع البصمة تصير نقطة الانطلاق
+            let nearest = null;
+            let best = 9;
+            for (const node of nodes) {
+                if (node.kind === 'junction') continue;
+                const d = distance2D(node, place);
+                if (d < best) { best = d; nearest = node; }
+            }
+            if (nearest) setOrigin(nearest);
+        }, 200);
+
+        return () => clearInterval(tick);
+    }, [library, nodes]);
+
+    /*
      * نبدأ من أقرب مدخل تلقائياً.
      *
      * السؤال «من أين تبدأ؟» كان يسبق الكاميرا ويسدّها — والمطلوب أن
@@ -118,9 +186,13 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
      * شارة صغيرة تُغيَّر بلمسة.
      */
     useEffect(() => {
-        if (origin || !entrances.length) return;
+        // التعرّف البصري أصدق من التخمين: ننتظره ما دامت في المكان
+        // بصمات، ولا نفترض المدخل إلا حين لا يكون هناك ما يُتعرّف به
+        if (origin || located || !entrances.length) return;
+        if (library.length) return;
+
         setOrigin(entrances[0]);
-    }, [origin, entrances]);
+    }, [origin, located, entrances, library]);
 
     useEffect(() => {
         if (origin) stage.current?.anchor(origin);
@@ -129,6 +201,7 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
     // ── بدء الرحلة ──
     const startFrom = (node) => {
         setOrigin(node);
+        setSeeking(false);
         stage.current?.anchor(node);
         setPicking(destination ? 'none' : 'search');
         flash(`انطلقنا من ${node.name}`);
@@ -272,10 +345,16 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                     </button>
                 </header>
 
-                {/* من أين بدأنا — شارة تُصحَّح بلمسة، لا نافذة تسدّ */}
-                {origin && !destination && (
+                {/* التعرّف: ما يقوله النظام عن مكانك الآن */}
+                {!destination && (
                     <button className="ai-from" onClick={() => setPicking('start')}>
-                        بدأنا من <b>{origin.name}</b> — غيّرها
+                        {located
+                            ? <>تعرّفتُ على <b>{located.label || origin?.name || 'المكان'}</b></>
+                            : seeking && library.length
+                                ? <>يتعرّف على المكان… وجّه الكاميرا حولك</>
+                                : origin
+                                    ? <>بدأنا من <b>{origin.name}</b> — غيّرها</>
+                                    : <>اختر من أين تبدأ</>}
                     </button>
                 )}
 
@@ -353,7 +432,7 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                     <div className="ai-sheet-body">
                         {!results.length && (
                             <p className="ai-empty">
-                                {places.length
+                                {spots.length
                                     ? 'لا نتيجة بهذا الاسم'
                                     : 'لا أماكن في هذه الخريطة بعد'}
                             </p>
@@ -386,7 +465,7 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                             عندها الآن، وسنتابع تقدّمك بعدها بعدّ خطواتك.
                         </p>
 
-                        {(origin ? places : entrances).map(node => (
+                        {(origin ? spots : entrances).map(node => (
                             <button
                                 key={node.id}
                                 className={`ai-result${origin?.id === node.id ? ' is-on' : ''}`}
@@ -397,7 +476,7 @@ const IndoorGuide = ({ venue, nodes, edges, onClose }) => {
                             </button>
                         ))}
 
-                        {!places.length && <p className="ai-empty">لا نقاط في هذه الخريطة بعد</p>}
+                        {!spots.length && <p className="ai-empty">لا نقاط في هذه الخريطة بعد</p>}
                     </div>
                 </div>
             )}

@@ -41,7 +41,7 @@ const IndoorVenues = ({ onClose }) => {
     const [busy, setBusy] = useState(false);
 
     const [studio, setStudio] = useState(null);     // المشروع المفتوح للبناء
-    const [preview, setPreview] = useState(null);   // { venue, nodes, edges }
+    const [preview, setPreview] = useState(null);   // { venue, nodes, edges, places }
     const [qr, setQr] = useState(null);             // { venue, dataUrl }
 
     const flash = useCallback((message, kind = 'ok') => {
@@ -136,7 +136,7 @@ const IndoorVenues = ({ onClose }) => {
                 flash('لا نقاط في هذه الخريطة بعد — ابنِها أوّلاً', 'err');
                 return;
             }
-            setPreview({ venue: data.venue, nodes: data.nodes, edges: data.edges });
+            setPreview({ venue: data.venue, nodes: data.nodes, edges: data.edges, places: data.places });
         } catch (err) {
             flash(arError(err, 'تعذّر الفتح'), 'err');
         }
@@ -162,6 +162,7 @@ const IndoorVenues = ({ onClose }) => {
                     venue={preview.venue}
                     nodes={preview.nodes}
                     edges={preview.edges}
+                    places={preview.places}
                     onClose={() => setPreview(null)}
                 />
             </Portal>
@@ -184,8 +185,11 @@ const IndoorVenues = ({ onClose }) => {
 
             <p className="iv-lead">
                 أنشئ مشروعاً للمكان، ثم <b>افتحه من هاتفك وأنت واقف فيه</b>: وجّه الكاميرا
-                إلى الأرض، المس نقطة فسمّها، وارسم بإصبعك الممرّ الذي يصل بينها وبين غيرها.
-                ثم أرسل الرابط — من يفتحه يبحث عن مكان فيُرسم له الطريق على الأرض ويمشي عليه.
+                إلى ما تريد تحديده واضغط، وارسم بإصبعك الممرّ الذي يصل بينه وبين غيره،
+                و<b>امسح المكان</b> وأنت تستدير ليحفظ الهاتف شكله.
+                <br />
+                ثم أرسل الرابط — من يفتحه <b>تتعرّف الكاميرا على المكان وحدها</b> فتعرف أين
+                هو، ويبحث عن وجهته فيُرسم له الطريق على الأرض ويمشي عليه.
             </p>
 
             {notice && <div className={`iv-flash is-${notice.kind}`}>{notice.message}</div>}

@@ -24,6 +24,10 @@ const MAX_NODES = 400;
 const MAX_EDGES = 900;
 const MAX_PATH_POINTS = 120;
 
+// بصمة واحدة نحو ٧٠٠ حرف — مئتان منها تحت ١٥٠ كيلوبايت لمبنى كامل
+const MAX_PLACES = 200;
+const MAX_FINGERPRINT = 1400;
+
 // ── أدوات ───────────────────────────────────────────────────
 
 const clean = (value, max = 120) => String(value ?? '')
@@ -106,6 +110,17 @@ const shapeNode = (row) => ({
     z: Number(row.z),
     floor: row.floor,
     note: row.note
+});
+
+const shapePlace = (row) => ({
+    id: String(row.id),
+    node: row.node_id === null ? null : String(row.node_id),
+    label: row.label,
+    x: Number(row.x),
+    z: Number(row.z),
+    heading: Number(row.heading),
+    grad: row.grad,
+    tint: row.tint
 });
 
 const shapeEdge = (row) => ({
@@ -231,14 +246,16 @@ exports.deleteVenue = async (req, res) => {
 // ── ٢) الخريطة: العقد والحوافّ ──────────────────────────────
 
 const loadMap = async (venueId) => {
-    const [nodes, edges] = await Promise.all([
+    const [nodes, edges, places] = await Promise.all([
         pool.query('SELECT * FROM ar_nodes WHERE venue_id = $1 ORDER BY id', [venueId]),
-        pool.query('SELECT * FROM ar_edges WHERE venue_id = $1 ORDER BY id', [venueId])
+        pool.query('SELECT * FROM ar_edges WHERE venue_id = $1 ORDER BY id', [venueId]),
+        pool.query('SELECT * FROM ar_places WHERE venue_id = $1 ORDER BY id', [venueId])
     ]);
 
     return {
         nodes: nodes.rows.map(shapeNode),
-        edges: edges.rows.map(shapeEdge)
+        edges: edges.rows.map(shapeEdge),
+        places: places.rows.map(shapePlace)
     };
 };
 
@@ -304,12 +321,16 @@ exports.saveMap = async (req, res) => {
         const venueId = Number(req.params.id);
         const rawNodes = Array.isArray(req.body?.nodes) ? req.body.nodes : [];
         const rawEdges = Array.isArray(req.body?.edges) ? req.body.edges : [];
+        const rawPlaces = Array.isArray(req.body?.places) ? req.body.places : [];
 
         if (rawNodes.length > MAX_NODES) {
             return res.status(413).json({ error: `العقد أكثر من الحدّ (${MAX_NODES})` });
         }
         if (rawEdges.length > MAX_EDGES) {
             return res.status(413).json({ error: `الروابط أكثر من الحدّ (${MAX_EDGES})` });
+        }
+        if (rawPlaces.length > MAX_PLACES) {
+            return res.status(413).json({ error: `بصمات المكان أكثر من الحدّ (${MAX_PLACES})` });
         }
 
         await client.query('BEGIN');
@@ -320,6 +341,7 @@ exports.saveMap = async (req, res) => {
             return res.status(404).json({ error: 'لا مشروع بهذا المعرّف' });
         }
 
+        await client.query('DELETE FROM ar_places WHERE venue_id = $1', [venueId]);
         await client.query('DELETE FROM ar_edges WHERE venue_id = $1', [venueId]);
         await client.query('DELETE FROM ar_nodes WHERE venue_id = $1', [venueId]);
 
@@ -374,6 +396,32 @@ exports.saveMap = async (req, res) => {
             );
         }
 
+        // ── بصمات المكان ──
+        let droppedPlaces = 0;
+
+        for (const raw of rawPlaces) {
+            const grad = clean(raw?.grad, MAX_FINGERPRINT);
+            const tint = clean(raw?.tint, MAX_FINGERPRINT);
+
+            // بصمة بلا متّجهين ليست بصمة: تُسقَط بصمت ولا تُفشل الحفظ
+            if (grad.length < 16 || tint.length < 8) { droppedPlaces++; continue; }
+
+            await client.query(
+                `INSERT INTO ar_places (venue_id, node_id, label, x, z, heading, grad, tint)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [
+                    venueId,
+                    idMap.get(String(raw?.node)) || null,
+                    clean(raw?.label, 160) || null,
+                    metres(raw?.x),
+                    metres(raw?.z),
+                    ((num(raw?.heading, 0) % 360) + 360) % 360,
+                    grad,
+                    tint
+                ]
+            );
+        }
+
         await client.query(
             'UPDATE ar_venues SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
             [venueId]
@@ -385,6 +433,7 @@ exports.saveMap = async (req, res) => {
             ok: true,
             nodes: rawNodes.length,
             edges: rawEdges.length - skipped,
+            places: rawPlaces.length - droppedPlaces,
             skipped
         });
     } catch (err) {

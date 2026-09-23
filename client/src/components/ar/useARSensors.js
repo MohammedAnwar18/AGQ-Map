@@ -33,6 +33,7 @@ import {
 export const useCameraStream = () => {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+    const grabRef = useRef(null);
 
     const [state, setState] = useState('idle');   // idle | asking | live | denied | missing
     const [error, setError] = useState(null);
@@ -112,6 +113,43 @@ export const useCameraStream = () => {
         }
     }, []);
 
+    /**
+     * إطار مُصغَّر من التيّار الحيّ.
+     *
+     * ٦٤×٤٨ لا أكثر: البصمة تُحسب من التركيب العامّ للمشهد لا من
+     * تفاصيله، والتصغير نفسه يُفيد — يمتصّ ضجيج المستشعر لأن كل
+     * بكسل هنا متوسّط مئات البكسلات هناك.
+     *
+     * واللوحة تُنشأ مرّة وتُعاد: إنشاء لوحة خمس مرّات في الثانية
+     * يترك عملاً لجامع القمامة بلا سبب.
+     */
+    const grab = useCallback((w = 64, h = 48) => {
+        const video = videoRef.current;
+        if (!video || video.readyState < 2 || !video.videoWidth) return null;
+
+        let canvas = grabRef.current;
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            grabRef.current = canvas;
+        }
+
+        if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+        }
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        try {
+            ctx.drawImage(video, 0, 0, w, h);
+            return ctx.getImageData(0, 0, w, h);
+        } catch {
+            // تيّار مُلوَّث لا يُقرأ — لا يحدث مع getUserMedia لكن
+            // القراءة تبقى محروسة
+            return null;
+        }
+    }, []);
+
     /** لمسة تُشغّل التيّار حين يمنعه المتصفّح تلقائياً */
     const resume = useCallback(async () => {
         const video = videoRef.current;
@@ -134,8 +172,8 @@ export const useCameraStream = () => {
      * يقطع الباب على تكرار العطل من مكان آخر.
      */
     return useMemo(
-        () => ({ videoRef, state, error, aspect, blocked, start, stop, resume }),
-        [state, error, aspect, blocked, start, stop, resume]
+        () => ({ videoRef, state, error, aspect, blocked, start, stop, resume, grab }),
+        [state, error, aspect, blocked, start, stop, resume, grab]
     );
 };
 

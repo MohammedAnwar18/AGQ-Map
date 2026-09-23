@@ -161,6 +161,7 @@ const ARStage = ({
             poseRef: orientation.poseRef,
             positionRef: walker.positionRef,
             aimRef,
+            grab: camera.grab,
             anchor: walker.anchor,
             steps: walker.steps,
             aspect: camera.aspect,

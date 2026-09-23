@@ -19,7 +19,7 @@ export const arIndoorService = {
     create: async (payload) => (await api.post('/', payload)).data,
     get: async (id) => (await api.get(`/${id}`)).data,
     update: async (id, patch) => (await api.put(`/${id}`, patch)).data,
-    saveMap: async (id, nodes, edges) => (await api.put(`/${id}/map`, { nodes, edges })).data,
+    saveMap: async (id, nodes, edges, places) => (await api.put(`/${id}/map`, { nodes, edges, places })).data,
     remove: async (id) => (await api.delete(`/${id}`)).data,
 
     // مفتوح بلا حساب: من يفتح الرابط يمشي فوراً

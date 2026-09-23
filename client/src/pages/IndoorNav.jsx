@@ -70,7 +70,7 @@ const IndoorNav = () => {
         );
     }
 
-    return <IndoorGuide venue={map.venue} nodes={map.nodes} edges={map.edges} />;
+    return <IndoorGuide venue={map.venue} nodes={map.nodes} edges={map.edges} places={map.places} />;
 };
 
 export default IndoorNav;

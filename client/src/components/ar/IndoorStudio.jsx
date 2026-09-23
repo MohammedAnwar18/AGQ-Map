@@ -10,6 +10,9 @@ import {
     drawFloorGrid, drawRoute, drawChevrons, drawMarker, drawDraft, drawPill,
     drawReticle, drawNearby, PALETTE
 } from './arPainter';
+import {
+    describeFrame, packDescriptor, frameQuality, similarity, MIN_QUALITY
+} from './visualPlace';
 
 /* ============================================================
    استوديو الخريطة الداخلية
@@ -80,9 +83,19 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     // آخر ما أشارت إليه الكاميرا — يُقرأ لحظة الضغط على «أضف»
     const aim = useRef({ x: 0, y: 0, z: 0, distance: 3, onFloor: true });
 
+    /*
+     * بصمات المكان.
+     *
+     * هي ما يجعل الزائر يفتح الكاميرا فيعرف أين هو بلا أن يُسأل.
+     * كل بصمة: ما رأته الكاميرا من موضع معيّن، وأين كان ذلك الموضع.
+     */
+    const [places, setPlaces] = useState([]);
+    const [scanning, setScanning] = useState(false);
+    const [scanInfo, setScanInfo] = useState(null);
+
     // مرجع للرسم: الحلقة تقرأ منه ولا تُعاد بإغلاق قديم
-    const live = useRef({ nodes, edges, draft, selected });
-    live.current = { nodes, edges, draft, selected };
+    const live = useRef({ nodes, edges, draft, selected, places: [] });
+    live.current = { nodes, edges, draft, selected, places };
 
     const flash = useCallback((message, kind = 'ok') => {
         setNotice({ message, kind });
@@ -98,6 +111,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                 if (!alive) return;
                 setNodes(data.nodes || []);
                 setEdges(data.edges || []);
+                setPlaces(data.places || []);
             })
             .catch(err => flash(arError(err, 'تعذّر تحميل الخريطة'), 'err'));
 
@@ -123,6 +137,73 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
         }
         return best;
     }, []);
+
+    // ── بصمة المكان ──
+
+    /**
+     * يلتقط بصمة لما تراه الكاميرا الآن.
+     *
+     * ويرفض ثلاثة أشياء: إطاراً فقير الحوافّ لا يُميّز شيئاً، وبصمة
+     * تُشبه واحدة محفوظة كثيراً فلا تُضيف، وتيّاراً لم يجهز بعد.
+     * الرفض هنا أرخص من اكتشافه أثناء الملاحة.
+     */
+    const capture = useCallback((label) => {
+        const api = stage.current;
+        const frame = api?.grab?.();
+        if (!frame) return { ok: false, why: 'الكاميرا لم تجهز بعد' };
+
+        const descriptor = describeFrame(frame.data, frame.width, frame.height);
+        const quality = frameQuality(descriptor);
+
+        if (quality < MIN_QUALITY) {
+            return { ok: false, why: 'المشهد خالٍ من المعالم — وجّه الكاميرا إلى ما فيه أثاث أو أبواب' };
+        }
+
+        const at = api.positionRef.current;
+        const heading = api.poseRef.current.heading;
+
+        // بصمة شديدة الشبه بأخرى لا تُضيف معرفة، وتُبطئ المطابقة
+        for (const existing of live.current.places) {
+            if (existing.descriptor && similarity(descriptor, existing.descriptor) > 0.93) {
+                return { ok: false, why: 'هذه الزاوية ملتقطة سلفاً — استدر قليلاً' };
+            }
+        }
+
+        const place = {
+            id: nextId(),
+            node: null,
+            label: label || null,
+            x: +at.x.toFixed(2),
+            z: +at.z.toFixed(2),
+            heading: +heading.toFixed(2),
+            descriptor,
+            ...packDescriptor(descriptor)
+        };
+
+        setPlaces(prev => [...prev, place]);
+        setDirty(true);
+        return { ok: true, place, quality };
+    }, []);
+
+    /*
+     * مسح المكان: بصمات متتالية وأنت تستدير.
+     *
+     * بصمة واحدة تعمل من زاوية واحدة فقط. والدوران في المكان مع
+     * التقاط كل ثلاثة أرباع الثانية يُعطي غلافاً لكل الاتّجاهات،
+     * فيتعرّف الزائر على المكان مهما دخل منه.
+     */
+    useEffect(() => {
+        if (!scanning) { setScanInfo(null); return undefined; }
+
+        const tick = setInterval(() => {
+            const result = capture(null);
+            setScanInfo(result.ok
+                ? { kind: 'ok', text: `التُقطت ${live.current.places.length + 1}` }
+                : { kind: 'wait', text: result.why });
+        }, 750);
+
+        return () => clearInterval(tick);
+    }, [scanning, capture]);
 
     // ── الأدوات ──
 
@@ -262,9 +343,16 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
         };
 
         setNodes(prev => [...prev, node]);
+
+        // بصمة تُلتقط مع النقطة: الاسم وحده لا يُعرّف المكان بصرياً،
+        // وهذه هي ما تجعل الزائر يعرف أنه هنا
+        const shot = capture(node.name);
+
         setNaming(null);
         setDirty(true);
-        flash(`أُضيف ${node.name}`);
+        flash(shot.ok
+            ? `أُضيف ${node.name} ومعه بصمة المكان`
+            : `أُضيف ${node.name} — بلا بصمة: ${shot.why}`);
     };
 
     const removeNode = (id) => {
@@ -291,14 +379,11 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
     const save = async () => {
         setSaving(true);
         try {
-            const result = await arIndoorService.saveMap(venue.id, nodes, edges);
+            const result = await arIndoorService.saveMap(venue.id, nodes, edges, places);
             setDirty(false);
             onSaved?.();
-            flash(
-                result.skipped
-                    ? `حُفظت — ${result.nodes} نقطة و${result.edges} مسار (تُجوهل ${result.skipped} رابط يتيم)`
-                    : `حُفظت — ${result.nodes} نقطة و${result.edges} مسار`
-            );
+            flash(`حُفظت — ${result.nodes} نقطة، ${result.edges} مسار، ${result.places} بصمة`
+                + (result.skipped ? ` (تُجوهل ${result.skipped} رابط يتيم)` : ''));
         } catch (err) {
             flash(arError(err, 'تعذّر الحفظ'), 'err');
         } finally {
@@ -366,7 +451,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
         return () => clearInterval(tick);
     }, [tool]);
 
-    const places = useMemo(() => nodes.filter(n => n.kind !== 'junction'), [nodes]);
+    const spots = useMemo(() => nodes.filter(n => n.kind !== 'junction'), [nodes]);
     const selectedNode = nodes.find(n => n.id === selected);
 
     return (
@@ -392,7 +477,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
 
                     <div className="ai-title">
                         <b>{venue.title}</b>
-                        <span>{places.length} مكاناً · {edges.length} مسار</span>
+                        <span>{spots.length} مكاناً · {edges.length} مسار · {places.length} بصمة</span>
                     </div>
 
                     <button
@@ -465,10 +550,26 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                         </button>
                     ))}
 
+                    <button
+                        className={scanning ? 'is-on' : ''}
+                        onClick={() => setScanning(v => !v)}
+                        title="التقط بصمات للمكان وأنت تستدير"
+                    >
+                        {scanning ? `يمسح · ${places.length}` : 'امسح المكان'}
+                    </button>
+
                     <button onClick={() => setPlan(true)} title="مخطّط من فوق">مخطّط</button>
                     <button onClick={() => setSheet(true)} title="قائمة الأماكن">القائمة</button>
                     {edges.length > 0 && <button onClick={undoEdge} className="ai-undo">تراجع</button>}
                 </nav>
+
+                {scanning && (
+                    <div className="ai-scan">
+                        <b>استدر ببطء حول نفسك</b>
+                        <span>{scanInfo?.text || 'يلتقط…'}</span>
+                        <i>{places.length} بصمة</i>
+                    </div>
+                )}
 
                 {notice && <div className={`ai-flash is-${notice.kind}`}>{notice.message}</div>}
             </ARStage>
@@ -529,7 +630,7 @@ const IndoorStudio = ({ venue, onClose, onSaved }) => {
                     </header>
 
                     <div className="ai-sheet-body">
-                        {!nodes.length && <p className="ai-empty">لا نقاط بعد. اختر «مكان» والمس الأرض أمامك.</p>}
+                        {!nodes.length && <p className="ai-empty">لا نقاط بعد. وجّه الكاميرا واضغط «حدّد ما أمامك».</p>}
 
                         {nodes.map(node => (
                             <div key={node.id} className={`ai-row${node.id === selected ? ' is-on' : ''}`}>

@@ -327,6 +327,34 @@ app.use('/api/fitness', fitnessRoutes);
             CREATE INDEX IF NOT EXISTS idx_ar_edges_venue ON ar_edges (venue_id);
         `);
 
+        /*
+         * بصمات المكان.
+         *
+         * كل صفّ «محطّة»: ما رأته الكاميرا من موضع معيّن، وأين كان
+         * ذلك الموضع. الزائر يقارن ما يراه بهذه البصمات فيعرف أين
+         * هو — بلا GPS وبلا أن يُسأل.
+         *
+         * البصمة نصّ base64 لمتّجه مُكمَّم، نحو ٧٠٠ حرف — أرخص من
+         * صورة مصغّرة وأدقّ منها في المطابقة.
+         */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_places (
+                id SERIAL PRIMARY KEY,
+                venue_id INTEGER NOT NULL REFERENCES ar_venues(id) ON DELETE CASCADE,
+                node_id INTEGER REFERENCES ar_nodes(id) ON DELETE SET NULL,
+                label VARCHAR(160),
+                x NUMERIC(8, 3) NOT NULL DEFAULT 0,
+                z NUMERIC(8, 3) NOT NULL DEFAULT 0,
+                heading NUMERIC(8, 3) NOT NULL DEFAULT 0,
+                grad TEXT NOT NULL,
+                tint TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_ar_places_venue ON ar_places (venue_id);
+        `);
+
         console.log('OK indoor AR map tables ready');
     } catch (err) {
         console.warn('WARN indoor AR migration warning:', err.message);
