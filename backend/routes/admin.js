@@ -100,4 +100,27 @@ router.post('/face/search', faceUpload.single('image'), searchByImage);
 const { analyzePhone } = require('../controllers/phoneIntelController');
 router.post('/phone-intel/analyze', analyzePhone);
 
+// KokoBath VPS — نظام الملاحة الداخلية بالواقع المعزز
+const {
+    getStats: getKokoBathStats,
+    listVenues,
+    getVenue,
+    createVenue,
+    updateVenue,
+    deleteVenue,
+    listFingerprints,
+    addFingerprint,
+    deleteFingerprint
+} = require('../controllers/kokoBathController');
+
+router.get('/kokobath/stats', getKokoBathStats);
+router.get('/kokobath/venues', listVenues);
+router.get('/kokobath/venues/:id', getVenue);
+router.post('/kokobath/venues', createVenue);
+router.put('/kokobath/venues/:id', updateVenue);
+router.delete('/kokobath/venues/:id', deleteVenue);
+router.get('/kokobath/venues/:id/fingerprints', listFingerprints);
+router.post('/kokobath/venues/:id/fingerprints', addFingerprint);
+router.delete('/kokobath/fingerprints/:fpId', deleteFingerprint);
+
 module.exports = router;

@@ -14,6 +14,7 @@ import OrbisMobileLens from '../components/OrbisMobileLens';
 import GeoportalDesigner from './GeoportalDesigner';
 import AdminFaceRecognition from './AdminFaceRecognition';
 import AdminPhoneIntel from './AdminPhoneIntel';
+import AdminKokoBath from './AdminKokoBath';
 
 const OrbisDashboard = ({ setActiveTab }) => {
     const [forceMode, setForceMode] = useState(null);
@@ -423,6 +424,7 @@ const AdminDashboard = () => {
                         { id: 'face-recognition', icon: '🧬', label: 'التعرف على الوجوه' },
                         { id: 'palnovaa-orbis', icon: '🛰️', label: 'PalNovaa Orbis' },
                         { id: 'phone-intel', icon: '🔍', label: 'Phone Intelligence' },
+                        { id: 'kokobath', icon: '🧭', label: 'كوكوباث (VPS AR)' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -461,7 +463,8 @@ const AdminDashboard = () => {
                                                                 activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' :
                                                                     activeTab === 'face-recognition' ? 'نظام التعرف على الوجوه' :
                                                                     activeTab === 'palnovaa-orbis' ? 'نظام PalNovaa Orbis للمراقبة والتحليل بالذكاء الاصطناعي' :
-                                                                    activeTab === 'phone-intel' ? 'Phone Intelligence — استخبارات الهاتف' : 'خارطة النشاط الموحدة'
+                                                                    activeTab === 'phone-intel' ? 'Phone Intelligence — استخبارات الهاتف' :
+                                                                    activeTab === 'kokobath' ? 'كوكوباث — نظام تحديد المواقع البصري والملاحة الداخلية (VPS)' : 'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -1525,6 +1528,11 @@ const AdminDashboard = () => {
                 {/* Phone Intelligence */}
                 {activeTab === 'phone-intel' && (
                     <AdminPhoneIntel />
+                )}
+
+                {/* KokoBath VPS Navigation & Mapping */}
+                {activeTab === 'kokobath' && (
+                    <AdminKokoBath />
                 )}
             </div>
         </div>

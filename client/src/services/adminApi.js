@@ -200,6 +200,46 @@ export const adminService = {
     analyzePhone: async (phoneNumber) => {
         const response = await adminApi.post('/phone-intel/analyze', { phoneNumber });
         return response.data;
+    },
+
+    // KokoBath VPS — نظام الملاحة بالواقع المعزز وتحديد المواقع البصري
+    getKokoBathStats: async () => {
+        const response = await adminApi.get('/kokobath/stats');
+        return response.data;
+    },
+    getKokoBathVenues: async (search = '', page = 1, limit = 20) => {
+        const response = await adminApi.get('/kokobath/venues', {
+            params: { search, page, limit }
+        });
+        return response.data;
+    },
+    getKokoBathVenue: async (id) => {
+        const response = await adminApi.get(`/kokobath/venues/${id}`);
+        return response.data;
+    },
+    createKokoBathVenue: async (data) => {
+        const response = await adminApi.post('/kokobath/venues', data);
+        return response.data;
+    },
+    updateKokoBathVenue: async (id, data) => {
+        const response = await adminApi.put(`/kokobath/venues/${id}`, data);
+        return response.data;
+    },
+    deleteKokoBathVenue: async (id) => {
+        const response = await adminApi.delete(`/kokobath/venues/${id}`);
+        return response.data;
+    },
+    getKokoBathFingerprints: async (venueId) => {
+        const response = await adminApi.get(`/kokobath/venues/${venueId}/fingerprints`);
+        return response.data;
+    },
+    addKokoBathFingerprint: async (venueId, data) => {
+        const response = await adminApi.post(`/kokobath/venues/${venueId}/fingerprints`, data);
+        return response.data;
+    },
+    deleteKokoBathFingerprint: async (fpId) => {
+        const response = await adminApi.delete(`/kokobath/fingerprints/${fpId}`);
+        return response.data;
     }
 };
 
