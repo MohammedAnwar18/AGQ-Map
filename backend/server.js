@@ -107,6 +107,7 @@ app.use('/api/storage', storageRoutes);
 app.use('/api/ar-models', require('./routes/arModels'));
 app.use('/api/helly', require('./routes/helly'));
 app.use('/api/game', require('./routes/game'));
+app.use('/api/ar-indoor', require('./routes/arIndoor'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
@@ -252,6 +253,76 @@ app.use('/api/fitness', fitnessRoutes);
         console.log('✅ HellyAgents tables ready');
     } catch (err) {
         console.warn('⚠️ HellyAgents migration warning:', err.message);
+    }
+})();
+
+// Auto-migrate: خرائط الواقع المعزّز الداخلية
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_venues (
+                id SERIAL PRIMARY KEY,
+                slug VARCHAR(60) NOT NULL UNIQUE,
+                title VARCHAR(160) NOT NULL,
+                description TEXT,
+
+                -- ارتفاع الكاميرا عن الأرض ومجال رؤيتها: بهما يُسقَط
+                -- ما على الشاشة على الأرض، فهما إعداد للمشروع لا ثابت
+                eye_height NUMERIC(4, 2) NOT NULL DEFAULT 1.50,
+                fov NUMERIC(5, 2) NOT NULL DEFAULT 65,
+
+                is_published BOOLEAN DEFAULT FALSE,
+                views INTEGER DEFAULT 0,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_ar_venues_slug ON ar_venues (slug);
+        `);
+
+        // العقدة: مكان له اسم يُبحث عنه، أو تقاطع يمرّ به الطريق
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_nodes (
+                id SERIAL PRIMARY KEY,
+                venue_id INTEGER NOT NULL REFERENCES ar_venues(id) ON DELETE CASCADE,
+                name VARCHAR(160) NOT NULL,
+                kind VARCHAR(20) NOT NULL DEFAULT 'place',
+                category VARCHAR(60),
+                x NUMERIC(8, 3) NOT NULL,
+                z NUMERIC(8, 3) NOT NULL,
+                floor SMALLINT NOT NULL DEFAULT 0,
+                note TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_ar_nodes_venue ON ar_nodes (venue_id);
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS ar_edges (
+                id SERIAL PRIMARY KEY,
+                venue_id INTEGER NOT NULL REFERENCES ar_venues(id) ON DELETE CASCADE,
+                from_node INTEGER NOT NULL REFERENCES ar_nodes(id) ON DELETE CASCADE,
+                to_node INTEGER NOT NULL REFERENCES ar_nodes(id) ON DELETE CASCADE,
+                kind VARCHAR(20) NOT NULL DEFAULT 'walk',
+                one_way BOOLEAN DEFAULT FALSE,
+
+                -- الخطّ المرسوم بالإصبع على الأرض؛ فارغ يعني خطّاً
+                -- مستقيماً بين العقدتين
+                path JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_ar_edges_venue ON ar_edges (venue_id);
+        `);
+
+        console.log('OK indoor AR map tables ready');
+    } catch (err) {
+        console.warn('WARN indoor AR migration warning:', err.message);
     }
 })();
 

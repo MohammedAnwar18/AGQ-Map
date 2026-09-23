@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { arModelService } from '../services/arModelApi';
 import { saveFile } from '../utils/download';
 import ARObjectScannerModal from '../components/ARObjectScannerModal';
+import IndoorVenues from '../components/ar/IndoorVenues';
 import './AdminARModels.css';
 
 /* ============================================================
@@ -52,6 +53,11 @@ const AdminARModels = ({ onClose }) => {
     const [notice, setNotice] = useState(null);
     const [qrFor, setQrFor] = useState(null);
     const [showScanner, setShowScanner] = useState(false);
+
+    // القسمان مستقلّان: مجسّمات تُرفع وتُعرض، وخرائط تُبنى في المكان
+    // ويُمشى فيها. تبويب لا صفحة أخرى، لأن كليهما «واقع معزّز»
+    // ويُفتحان من نفس المكان في ذهن الأدمن.
+    const [tab, setTab] = useState('models');
 
     const modelInput = useRef(null);
     const iosInput = useRef(null);
@@ -182,31 +188,51 @@ const AdminARModels = ({ onClose }) => {
         <div className="arm" dir="rtl">
             <header className="arm-top">
                 <div>
-                    <h2>مجسّمات الواقع المعزّز</h2>
-                    <p>لكل مجسّم رمز QR يفتح صفحته — اطبعه في الكتاب</p>
+                    <h2>الواقع المعزّز</h2>
+                    <p>
+                        {tab === 'models'
+                            ? 'لكل مجسّم رمز QR يفتح صفحته — اطبعه في الكتاب'
+                            : 'خرائط تُبنى بالكاميرا في المكان، ويمشي فيها من يفتح رابطها'}
+                    </p>
                 </div>
 
                 <div className="arm-top-actions">
-                    <button 
-                        className="arm-btn arm-btn-scanner" 
-                        onClick={() => setShowScanner(true)}
-                        title="مسح مجسم حقيقي 360° بالكاميرا وتوليد نموذج ثلاثي أبعاد"
-                    >
-                        <span className="arm-btn-icon">📷</span>
-                        <span>مسح مجسم 360°</span>
-                    </button>
+                    {tab === 'models' && (
+                        <>
+                        <button 
+                            className="arm-btn arm-btn-scanner" 
+                            onClick={() => setShowScanner(true)}
+                            title="مسح مجسم حقيقي 360° بالكاميرا وتوليد نموذج ثلاثي أبعاد"
+                        >
+                            <span className="arm-btn-icon">📷</span>
+                            <span>مسح مجسم 360°</span>
+                        </button>
 
-                    <button className="arm-btn arm-btn-primary" onClick={() => setForm(emptyForm())}>
-                        + مجسّم جديد
-                    </button>
+                        <button className="arm-btn arm-btn-primary" onClick={() => setForm(emptyForm())}>
+                            + مجسّم جديد
+                        </button>
+                        </>
+                    )}
+
                     {onClose && <button className="arm-btn" onClick={onClose}>إغلاق</button>}
                 </div>
             </header>
 
-            {notice && <div className={`arm-notice is-${notice.kind}`}>{notice.message}</div>}
+            <nav className="arm-tabs">
+                <button className={tab === 'models' ? 'is-on' : ''} onClick={() => setTab('models')}>
+                    المجسّمات
+                </button>
+                <button className={tab === 'indoor' ? 'is-on' : ''} onClick={() => setTab('indoor')}>
+                    خريطة الواقع المعزّز الداخلية
+                </button>
+            </nav>
+
+            {tab === 'indoor' && <IndoorVenues />}
+
+            {tab === 'models' && notice && <div className={`arm-notice is-${notice.kind}`}>{notice.message}</div>}
 
             {/* ── القائمة ── */}
-            {loading ? (
+            {tab !== 'models' ? null : loading ? (
                 <div className="arm-empty"><p>جاري التحميل…</p></div>
             ) : models.length === 0 ? (
                 <div className="arm-empty">

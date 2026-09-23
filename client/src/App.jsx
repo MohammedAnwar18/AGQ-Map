@@ -10,6 +10,7 @@ const LegalPages = React.lazy(() => import('./pages/LegalPages'));
 const Support = React.lazy(() => import('./pages/Support'));
 const PublishedView = React.lazy(() => import('./pages/PublishedView'));
 const ARModelView = React.lazy(() => import('./pages/ARModelView'));
+const IndoorNav   = React.lazy(() => import('./pages/IndoorNav'));
 const ARView = React.lazy(() => import('./pages/ARView'));
 const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
 const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
@@ -157,6 +158,8 @@ function App() {
                         <Route path="/p/:slug" element={<PublishedView />} />
                         {/* 🧊 صفحة المجسّم التي يفتحها رمز QR — مستقلّة وبلا حساب */}
                         <Route path="/m/:slug" element={<ARModelView />} />
+                        {/* دليل داخلي بالكاميرا — يُفتح بالرابط أو بمسح الرمز، بلا حساب */}
+                        <Route path="/nav/:slug" element={<IndoorNav />} />
                         <Route path="/l/:slug" element={<DigitalLetterView />} />
                         <Route path="/enas-graduation" element={<GraduationEvent />} />
                         <Route path="/walid-sheikha" element={<WeddingInvite />} />

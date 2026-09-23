@@ -1,0 +1,280 @@
+/* ============================================================
+   لوحة مشاريع الخرائط الداخلية — كل شيء تحت ‎.iv‎
+   ============================================================ */
+
+.iv {
+    --line: rgba(255, 255, 255, .12);
+    --text: #f1f5f9;
+    --muted: #93a3b9;
+    --accent: #38bdf8;
+    --good: #4ade80;
+    --bad: #fb7185;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans Arabic', 'Tajawal', system-ui, sans-serif;
+}
+
+.iv-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.iv-head > div { display: flex; flex-direction: column; gap: 3px; }
+.iv-head b { font-size: 17px; }
+.iv-head span { font-size: 11.5px; color: var(--muted); }
+
+.iv-head-actions { display: flex; gap: 7px; }
+
+.iv-lead {
+    margin: 0;
+    padding: 13px 15px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: rgba(56, 189, 248, .07);
+    font-size: 12px;
+    line-height: 2;
+    color: var(--muted);
+}
+
+.iv-lead b { color: var(--text); }
+
+/* ── الأزرار ── */
+.iv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 15px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .05);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.iv-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .1); }
+.iv-btn:disabled { opacity: .5; cursor: wait; }
+
+.iv-primary {
+    border-color: rgba(56, 189, 248, .5);
+    background: rgba(56, 189, 248, .18);
+    color: var(--accent);
+}
+
+.iv-danger { border-color: rgba(251, 113, 133, .4); color: #fecdd3; }
+
+/* ── الشبكة ── */
+.iv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 12px;
+}
+
+.iv-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, .035);
+}
+
+.iv-card.is-live { border-color: rgba(74, 222, 128, .3); }
+
+.iv-card > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.iv-card > header b { font-size: 14.5px; }
+
+.iv-dot {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .07);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.iv-dot.is-live { background: rgba(74, 222, 128, .16); color: #bbf7d0; }
+
+.iv-desc {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: var(--muted);
+}
+
+.iv-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.iv-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.iv-link {
+    display: block;
+    padding: 8px 11px;
+    border-radius: 9px;
+    background: rgba(0, 0, 0, .3);
+    color: var(--accent);
+    font-size: 11.5px;
+    direction: ltr;
+    text-align: left;
+    cursor: pointer;
+    word-break: break-all;
+}
+
+.iv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.iv-actions .iv-btn { padding: 8px 12px; font-size: 11.5px; }
+
+/* ── الحالات ── */
+.iv-empty {
+    padding: 26px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.iv-empty-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    padding: 30px 22px;
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    text-align: center;
+}
+
+.iv-empty-card b { font-size: 14px; }
+
+.iv-empty-card p {
+    margin: 0;
+    max-width: 330px;
+    font-size: 11.5px;
+    line-height: 1.9;
+    color: var(--muted);
+}
+
+.iv-flash {
+    padding: 11px 15px;
+    border: 1px solid rgba(56, 189, 248, .45);
+    border-radius: 12px;
+    background: rgba(56, 189, 248, .1);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.iv-flash.is-err {
+    border-color: rgba(251, 113, 133, .5);
+    background: rgba(251, 113, 133, .1);
+    color: #fecdd3;
+}
+
+/* ── النوافذ ── */
+.iv-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 6100;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(3, 7, 14, .82);
+    backdrop-filter: blur(8px);
+    font-family: 'IBM Plex Sans Arabic', 'Tajawal', system-ui, sans-serif;
+}
+
+.iv-modal-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(420px, 100%);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 22px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 20px;
+    background: #0a111e;
+    color: #f1f5f9;
+    direction: rtl;
+}
+
+.iv-modal-card > b { font-size: 16px; }
+
+.iv-modal-card label {
+    margin-top: 6px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .03em;
+    color: #93a3b9;
+}
+
+.iv-modal-card input[type="text"],
+.iv-modal-card input:not([type]) {
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .35);
+    color: #f1f5f9;
+    font: inherit;
+    font-size: 14px;
+}
+
+.iv-modal-card input[type="range"] {
+    width: 100%;
+    accent-color: #38bdf8;
+    cursor: pointer;
+}
+
+.iv-hint {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.85;
+    color: #93a3b9;
+}
+
+.iv-modal-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.iv-qr { align-items: center; text-align: center; }
+
+.iv-qr img {
+    width: min(260px, 70vw);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.iv-qr code {
+    font-size: 11px;
+    color: #38bdf8;
+    direction: ltr;
+    word-break: break-all;
+}

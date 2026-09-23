@@ -524,3 +524,31 @@
 
 /* النافذة داخل <body>: نرفعها فوق كل شيء ونمنع تمرير الخلفية */
 body:has(.arm-modal-back) { overflow: hidden; }
+
+/* ── تبويب: مجسّمات أم خرائط داخلية ── */
+.arm-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+}
+
+.arm-tabs button {
+    padding: 10px 18px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .04);
+    color: #93a3b9;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.arm-tabs button.is-on {
+    border-color: rgba(56, 189, 248, .5);
+    background: rgba(56, 189, 248, .17);
+    color: #38bdf8;
+}
