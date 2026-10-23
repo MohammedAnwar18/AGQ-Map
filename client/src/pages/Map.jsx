@@ -46,6 +46,8 @@ const FitnessPathModal      = React.lazy(() => import('../components/FitnessPath
 const StudySpace            = React.lazy(() => import('./StudySpace'));
 const IndoorControl         = React.lazy(() => import('./IndoorControl'));
 const PalnovaaNexus         = React.lazy(() => import('../components/PalnovaaNexus'));
+
+import rasterService, { tileTemplate } from '../services/rasterApi';
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
@@ -748,6 +750,25 @@ const MapComponent = () => {
     const [showStudySpace, setShowStudySpace] = useState(false);
     const [showIndoorControl, setShowIndoorControl] = useState(false);
     const [showNexus, setShowNexus] = useState(false);
+
+    /*
+     * طبقات الراستر — ملفّات ‎GeoTIFF‎ بلّطها الأدمن.
+     *
+     * تُقرأ مرّة عند فتح الخريطة. والخادم يُعيد الجاهز المرئي فقط،
+     * فما زال يُبنى أو أُخفي لا يصل إلى هنا أصلاً — ولا شرط في
+     * الواجهة يمكن أن يُنسى.
+     */
+    const [rasterLayers, setRasterLayers] = useState([]);
+
+    useEffect(() => {
+        let alive = true;
+
+        rasterService.list()
+            .then(data => { if (alive) setRasterLayers(data.rasters || []); })
+            .catch(() => { /* طبقة إضافية: غيابها لا يُعطّل الخريطة */ });
+
+        return () => { alive = false; };
+    }, []);
 
 
 
@@ -2959,6 +2980,38 @@ const MapComponent = () => {
                     maxPitch={85}
                     attributionControl={false}
                 >
+                    {/*
+                      * ═══ طبقات الراستر ═══
+                      *
+                      * قبل كل شيء في الشجرة فتكون أسفل الطبقات كلّها:
+                      * راستر يغطّي المسار والعلامات يجعل الخريطة عديمة
+                      * النفع. و‎beforeId‎ يضعها تحت الكتابة كذلك، فتبقى
+                      * أسماء الشوارع مقروءة فوق الصورة.
+                      */}
+                    {rasterLayers.map(raster => (
+                        <Source
+                            key={raster.id}
+                            id={`raster-src-${raster.id}`}
+                            type="raster"
+                            tiles={[tileTemplate(raster.id)]}
+                            tileSize={256}
+                            minzoom={raster.min_zoom}
+                            maxzoom={raster.max_zoom}
+                            bounds={[raster.west, raster.south, raster.east, raster.north]}
+                        >
+                            <Layer
+                                id={`raster-layer-${raster.id}`}
+                                type="raster"
+                                beforeId={firstLabelLayerId}
+                                paint={{
+                                    'raster-opacity': raster.opacity,
+                                    /* التلاشي يُخفي وميض البلاطات وهي تتبدّل بين المستويات */
+                                    'raster-fade-duration': 220
+                                }}
+                            />
+                        </Source>
+                    ))}
+
                     {/* ═══ طبقات الأحداث الإقليمية — فلسطين والشرق الأوسط (تم الإخفاء بناءً على طلب المستخدم) ═══ */}
 
                     {/* Visual Route with Advanced Premium Layering */}

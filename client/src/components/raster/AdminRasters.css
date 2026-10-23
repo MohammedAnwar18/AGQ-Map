@@ -1,0 +1,409 @@
+/* ============================================================
+   قسم الراستر — داخل لوحة الإدارة
+
+   محدّد جذر واحد ‎.rst‎. القسم يُركَّب داخل صفحة إدارة لها قواعدها،
+   فلا قاعدة عامّة على ‎button‎ أو ‎input‎ ولا تسرّب خارج الجذر.
+   ============================================================ */
+
+.rst {
+    --line: rgba(255, 255, 255, .12);
+    --line-2: rgba(255, 255, 255, .2);
+    --card: rgba(255, 255, 255, .04);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --gold: #fbab15;
+    --good: #4ade80;
+    --bad: #fb7185;
+    --warn: #fbbf24;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    color: var(--text);
+    direction: rtl;
+}
+
+.rst button,
+.rst input,
+.rst select {
+    font-family: inherit;
+    color: inherit;
+}
+
+.rst button { cursor: pointer; }
+
+.rst-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.rst-head > div { min-width: 0; }
+.rst-head b { display: block; font-size: 16px; font-weight: 800; }
+
+.rst-head span {
+    display: block;
+    margin-top: 3px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.rst .rst-primary {
+    padding: 11px 18px;
+    border: 1px solid rgba(251, 171, 21, .55);
+    border-radius: 11px;
+    background: linear-gradient(180deg, #fdbf3f, var(--gold));
+    color: #2c1b02;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.rst .rst-primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+.rst-x {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+    font-size: 13px;
+    line-height: 1;
+}
+
+/* ============================================================
+   الرسائل
+   ============================================================ */
+
+.rst-flash,
+.rst-bad,
+.rst-note,
+.rst-empty {
+    padding: 12px 15px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    font-size: 12.5px;
+    line-height: 1.7;
+}
+
+.rst-flash.is-ok { border-color: rgba(74, 222, 128, .45); color: #bbf7d0; }
+.rst-flash.is-err { border-color: rgba(251, 113, 133, .5); color: #fecdd3; }
+.rst-flash.is-warn { border-color: rgba(251, 191, 36, .5); color: #fde68a; }
+
+.rst-bad {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-color: rgba(251, 113, 133, .5);
+    color: #fecdd3;
+}
+
+.rst-bad button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .07);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rst-note,
+.rst-empty { color: var(--muted); text-align: center; }
+
+/* ============================================================
+   المعالجة
+   ============================================================ */
+
+.rst-build {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    padding: 16px;
+    border: 1px solid rgba(251, 171, 21, .3);
+    border-radius: 16px;
+    background: rgba(251, 171, 21, .05);
+}
+
+.rst-build-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rst-build-head b { font-size: 14.5px; font-weight: 800; }
+
+/* ── منطقة الملفّ ── */
+.rst-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 24px 16px;
+    border: 1px dashed var(--line-2);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, .25);
+    text-align: center;
+    cursor: pointer;
+}
+
+.rst-drop:hover { border-color: rgba(251, 171, 21, .55); }
+.rst-drop.is-set { border-style: solid; border-color: rgba(74, 222, 128, .45); }
+
+.rst-drop b { font-size: 13.5px; font-weight: 700; }
+.rst-drop span { font-size: 11.5px; line-height: 1.6; color: var(--muted); }
+
+/* ── ما قرأناه ── */
+.rst-facts,
+.rst-plan {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 10px;
+    padding: 13px 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(0, 0, 0, .22);
+}
+
+.rst-facts > div,
+.rst-plan > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.rst-facts label,
+.rst-plan label,
+.rst-field label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.rst-facts b,
+.rst-plan b {
+    font-size: 13.5px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.rst-plan b { color: var(--gold); }
+
+/* التنبيه يمتدّ على عرض الشبكة كلّها فيُقرأ جملةً لا عموداً */
+.rst-plan .rst-hint { grid-column: 1 / -1; }
+
+.rst-hint {
+    font-size: 11px;
+    line-height: 1.75;
+    color: var(--muted);
+}
+
+.rst-hint.is-warn { color: #fde68a; }
+
+/* ── الحقول ── */
+.rst-field { display: flex; flex-direction: column; gap: 7px; }
+
+.rst-field label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rst-field input,
+.rst-field select {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(0, 0, 0, .34);
+    font-size: 13.5px;
+    outline: none;
+}
+
+.rst-field input:focus,
+.rst-field select:focus { border-color: rgba(251, 171, 21, .55); }
+
+/* من أين عرفنا المرجع — المخمَّن يُلوَّن لأنّه يحتاج مراجعة */
+.rst-src {
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.rst-src.is-file { background: rgba(74, 222, 128, .16); color: #bbf7d0; }
+.rst-src.is-override { background: rgba(56, 189, 248, .16); color: #bae6fd; }
+.rst-src.is-guess { background: rgba(251, 191, 36, .18); color: #fde68a; }
+
+/* ── الحدود ── */
+.rst-bounds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rst-bounds span {
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, .25);
+    font-size: 10.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* ── التقدّم ── */
+.rst-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 14px 15px;
+    border: 1px solid rgba(56, 189, 248, .35);
+    border-radius: 13px;
+    background: rgba(56, 189, 248, .07);
+}
+
+.rst-bar {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .4);
+}
+
+.rst-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #38bdf8, var(--gold));
+    transition: width .2s ease-out;
+}
+
+.rst-progress > span {
+    font-size: 12px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.rst-cancel {
+    align-self: flex-start;
+    padding: 8px 16px;
+    border: 1px solid rgba(251, 113, 133, .45);
+    border-radius: 9px;
+    background: rgba(251, 113, 133, .14);
+    color: #fecdd3;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rst-build-foot { display: flex; gap: 8px; }
+.rst-build-foot .rst-primary { flex: 2; }
+
+.rst-build-foot button:not(.rst-primary) {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .06);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ============================================================
+   القائمة
+   ============================================================ */
+
+.rst-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    gap: 12px;
+}
+
+.rst-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    background: var(--card);
+}
+
+.rst-card.is-on { border-color: rgba(74, 222, 128, .35); }
+
+.rst-card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.rst-card-top b { font-size: 14px; font-weight: 800; min-width: 0; }
+
+.rst-state {
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.rst-state.is-ready { background: rgba(74, 222, 128, .16); color: #bbf7d0; }
+.rst-state.is-building { background: rgba(251, 191, 36, .18); color: #fde68a; }
+
+.rst-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.rst-slider { display: flex; flex-direction: column; gap: 6px; }
+
+.rst-slider span { font-size: 11px; font-weight: 700; color: var(--muted); }
+
+.rst-slider input {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+.rst-card-act { display: flex; gap: 7px; }
+
+.rst-card-act button {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 6px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .05);
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.rst-card-act button:hover { border-color: var(--line-2); }
+.rst-card-act button:disabled { opacity: .4; cursor: not-allowed; }
+
+.rst-card-act button.is-on {
+    border-color: rgba(74, 222, 128, .5);
+    background: rgba(74, 222, 128, .16);
+    color: #bbf7d0;
+}
+
+.rst-card-act .rst-danger {
+    flex: 0 0 auto;
+    border-color: rgba(251, 113, 133, .35);
+    color: #fecdd3;
+}
+
+@media (max-width: 420px) {
+    .rst-list { grid-template-columns: 1fr; }
+    .rst-head { gap: 10px; }
+    .rst-head .rst-primary { width: 100%; }
+}

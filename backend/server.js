@@ -102,6 +102,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/nexus', require('./routes/nexus'));
+app.use('/api/rasters', require('./routes/rasters'));
 app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
@@ -208,6 +209,45 @@ app.use('/api/fitness', fitnessRoutes);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_shop_products_nexus
             ON shop_products (shop_id, nexus_product_id);
+        `);
+
+        /* طبقات الراستر — هرم بلاطات من ملفّ ‎GeoTIFF‎ */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS map_rasters (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(160) NOT NULL,
+                west DOUBLE PRECISION NOT NULL,
+                south DOUBLE PRECISION NOT NULL,
+                east DOUBLE PRECISION NOT NULL,
+                north DOUBLE PRECISION NOT NULL,
+                min_zoom SMALLINT NOT NULL DEFAULT 0,
+                max_zoom SMALLINT NOT NULL DEFAULT 0,
+                crs VARCHAR(32),
+                opacity REAL NOT NULL DEFAULT 0.9,
+                is_visible BOOLEAN NOT NULL DEFAULT FALSE,
+                status VARCHAR(16) NOT NULL DEFAULT 'building',
+                tile_count INTEGER NOT NULL DEFAULT 0,
+                bytes BIGINT NOT NULL DEFAULT 0,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        /* المفتاح المركّب هو مسار البلاطة نفسه، فالقراءة بحث في
+           فهرس واحد، وإعادة الرفع تستبدل ولا تُضاعف */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS map_raster_tiles (
+                raster_id INTEGER NOT NULL REFERENCES map_rasters(id) ON DELETE CASCADE,
+                z SMALLINT NOT NULL,
+                x INTEGER NOT NULL,
+                y INTEGER NOT NULL,
+                mime VARCHAR(20) NOT NULL DEFAULT 'image/webp',
+                data BYTEA NOT NULL,
+                PRIMARY KEY (raster_id, z, x, y)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_map_rasters_live
+            ON map_rasters (status, is_visible);
         `);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_shop_products_category

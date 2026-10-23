@@ -5,6 +5,7 @@ import { adminService } from '../services/adminApi';
 import { cameraService, shopService, getImageUrl } from '../services/api';
 import { parseYouTubeId, youtubeThumb } from '../utils/youtube';
 const AdminARModels = React.lazy(() => import('./AdminARModels'));
+const AdminRasters = React.lazy(() => import('../components/raster/AdminRasters'));
 
 import './AdminDashboard.css';
 import ARAdminPanel from './ARAdminPanel';
@@ -416,6 +417,7 @@ const AdminDashboard = () => {
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
+                        { id: 'rasters', icon: '🖼️', label: 'راستر — طبقات الخريطة' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                         { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
                         { id: 'ar-models', icon: '🧊', label: 'مجسّمات ورموز QR' },
@@ -622,6 +624,15 @@ const AdminDashboard = () => {
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* طبقات الراستر — GeoTIFF يُقطَّع إلى بلاطات */}
+                {activeTab === 'rasters' && (
+                    <div className="admin-content-card">
+                        <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
+                            <AdminRasters />
+                        </React.Suspense>
                     </div>
                 )}
 
