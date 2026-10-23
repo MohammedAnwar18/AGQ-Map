@@ -45,6 +45,7 @@ const LiveCameraModal       = React.lazy(() => import('../components/LiveCameraM
 const FitnessPathModal      = React.lazy(() => import('../components/FitnessPathModal'));
 const StudySpace            = React.lazy(() => import('./StudySpace'));
 const IndoorControl         = React.lazy(() => import('./IndoorControl'));
+const PalnovaaNexus         = React.lazy(() => import('../components/PalnovaaNexus'));
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
@@ -746,6 +747,7 @@ const MapComponent = () => {
     const [showLabModal, setShowLabModal] = useState(false);
     const [showStudySpace, setShowStudySpace] = useState(false);
     const [showIndoorControl, setShowIndoorControl] = useState(false);
+    const [showNexus, setShowNexus] = useState(false);
 
 
 
@@ -2564,6 +2566,24 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
+                        {/*
+                          * بالنوفا نكسس — كتالوج مركزي لأصحاب المحلّات.
+                          *
+                          * مفتوح لكل من عنده حساب: من يُدير محلّاً يُضيف
+                          * منه إلى محلّه، ومن لا يُدير يستعرض.
+                          */}
+                        <button onClick={() => { setShowMoreMenu(false); requireAccount(() => setShowNexus(true)); }}>
+                            <div className="menu-item-content">
+                                <div className="menu-icon-wrapper">
+                                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="menu-icon-svg">
+                                        <path d="M12 2.6 21 7.3v9.4L12 21.4 3 16.7V7.3z" />
+                                        <path d="M3 7.3 12 12l9-4.7M12 12v9.4" />
+                                    </svg>
+                                </div>
+                                <span>Palnovaa Nexus</span>
+                            </div>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                        </button>
                         <button onClick={() => { setShowMoreMenu(false); requireAccount(() => setShowCommunities(true)); }}>
                             <div className="menu-item-content">
                                 <div className="menu-icon-wrapper">
@@ -3786,6 +3806,11 @@ const MapComponent = () => {
             {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
             {showStudySpace && (
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
+            )}
+            {showNexus && (
+                <React.Suspense fallback={null}>
+                    <PalnovaaNexus user={user} onClose={() => setShowNexus(false)} />
+                </React.Suspense>
             )}
             {showIndoorControl && (
                 <IndoorControl user={user} onClose={() => setShowIndoorControl(false)} />

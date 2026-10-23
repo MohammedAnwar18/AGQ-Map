@@ -1,0 +1,782 @@
+/* ============================================================
+   بالنوفا نكسس
+
+   محدّد جذر واحد ‎.pnx‎ — لا قاعدة تتسرّب خارجه، ولا قاعدة عامّة
+   على ‎button‎ أو ‎input‎، فهذه الطبقة تُفتح فوق خريطة فيها آلاف
+   القواعد.
+
+   والتخطيط واحد يتمدّد لا تخطيطان:
+
+     هاتف    عمودان، والتصنيفات شريط أفقي يُسحب
+     لوح     ثلاثة إلى أربعة أعمدة
+     حاسوب   شبكة تتّسع تلقائياً، والورقة تصير نافذة في المنتصف
+
+   و‎auto-fill‎ مع ‎minmax‎ هي ما يجعل ذلك مجّاناً: العمود لا يضيق
+   عن ١٥٥ بكسل ولا يتّسع بلا حدّ، فالعدد يتبع الشاشة بلا استعلام
+   لكل مقاس.
+   ============================================================ */
+
+.pnx {
+    --ink: #0a1020;
+    --ink-2: #111b2f;
+    --card: rgba(255, 255, 255, .045);
+    --line: rgba(255, 255, 255, .1);
+    --line-2: rgba(255, 255, 255, .16);
+    --text: #f1f5f9;
+    --muted: #93a3b9;
+    --gold: #fbab15;
+    --gold-soft: rgba(251, 171, 21, .14);
+    --good: #4ade80;
+    --bad: #fb7185;
+    --warn: #fbbf24;
+
+    position: fixed;
+    inset: 0;
+    z-index: 4200;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--text);
+    direction: rtl;
+
+    /* ارتفاع الشاشة بعد شريط المتصفّح لا قبله */
+    height: 100dvh;
+
+    /* توهّج ذهبي خفيف أعلى اليمين: هوية بالنوفا بلا أن يصرخ */
+    background:
+        radial-gradient(1100px 620px at 88% -12%, rgba(251, 171, 21, .13), transparent 62%),
+        radial-gradient(760px 520px at 8% 108%, rgba(56, 189, 248, .07), transparent 60%),
+        var(--ink);
+}
+
+.pnx button,
+.pnx input,
+.pnx textarea {
+    font-family: inherit;
+    color: inherit;
+}
+
+.pnx button { cursor: pointer; }
+
+/* ============================================================
+   الترويسة
+   ============================================================ */
+
+.pnx-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    padding: calc(13px + env(safe-area-inset-top)) 16px 13px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10, 16, 32, .72);
+    backdrop-filter: blur(18px);
+}
+
+.pnx-x {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+}
+
+.pnx-x:hover { border-color: var(--line-2); background: rgba(255, 255, 255, .09); }
+
+.pnx-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex: 1;
+    min-width: 0;
+}
+
+.pnx-mark {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border: 1px solid rgba(251, 171, 21, .4);
+    border-radius: 12px;
+    background: var(--gold-soft);
+    color: var(--gold);
+}
+
+.pnx-brand > div { min-width: 0; }
+
+.pnx-brand b {
+    display: block;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: .2px;
+    white-space: nowrap;
+}
+
+/* «Nexus» بالذهبي: الاسم اللاتيني يبقى ‎ltr‎ داخل سطر عربي */
+.pnx-brand b i {
+    font-style: normal;
+    color: var(--gold);
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.pnx-brand > div > span {
+    display: block;
+    overflow: hidden;
+    font-size: 11.5px;
+    color: var(--muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.pnx-top-act { display: flex; gap: 7px; flex-shrink: 0; }
+
+.pnx-top-act button {
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .06);
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pnx-top-act button:hover { border-color: var(--line-2); }
+
+.pnx .pnx-primary {
+    border: 1px solid rgba(251, 171, 21, .55);
+    background: linear-gradient(180deg, #fdbf3f, var(--gold));
+    color: #2c1b02;
+    font-weight: 800;
+}
+
+.pnx .pnx-primary:hover { filter: brightness(1.06); }
+.pnx .pnx-primary:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+
+/* ============================================================
+   البحث والتصنيفات
+   ============================================================ */
+
+.pnx-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+    padding: 12px 16px 11px;
+    border-bottom: 1px solid var(--line);
+}
+
+.pnx-search {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    max-width: 520px;
+    padding: 0 13px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(0, 0, 0, .3);
+    color: var(--muted);
+}
+
+.pnx-search:focus-within { border-color: rgba(251, 171, 21, .5); }
+
+.pnx-search input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 0;
+    border: 0;
+    background: none;
+    font-size: 13.5px;
+    outline: none;
+}
+
+.pnx-search input::placeholder { color: var(--muted); }
+
+.pnx-search > button {
+    flex-shrink: 0;
+    padding: 4px 6px;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/*
+ * شريط التصنيفات.
+ *
+ * يُسحب أفقياً على الهاتف ولا يلتفّ: الالتفاف يجعل الشريط ثلاثة
+ * أسطر فيأكل نصف الشاشة. والشرطة مخفيّة لأنّ السحب مفهوم باللمس.
+ */
+.pnx-cats {
+    display: flex;
+    gap: 7px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.pnx-cats::-webkit-scrollbar { display: none; }
+
+.pnx-cats button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+    padding: 9px 15px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: border-color .15s, background .15s, color .15s;
+}
+
+.pnx-cats button:hover { border-color: var(--line-2); }
+
+.pnx-cats button.is-on {
+    border-color: rgba(251, 171, 21, .6);
+    background: var(--gold-soft);
+    color: var(--gold);
+}
+
+.pnx-cats button i {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .09);
+    font-style: normal;
+    font-size: 10.5px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.pnx-cats button.is-on i { background: rgba(251, 171, 21, .25); }
+
+/*
+ * الرقاقة وزرّ حذفها زرّان مجاوران لا متداخلان.
+ *
+ * ويبدوان رقاقة واحدة: الحاوي هو من يحمل الحد والتدوير،
+ * والزرّان بلا حدود داخله.
+ */
+.pnx-cat-pair {
+    display: inline-flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.pnx-cat-pair:hover { border-color: var(--line-2); }
+
+.pnx-cat-pair > button {
+    border: 0;
+    border-radius: 0;
+    background: var(--card);
+}
+
+.pnx-cat-pair:has(button.is-on) { border-color: rgba(251, 171, 21, .6); }
+
+.pnx-cat-x {
+    display: grid;
+    place-items: center;
+    padding-inline: 10px;
+    border-inline-start: 1px solid var(--line) !important;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.pnx-cat-x:hover { background: rgba(251, 113, 133, .22) !important; color: #fecdd3; }
+
+/* ============================================================
+   الشبكة
+   ============================================================ */
+
+.pnx-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 16px calc(30px + env(safe-area-inset-bottom));
+}
+
+.pnx-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 12px;
+    max-width: 1500px;
+    margin-inline: auto;
+}
+
+.pnx-banner {
+    max-width: 1500px;
+    margin: 0 auto 14px;
+    padding: 12px 15px;
+    border: 1px solid rgba(251, 171, 21, .3);
+    border-radius: 13px;
+    background: var(--gold-soft);
+    font-size: 12.5px;
+    line-height: 1.75;
+}
+
+.pnx-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    background: var(--card);
+    transition: transform .18s ease, border-color .18s, box-shadow .18s;
+}
+
+@media (hover: hover) {
+    .pnx-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--line-2);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, .42);
+    }
+}
+
+.pnx-card.is-mine { border-color: rgba(74, 222, 128, .4); }
+
+/* الصورة بنسبة ثابتة: بلا هذا تقفز الشبكة كلّما وصلت صورة */
+.pnx-shot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: linear-gradient(145deg, #16233c, #0d1627);
+}
+
+.pnx-shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.pnx-shot-letter {
+    font-size: 40px;
+    font-weight: 800;
+    color: rgba(251, 171, 21, .32);
+}
+
+.pnx-tag,
+.pnx-have,
+.pnx-off {
+    position: absolute;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 800;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+}
+
+.pnx-tag {
+    inset-inline-start: 8px;
+    bottom: 8px;
+    background: rgba(10, 16, 32, .82);
+    border: 1px solid rgba(251, 171, 21, .45);
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.pnx-have {
+    inset-inline-end: 8px;
+    top: 8px;
+    border: 1px solid rgba(74, 222, 128, .5);
+    background: rgba(8, 30, 18, .85);
+    color: #bbf7d0;
+}
+
+.pnx-off {
+    inset-inline-start: 8px;
+    top: 8px;
+    border: 1px solid var(--line-2);
+    background: rgba(10, 16, 32, .85);
+    color: var(--muted);
+}
+
+.pnx-body {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+    padding: 11px 12px 12px;
+}
+
+.pnx-body h4 {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.5;
+
+    /* سطران ثم قطع: الاسم الطويل لا يُطيل البطاقة وحدها */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.pnx-body p {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: var(--muted);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* الزرّ في الأسفل دائماً مهما طال الاسم — فتستوي البطاقات */
+.pnx-add {
+    margin-top: auto;
+    padding: 11px;
+    border: 1px solid rgba(251, 171, 21, .5);
+    border-radius: 11px;
+    background: var(--gold-soft);
+    color: var(--gold);
+    font-size: 12.5px;
+    font-weight: 800;
+    transition: background .15s, color .15s;
+}
+
+.pnx-add:hover { background: rgba(251, 171, 21, .24); }
+
+.pnx-add.is-done {
+    border-color: rgba(74, 222, 128, .4);
+    background: rgba(74, 222, 128, .12);
+    color: #bbf7d0;
+}
+
+.pnx-admin-row { display: flex; gap: 6px; }
+
+.pnx-admin-row button {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 4px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .05);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pnx-admin-row button:hover { border-color: var(--line-2); }
+
+.pnx-admin-row .pnx-danger { border-color: rgba(251, 113, 133, .35); color: #fecdd3; }
+
+/* ── الهياكل أثناء التحميل ── */
+.pnx-ghost {
+    aspect-ratio: 1 / 1.42;
+    border: 1px solid var(--line);
+    border-radius: 17px;
+    background: linear-gradient(100deg, var(--card) 28%, rgba(255, 255, 255, .1) 46%, var(--card) 64%);
+    background-size: 280% 100%;
+    animation: pnx-sheen 1.3s ease-in-out infinite;
+}
+
+@keyframes pnx-sheen {
+    from { background-position: 150% 0; }
+    to { background-position: -50% 0; }
+}
+
+/* ── الحالات الفارغة ── */
+.pnx-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    padding: 54px 20px;
+    text-align: center;
+}
+
+.pnx-state b { font-size: 14.5px; font-weight: 700; color: var(--muted); }
+.pnx-state.is-bad b { color: #fecdd3; }
+
+.pnx-state button {
+    padding: 11px 22px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .06);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ============================================================
+   الورقة — إضافة لمحلّ، ونموذج الأدمن
+   ============================================================ */
+
+.pnx-sheet-wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.pnx-scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(3, 7, 15, .74);
+    backdrop-filter: blur(5px);
+}
+
+.pnx-sheet {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90dvh;
+    border: 1px solid var(--line-2);
+    border-radius: 24px 24px 0 0;
+    background: var(--ink-2);
+    box-shadow: 0 -18px 54px rgba(0, 0, 0, .6);
+    animation: pnx-rise .26s cubic-bezier(.2, .8, .25, 1);
+}
+
+@keyframes pnx-rise {
+    from { transform: translateY(26px); opacity: .4; }
+    to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pnx-sheet { animation: none; }
+    .pnx-ghost { animation: none; }
+}
+
+/* مقبض السحب: علامة متعارفة أنّ الورقة تُغلق بالسحب لأسفل */
+.pnx-sheet-grip {
+    width: 42px;
+    height: 4px;
+    margin: 9px auto 2px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--line-2);
+}
+
+.pnx-sheet-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    padding: 11px 18px 13px;
+    border-bottom: 1px solid var(--line);
+}
+
+.pnx-sheet-head img {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.pnx-sheet-head > div { min-width: 0; }
+.pnx-sheet-head b { display: block; font-size: 15px; font-weight: 800; }
+
+.pnx-sheet-head span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted);
+}
+
+.pnx-sheet-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+    padding: 16px 18px;
+}
+
+.pnx-sheet-body section { display: flex; flex-direction: column; gap: 8px; }
+
+.pnx-sheet-body label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--muted);
+}
+
+.pnx-field {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .34);
+    font-size: 14px;
+    outline: none;
+    resize: vertical;
+}
+
+.pnx-field:focus { border-color: rgba(251, 171, 21, .55); }
+.pnx-field::placeholder { color: var(--muted); }
+
+.pnx-hint { font-size: 11px; line-height: 1.7; color: var(--muted); }
+
+.pnx-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.pnx-chips button {
+    padding: 9px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.pnx-chips button:hover { border-color: var(--line-2); }
+
+.pnx-chips button.is-on {
+    border-color: rgba(251, 171, 21, .6);
+    background: var(--gold-soft);
+    color: var(--gold);
+}
+
+.pnx-drop {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border: 1px dashed var(--line-2);
+    border-radius: 15px;
+    background: rgba(0, 0, 0, .28);
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.pnx-drop:hover { border-color: rgba(251, 171, 21, .5); color: var(--gold); }
+.pnx-drop img { width: 100%; height: 100%; object-fit: cover; }
+
+.pnx-mini-spin {
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--line-2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: pnx-spin .7s linear infinite;
+}
+
+@keyframes pnx-spin { to { transform: rotate(360deg); } }
+
+.pnx-sheet-foot {
+    display: flex;
+    gap: 9px;
+    flex-shrink: 0;
+    padding: 14px 18px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+}
+
+.pnx-sheet-foot button {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .06);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.pnx-sheet-foot .pnx-primary { flex: 2; border-radius: 13px; }
+.pnx-sheet-foot button:not(.pnx-primary) { flex: 1; }
+
+/* ============================================================
+   الإشعار
+   ============================================================ */
+
+.pnx-flash {
+    position: fixed;
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    left: 50%;
+    z-index: 40;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 12px 18px;
+    border: 1px solid var(--line-2);
+    border-radius: 14px;
+    background: rgba(10, 16, 32, .96);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .5);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+    animation: pnx-pop .22s ease-out;
+}
+
+@keyframes pnx-pop {
+    from { transform: translate(-50%, 12px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.pnx-flash.is-ok { border-color: rgba(74, 222, 128, .5); color: #bbf7d0; }
+.pnx-flash.is-err { border-color: rgba(251, 113, 133, .5); color: #fecdd3; }
+.pnx-flash.is-warn { border-color: rgba(251, 191, 36, .5); color: #fde68a; }
+
+/* ============================================================
+   المقاسات
+   ============================================================ */
+
+/* هاتف صغير: عمودان مضمونان */
+@media (max-width: 400px) {
+    .pnx-grid { grid-template-columns: repeat(auto-fill, minmax(142px, 1fr)); gap: 10px; }
+    .pnx-top { gap: 9px; padding-inline: 13px; }
+    .pnx-brand > div > span { display: none; }
+    .pnx-top-act button { padding: 8px 11px; font-size: 11.5px; }
+    .pnx-scroll { padding-inline: 13px; }
+    .pnx-rail { padding-inline: 13px; }
+}
+
+/* لوح وما فوق: البطاقة تتّسع قليلاً فتُقرأ من مسافة أبعد */
+@media (min-width: 700px) {
+    .pnx-grid { grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: 15px; }
+    .pnx-body h4 { font-size: 14.5px; }
+}
+
+/*
+ * حاسوب: الورقة تصير نافذة في المنتصف.
+ *
+ * الورقة الملتصقة بأسفل شاشة عريضة تضع الأزرار بعيدة عن البصر
+ * وتترك فراغاً هائلاً فوقها. وفي المنتصف تُقرأ كنافذة حوار.
+ */
+@media (min-width: 860px) {
+    .pnx-sheet-wrap { align-items: center; }
+
+    .pnx-sheet {
+        max-height: 86dvh;
+        border-radius: 22px;
+    }
+
+    .pnx-sheet-grip { display: none; }
+    .pnx-sheet-head { padding-top: 16px; }
+    .pnx-sheet-foot { padding-bottom: 16px; }
+
+    .pnx-rail {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .pnx-search { width: 320px; flex-shrink: 0; }
+    .pnx-cats { flex: 1; min-width: 0; }
+}

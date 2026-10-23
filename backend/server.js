@@ -101,6 +101,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/shops', shopRoutes);
+app.use('/api/nexus', require('./routes/nexus'));
 app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
@@ -167,6 +168,47 @@ app.use('/api/fitness', fitnessRoutes);
                 ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT TRUE;
         `);
         await pool.query('ALTER TABLE shop_products ALTER COLUMN price DROP NOT NULL;').catch(() => {});
+
+        /* بالنوفا نكسس — كتالوج مركزي ينسخ منه أصحاب المحلّات */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS nexus_categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(120) NOT NULL UNIQUE,
+                image_url TEXT,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS nexus_products (
+                id SERIAL PRIMARY KEY,
+                category_id INTEGER REFERENCES nexus_categories(id) ON DELETE SET NULL,
+                name VARCHAR(160) NOT NULL,
+                price NUMERIC(12, 2),
+                description TEXT,
+                image_url TEXT,
+                images JSONB DEFAULT '[]'::jsonb,
+                sort_order INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_nexus_products_category
+            ON nexus_products (category_id, sort_order);
+        `);
+        /* علامة على المنتج المنسوخ: تمنع التكرار وتُظهر «عندك»
+           في الكتالوج. وهي علامة لا رابطة: حذف من الكتالوج لا
+           يسحب ما في المحلّات */
+        await pool.query(`
+            ALTER TABLE shop_products
+                ADD COLUMN IF NOT EXISTS nexus_product_id INTEGER
+                REFERENCES nexus_products(id) ON DELETE SET NULL;
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_shop_products_nexus
+            ON shop_products (shop_id, nexus_product_id);
+        `);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_shop_products_category
             ON shop_products (shop_id, category_id, sort_order);
