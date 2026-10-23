@@ -238,6 +238,89 @@
 .rst-src.is-override { background: rgba(56, 189, 248, .16); color: #bae6fd; }
 .rst-src.is-guess { background: rgba(251, 191, 36, .18); color: #fde68a; }
 
+/* ملفّات مجاورة اختارها الأدمن مع التيف */
+.rst-mates {
+    margin-top: 2px;
+    color: #bbf7d0 !important;
+    font-size: 11px !important;
+    word-break: break-all;
+}
+
+/* ── من أين جاء الموضع ── */
+.rst-geofrom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 13px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(0, 0, 0, .22);
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.rst-geofrom b { color: var(--text); font-weight: 800; }
+
+.rst-chip {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, .16);
+    color: #bae6fd;
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.rst-chip.is-warn { background: rgba(251, 191, 36, .18); color: #fde68a; }
+
+/* ── الحدود باليد — آخر ملاذ ── */
+.rst-manual {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    padding: 15px;
+    border: 1px solid rgba(251, 191, 36, .4);
+    border-radius: 14px;
+    background: rgba(251, 191, 36, .06);
+}
+
+.rst-manual > b { font-size: 14px; font-weight: 800; }
+
+.rst-manual > p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.85;
+    color: var(--muted);
+}
+
+.rst-manual-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 9px;
+}
+
+.rst-manual-grid label { display: flex; flex-direction: column; gap: 5px; }
+
+.rst-manual-grid span {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.rst-manual-grid input {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, .34);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+}
+
+.rst-manual-grid input:focus { border-color: rgba(251, 171, 21, .55); }
+
 /* ── الحدود ── */
 .rst-bounds {
     display: flex;

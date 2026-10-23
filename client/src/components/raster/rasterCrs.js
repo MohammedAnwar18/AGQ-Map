@@ -1,6 +1,6 @@
 import proj4 from 'proj4';
 
-export { KNOWN_CRS } from './rasterCrsList';
+export { KNOWN_CRS } from './rasterCrsList.js';
 
 /* ============================================================
    راستر — مراجع الإحداثيات

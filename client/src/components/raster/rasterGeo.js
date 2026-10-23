@@ -151,23 +151,123 @@ export const listTiles = (bounds, minZoom, maxZoom) => {
 /**
  * يبني محوّلاً بين إحداثيات المصدر المسقطة وبكسلاته.
  *
- * ‎GeoTIFF‎ شمال-أعلى يصفه أصلٌ ومقياس: ‎projX = originX + col*sx‎
- * و‎projY = originY − row*sy‎. والعكس هو ما نحتاجه فعلاً: نعرف أين
- * نريد القراءة بالإحداثيات، ونسأل أي بكسل ذلك.
+ * تحويل أفيني كامل لا شمال-أعلى فقط:
+ *
+ *     projX = a·col + b·row + c
+ *     projY = d·col + e·row + f
+ *
+ * وهذا شكل واحد يكفي مصادر الإحداثيات كلّها: وسوم
+ * ‎GeoTIFF‎، ومصفوفة ‎ModelTransformation‎، وملفّ ‎.tfw‎،
+ * و‎GeoTransform‎ في ‎aux.xml‎. وكان هنا شكل أضيق يرفض المدار
+ * منها — والمدار ليس عطباً بل حالة تكتبها برامج ‎GIS‎ عادةً.
+ *
+ * ويُقبل الشكل المختصر ‎{ originX, originY, scaleX, scaleY }‎ كما هو،
+ * لأنّ الغالب شمال-أعلى وكتابة ستّة معاملات لأجله تطويل بلا فائدة.
  */
-export const makeTransform = ({ originX, originY, scaleX, scaleY }) => {
-    if (!(Math.abs(scaleX) > 0) || !(Math.abs(scaleY) > 0)) return null;
+export const makeTransform = (spec) => {
+    if (!spec) return null;
+
+    let a, b, c, d, e, f;
+
+    if (spec.a !== undefined) {
+        ({ a, b = 0, c, d = 0, e, f } = spec);
+    } else {
+        // الشكل المختصر: شمال-أعلى، والسطور تنزل فينقص الشمال
+        a = spec.scaleX;
+        b = 0;
+        c = spec.originX;
+        d = 0;
+        e = -Math.abs(spec.scaleY);
+        f = spec.originY;
+    }
+
+    if (![a, b, c, d, e, f].every(Number.isFinite)) return null;
+
+    /* المحدّد صفراً يعني تحويلاً منهاراً: مقياس معدوم أو محوران
+       متطابقان. ولا ينعكس، فلا يُقرأ منه بكسل */
+    const det = a * e - b * d;
+    if (!(Math.abs(det) > 0)) return null;
 
     return {
-        toPixel: (projX, projY) => ({
-            col: (projX - originX) / scaleX,
-            row: (originY - projY) / scaleY
-        }),
+        a, b, c, d, e, f, det,
+
+        toPixel: (projX, projY) => {
+            const dx = projX - c;
+            const dy = projY - f;
+            return {
+                col: (e * dx - b * dy) / det,
+                row: (a * dy - d * dx) / det
+            };
+        },
+
         toProjected: (col, row) => ({
-            x: originX + col * scaleX,
-            y: originY - row * scaleY
-        })
+            x: a * col + b * row + c,
+            y: d * col + e * row + f
+        }),
+
+        /* مقاس البكسل فعلاً — طول عمود المصفوفة لا المعامل وحده،
+           فالمدار يوزّع المقياس بين معاملين */
+        pixelWidth: Math.hypot(a, d),
+        pixelHeight: Math.hypot(b, e),
+
+        /* هل هو شمال-أعلى؟ يُعرض للأدمن لا يُرفض به */
+        rotated: Math.abs(b) > 1e-12 || Math.abs(d) > 1e-12
     };
+};
+
+/**
+ * من ملفّ ‎.tfw‎ — ستّة أرقام بترتيب ‎ESRI‎.
+ *
+ * وفيه فرق دقيق يُنسى فيُزيح الصورة نصف بكسل: أرقام ‎.tfw‎
+ * تشير إلى مركز البكسل الأوّل، أمّا وسوم ‎GeoTIFF‎ و‎GDAL‎ فتشير
+ * إلى زاويته. فنطرح نصف بكسل كما يفعل ‎GDAL‎ بالضبط.
+ */
+export const affineFromWorldFile = ([a, d, b, e, cx, fy]) => {
+    if (![a, d, b, e, cx, fy].every(Number.isFinite)) return null;
+
+    return makeTransform({
+        a, b, d, e,
+        c: cx - a * 0.5 - b * 0.5,
+        f: fy - d * 0.5 - e * 0.5
+    });
+};
+
+/**
+ * من ‎GeoTransform‎ بترتيب ‎GDAL‎ — وهو ما يكتبه ‎aux.xml‎.
+ *
+ * ‎[originX, pixelWidth, rowRotation, originY, colRotation, pixelHeight]‎
+ * وهو زاويّ أصلاً فلا إزاحة نصف بكسل هنا.
+ */
+export const affineFromGdal = ([c, a, b, f, d, e]) => {
+    if (![c, a, b, f, d, e].every(Number.isFinite)) return null;
+    return makeTransform({ a, b, c, d, e, f });
+};
+
+/** من مصفوفة ‎ModelTransformation‎ — أربع في أربع بترتيب السطور */
+export const affineFromMatrix = (m) => {
+    if (!m || m.length < 8) return null;
+    return makeTransform({ a: m[0], b: m[1], c: m[3], d: m[4], e: m[5], f: m[7] });
+};
+
+/**
+ * من حدود يكتبها الأدمن بيده — آخر ملاذ.
+ *
+ * حين لا يكون في الملفّ ولا بجانبه شيء، يبقى أن يقول أحدهم
+ * أين هي. وشمال-أعلى بالضرورة: مستطيل لا يحمل دوراناً.
+ */
+export const affineFromBounds = (bounds, width, height) => {
+    const { west, south, east, north } = bounds || {};
+    if (![west, south, east, north, width, height].every(Number.isFinite)) return null;
+    if (!(east > west) || !(north > south) || !(width > 0) || !(height > 0)) return null;
+
+    return makeTransform({
+        a: (east - west) / width,
+        b: 0,
+        c: west,
+        d: 0,
+        e: -(north - south) / height,
+        f: north
+    });
 };
 
 /** حدود الراستر بإحداثيات المصدر — الزوايا الأربع بترتيب الساعة */

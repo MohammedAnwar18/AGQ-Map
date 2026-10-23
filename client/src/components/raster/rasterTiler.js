@@ -2,10 +2,10 @@ import * as GeoTIFF from 'geotiff';
 
 import {
     TILE, tileToLon, tileToLat, tileBounds,
-    planPyramid, listTiles, makeTransform, sourceCorners,
+    planPyramid, listTiles, makeTransform, affineFromMatrix, affineFromBounds, sourceCorners,
     buildWarpGrid, sampleWarpGrid, stretchRange, boundsOfCorners
-} from './rasterGeo';
-import { crsFromGeoKeys, guessCrs, transformer, isSupported } from './rasterCrs';
+} from './rasterGeo.js';
+import { crsFromGeoKeys, guessCrs, transformer, isSupported } from './rasterCrs.js';
 
 /* ============================================================
    راستر — من ملفّ تيف إلى هرم بلاطات
@@ -42,44 +42,64 @@ const MAX_SOURCE_BYTES = 150 * 1024 * 1024;
    ============================================================ */
 
 /**
- * يقرأ وسوم الملفّ الهندسية.
+ * يقرأ إحداثيات الملفّ من أيّ مصدر يحملها.
  *
- * الحالة المدعومة: شمال-أعلى، يصفها ‎ModelTiepoint‎ مع
- * ‎ModelPixelScale‎. أمّا ‎ModelTransformation‎ فهي مصفوفة كاملة تسمح
- * بالدوران والقصّ — ولو عاملناها كأنّها شمال-أعلى لوقعت الصورة
- * مائلة بلا أن يُنبّه أحد. فنرفضها صريحاً.
+ * بترتيب الأولوية:
+ *
+ *   ١) ‎ModelTiepoint‎ + ‎ModelPixelScale‎   الشكل الشائع
+ *   ٢) ‎ModelTransformation‎                مصفوفة كاملة، تحمل الدوران
+ *   ٣) ملفّ مجاور                       ‎.tfw‎ أو ‎aux.xml‎
+ *   ٤) حدود يكتبها الأدمن               آخر ملاذ
+ *
+ * والمدار لا يُرفض بعد اليوم: التحويل أفيني كامل وينعكس،
+ * والتبليط يمرّ على ‎toPixel‎ فلا يعلم أصلاً أمدارٌ هو أم لا.
  */
-const readGeometry = (image) => {
+const readGeometry = (image, sidecar) => {
     const fd = image.getFileDirectory();
 
-    if (fd.ModelTransformation && !fd.ModelPixelScale) {
-        const m = fd.ModelTransformation;
-        const rotated = Math.abs(m[1]) > 1e-12 || Math.abs(m[4]) > 1e-12;
+    // ١) الشكل الشائع
+    if (fd.ModelPixelScale && fd.ModelTiepoint && fd.ModelTiepoint.length >= 6) {
+        const [scaleX, scaleY] = fd.ModelPixelScale;
+        const transform = makeTransform({
+            originX: fd.ModelTiepoint[3],
+            originY: fd.ModelTiepoint[4],
+            scaleX,
+            scaleY
+        });
+        if (transform) return { transform, geoFrom: 'وسوم GeoTIFF' };
+    }
 
-        if (rotated) {
-            return { error: 'هذا الملفّ مُدار (ModelTransformation) — صدّره شمال-أعلى من برنامج GIS ثم أعد الرفع' };
+    // ٢) المصفوفة الكاملة
+    if (fd.ModelTransformation) {
+        const transform = affineFromMatrix(fd.ModelTransformation);
+        if (transform) {
+            return {
+                transform,
+                geoFrom: transform.rotated ? 'مصفوفة GeoTIFF (مُدارة)' : 'مصفوفة GeoTIFF'
+            };
         }
-
-        return {
-            transform: makeTransform({
-                originX: m[3], originY: m[7],
-                scaleX: m[0], scaleY: Math.abs(m[5])
-            })
-        };
     }
 
-    if (!fd.ModelPixelScale || !fd.ModelTiepoint) {
-        return { error: 'الملفّ بلا إحداثيات (لا ModelPixelScale ولا ModelTiepoint) — هذه صورة عادية لا GeoTIFF' };
+    // ٣) ملفّ مجاور
+    if (sidecar?.transform) {
+        return { transform: sidecar.transform, geoFrom: sidecar.from.join(' و') || 'ملفّ مجاور' };
     }
 
-    const [scaleX, scaleY] = fd.ModelPixelScale;
-    const originX = fd.ModelTiepoint[3];
-    const originY = fd.ModelTiepoint[4];
+    /*
+     * لا شيء. والرسالة تقول ما في الملفّ فعلاً لا «لا إحداثيات» وحدها:
+     * من يرى ملفّه يُفتح في ‎Arc‎ ويُرفض هنا يستحقّ أن يعرف أين
+     * يبحث — والجواب عادةً: بجانب التيف.
+     */
+    const present = Object.keys(fd)
+        .filter(k => /^(Model|GeoKey|GeoAscii|GeoDouble)/.test(k));
 
-    const transform = makeTransform({ originX, originY, scaleX, scaleY: Math.abs(scaleY) });
-    if (!transform) return { error: 'مقياس البكسل صفر في هذا الملفّ' };
-
-    return { transform };
+    return {
+        needsBounds: true,
+        tags: present,
+        error: present.length
+            ? `الملفّ يحمل ${present.join(' و')} ولا يكفي لتحديد موضعه`
+            : 'لا إحداثيات في الملفّ ولا بجانبه'
+    };
 };
 
 /** قيمة الفراغ كما يكتبها ‎GDAL‎ — نصّ في وسم خاصّ */
@@ -97,7 +117,11 @@ const readNodata = (image) => {
  * ولا يقرأ البكسلات بعد: قراءتها تحتاج أن نعرف أوّلاً أيّ دقّة
  * سنُبلّط إليها، وذلك يحتاج الحدود — وهي هنا.
  */
-export const openRaster = async (arrayBuffer, { crsOverride = null } = {}) => {
+export const openRaster = async (arrayBuffer, {
+    crsOverride = null,
+    sidecar = null,
+    manualBounds = null
+} = {}) => {
     const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
     const image = await tiff.getImage();
 
@@ -105,8 +129,23 @@ export const openRaster = async (arrayBuffer, { crsOverride = null } = {}) => {
     const height = image.getHeight();
     if (!(width > 0 && height > 0)) return { error: 'أبعاد الصورة غير صالحة' };
 
-    const geometry = readGeometry(image);
-    if (geometry.error) return { error: geometry.error };
+    let geometry = readGeometry(image, sidecar);
+
+    /* لا شيء في الملفّ ولا بجانبه؟ فلنقبل حدوداً مكتوبة */
+    if (geometry.needsBounds && manualBounds) {
+        const transform = affineFromBounds(manualBounds, width, height);
+        if (transform) geometry = { transform, geoFrom: 'حدود كتبتَها', manual: true };
+    }
+
+    if (!geometry.transform) {
+        return {
+            error: geometry.error,
+            needsBounds: Boolean(geometry.needsBounds),
+            tags: geometry.tags || [],
+            width,
+            height
+        };
+    }
 
     const { transform } = geometry;
 
@@ -121,6 +160,11 @@ export const openRaster = async (arrayBuffer, { crsOverride = null } = {}) => {
         if (typeof found === 'string') {
             crs = found;
             crsSource = 'file';
+        } else if (sidecar?.crs && isSupported(sidecar.crs)) {
+            // ‎.prj‎ أو ‎SRS‎ في ‎aux.xml‎ — مكتوب لا مخمّن
+            crs = sidecar.crs;
+            crsSource = 'sidecar';
+            if (found?.unsupported) unsupported = found.unsupported;
         } else {
             if (found?.unsupported) unsupported = found.unsupported;
             const at = transform.toProjected(width / 2, height / 2);
@@ -154,11 +198,12 @@ export const openRaster = async (arrayBuffer, { crsOverride = null } = {}) => {
         unsupported,
         corners,
         bounds,
+        geoFrom: geometry.geoFrom,
+        rotated: transform.rotated,
+        manual: Boolean(geometry.manual),
         nodata: readNodata(image),
         /* دقّة المصدر بالأمتار تقريباً — تُعرض للمستخدم ليحكم */
-        metresPerPixel: crs === 'EPSG:4326'
-            ? null
-            : Math.abs(transform.toProjected(1, 0).x - transform.toProjected(0, 0).x)
+        metresPerPixel: crs === 'EPSG:4326' ? null : transform.pixelWidth
     };
 };
 
@@ -289,7 +334,7 @@ export const paintTile = (tile, pixels, source, painter, project) => {
     const a = project.fromLonLat(tb.west, tb.north);
     const b = project.fromLonLat(tb.east, tb.north);
     const tileSpan = Math.abs(b[0] - a[0]);
-    const sourceSpan = Math.abs(transform.toProjected(1, 0).x - transform.toProjected(0, 0).x) / colScale;
+    const sourceSpan = transform.pixelWidth / colScale;
     const ratio = sourceSpan > 0 ? tileSpan / TILE / sourceSpan : 1;
 
     // رقعة المتوسّط: ٢×٢ أو ٣×٣ تكفي، وما فوقها ثمنه أكبر من فائدته

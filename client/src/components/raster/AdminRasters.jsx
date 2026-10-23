@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 import rasterService, { rasterError, BATCH } from '../../services/rasterApi';
-import { KNOWN_CRS } from './rasterCrsList';
-import { planPyramid } from './rasterGeo';
+import { KNOWN_CRS } from './rasterCrsList.js';
+import { planPyramid } from './rasterGeo.js';
+import { sidecarKind, stemOf } from './rasterSidecar.js';
 import './AdminRasters.css';
 
 /* ============================================================
@@ -31,10 +32,19 @@ const deg = (n) => Number(n).toFixed(5);
 
 const Builder = ({ onDone, onCancel, flash }) => {
     const [file, setFile] = useState(null);
+    const [mates, setMates] = useState([]);       // ‎.tfw‎ و‎aux.xml‎ و‎.prj‎
     const [source, setSource] = useState(null);
     const [name, setName] = useState('');
     const [crsOverride, setCrsOverride] = useState('');
     const [plan, setPlan] = useState(null);
+
+    /*
+     * الحدود باليد — آخر ملاذ.
+     *
+     * تُفتح وحدها حين لا يكون في الملفّ ولا بجانبه إحداثيات. وقبل
+     * ذلك لا تُعرض: حقول أرقام تُغري بالتخمين حيث توجد قيمة مقروءة.
+     */
+    const [manual, setManual] = useState(null);   // { west, south, east, north }
 
     const [phase, setPhase] = useState('pick');   // pick | reading | ready | working | done
     const [progress, setProgress] = useState(null);
@@ -49,7 +59,7 @@ const Builder = ({ onDone, onCancel, flash }) => {
         return tiler.current;
     }, []);
 
-    const read = useCallback(async (chosen, override) => {
+    const read = useCallback(async (chosen, override, friends, bounds) => {
         setPhase('reading');
         setProblem(null);
         setSource(null);
@@ -57,10 +67,32 @@ const Builder = ({ onDone, onCancel, flash }) => {
 
         try {
             const { openRaster } = await loadTiler();
-            const buffer = await chosen.arrayBuffer();
-            const opened = await openRaster(buffer, { crsOverride: override || null });
+            const { readSidecars } = await import('./rasterSidecar.js');
 
-            if (opened.error) { setProblem(opened.error); setPhase('pick'); return; }
+            const sidecar = friends?.length ? await readSidecars(friends) : null;
+            const buffer = await chosen.arrayBuffer();
+
+            const opened = await openRaster(buffer, {
+                crsOverride: override || null,
+                sidecar,
+                manualBounds: bounds || null
+            });
+
+            if (opened.error) {
+                setProblem(opened.error);
+                /* لا إحداثيات في الملفّ: نفتح حقول الحدود مُهيّأة بأرقام
+                   المنطقة، فيكتبها الأدمن بدل أن يعود خالي اليدين */
+                if (opened.needsBounds && !bounds) {
+                    setManual({ west: '', south: '', east: '', north: '' });
+                }
+                setPhase('pick');
+                return;
+            }
+
+            if (sidecar?.problems?.length) {
+                // وُجدت الإحداثيات لكن ملفّاً مجاوراً تعذّر فهمه
+                console.warn('ملاحظات على الملفّات المجاورة:', sidecar.problems);
+            }
 
             setSource({ ...opened, buffer });
             setPlan(planPyramid(opened.bounds, opened.width, { maxTiles: 1200 }));
@@ -71,21 +103,65 @@ const Builder = ({ onDone, onCancel, flash }) => {
         }
     }, [loadTiler]);
 
-    const choose = (chosen) => {
-        if (!chosen) return;
+    /**
+     * يستقبل ما اختاره الأدمن، تيفاً كان أو عائلة ملفّات.
+     *
+     * والعائلة هي الحالة الطبيعية لا الاستثناء: برامج ‎GIS‎ تُصدّر
+     * ‎ortho.tif‎ ومعه ‎ortho.tfw‎ و‎ortho.prj‎، ومن رفع التيف وحده
+     * رفع صورة بلا موضع.
+     *
+     * ونقبل مجاوراً لا يوافق جذر التيف: من يختار ملفّين معاً
+     * يعني أنّهما لبعضهما، ورفضه لأنّ أحدهما أُعيدت تسميته تشددٌ
+     * بلا فائدة.
+     */
+    const choose = (picked) => {
+        const list = Array.from(picked || []);
+        if (!list.length) return;
 
-        const named = /\.tiff?$/i.test(chosen.name);
-        if (!named) { setProblem('المطلوب ملفّ ‎.tif‎ أو ‎.tiff‎'); return; }
+        const tif = list.find(entry => /\.tiff?$/i.test(entry.name));
+        if (!tif) {
+            setProblem('اختر ملفّ ‎.tif‎ — ومعه ‎.tfw‎ أو ‎aux.xml‎ إن وجد');
+            return;
+        }
 
-        setFile(chosen);
-        setName(chosen.name.replace(/\.[^.]+$/, ''));
-        read(chosen, crsOverride);
+        const friends = list.filter(entry => sidecarKind(entry.name));
+        const root = stemOf(tif.name);
+        const strays = friends.filter(entry => stemOf(entry.name) !== root);
+
+        setFile(tif);
+        setMates(friends);
+        setManual(null);
+        setName(tif.name.replace(/\.[^.]+$/, ''));
+
+        if (strays.length) {
+            setProblem(`اسم ${strays[0].name} لا يوافق ${tif.name} — نقرأه على أنّه له على كل حال`);
+        }
+
+        read(tif, crsOverride, friends, null);
     };
 
     /* تغيير المرجع يُعيد القراءة: الحدود كلّها تعتمد عليه */
     const changeCrs = (code) => {
         setCrsOverride(code);
-        if (file) read(file, code);
+        if (file) read(file, code, mates, manualReady() ? numericManual() : null);
+    };
+
+    const numericManual = () => ({
+        west: parseFloat(manual?.west),
+        south: parseFloat(manual?.south),
+        east: parseFloat(manual?.east),
+        north: parseFloat(manual?.north)
+    });
+
+    const manualReady = () => {
+        if (!manual) return false;
+        const b = numericManual();
+        return Object.values(b).every(Number.isFinite) && b.east > b.west && b.north > b.south;
+    };
+
+    const applyManual = () => {
+        if (!file || !manualReady()) return;
+        read(file, crsOverride || 'EPSG:4326', mates, numericManual());
     };
 
     /**
@@ -185,21 +261,31 @@ const Builder = ({ onDone, onCancel, flash }) => {
             <label className={`rst-drop${file ? ' is-set' : ''}`}>
                 <input
                     type="file"
-                    accept=".tif,.tiff,image/tiff"
+                    accept=".tif,.tiff,.tfw,.wld,.prj,.xml,image/tiff"
+                    multiple
                     hidden
                     disabled={phase === 'working' || phase === 'reading'}
-                    onChange={(e) => choose(e.target.files?.[0])}
+                    onChange={(e) => choose(e.target.files)}
                 />
 
                 {file ? (
                     <>
                         <b>{file.name}</b>
                         <span>{readable(file.size)}</span>
+                        {mates.length > 0 && (
+                            <span className="rst-mates">
+                                ومعه {mates.map(m => m.name).join(' · ')}
+                            </span>
+                        )}
                     </>
                 ) : (
                     <>
-                        <b>اختر ملفّ GeoTIFF</b>
-                        <span>يُقرأ في جهازك — ولا يُرفع الملفّ نفسه، بل بلاطاته</span>
+                        <b>اختر ملفّ التيف</b>
+                        <span>
+                            واختر معه ملفّاته المجاورة إن وُجدت — ‎.tfw‎ أو ‎aux.xml‎ أو ‎.prj‎.
+                            حدّدها كلّها معاً.
+                        </span>
+                        <span>يُقرأ في جهازك: لا يُرفع الملفّ نفسه بل بلاطاته</span>
                     </>
                 )}
             </label>
@@ -207,6 +293,53 @@ const Builder = ({ onDone, onCancel, flash }) => {
             {problem && <div className="rst-bad">{problem}</div>}
 
             {phase === 'reading' && <div className="rst-note">يُقرأ الملفّ…</div>}
+
+            {/*
+              * لا إحداثيات في الملفّ ولا بجانبه.
+              *
+              * أوّل ما يُقال: اختر الملفّ المجاور — فهو الحلّ الصحيح
+              * والدقيق. والكتابة باليد بعده، لمن لا يملك ذلك الملفّ.
+              */}
+            {manual && !source && (
+                <div className="rst-manual">
+                    <b>أين تقع هذه الصورة؟</b>
+                    <p>
+                        لو كان بجانب التيف ملفّ ‎.tfw‎ أو ‎aux.xml‎ أو ‎.prj‎ — وهو ما يقرؤه
+                        Arc ليفتحها في موضعها — فاضغط فوق واخترهما معاً. وإن لم يكن،
+                        اكتب الحدود بالدرجات.
+                    </p>
+
+                    <div className="rst-manual-grid">
+                        {[
+                            ['north', 'شمال'],
+                            ['south', 'جنوب'],
+                            ['west', 'غرب'],
+                            ['east', 'شرق']
+                        ].map(([key, label]) => (
+                            <label key={key}>
+                                <span>{label}</span>
+                                <input
+                                    type="number"
+                                    step="0.000001"
+                                    inputMode="decimal"
+                                    value={manual[key]}
+                                    onChange={(e) => setManual(m => ({ ...m, [key]: e.target.value }))}
+                                    placeholder={key === 'north' ? '31.96' : key === 'south' ? '31.95'
+                                        : key === 'west' ? '35.18' : '35.19'}
+                                />
+                            </label>
+                        ))}
+                    </div>
+
+                    <button className="rst-primary" onClick={applyManual} disabled={!manualReady()}>
+                        ضع الصورة في هذه الحدود
+                    </button>
+
+                    <span className="rst-hint is-warn">
+                        هذه حدود تكتبها أنت، فدقّتها دقّة ما كتبتَ. والملفّ المجاور أصدق منها دائماً.
+                    </span>
+                </div>
+            )}
 
             {/* ── ما قرأناه ── */}
             {source && (
@@ -239,10 +372,11 @@ const Builder = ({ onDone, onCancel, flash }) => {
                     <section className="rst-field">
                         <label>
                             مرجع الإحداثيات
-                            <i className={`rst-src is-${source.crsSource}`}>
+                            <i className={`rst-src is-${source.crsSource === 'sidecar' ? 'file' : source.crsSource}`}>
                                 {source.crsSource === 'file' ? 'مقروء من الملفّ'
-                                    : source.crsSource === 'override' ? 'اخترته أنت'
-                                        : 'مخمَّن — راجعه'}
+                                    : source.crsSource === 'sidecar' ? 'مقروء من الملفّ المجاور'
+                                        : source.crsSource === 'override' ? 'اخترته أنت'
+                                            : 'مخمَّن — راجعه'}
                             </i>
                         </label>
 
@@ -261,6 +395,13 @@ const Builder = ({ onDone, onCancel, flash }) => {
                             </span>
                         )}
                     </section>
+
+                    {/* من أين جاء الموضع — ومن كتبه بيده يجب أن يرى ذلك */}
+                    <div className="rst-geofrom">
+                        <span>الموضع من: <b>{source.geoFrom}</b></span>
+                        {source.rotated && <i className="rst-chip">مُدارة — تُعاد لإسقاطها</i>}
+                        {source.manual && <i className="rst-chip is-warn">حدود يدوية</i>}
+                    </div>
 
                     <div className="rst-bounds">
                         <span>شمال {deg(source.bounds.north)}</span>
