@@ -46,15 +46,61 @@ const imageForm = (fields, file) => {
     return data;
 };
 
+/*
+ * ذاكرة الكتالوج.
+ *
+ * فتح القسم كان ينتظر الشبكة في كل مرّة. والكتالوج لا يتغيّر بين
+ * دقيقة ودقيقة، فيُعرض المحفوظ فوراً ويُجدَّد في الخلفية — فيرى
+ * المستخدم منتجاته في اللحظة، ثمّ تُصحَّح إن تغيّر شيء.
+ *
+ * و‎sessionStorage‎ لا ‎localStorage‎: الكتالوج يحمل ما أضافه هذا
+ * المستخدم إلى محلّاته، وبقاؤه بعد الخروج يُظهر بيانات حسابٍ لمن
+ * يدخل بعده على نفس الجهاز.
+ */
+const CACHE_KEY = 'palnovaa.nexus.catalog.v1';
+const CACHE_TTL = 5 * 60 * 1000;
+
+export const readCache = () => {
+    try {
+        const raw = sessionStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+
+        const held = JSON.parse(raw);
+        if (!held?.at || Date.now() - held.at > CACHE_TTL) return null;
+
+        return held.data;
+    } catch {
+        return null;
+    }
+};
+
+const writeCache = (data) => {
+    try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
+    } catch {
+        /* الحصّة ممتلئة أو التخزين ممنوع — الميزة تُفقد ولا شيء ينكسر */
+    }
+};
+
+export const dropCache = () => {
+    try { sessionStorage.removeItem(CACHE_KEY); } catch { /* لا شيء */ }
+};
+
 export const nexusService = {
     /** التصنيفات والمنتجات ومحلّات المستخدم وما أضافه — في طلب واحد */
-    catalog: async () => (await api.get('/')).data,
+    catalog: async () => {
+        const data = (await api.get('/')).data;
+        writeCache(data);
+        return data;
+    },
 
     shopCategories: async (shopId) => (await api.get(`/shops/${shopId}/categories`)).data,
 
     /** ينسخ المنتج إلى محلّ، في التصنيف الذي يختاره صاحبه */
-    adopt: async (productId, payload) =>
-        (await api.post(`/products/${productId}/adopt`, payload)).data,
+    adopt: async (productId, payload) => {
+        dropCache();
+        return (await api.post(`/products/${productId}/adopt`, payload)).data;
+    },
 
     /**
      * ينسخ عدّة منتجات بطلب واحد.
@@ -62,25 +108,43 @@ export const nexusService = {
      * والمعاملة في الخادم: تصنيف واحد يُنشأ مرّة، وما نجح يُحفظ ولو
      * تجاوز بعضَه — فلا يبقى نصف المحدَّد مضافاً ونصفه لا.
      */
-    adoptMany: async (payload) =>
-        (await api.post('/products/adopt-many', payload)).data,
+    adoptMany: async (payload) => {
+        dropCache();
+        return (await api.post('/products/adopt-many', payload)).data;
+    },
 
     // ── الأدمن ──
-    addCategory: async (fields, file) =>
-        (await api.post('/categories', imageForm(fields, file))).data,
+    addCategory: async (fields, file) => {
+        dropCache();
+        return (await api.post('/categories', imageForm(fields, file))).data;
+    },
 
-    updateCategory: async (id, fields, file) =>
-        (await api.put(`/categories/${id}`, imageForm(fields, file))).data,
+    updateCategory: async (id, fields, file) => {
+        dropCache();
+        return (await api.put(`/categories/${id}`, imageForm(fields, file))).data;
+    },
 
-    removeCategory: async (id) => (await api.delete(`/categories/${id}`)).data,
+    removeCategory: async (id) => {
+        dropCache();
+        return (await api.delete(`/categories/${id}`)).data;
+    },
 
-    addProduct: async (fields, images) =>
-        (await api.post('/products', form(fields, images))).data,
+    /* كل تغيير في الكتالوج يُسقط المحفوظ: وإلّا رأى الأدمن كتالوجه
+       القديم بعد أن أضاف إليه، فظنّ الإضافة لم تنجح */
+    addProduct: async (fields, images) => {
+        dropCache();
+        return (await api.post('/products', form(fields, images))).data;
+    },
 
-    updateProduct: async (id, fields, images) =>
-        (await api.put(`/products/${id}`, form(fields, images))).data,
+    updateProduct: async (id, fields, images) => {
+        dropCache();
+        return (await api.put(`/products/${id}`, form(fields, images))).data;
+    },
 
-    removeProduct: async (id) => (await api.delete(`/products/${id}`)).data
+    removeProduct: async (id) => {
+        dropCache();
+        return (await api.delete(`/products/${id}`)).data;
+    }
 };
 
 export default nexusService;

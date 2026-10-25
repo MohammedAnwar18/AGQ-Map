@@ -10,6 +10,10 @@ const ctrl = require('../controllers/nexusController');
    وفحص «أدمن» داخل المتحكّم كما في بقيّة المشروع، فتكون رسالة
    الرفض عربية ومفهومة لا 403 صامتة. */
 
+/* مصغّرة منتج — بلا حساب، لأنّ وسم ‎<img>‎ لا يحمل ترويسة تخويل.
+   وهو أوّل مسار لأنّه الأكثر طلباً: مرّة لكل بطاقة */
+router.get('/products/:id/thumb', ctrl.getProductThumb);
+
 // العرض: لكل صاحب حساب
 router.get('/', authenticateToken, ctrl.getCatalog);
 router.get('/shops/:shopId/categories', authenticateToken, ctrl.getShopCategories);

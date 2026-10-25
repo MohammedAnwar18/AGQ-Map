@@ -198,6 +198,26 @@ app.use('/api/fitness', fitnessRoutes);
             CREATE INDEX IF NOT EXISTS idx_nexus_products_category
             ON nexus_products (category_id, sort_order);
         `);
+        /*
+         * مصغّرة المنتج.
+         *
+         * الكتالوج كان يُرسل الصورة الكاملة في جسم ‎JSON‎. وحين لا يكون
+         * ‎R2‎ مُهيّأً تُخزَّن الصور ‎Base64‎ في القاعدة، فصار الطلب
+         * الواحد ميجابايتات: صورة ١٦٠٠ بكسل = ١٦٥٥ ك.ب بعد ‎Base64‎،
+         * وأربعون منتجاً = ستّون ميجابايتاً. على هاتف هذا دقائق.
+         *
+         * فتُحفظ مصغّرة ٣٢٠ بكسل بايتاتٍ خامّاً وتُخدَم من مسار يُخزَّن
+         * في المتصفّح أبداً — ١٤ ك.ب بدل ١٢٤١.
+         */
+        await pool.query(`
+            ALTER TABLE nexus_products
+                ADD COLUMN IF NOT EXISTS thumb BYTEA,
+                ADD COLUMN IF NOT EXISTS thumb_mime VARCHAR(20);
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_nexus_products_live
+            ON nexus_products (is_active, sort_order, created_at DESC);
+        `);
         /* علامة على المنتج المنسوخ: تمنع التكرار وتُظهر «عندك»
            في الكتالوج. وهي علامة لا رابطة: حذف من الكتالوج لا
            يسحب ما في المحلّات */
