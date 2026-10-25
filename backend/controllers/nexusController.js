@@ -370,7 +370,7 @@ const deleteProduct = async (req, res) => {
  * يكن. فيستطيع صاحب المحلّ أن يختار «مشروبات» الموجود أو يكتب
  * تصنيفاً جديداً في نفس اللحظة بلا أن يخرج من الكتالوج.
  */
-const resolveShopCategory = async (shopId, body) => {
+const resolveShopCategory = async (shopId, body, runner = pool) => {
     const given = body.category_id;
     if (given !== undefined && given !== '' && given !== null && given !== 'null') {
         return parseId(given);
@@ -379,13 +379,13 @@ const resolveShopCategory = async (shopId, body) => {
     const name = String(body.category || '').trim().slice(0, 120);
     if (!name) return null;
 
-    const existing = await pool.query(
+    const existing = await runner.query(
         'SELECT id FROM shop_product_categories WHERE shop_id = $1 AND name = $2',
         [shopId, name]
     );
     if (existing.rows.length) return existing.rows[0].id;
 
-    const created = await pool.query(
+    const created = await runner.query(
         'INSERT INTO shop_product_categories (shop_id, name) VALUES ($1, $2) RETURNING id',
         [shopId, name]
     );
@@ -473,6 +473,121 @@ const adoptProduct = async (req, res) => {
     }
 };
 
+/* سقف الدفعة الواحدة — من يحدّد مئة منتج بضغطة يستحقّ أن
+   تمرّ دفعته، ومن يرسل ألفاً يرسل شيئاً أخر */
+const MAX_ADOPT = 120;
+
+/**
+ * ينسخ عدّة منتجات إلى محلّ واحد بطلب واحد.
+ *
+ * واحداً واحداً يعني ثلاثين رحلة إلى الخادم لمن يرتّب قائمة
+ * طعامه، وكل رحلة قد تنقطع فيبقى نصف المحدّد مضافاً ونصفه لا.
+ *
+ * والدفعة لا تسقط كلّها لأنّ منتجاً أُخفي أو حُذف بين فتح
+ * الكتالوج والضغط: كل منتج له نتيجته، وما نجح يُحفظ. والمعاملة
+ * تضمن ألّا يُنشأ تصنيف جديد ثمّ يبقى فارغاً لو انقطع شيء بعده.
+ */
+const adoptMany = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        const shopId = parseId(req.body.shop_id);
+        const rawIds = Array.isArray(req.body.product_ids) ? req.body.product_ids : [];
+
+        // المكرّر يُسقط هنا لا في الحلقة: واجهة مرتبكة قد ترسله
+        const ids = [...new Set(rawIds.map(parseId).filter(Boolean))];
+
+        if (!shopId) return res.status(400).json({ error: 'المحلّ مطلوب' });
+        if (!ids.length) return res.status(400).json({ error: 'لم تحدّد أي منتج' });
+        if (ids.length > MAX_ADOPT) {
+            return res.status(400).json({ error: `الحدّ ${MAX_ADOPT} منتجاً في المرّة` });
+        }
+
+        // ١) المحلّ لهذا المستخدم؟
+        const shop = await client.query('SELECT id, name, owner_id FROM shops WHERE id = $1', [shopId]);
+        if (!shop.rows.length) return res.status(404).json({ error: 'المحلّ غير موجود' });
+
+        if (!isAdmin(req) && shop.rows[0].owner_id !== req.user.userId) {
+            return res.status(403).json({ error: 'هذا المحلّ ليس لك' });
+        }
+
+        await client.query('BEGIN');
+
+        // ٢) التصنيف مرّة واحدة لا لكل منتج: وإلّا أُنشئ مرّات
+        const categoryId = await resolveShopCategory(shopId, req.body, client);
+
+        // ٣) المنتجات المتاحة منها، وما سبق أن أُضيف — استعلامان لا ‎2n‎
+        const found = await client.query(
+            'SELECT * FROM nexus_products WHERE id = ANY($1::int[]) AND is_active',
+            [ids]
+        );
+        const byId = new Map(found.rows.map(row => [row.id, normalizeProduct(row)]));
+
+        const existing = await client.query(
+            `SELECT nexus_product_id FROM shop_products
+             WHERE shop_id = $1 AND nexus_product_id = ANY($2::int[])`,
+            [shopId, ids]
+        );
+        const already = new Set(existing.rows.map(row => row.nexus_product_id));
+
+        const added = [];
+        const skipped = [];
+
+        for (const id of ids) {
+            const item = byId.get(id);
+
+            /* الرمز لا النصّ: الواجهة تفرّق بين «موجود عندك» فتضع علامة،
+               و«غير متاح» فلا تضعها. ومقارنة النصّ العربي تنكسر بتعديل حرف */
+            if (!item) { skipped.push({ id, code: 'missing', why: 'غير متاح' }); continue; }
+            if (already.has(id)) { skipped.push({ id, code: 'duplicate', name: item.name, why: 'عندك سلفاً' }); continue; }
+
+            /* السعر سعر الكتالوج كما هو: دفعة من عشرين منتجاً لا
+               يمكن أن تحمل سعراً واحداً لكلّها، ولصاحب المحلّ أن يُعدّل
+               أسعاره في محلّه بعدها */
+            const inserted = await client.query(`
+                INSERT INTO shop_products
+                    (shop_id, name, price, description, image_url, images,
+                     category_id, sort_order, is_available, nexus_product_id)
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, 0, TRUE, $8)
+                RETURNING id
+            `, [
+                shopId,
+                item.name,
+                item.price,
+                item.description,
+                item.image_url,
+                JSON.stringify(item.images),
+                categoryId,
+                id
+            ]);
+
+            added.push({ id, name: item.name, product_id: inserted.rows[0].id });
+        }
+
+        await client.query('COMMIT');
+
+        const where = shop.rows[0].name;
+        const message = added.length
+            ? `أُضيف ${added.length} منتجاً إلى ${where}${skipped.length ? ` · ${skipped.length} تُجاوز` : ''}`
+            : `لا جديد — كلّ ما حدّدتَه موجود عندك سلفاً`;
+
+        res.json({
+            success: true,
+            shop_id: shopId,
+            category_id: categoryId,
+            added,
+            skipped,
+            message
+        });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Nexus adopt many error:', error);
+        res.status(500).json({ error: 'تعذّرت الإضافة إلى المحلّ' });
+    } finally {
+        client.release();
+    }
+};
+
 /** تصنيفات محلّ بعينه — تُقرأ قبل أن يختار صاحبه أين يضع المنتج */
 const getShopCategories = async (req, res) => {
     try {
@@ -509,5 +624,6 @@ module.exports = {
     updateProduct,
     deleteProduct,
     adoptProduct,
+    adoptMany,
     getShopCategories
 };

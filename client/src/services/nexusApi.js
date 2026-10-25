@@ -56,6 +56,15 @@ export const nexusService = {
     adopt: async (productId, payload) =>
         (await api.post(`/products/${productId}/adopt`, payload)).data,
 
+    /**
+     * ينسخ عدّة منتجات بطلب واحد.
+     *
+     * والمعاملة في الخادم: تصنيف واحد يُنشأ مرّة، وما نجح يُحفظ ولو
+     * تجاوز بعضَه — فلا يبقى نصف المحدَّد مضافاً ونصفه لا.
+     */
+    adoptMany: async (payload) =>
+        (await api.post('/products/adopt-many', payload)).data,
+
     // ── الأدمن ──
     addCategory: async (fields, file) =>
         (await api.post('/categories', imageForm(fields, file))).data,

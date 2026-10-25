@@ -20,6 +20,10 @@ import './PalnovaaNexus.css';
 
 const UNCATEGORIZED = '__none__';
 
+/* أقصى ما يُرسل في دفعة — وهو سقف الخادم نفسه ‎(MAX_ADOPT)‎.
+   واختلافهما يعني رفضاً من الخادم بعد أن وعدته الواجهة */
+const MAX_PICK = 120;
+
 const price = (value) => {
     if (value === null || value === undefined || value === '') return null;
     const num = Number(value);
@@ -34,12 +38,15 @@ const price = (value) => {
    بطاقة منتج
    ============================================================ */
 
-const ProductCard = ({ product, mine, canAdopt, isAdmin, onAdopt, onEdit, onRemove, onToggle }) => {
+const ProductCard = ({
+    product, mine, canAdopt, isAdmin, picked,
+    onAdopt, onPick, onEdit, onRemove, onToggle
+}) => {
     const image = getImageUrl(product.image_url);
     const tag = price(product.price);
 
     return (
-        <article className={`pnx-card${mine ? ' is-mine' : ''}`}>
+        <article className={`pnx-card${mine ? ' is-mine' : ''}${picked ? ' is-picked' : ''}`}>
             <div className="pnx-shot">
                 {image ? (
                     <img src={image} alt={product.name} loading="lazy" decoding="async" />
@@ -49,8 +56,31 @@ const ProductCard = ({ product, mine, canAdopt, isAdmin, onAdopt, onEdit, onRemo
                 )}
 
                 {tag && <b className="pnx-tag">{tag}</b>}
-                {mine && <span className="pnx-have">عندك ✓</span>}
                 {isAdmin && !product.is_active && <span className="pnx-off">مخفيّ</span>}
+
+                {/*
+                  * مربّع التحديد على الصورة لا تحتها.
+                  *
+                  * الصورة أكبر ما في البطاقة وأسهل ما يُضغط بالإبهام،
+                  * ومن يحدّد عشرين منتجاً يضغط عشرين ضغطة — فتكون في
+                  * أوسع هدف لا في أصغره.
+                  */}
+                {canAdopt ? (
+                    <>
+                        <button
+                            className={`pnx-pick${picked ? ' is-on' : ''}`}
+                            onClick={() => onPick(product)}
+                            aria-pressed={picked}
+                            aria-label={picked ? `أزل ${product.name} من المحدَّد` : `حدّد ${product.name}`}
+                        >
+                            {picked ? '✓' : ''}
+                        </button>
+
+                        {mine && <span className="pnx-have is-corner">عندك ✓</span>}
+                    </>
+                ) : (
+                    mine && <span className="pnx-have">عندك ✓</span>
+                )}
             </div>
 
             <div className="pnx-body">
@@ -84,7 +114,17 @@ const ProductCard = ({ product, mine, canAdopt, isAdmin, onAdopt, onEdit, onRemo
    ورقة الإضافة — أين يوضع المنتج في محلّك
    ============================================================ */
 
-const AdoptSheet = ({ product, shops, onClose, onDone, onError }) => {
+const AdoptSheet = ({ items, shops, onClose, onDone, onError }) => {
+    /*
+     * ورقة واحدة للحالتين.
+     *
+     * المحلّ والتصنيف سؤالان واحدان مهما كان العدد، فلا داعي لورقة
+     * ثانية تُكرّرهما ثم تنحرف عنها. والفرق الوحيد سعرٌ واحد: لا معنى
+     * لحقل سعر لعشرين منتجاً مختلفاً، فيظهر للواحد ويغيب للجمع.
+     */
+    const many = items.length > 1;
+    const product = items[0];
+
     const [shopId, setShopId] = useState(shops[0]?.id || null);
     const [categories, setCategories] = useState([]);
     const [pick, setPick] = useState(null);          // معرّف تصنيف موجود
@@ -121,14 +161,17 @@ const AdoptSheet = ({ product, shops, onClose, onDone, onError }) => {
 
         setSaving(true);
         try {
-            const payload = { shop_id: shopId, price: cost === '' ? '' : cost };
+            const payload = { shop_id: shopId };
 
             // تصنيف موجود أو اسم جديد — والخادم يُنشئه إن لم يكن
             if (pick) payload.category_id = pick;
             else if (fresh.trim()) payload.category = fresh.trim();
 
-            const result = await nexusService.adopt(product.id, payload);
-            onDone(result);
+            const result = many
+                ? await nexusService.adoptMany({ ...payload, product_ids: items.map(i => i.id) })
+                : await nexusService.adopt(product.id, { ...payload, price: cost === '' ? '' : cost });
+
+            onDone(result, items);
         } catch (err) {
             onError(nexusError(err, 'تعذّرت الإضافة'));
         } finally {
@@ -137,19 +180,33 @@ const AdoptSheet = ({ product, shops, onClose, onDone, onError }) => {
     };
 
     return (
-        <div className="pnx-sheet-wrap" role="dialog" aria-label="أضف المنتج لمحلّك">
+        <div className="pnx-sheet-wrap" role="dialog" aria-label="أضف إلى محلّك">
             <button className="pnx-scrim" onClick={onClose} aria-label="إغلاق" />
 
             <div className="pnx-sheet">
                 <div className="pnx-sheet-grip" />
 
                 <header className="pnx-sheet-head">
-                    {getImageUrl(product.image_url) && (
+                    {many ? (
+                        /* ثلاث صور مكدّسة: يرى ما حدّده قبل أن يؤكّد */
+                        <span className="pnx-stack">
+                            {items.slice(0, 3).map(item => (
+                                getImageUrl(item.image_url)
+                                    ? <img key={item.id} src={getImageUrl(item.image_url)} alt="" />
+                                    : <i key={item.id}>{item.name.trim().charAt(0) || '؟'}</i>
+                            ))}
+                        </span>
+                    ) : getImageUrl(product.image_url) && (
                         <img src={getImageUrl(product.image_url)} alt="" />
                     )}
+
                     <div>
-                        <b>{product.name}</b>
-                        <span>اختر المحلّ والتصنيف الذي يظهر فيه</span>
+                        <b>{many ? `${items.length} منتجاً محدّداً` : product.name}</b>
+                        <span>
+                            {many
+                                ? 'كلّها تُضاف إلى محلّ واحد وتصنيف واحد'
+                                : 'اختر المحلّ والتصنيف الذي يظهر فيه'}
+                        </span>
                     </div>
                 </header>
 
@@ -202,29 +259,47 @@ const AdoptSheet = ({ product, shops, onClose, onDone, onError }) => {
                         <span className="pnx-hint">اتركه فارغاً فيُضاف بلا تصنيف.</span>
                     </section>
 
-                    <section>
-                        <label>سعرك (اختياري)</label>
-                        <input
-                            className="pnx-field"
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="0.5"
-                            value={cost}
-                            onChange={(e) => setCost(e.target.value)}
-                            placeholder="بلا سعر"
-                        />
-                        <span className="pnx-hint">
-                            {product.price !== null && product.price !== undefined
-                                ? `سعر الكتالوج ${price(product.price)} — غيّره كما يناسب محلّك.`
-                                : 'لا سعر في الكتالوج — ضع سعرك أو اتركه فارغاً.'}
-                        </span>
-                    </section>
+                    {many ? (
+                        <section>
+                            <label>ما سيُضاف</label>
+                            <ul className="pnx-picked-list">
+                                {items.map(item => (
+                                    <li key={item.id}>
+                                        <span>{item.name}</span>
+                                        <b>{price(item.price) || 'بلا سعر'}</b>
+                                    </li>
+                                ))}
+                            </ul>
+                            <span className="pnx-hint">
+                                تُؤخذ أسعار الكتالوج كما هي، وتُعدّلها في محلّك بعد الإضافة.
+                                وما هو عندك سلفاً يُتجاوز بلا تكرار.
+                            </span>
+                        </section>
+                    ) : (
+                        <section>
+                            <label>سعرك (اختياري)</label>
+                            <input
+                                className="pnx-field"
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="0.5"
+                                value={cost}
+                                onChange={(e) => setCost(e.target.value)}
+                                placeholder="بلا سعر"
+                            />
+                            <span className="pnx-hint">
+                                {product.price !== null && product.price !== undefined
+                                    ? `سعر الكتالوج ${price(product.price)} — غيّره كما يناسب محلّك.`
+                                    : 'لا سعر في الكتالوج — ضع سعرك أو اتركه فارغاً.'}
+                            </span>
+                        </section>
+                    )}
                 </div>
 
                 <footer className="pnx-sheet-foot">
                     <button className="pnx-primary" onClick={submit} disabled={saving || !shopId}>
-                        {saving ? 'يُضاف…' : 'أضفه الآن'}
+                        {saving ? 'يُضاف…' : many ? `أضف ${items.length} منتجاً` : 'أضفه الآن'}
                     </button>
                     <button onClick={onClose} disabled={saving}>رجوع</button>
                 </footer>
@@ -418,8 +493,16 @@ const PalnovaaNexus = ({ user, onClose }) => {
     const [active, setActive] = useState('all');
     const [query, setQuery] = useState('');
 
-    const [adopting, setAdopting] = useState(null);
-    const [form, setForm] = useState(null);     // { kind, editing }
+    const [adopting, setAdopting] = useState(null);   // مصفوفة منتجات
+    const [form, setForm] = useState(null);           // { kind, editing }
+
+    /*
+     * المحدَّد — مجموعة معرّفات.
+     *
+     * ‎Set‎ لا مصفوفة: الإضافة والحذف والسؤال «أهو محدّد؟» كلّها
+     * ثابتة الزمن، والسؤال يُطرح لكل بطاقة في كل إعادة رسم.
+     */
+    const [marks, setMarks] = useState(() => new Set());
 
     const isAdmin = Boolean(data?.is_admin) || user?.role === 'admin';
     const shops = data?.shops || [];
@@ -466,29 +549,78 @@ const PalnovaaNexus = ({ user, onClose }) => {
         });
     }, [data, active, query]);
 
+    /*
+     * ما حُدّد ثمّ خرج من العرض — بتغيير تصنيف أو بحث — يبقى محدَّداً.
+     *
+     * وهذا مقصود: من يحدّد من «مشروبات» ثمّ ينتقل إلى «حلويات»
+     * ليحدّد منها يريد الاثنين. لكنّ ما حُذف من الكتالوج يُسقط، وإلّا
+     * أُرسل معرّف لا وجود له.
+     */
+    useEffect(() => {
+        if (!data?.products || !marks.size) return;
+
+        const alive = new Set(data.products.map(p => p.id));
+        const stale = [...marks].filter(id => !alive.has(id));
+        if (stale.length) setMarks(prev => new Set([...prev].filter(id => alive.has(id))));
+    }, [data, marks]);
+
+    /* المحدَّد الظاهر الآن — عليه يعمل «حدّد الكلّ» */
+    const markedHere = useMemo(
+        () => shown.filter(p => marks.has(p.id)).length,
+        [shown, marks]
+    );
+
     const loose = useMemo(
         () => (data?.products || []).some(p => !p.category_id),
         [data]
     );
 
     // ── بعد الإضافة إلى محلّ ──
-    const adopted = useCallback((result) => {
-        const productId = adopting.id;
+    const toggleMark = useCallback((product) => {
+        setMarks(prev => {
+            const next = new Set(prev);
+            if (next.has(product.id)) next.delete(product.id);
+            else next.add(product.id);
+            return next;
+        });
+    }, []);
+
+    const clearMarks = useCallback(() => setMarks(new Set()), []);
+
+    const adopted = useCallback((result, items) => {
         setAdopting(null);
 
         if (!result?.success) return;
 
         flash(result.message || 'أُضيف المنتج', result.duplicate ? 'warn' : 'ok');
 
-        // علامة «عندك» فوراً بلا إعادة تحميل الكتالوج
+        /*
+         * علامة «عندك» فوراً بلا إعادة تحميل الكتالوج.
+         *
+         * والدفعة تُعلّم ما أُضيف وما تُجوِّز معاً: المتجاوَز موجود
+         * عند صاحب المحلّ فعلاً، وإخفاء العلامة عنه يجعله يحاول ثانيةً.
+         */
+        const touched = result.added
+            ? [
+                ...result.added.map(a => a.id),
+                // المتجاوَز لأنّه موجود عنده يُعلَّم، وما لم يُوجد في
+                // الكتالوج لا يُعلَّم: ليس عنده ولم يُضف
+                ...(result.skipped || []).filter(sk => sk.code === 'duplicate').map(sk => sk.id)
+            ]
+            : items.map(i => i.id);
+
         setData(prev => {
             if (!prev) return prev;
+
             const map = { ...prev.adopted };
-            const list = new Set([...(map[productId] || []), result.shop_id]);
-            map[productId] = [...list];
+            for (const id of touched) {
+                map[id] = [...new Set([...(map[id] || []), result.shop_id])];
+            }
             return { ...prev, adopted: map };
         });
-    }, [adopting, flash]);
+
+        clearMarks();
+    }, [flash, clearMarks]);
 
     // ── بعد حفظ الأدمن ──
     const savedForm = useCallback((saved) => {
@@ -581,8 +713,33 @@ const PalnovaaNexus = ({ user, onClose }) => {
             flash('لا محلّ على حسابك — نكسس للعرض فقط حتى تُدار محلّاً', 'warn');
             return;
         }
-        setAdopting(product);
+        setAdopting([product]);
     }, [shops.length, flash]);
+
+    /**
+     * يفتح الورقة بما حُدّد.
+     *
+     * الترتيب ترتيب العرض لا ترتيب الضغط: من يرى قائمته في الورقة
+     * يتوقّعها كما رآها في الشبكة.
+     */
+    const startAdoptMarked = useCallback(() => {
+        if (!shops.length) {
+            flash('لا محلّ على حسابك — نكسس للعرض فقط حتى تُدار محلّاً', 'warn');
+            return;
+        }
+
+        const chosen = (data?.products || []).filter(p => marks.has(p.id));
+        if (!chosen.length) return;
+
+        /* السقف يُقال قبل فتح الورقة لا بعد الضغط على «أضف»: من حدّد
+           مئتين يستحقّ أن يعرف قبل أن يختار محلّاً وتصنيفاً */
+        if (chosen.length > MAX_PICK) {
+            flash(`الحدّ ${MAX_PICK} منتجاً في المرّة — أزل ${chosen.length - MAX_PICK} منها`, 'warn');
+            return;
+        }
+
+        setAdopting(chosen);
+    }, [shops.length, flash, data, marks]);
 
     return (
         <div className="pnx" dir="rtl">
@@ -634,6 +791,26 @@ const PalnovaaNexus = ({ user, onClose }) => {
                         <button onClick={() => setQuery('')} aria-label="امسح البحث">✕</button>
                     )}
                 </div>
+
+                {/* حدّد كلّ ما يُعرض الآن — بعد بحث أو تصنيف يصير مفيداً جداً */}
+                {shops.length > 0 && shown.length > 1 && (
+                    <button
+                        className={`pnx-all${markedHere === shown.length ? ' is-on' : ''}`}
+                        onClick={() => setMarks(prev => {
+                            const next = new Set(prev);
+                            const everyone = markedHere === shown.length;
+                            for (const p of shown) {
+                                if (everyone) next.delete(p.id);
+                                else next.add(p.id);
+                            }
+                            return next;
+                        })}
+                    >
+                        {markedHere === shown.length
+                            ? `أزل تحديد ${shown.length}`
+                            : `حدّد الكلّ (${shown.length})`}
+                    </button>
+                )}
 
                 <nav className="pnx-cats" aria-label="التصنيفات">
                     <button
@@ -723,7 +900,9 @@ const PalnovaaNexus = ({ user, onClose }) => {
                                 mine={Boolean(data?.adopted?.[product.id]?.length)}
                                 canAdopt={shops.length > 0}
                                 isAdmin={isAdmin}
+                                picked={marks.has(product.id)}
                                 onAdopt={startAdopt}
+                                onPick={toggleMark}
                                 onEdit={(p) => setForm({ kind: 'product', editing: p })}
                                 onRemove={removeProduct}
                                 onToggle={toggleProduct}
@@ -735,9 +914,30 @@ const PalnovaaNexus = ({ user, onClose }) => {
 
             {notice && <div className={`pnx-flash is-${notice.kind}`}>{notice.message}</div>}
 
+            {/*
+              * شريط المحدَّد.
+              *
+              * يظهر بظهور أوّل تحديد ويختفي بزواله، فلا يأخذ مكاناً
+              * حين لا شيء محدَّد. وفوق الإشعار في الترتيب كي لا يسترا
+              * بعضهما.
+              */}
+            {marks.size > 0 && (
+                <div className="pnx-bar">
+                    <button className="pnx-bar-x" onClick={clearMarks} aria-label="ألغِ التحديد">✕</button>
+
+                    <span className="pnx-bar-count">
+                        <b>{marks.size}</b> محدَّد
+                    </span>
+
+                    <button className="pnx-primary pnx-bar-go" onClick={startAdoptMarked}>
+                        أضفها لمحلّي
+                    </button>
+                </div>
+            )}
+
             {adopting && (
                 <AdoptSheet
-                    product={adopting}
+                    items={adopting}
                     shops={shops}
                     onClose={() => setAdopting(null)}
                     onDone={adopted}

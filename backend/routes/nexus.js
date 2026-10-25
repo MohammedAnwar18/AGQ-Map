@@ -16,6 +16,9 @@ router.get('/shops/:shopId/categories', authenticateToken, ctrl.getShopCategorie
 
 // النسخ إلى محلّ: لصاحب المحلّ
 router.post('/products/:id/adopt', authenticateToken, ctrl.adoptProduct);
+/* دفعة واحدة. لا يتعارض مع المسار أعلاه: ذاك ثلاثة مقاطع وهذا
+   مقطعان، فلا يُقرأ «adopt-many» معرّفاً بحال */
+router.post('/products/adopt-many', authenticateToken, ctrl.adoptMany);
 
 // بناء الكتالوج: للأدمن العام وحده
 router.post('/categories', authenticateToken, upload.single('image'), ctrl.addCategory);
