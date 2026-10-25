@@ -1,6 +1,5 @@
 const pool = require('../config/database');
 const { uploadToCloud } = require('../utils/storage');
-const sharp = require('sharp');
 
 /* ============================================================
    بالنوفا نكسس — كتالوج مركزي
@@ -47,69 +46,13 @@ const uploadImages = async (req) => {
         : (req.files?.images || (req.file ? [req.file] : []));
 
     const urls = [];
-    let thumb = null;
-
     for (const file of files) {
         const url = file.buffer
             ? await uploadToCloud(file.buffer, file.originalname, file.mimetype)
             : `/uploads/${file.filename}`;
         if (url) urls.push(url);
-
-        // المصغّرة من الصورة الأولى وحدها — هي ما تُعرض في الشبكة
-        if (!thumb && file.buffer) thumb = await makeThumb(file.buffer);
     }
-
-    urls.thumb = thumb;
     return urls;
-};
-
-/* عرض المصغّرة — يكفي بطاقةً في شبكة من عمودين أو ثلاثة على هاتف
-   بكثافة بكسل مضاعفة، ولا يزيد عن ذلك فيُهدَر */
-const THUMB_WIDTH = 320;
-
-/**
- * يبني مصغّرة من بايتات صورة.
- *
- * ‎WebP‎ لأنّه ثلث حجم ‎JPEG‎ عند نفس الجودة، ومدعوم في كل متصفّح
- * يعمل عليه هذا الموقع أصلاً. ولا تُكبَّر صورة أصغر من الحدّ:
- * التكبير يزيد البايتات ولا يزيد التفصيل.
- */
-const makeThumb = async (buffer) => {
-    try {
-        const data = await sharp(buffer)
-            .rotate()                       // يحترم وسم الاتّجاه في صور الهواتف
-            .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
-            .webp({ quality: 70 })
-            .toBuffer();
-
-        return { data, mime: 'image/webp' };
-    } catch (error) {
-        console.error('Nexus thumb error:', error.message);
-        return null;
-    }
-};
-
-/** بايتات صورة من رابط ‎data:‎ أو من الشبكة */
-const bytesOf = async (url) => {
-    if (!url) return null;
-
-    if (url.startsWith('data:')) {
-        const comma = url.indexOf(',');
-        if (comma < 0) return null;
-        return Buffer.from(url.slice(comma + 1), 'base64');
-    }
-
-    if (/^https?:\/\//.test(url)) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) return null;
-            return Buffer.from(await response.arrayBuffer());
-        } catch {
-            return null;
-        }
-    }
-
-    return null;
 };
 
 const normalizeProduct = (row) => {
@@ -147,31 +90,14 @@ const getCatalog = async (req, res) => {
 
         const [categories, products, shops] = await Promise.all([
             pool.query(`
-                SELECT c.id, c.name, c.sort_order,
-                       CASE WHEN c.image_url LIKE 'data:%' THEN NULL ELSE c.image_url END AS image_url,
+                SELECT c.id, c.name, c.image_url, c.sort_order,
                        (SELECT COUNT(*)::int FROM nexus_products p
                          WHERE p.category_id = c.id AND p.is_active) AS products_count
                 FROM nexus_categories c
                 ORDER BY c.sort_order ASC, c.id ASC
             `),
-            /*
-             * أعمدة مُسمّاة لا ‎p.*‎.
-             *
-             * ‎p.*‎ كان يحمل ‎image_url‎ و‎images‎ معاً — ونفس الصورة في
-             * الاثنين. وحين تكون ‎Base64‎ صار الصفُّ الواحد ثلاثة
-             * ميجابايت، والطلبُ عشرات. فلا بايتَ صورةٍ في هذا الجسم:
-             * الشبكة تطلب ‎thumb‎ من مساره، والمتصفّح يُخزّنه فلا
-             * يُطلب ثانيةً.
-             *
-             * و‎has_image‎ يُحسب بـ‎<> ''‎ لا بـ‎IS NOT NULL‎ وحده:
-             * صفوف قديمة قد تحمل نصّاً فارغاً لا ‎NULL‎.
-             */
             pool.query(`
-                SELECT p.id, p.category_id, p.name, p.price, p.description,
-                       p.sort_order, p.is_active, p.created_at,
-                       (p.image_url IS NOT NULL AND p.image_url <> '') AS has_image,
-                       (p.thumb IS NOT NULL) AS has_thumb,
-                       c.name AS category_name
+                SELECT p.*, c.name AS category_name
                 FROM nexus_products p
                 LEFT JOIN nexus_categories c ON c.id = p.category_id
                 ${admin ? '' : 'WHERE p.is_active'}
@@ -209,13 +135,7 @@ const getCatalog = async (req, res) => {
 
         res.json({
             categories: categories.rows,
-            /* ‎normalizeProduct‎ لا يُستعمل هنا: لا صور في الصفوف لتُطبَّع،
-               وما يحتاجه العميل هو مسار المصغّرة */
-            products: products.rows.map(row => ({
-                ...row,
-                price: row.price === null || row.price === undefined || row.price === '' ? null : row.price,
-                thumb: row.has_image ? `/api/nexus/products/${row.id}/thumb` : null
-            })),
+            products: products.rows.map(normalizeProduct),
             shops: shops.rows,
             adopted,
             is_admin: admin
@@ -223,64 +143,6 @@ const getCatalog = async (req, res) => {
     } catch (error) {
         console.error('Nexus catalog error:', error);
         res.status(500).json({ error: 'تعذّر تحميل الكتالوج' });
-    }
-};
-
-/**
- * مصغّرة منتج — المسار الذي تطلبه الشبكة لكل بطاقة.
- *
- * بلا حساب، لأنّ وسم ‎<img>‎ لا يحمل ترويسة تخويل. وهي صور منتجات
- * في كتالوج، لا شيء خاصّ فيها — ومن يملك الرابط يرى الصورة، وهذا
- * ما يجب أن يُعرف قبل أن يُرفع ما لا يُراد أن يُرى.
- *
- * ومع تخزين طويل: المصغّرة لا تتغيّر إلّا بتغيير صورة المنتج،
- * وعندها تُمحى من القاعدة فيُعاد بناؤها. فيُحمَّل الكتالوج صوراً
- * مرّةً واحدة في عمر المتصفّح.
- *
- * والبناء المتأخّر: منتجٌ رُفع قبل هذا التعديل لا مصغّرة له، فتُبنى
- * عند أوّل طلب وتُحفظ. فلا هجرةَ تمرّ على كل الصفوف، ولا صورةَ
- * كاملةً تُرسل مرّتين.
- */
-const getProductThumb = async (req, res) => {
-    try {
-        const id = parseId(req.params.id);
-        if (!id) return res.status(400).end();
-
-        const found = await pool.query(
-            'SELECT thumb, thumb_mime, image_url FROM nexus_products WHERE id = $1',
-            [id]
-        );
-        if (!found.rows.length) return res.status(404).end();
-
-        const row = found.rows[0];
-
-        const serve = (data, mime) => {
-            res.set('Content-Type', mime || 'image/webp');
-            res.set('Cache-Control', 'public, max-age=31536000, immutable');
-            res.set('Access-Control-Allow-Origin', '*');
-            return res.send(data);
-        };
-
-        if (row.thumb) return serve(row.thumb, row.thumb_mime);
-
-        // لا مصغّرة بعد: نبنيها من الصورة الأصلية ونحفظها
-        const bytes = await bytesOf(row.image_url);
-        if (!bytes) return res.status(204).end();
-
-        const built = await makeThumb(bytes);
-        if (!built) return res.status(204).end();
-
-        /* الحفظ لا يُؤخّر الرد: من ينتظر الصورة لا شأن له بالكتابة،
-           وفشلُها لا يمنع العرض — تُعاد المحاولة في الطلب التالي */
-        pool.query(
-            'UPDATE nexus_products SET thumb = $1, thumb_mime = $2 WHERE id = $3',
-            [built.data, built.mime, id]
-        ).catch(err => console.error('Nexus thumb save error:', err.message));
-
-        return serve(built.data, built.mime);
-    } catch (error) {
-        console.error('Nexus thumb error:', error);
-        return res.status(500).end();
     }
 };
 
@@ -392,11 +254,9 @@ const addProduct = async (req, res) => {
 
         const result = await pool.query(`
             INSERT INTO nexus_products
-                (category_id, name, price, description, image_url, images, sort_order, is_active,
-                 thumb, thumb_mime)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, TRUE, $8, $9)
-            RETURNING id, category_id, name, price, description, sort_order, is_active, created_at,
-                      (image_url IS NOT NULL AND image_url <> '') AS has_image
+                (category_id, name, price, description, image_url, images, sort_order, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, TRUE)
+            RETURNING *
         `, [
             parseId(req.body.category_id),
             name.slice(0, 160),
@@ -404,16 +264,10 @@ const addProduct = async (req, res) => {
             req.body.description ? String(req.body.description).slice(0, 1000) : null,
             images[0] || null,
             JSON.stringify(images),
-            parseInt(req.body.sort_order, 10) || 0,
-            images.thumb?.data || null,
-            images.thumb?.mime || null
+            parseInt(req.body.sort_order, 10) || 0
         ]);
 
-        const saved = result.rows[0];
-        res.json({
-            ...saved,
-            thumb: saved.has_image ? `/api/nexus/products/${saved.id}/thumb` : null
-        });
+        res.json(normalizeProduct(result.rows[0]));
     } catch (error) {
         console.error('Nexus add product error:', error);
         res.status(500).json({ error: 'تعذّرت إضافة المنتج' });
@@ -464,34 +318,18 @@ const updateProduct = async (req, res) => {
         if (images.length) {
             parts.push(`image_url = $${i++}`, `images = $${i++}::jsonb`);
             values.push(images[0], JSON.stringify(images));
-
-            /* صورة جديدة تعني مصغّرة جديدة. ولو فشل بناؤها نُفرّغ
-               العمود فيُبنى عند أوّل طلب — ولا تبقى مصغّرة الصورة
-               القديمة فوق صورة جديدة */
-            parts.push(`thumb = $${i++}`, `thumb_mime = $${i++}`);
-            values.push(images.thumb?.data || null, images.thumb?.mime || null);
         }
 
         if (!parts.length) return res.status(400).json({ error: 'لا تغيير' });
 
         values.push(id);
         const result = await pool.query(
-            `UPDATE nexus_products SET ${parts.join(', ')} WHERE id = $${i}
-             RETURNING id, category_id, name, price, description, sort_order, is_active, created_at,
-                       (image_url IS NOT NULL AND image_url <> '') AS has_image`,
+            `UPDATE nexus_products SET ${parts.join(', ')} WHERE id = $${i} RETURNING *`,
             values
         );
 
         if (!result.rows.length) return res.status(404).json({ error: 'المنتج غير موجود' });
-
-        const saved = result.rows[0];
-        res.json({
-            ...saved,
-            price: saved.price === null || saved.price === '' ? null : saved.price,
-            /* طابع زمني يكسر تخزين المتصفّح: الصورة تغيّرت والمسار واحد،
-               فبلا الطابع يبقى القديم معروضاً إلى الأبد */
-            thumb: saved.has_image ? `/api/nexus/products/${saved.id}/thumb?v=${Date.now()}` : null
-        });
+        res.json(normalizeProduct(result.rows[0]));
     } catch (error) {
         console.error('Nexus update product error:', error);
         res.status(500).json({ error: 'تعذّر التعديل' });
@@ -779,7 +617,6 @@ const getShopCategories = async (req, res) => {
 
 module.exports = {
     getCatalog,
-    getProductThumb,
     addCategory,
     updateCategory,
     deleteCategory,

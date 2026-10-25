@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
-import nexusService, { nexusError, readCache } from '../services/nexusApi';
+import nexusService, { nexusError } from '../services/nexusApi';
 import { getImageUrl } from '../services/api';
 import './PalnovaaNexus.css';
 
@@ -42,9 +42,7 @@ const ProductCard = ({
     product, mine, canAdopt, isAdmin, picked,
     onAdopt, onPick, onEdit, onRemove, onToggle
 }) => {
-    /* المصغّرة من الخادم لا الصورة الكاملة: ١٤ ك.ب بدل ١٢٤١، ويُخزّنها
-       المتصفّح أبداً فلا تُطلب في الفتحات التالية */
-    const image = product.thumb ? getImageUrl(product.thumb) : null;
+    const image = getImageUrl(product.image_url);
     const tag = price(product.price);
 
     return (
@@ -193,13 +191,13 @@ const AdoptSheet = ({ items, shops, onClose, onDone, onError }) => {
                         /* ثلاث صور مكدّسة: يرى ما حدّده قبل أن يؤكّد */
                         <span className="pnx-stack">
                             {items.slice(0, 3).map(item => (
-                                item.thumb
-                                    ? <img key={item.id} src={getImageUrl(item.thumb)} alt="" />
+                                getImageUrl(item.image_url)
+                                    ? <img key={item.id} src={getImageUrl(item.image_url)} alt="" />
                                     : <i key={item.id}>{item.name.trim().charAt(0) || '؟'}</i>
                             ))}
                         </span>
-                    ) : product.thumb && (
-                        <img src={getImageUrl(product.thumb)} alt="" />
+                    ) : getImageUrl(product.image_url) && (
+                        <img src={getImageUrl(product.image_url)} alt="" />
                     )}
 
                     <div>
@@ -322,9 +320,7 @@ const AdminForm = ({ kind, editing, categories, onClose, onSaved, onError }) => 
     const [note, setNote] = useState(editing?.description || '');
     const [categoryId, setCategoryId] = useState(editing?.category_id || '');
     const [files, setFiles] = useState([]);
-    const [preview, setPreview] = useState(
-        editing?.thumb ? getImageUrl(editing.thumb) : null
-    );
+    const [preview, setPreview] = useState(getImageUrl(editing?.image_url) || null);
     const [saving, setSaving] = useState(false);
     const fileInput = useRef(null);
 
@@ -489,14 +485,8 @@ const AdminForm = ({ kind, editing, categories, onClose, onSaved, onError }) => 
 /* ============================================================ */
 
 const PalnovaaNexus = ({ user, onClose }) => {
-    /*
-     * نبدأ بما في الذاكرة.
-     *
-     * فيُرسم الكتالوج في اللحظة الأولى بلا انتظار شبكة، ثمّ يُجدَّد
-     * في الخلفية. والفارق على هاتف: فتحٌ فوريّ بدل ثانية أو ثلاث.
-     */
-    const [data, setData] = useState(() => readCache());
-    const [loading, setLoading] = useState(() => !readCache());
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [problem, setProblem] = useState(null);
     const [notice, setNotice] = useState(null);
 
@@ -526,25 +516,19 @@ const PalnovaaNexus = ({ user, onClose }) => {
         return () => clearTimeout(t);
     }, [notice]);
 
-    const load = useCallback(async (quiet = false) => {
-        if (!quiet) setLoading(true);
+    const load = useCallback(async () => {
+        setLoading(true);
         setProblem(null);
         try {
             setData(await nexusService.catalog());
         } catch (err) {
-            /* تجديدٌ صامت يفشل لا يُفرغ ما يراه المستخدم: المحفوظ
-               أصدق من شاشة خطأ حين يكون المعروض صالحاً */
-            if (!quiet) setProblem(nexusError(err, 'تعذّر تحميل نكسس'));
+            setProblem(nexusError(err, 'تعذّر تحميل نكسس'));
         } finally {
-            if (!quiet) setLoading(false);
+            setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        // أوّل فتح: إن كان هناك محفوظ فالتجديد صامت، وإلّا فبانتظار
-        load(Boolean(readCache()));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    useEffect(() => { load(); }, [load]);
 
     /*
      * الفلترة والبحث في مرور واحد.
