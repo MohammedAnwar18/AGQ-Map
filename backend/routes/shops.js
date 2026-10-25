@@ -99,6 +99,15 @@ router.get('/search', optionalAuth, shopController.searchShops);
 // عرض جميع المحلات والمرافق للخريطة (عام)
 router.get('/map/all', optionalAuth, shopController.getAllShopsMap);
 
+/* أقرب المحلّات إلى موضع الصورة — لاختيار وسم المشاركة.
+   قبل ‎/:id‎ لئلّا تُقرأ «nearby» معرّفاً */
+router.get('/nearby', authenticateToken, shopController.getNearbyShops);
+
+/* المشاركات: القراءة عامّة والمتحكّم يحجب المعلّق عن غير صاحبه،
+   والقرار يطلب حساباً */
+router.get('/:id/shares', optionalAuth, shopController.getShopShares);
+router.patch('/:id/shares/:tagId', authenticateToken, shopController.decideShare);
+
 // ملف المحل (عام)
 router.get('/:id', optionalAuth, shopController.getShopProfile);
 

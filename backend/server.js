@@ -249,6 +249,49 @@ app.use('/api/fitness', fitnessRoutes);
             CREATE INDEX IF NOT EXISTS idx_map_rasters_live
             ON map_rasters (status, is_visible);
         `);
+
+        /*
+         * انتهاء المنشور.
+         *
+         * عمود صريح لا شرط على ‎created_at‎: فمنشورات اليوم تختفي بعد
+         * يوم، والقديمة قيمتها ‎NULL‎ فتبقى كما كانت. ولو أردنا يوماً
+         * منشوراً دائماً كفى أن نتركه ‎NULL‎.
+         */
+        await pool.query(`
+            ALTER TABLE posts
+                ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP;
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_posts_expiry
+            ON posts (expires_at);
+        `);
+
+        /*
+         * مشاركة منشور مع محلّ.
+         *
+         * الوسم لا يُنشر نفسه: يبقى ‎pending‎ حتى يوافق صاحب المحلّ.
+         * ومنشورٌ يظهر في صفحة محلّ بلا إذنه يجعل الصفحة مكاناً
+         * يُعلَّق فيه ما لا يُريد.
+         *
+         * و‎UNIQUE‎ على الزوج: المشاركة الواحدة لا تُطلب مرّتين، ولا
+         * يُحتال على الرفض بإعادة الطلب.
+         */
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS post_shop_tags (
+                id SERIAL PRIMARY KEY,
+                post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+                shop_id INTEGER NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+                status VARCHAR(16) NOT NULL DEFAULT 'pending',
+                decided_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                decided_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (post_id, shop_id)
+            );
+        `);
+        await pool.query(`
+            CREATE INDEX IF NOT EXISTS idx_post_shop_tags_shop
+            ON post_shop_tags (shop_id, status, created_at DESC);
+        `);
         await pool.query(`
             CREATE INDEX IF NOT EXISTS idx_shop_products_category
             ON shop_products (shop_id, category_id, sort_order);

@@ -58,16 +58,54 @@ const createPost = async (req, res) => {
 
         // إنشاء نقطة جغرافية
         const result = await pool.query(
-            `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id)
-       VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9)
+            /*
+             * الانتهاء بعد أربع وعشرين ساعة — لمنشورات الخريطة وحدها.
+             *
+             * منشور المجتمع ليس على الخريطة فلا يختفي منها، ومنشور بلا
+             * موضع لا يُعرض عليها أصلاً. فالشرط موضعٌ بلا مجتمع.
+             */
+            `INSERT INTO posts (user_id, content, image_url, media_urls, location, address, media_type, community_id, expires_at)
+       VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326)::geography, $7, $8, $9,
+               CASE WHEN $9::int IS NULL AND $5 IS NOT NULL
+                    THEN NOW() + INTERVAL '24 hours' END)
        RETURNING id, user_id, content, image_url, media_urls, media_type, community_id,
                  ST_X(location::geometry) as longitude,
                  ST_Y(location::geometry) as latitude,
-                 address, created_at`,
+                 address, created_at, expires_at`,
             [userId, content, image_url, media_urls, longitude, latitude, address, media_type, community_id || null]
         );
 
         const post = result.rows[0];
+
+        /*
+         * وسم المحلّ، إن اختاره صاحب المنشور.
+         *
+         * بعد نجاح المنشور لا قبله، وفي ‎try‎ خاصّ: وسمٌ يفشل لأنّ
+         * المحلّ حُذف لا يجوز أن يُسقط منشوراً نُشر فعلاً وصوره
+         * مرفوعة. فيُسجَّل الخطأ ويمضي النشر.
+         */
+        const taggedShopId = parseInt(req.body.shop_id, 10);
+        if (Number.isFinite(taggedShopId) && taggedShopId > 0) {
+            try {
+                const tag = await pool.query(`
+                    INSERT INTO post_shop_tags (post_id, shop_id, status)
+                    VALUES ($1, $2, 'pending')
+                    ON CONFLICT (post_id, shop_id) DO NOTHING
+                    RETURNING id, status
+                `, [post.id, taggedShopId]);
+
+                const shopRow = await pool.query('SELECT id, name FROM shops WHERE id = $1', [taggedShopId]);
+                if (shopRow.rows.length) {
+                    post.shop_tag = {
+                        shop_id: shopRow.rows[0].id,
+                        shop_name: shopRow.rows[0].name,
+                        status: tag.rows[0]?.status || 'pending'
+                    };
+                }
+            } catch (tagErr) {
+                console.error('Post shop tag error:', tagErr);
+            }
+        }
 
         // الحصول على معلومات المستخدم
         const userResult = await pool.query(
@@ -112,6 +150,53 @@ const createPost = async (req, res) => {
 /**
  * الحصول على المنشورات ضمن نطاق جغرافي
  */
+/**
+ * معرض صاحب المنشور — كلّ ما نشره، منتهياً كان أو لا.
+ *
+ * الانتهاء يُخفي المنشور عن الخريطة لا عن صاحبه: من صوّر مكاناً
+ * أمس يريد أن يرجع إليه. فالمعرض يعرض الكلّ ويقول ما انتهى منه،
+ * ومعه موضعه كي يُرى على الخريطة بضغطة.
+ *
+ * وحالة وسم المحلّ معه: من شارك محلّاً يريد أن يعرف أقُبلت
+ * مشاركته أم لا تزال معلّقة.
+ */
+const getMyPosts = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 60));
+
+        const result = await pool.query(`
+            SELECT
+                p.id, p.content, p.image_url, p.media_urls, p.media_type,
+                ST_X(p.location::geometry) as longitude,
+                ST_Y(p.location::geometry) as latitude,
+                p.address, p.created_at, p.expires_at,
+                (p.expires_at IS NOT NULL AND p.expires_at <= NOW()) AS is_expired,
+                (SELECT COUNT(*)::int FROM likes WHERE post_id = p.id) as likes_count,
+                (SELECT COUNT(*)::int FROM comments WHERE post_id = p.id) as comments_count,
+                t.shop_id, t.status AS tag_status, sh.name AS shop_name
+            FROM posts p
+            LEFT JOIN post_shop_tags t ON t.post_id = p.id
+            LEFT JOIN shops sh ON sh.id = t.shop_id
+            WHERE p.user_id = $1 AND p.community_id IS NULL
+            ORDER BY p.created_at DESC
+            LIMIT $2
+        `, [userId, limit]);
+
+        res.json({
+            posts: result.rows.map(row => ({
+                ...row,
+                shop_tag: row.shop_id
+                    ? { shop_id: row.shop_id, shop_name: row.shop_name, status: row.tag_status }
+                    : null
+            }))
+        });
+    } catch (error) {
+        console.error('Get my posts error:', error);
+        res.status(500).json({ error: 'تعذّر تحميل المعرض' });
+    }
+};
+
 const getPosts = async (req, res) => {
     try {
         const { latitude, longitude, radius = 50000 } = req.query; // radius بالأمتار (50km default)
@@ -141,6 +226,7 @@ const getPosts = async (req, res) => {
           $3
         )
         AND p.community_id IS NULL
+        AND (p.expires_at IS NULL OR p.expires_at > NOW())
         AND (
           p.user_id = $4
           OR p.user_id IN (
@@ -173,6 +259,7 @@ const getPosts = async (req, res) => {
         JOIN users u ON p.user_id = u.id
         WHERE 
           p.community_id IS NULL
+          AND (p.expires_at IS NULL OR p.expires_at > NOW())
           AND (
             p.user_id = $1
             OR p.user_id IN (
@@ -311,4 +398,4 @@ const toggleLike = async (req, res) => {
     }
 };
 
-module.exports = { createPost, getPosts, deletePost, toggleLike };
+module.exports = { createPost, getPosts, getMyPosts, deletePost, toggleLike };

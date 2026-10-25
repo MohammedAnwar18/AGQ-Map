@@ -1118,4 +1118,213 @@
     .geomolg-divider {
         height: 18px;
     }
-}
+}
+/* ============================================================
+   وسم محل في المنشور — قسم المشاركات
+
+   محدّدات ‎.cp-*‎ تخصّ نافذة إنشاء المنشور وحدها.
+   ============================================================ */
+
+.cp-tag { margin: 4px 0 2px; }
+
+.cp-tag-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    padding: 13px;
+    border: 1px dashed rgba(251, 171, 21, .5);
+    border-radius: 13px;
+    background: rgba(251, 171, 21, .07);
+    color: #fbab15;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.cp-tag-open:hover { background: rgba(251, 171, 21, .15); }
+
+.cp-tag-chosen {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 12px 14px;
+    border: 1px solid rgba(251, 171, 21, .45);
+    border-radius: 13px;
+    background: rgba(251, 171, 21, .1);
+    color: #fbab15;
+}
+
+.cp-tag-chosen > div { flex: 1; min-width: 0; }
+
+.cp-tag-chosen b {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.cp-tag-chosen span {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.cp-tag-chosen > button {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, .25);
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+/* ── قائمة القريب ── */
+.cp-near {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.cp-near-scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: rgba(3, 7, 15, .78);
+    backdrop-filter: blur(5px);
+    cursor: pointer;
+}
+
+.cp-near-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 520px;
+    max-height: 76dvh;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 22px 22px 0 0;
+    background: #0b1424;
+    color: #f1f5f9;
+    direction: rtl;
+}
+
+.cp-near-card header {
+    position: relative;
+    flex-shrink: 0;
+    padding: 16px 18px 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, .11);
+}
+
+.cp-near-card header b { display: block; font-size: 1rem; font-weight: 800; }
+
+.cp-near-card header span {
+    display: block;
+    margin-top: 3px;
+    font-size: 0.72rem;
+    color: #93a3b9;
+}
+
+.cp-near-card header button {
+    position: absolute;
+    inset-inline-end: 14px;
+    top: 14px;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.cp-near-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px calc(10px + env(safe-area-inset-bottom));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+}
+
+.cp-near-note {
+    margin: 0;
+    padding: 26px 18px;
+    font-size: 0.82rem;
+    line-height: 1.8;
+    color: #93a3b9;
+    text-align: center;
+}
+
+.cp-near-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 11px 12px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.cp-near-row:hover { background: rgba(255, 255, 255, .06); }
+
+.cp-near-row img,
+.cp-near-row i {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 12px;
+    background: linear-gradient(145deg, #16233c, #0d1627);
+    object-fit: cover;
+    font-style: normal;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: rgba(251, 171, 21, .55);
+}
+
+.cp-near-row > div { flex: 1; min-width: 0; }
+
+.cp-near-row > div b {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.cp-near-row > div span {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: #93a3b9;
+}
+
+.cp-near-row em {
+    flex-shrink: 0;
+    font-style: normal;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #fbab15;
+    font-variant-numeric: tabular-nums;
+}

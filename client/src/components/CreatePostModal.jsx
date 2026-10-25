@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { postService } from '../services/api';
+import { postService, shopService, getImageUrl } from '../services/api';
 import { optimizeImage } from '../utils/imageOptimizer';
 import './Modal.css';
 
@@ -510,6 +510,19 @@ const CreatePostModal = ({
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
 
+    /*
+     * وسم المحلّ.
+     *
+     * قبل التأكيد لا بعده: من نشر ثم أراد الوسم يحتاج تعديلاً، ومن
+     * يُسأل قبل النشر يجيب بضغطة. والقائمة مرتّبة بالمسافة من موضع
+     * الصورة — فالمحلّ الذي يصوّر أمامه أوّلها.
+     */
+    const [showTagPicker, setShowTagPicker] = useState(false);
+    const [nearShops, setNearShops] = useState([]);
+    const [nearLoading, setNearLoading] = useState(false);
+    const [nearProblem, setNearProblem] = useState(null);
+    const [taggedShop, setTaggedShop] = useState(null);
+
     // هل المجتمع الحالي هو نباتات فلسطين؟ (نستخدم == لتجاهل فرق string/number)
     // eslint-disable-next-line eqeqeq
     const isFloraComm = communityId == FLORA_PALESTINA_COMMUNITY_ID;
@@ -599,6 +612,45 @@ const CreatePostModal = ({
     };
 
     // نشر المنشور
+    /**
+     * يقرأ موضع الصورة كما سيُنشر — لا موضع الهاتف الآن.
+     *
+     * فمن اختار موضعاً مخصّصاً على الخريطة يريد محلّات ذلك الموضع،
+     * وترتيبُ القائمة بموضعه الحالي يضع محلّات حيث يقف لا حيث صوّر.
+     */
+    const postedAt = () => {
+        if (locationMode === 'custom') {
+            const lat = parseFloat(customLat);
+            const lng = parseFloat(customLng);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+        }
+        if (currentLocation) return { lat: currentLocation.latitude, lng: currentLocation.longitude };
+        return null;
+    };
+
+    const openTagPicker = async () => {
+        const at = postedAt();
+        if (!at) {
+            setNearProblem('لا موضع للمنشور بعد — حدّده أوّلاً ليظهر ما حوله');
+            setShowTagPicker(true);
+            return;
+        }
+
+        setShowTagPicker(true);
+        setNearLoading(true);
+        setNearProblem(null);
+
+        try {
+            const data = await shopService.nearby(at.lat, at.lng, 2000);
+            setNearShops(data.shops || []);
+            if (!data.shops?.length) setNearProblem('لا محلّات مسجّلة حول هذا الموضع');
+        } catch (err) {
+            setNearProblem(err?.response?.data?.error || 'تعذّر تحميل المحلّات القريبة');
+        } finally {
+            setNearLoading(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -673,6 +725,11 @@ const CreatePostModal = ({
             }
             if (communityId) {
                 formData.append('community_id', communityId);
+            }
+
+            // الوسم يُرسل مع المنشور فيُنشأ معه في معاملة واحدة
+            if (taggedShop) {
+                formData.append('shop_id', taggedShop.id);
             }
 
             // Optimize images before upload
@@ -1372,6 +1429,90 @@ const CreatePostModal = ({
                                 </span>
                             </div>
                         )
+                    )}
+
+                    {/*
+                      * ══ وسم محلّ ══
+                      *
+                      * قبل زرّ النشر لا بعده: هو آخر ما يُسأل عنه قبل
+                      * التأكيد، وموضعه هنا يجعله خطوةً في الطريق لا
+                      * شيئاً يُبحث عنه.
+                      */}
+                    {!communityId && (
+                        <div className="cp-tag">
+                            {taggedShop ? (
+                                <div className="cp-tag-chosen">
+                                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                        <path d="M3 6h18M16 10a4 4 0 0 1-8 0" />
+                                    </svg>
+
+                                    <div>
+                                        <b>{taggedShop.name}</b>
+                                        <span>تُرسَل المشاركة لصاحب المحل ليقبلها</span>
+                                    </div>
+
+                                    <button type="button" onClick={() => setTaggedShop(null)} aria-label="أزل الوسم">✕</button>
+                                </div>
+                            ) : (
+                                <button type="button" className="cp-tag-open" onClick={openTagPicker}>
+                                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                        <path d="M3 6h18M16 10a4 4 0 0 1-8 0" />
+                                    </svg>
+                                    أضف وسم محل (اختياري)
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* قائمة المحلّات القريبة */}
+                    {showTagPicker && (
+                        <div className="cp-near" role="dialog" aria-label="اختر محلاً">
+                            <button
+                                type="button"
+                                className="cp-near-scrim"
+                                onClick={() => setShowTagPicker(false)}
+                                aria-label="إغلاق"
+                            />
+
+                            <div className="cp-near-card">
+                                <header>
+                                    <b>المحلات القريبة</b>
+                                    <span>مرتّبة بالأقرب إلى موضع الصورة</span>
+                                    <button type="button" onClick={() => setShowTagPicker(false)} aria-label="إغلاق">✕</button>
+                                </header>
+
+                                <div className="cp-near-body">
+                                    {nearLoading && <p className="cp-near-note">يبحث حولك…</p>}
+                                    {nearProblem && !nearLoading && <p className="cp-near-note">{nearProblem}</p>}
+
+                                    {!nearLoading && nearShops.map(shop => (
+                                        <button
+                                            type="button"
+                                            key={shop.id}
+                                            className="cp-near-row"
+                                            onClick={() => { setTaggedShop(shop); setShowTagPicker(false); }}
+                                        >
+                                            {shop.profile_picture
+                                                ? <img src={getImageUrl(shop.profile_picture)} alt="" />
+                                                : <i>{shop.name.trim().charAt(0) || '?'}</i>}
+
+                                            <div>
+                                                <b>{shop.name}</b>
+                                                <span>{shop.category || 'محل'}</span>
+                                            </div>
+
+                                            <em>
+                                                {shop.distance < 1000
+                                                    ? `${shop.distance} م`
+                                                    : `${(shop.distance / 1000).toFixed(1)} كم`}
+                                            </em>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {/* زر النشر */}

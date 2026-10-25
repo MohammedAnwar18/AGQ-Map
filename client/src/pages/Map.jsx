@@ -46,6 +46,7 @@ const FitnessPathModal      = React.lazy(() => import('../components/FitnessPath
 const StudySpace            = React.lazy(() => import('./StudySpace'));
 const IndoorControl         = React.lazy(() => import('./IndoorControl'));
 const PalnovaaNexus         = React.lazy(() => import('../components/PalnovaaNexus'));
+const PostsGallery          = React.lazy(() => import('../components/PostsGallery'));
 
 import rasterService, { tileTemplate } from '../services/rasterApi';
 // ─────────────────────────────────────────────────────────────────────────────
@@ -738,6 +739,16 @@ const MapComponent = () => {
 
 
     const [showChat, setShowChat] = useState(false);
+    const [showGallery, setShowGallery] = useState(false);
+
+    /*
+     * منشور يُضاء على الخريطة من المعرض.
+     *
+     * الطيران إلى الموضع وحده لا يكفي: المنشور المنتهي لا يُعرض على
+     * الخريطة، فلو طرنا إليه رأى المستخدم مكاناً فارغاً وظنّ الزرّ
+     * معطّلاً. فتُضاء علامة مؤقّتة تقول «هنا كان» حتى يُغلقها.
+     */
+    const [spotlight, setSpotlight] = useState(null);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [showAIChat, setShowAIChat] = useState(false);
 
@@ -851,8 +862,33 @@ const MapComponent = () => {
         }, 260);
     };
 
+    /*
+     * زرّ الكاميرا: نقرة تُنشئ منشوراً ونقرتان تفتحان المعرض.
+     *
+     * نفس نمط الدائرة المركزية، ونفس المهلة — فمن تعلّمه هناك لا
+     * يتعلّمه هنا من جديد. والمهلة ٢٦٠ مللي: أقصر منها يفوت النقرة
+     * الثانية، وأطول منها يُحسّ تأخّراً في النقرة الأولى.
+     */
+    const cameraTapTimer = useRef(null);
+
+    const handleCameraClick = () => {
+        if (cameraTapTimer.current) {
+            clearTimeout(cameraTapTimer.current);
+            cameraTapTimer.current = null;
+            requireAccount(() => setShowGallery(true));
+            return;
+        }
+
+        cameraTapTimer.current = setTimeout(() => {
+            cameraTapTimer.current = null;
+            if (canCreatePost) requireAccount(() => setShowCreatePost(true));
+            else openAIAssistant();
+        }, 260);
+    };
+
     useEffect(() => () => {
         if (centerTapTimer.current) clearTimeout(centerTapTimer.current);
+        if (cameraTapTimer.current) clearTimeout(cameraTapTimer.current);
     }, []);
 
     // Shop Profile State
@@ -2981,6 +3017,45 @@ const MapComponent = () => {
                     attributionControl={false}
                 >
                     {/*
+                      * ═══ موضع منشور من المعرض ═══
+                      *
+                      * علامة مؤقّتة لا طبقة دائمة: تُغلق بضغطة ولا
+                      * تُحفظ. وهي الجواب الصادق على «أرني على الخريطة»
+                      * حين يكون المنشور قد انتهى ولم يبقَ له مكان فيها.
+                      */}
+                    {spotlight && Number.isFinite(parseFloat(spotlight.latitude)) && (
+                        <Marker
+                            longitude={parseFloat(spotlight.longitude)}
+                            latitude={parseFloat(spotlight.latitude)}
+                            anchor="bottom"
+                        >
+                            <button
+                                onClick={() => setSpotlight(null)}
+                                title="أغلق"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 7,
+                                    padding: '7px 12px 7px 8px',
+                                    border: '1px solid rgba(251,171,21,.65)',
+                                    borderRadius: 999,
+                                    background: 'rgba(10,16,32,.94)',
+                                    backdropFilter: 'blur(10px)',
+                                    boxShadow: '0 8px 22px rgba(0,0,0,.5)',
+                                    color: '#fbab15',
+                                    font: 'inherit', fontSize: '0.74rem', fontWeight: 800,
+                                    cursor: 'pointer', whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                </svg>
+                                {spotlight.is_expired ? 'هنا كان منشورك' : 'منشورك هنا'}
+                                <span style={{ opacity: .55, fontWeight: 600 }}>✕</span>
+                            </button>
+                        </Marker>
+                    )}
+
+                    {/*
                       * ═══ طبقات الراستر ═══
                       *
                       * قبل كل شيء في الشجرة فتكون أسفل الطبقات كلّها:
@@ -3707,13 +3782,26 @@ const MapComponent = () => {
                     </button>
                 </div>
 
-                <button className={`nav-item ${showChat ? 'active' : ''}`} onClick={() => requireAccount(() => { setShowChat(true); setUnreadChatCount(0); setShowSearch(false); setShowAIChat(false); setShowCommunities(false); setShowProfile(false); })}>
+                {/*
+                  * الكاميرا مكان الرسائل.
+                  *
+                  * والرسائل انتقلت إلى قسم الأصدقاء: محادثةٌ شأنٌ بين
+                  * صديقين، ومكانها حيث الأصدقاء لا في شريط الخريطة.
+                  * ويبقى عدد غير المقروء هنا شارةً على الكاميرا؟ لا —
+                  * شارة على أيقونة لا تفتح الرسائل تكذب على مَن يراها،
+                  * فانتقلت الشارة معها إلى حيث تُفتح.
+                  */}
+                <button
+                    className={`nav-item ${showGallery ? 'active' : ''}`}
+                    onClick={handleCameraClick}
+                    style={{ touchAction: 'manipulation' }}
+                    title="التقط منشوراً — ونقرتان تفتحان المعرض"
+                >
                     <div style={{ position: 'relative' }}>
-                        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 2L11 13" />
-                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 8.6A2.6 2.6 0 0 1 5.6 6h1.9L9 3.8h6L16.5 6h1.9A2.6 2.6 0 0 1 21 8.6v8.8A2.6 2.6 0 0 1 18.4 20H5.6A2.6 2.6 0 0 1 3 17.4z" />
+                            <circle cx="12" cy="12.8" r="3.5" />
                         </svg>
-                        {unreadChatCount > 0 && <span className="notification-badge" style={{ top: '-6px', right: '-6px', transform: 'scale(0.9)' }}>{unreadChatCount}</span>}
                     </div>
                 </button>
             </nav>
@@ -3926,6 +4014,24 @@ const MapComponent = () => {
                 }}
             />}
             {showChat && <ChatModal onClose={() => setShowChat(false)} />}
+
+            {/* معرض منشوراتي — ومنه يُعاد إظهار موضع منشور على الخريطة */}
+            {showGallery && (
+                <React.Suspense fallback={null}>
+                    <PostsGallery
+                        onClose={() => setShowGallery(false)}
+                        onShowOnMap={(post) => {
+                            setShowGallery(false);
+                            setSpotlight(post);
+                            mapRef.current?.flyTo({
+                                center: [parseFloat(post.longitude), parseFloat(post.latitude)],
+                                zoom: 17,
+                                duration: 1400
+                            });
+                        }}
+                    />
+                </React.Suspense>
+            )}
             {showHellyAgents && user?.role === 'admin' && (
                 <React.Suspense fallback={null}>
                     <HellyAgents onClose={() => setShowHellyAgents(false)} />
@@ -3943,6 +4049,12 @@ const MapComponent = () => {
             )}
             {showFriends && <FriendsModal
                 onClose={() => setShowFriends(false)}
+                onOpenMessages={() => {
+                    setShowFriends(false);
+                    setShowChat(true);
+                    setUnreadChatCount(0);
+                }}
+                unreadMessages={unreadChatCount}
                 onShopFollowed={handleShopFollowed}
                 onCameraAdded={fetchLiveCameras}
                 onShopClick={(shop) => {

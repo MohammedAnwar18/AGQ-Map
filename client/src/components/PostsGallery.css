@@ -1,0 +1,382 @@
+/* ============================================================
+   معرض المنشورات
+
+   محدّد جذر واحد ‎.pg‎ — يُفتح فوق الخريطة، فلا قاعدة عامّة تتسرّب.
+   ============================================================ */
+
+.pg {
+    --ink: #0a1020;
+    --line: rgba(255, 255, 255, .11);
+    --line-2: rgba(255, 255, 255, .2);
+    --text: #f1f5f9;
+    --muted: #93a3b9;
+    --gold: #fbab15;
+    --good: #4ade80;
+    --bad: #fb7185;
+    --warn: #fbbf24;
+
+    position: fixed;
+    inset: 0;
+    z-index: 4300;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100dvh;
+    background:
+        radial-gradient(900px 540px at 85% -10%, rgba(251, 171, 21, .1), transparent 60%),
+        var(--ink);
+    color: var(--text);
+    font-family: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    direction: rtl;
+}
+
+.pg button { font-family: inherit; color: inherit; cursor: pointer; }
+
+/* ── الترويسة ── */
+.pg-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    padding: calc(13px + env(safe-area-inset-top)) 16px 13px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10, 16, 32, .78);
+    backdrop-filter: blur(16px);
+}
+
+.pg-x {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+}
+
+.pg-top > div { min-width: 0; }
+.pg-top b { display: block; font-size: 16px; font-weight: 800; }
+
+.pg-top span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+/* ── المحتوى ── */
+.pg-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.pg-explain {
+    max-width: 1200px;
+    margin: 0 auto 14px;
+    padding: 12px 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .035);
+    font-size: 12px;
+    line-height: 1.85;
+    color: var(--muted);
+}
+
+.pg-bad,
+.pg-empty {
+    max-width: 1200px;
+    margin: 0 auto 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .035);
+    font-size: 12.5px;
+    line-height: 1.7;
+    text-align: center;
+    color: var(--muted);
+}
+
+.pg-bad {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-color: rgba(251, 113, 133, .5);
+    color: #fecdd3;
+    text-align: start;
+}
+
+.pg-bad button {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .07);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/*
+ * شبكة مربّعة.
+ *
+ * ثلاثة أعمدة على الهاتف وما يتّسع على الحاسوب، والخلية مربّعة
+ * تماماً — فالمعرض يُقرأ شكلاً واحداً لا مستطيلات مختلفة الطول.
+ */
+.pg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 6px;
+    max-width: 1200px;
+    margin-inline: auto;
+}
+
+.pg-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: linear-gradient(145deg, #16233c, #0d1627);
+    transition: transform .16s, border-color .16s;
+}
+
+@media (hover: hover) {
+    .pg-cell:hover { transform: translateY(-2px); border-color: var(--line-2); }
+}
+
+.pg-cell img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* المنتهي يخفت ولا يُخفى: موجود وقابل للعرض، وهذا نصف الميزة */
+.pg-cell.is-gone img { opacity: .45; filter: saturate(.6); }
+
+.pg-cell-text {
+    padding: 10px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
+}
+
+/* نقطة الحالة */
+.pg-dot {
+    position: absolute;
+    inset-inline-end: 7px;
+    top: 7px;
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid rgba(10, 16, 32, .8);
+    border-radius: 50%;
+}
+
+.pg-dot.is-live { background: var(--good); }
+.pg-dot.is-soon { background: var(--warn); }
+.pg-dot.is-gone { background: #64748b; }
+.pg-dot.is-ever { background: var(--gold); }
+
+.pg-cell-shop {
+    position: absolute;
+    inset-inline: 5px;
+    bottom: 5px;
+    padding: 3px 7px;
+    border-radius: 7px;
+    background: rgba(8, 14, 26, .86);
+    backdrop-filter: blur(6px);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--gold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pg-ghost {
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: linear-gradient(100deg, rgba(255, 255, 255, .04) 28%, rgba(255, 255, 255, .1) 46%, rgba(255, 255, 255, .04) 64%);
+    background-size: 280% 100%;
+    animation: pg-sheen 1.3s ease-in-out infinite;
+}
+
+@keyframes pg-sheen {
+    from { background-position: 150% 0; }
+    to { background-position: -50% 0; }
+}
+
+/* ============================================================
+   العارض
+   ============================================================ */
+
+.pg-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.pg-viewer-scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(3, 7, 15, .84);
+    backdrop-filter: blur(6px);
+}
+
+.pg-viewer-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 520px;
+    max-height: 92dvh;
+    overflow: hidden;
+    border: 1px solid var(--line-2);
+    border-radius: 20px;
+    background: #0b1424;
+    box-shadow: 0 20px 56px rgba(0, 0, 0, .6);
+    animation: pg-rise .22s cubic-bezier(.2, .8, .25, 1);
+}
+
+@keyframes pg-rise {
+    from { transform: translateY(16px) scale(.98); opacity: .4; }
+    to { transform: none; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pg-viewer-card { animation: none; }
+    .pg-ghost { animation: none; }
+}
+
+/* ── شريط وسم المحلّ ── */
+.pg-tagbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: 11.5px;
+}
+
+.pg-tagbar b { font-size: 13px; font-weight: 800; }
+.pg-tagbar span { color: var(--muted); }
+
+.pg-tagbar.is-wait { background: rgba(251, 191, 36, .12); color: #fde68a; }
+.pg-tagbar.is-done { background: rgba(74, 222, 128, .12); color: #bbf7d0; }
+.pg-tagbar.is-no { background: rgba(251, 113, 133, .12); color: #fecdd3; }
+
+/* ── الصورة ── */
+.pg-viewer-shot {
+    position: relative;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    max-height: 62dvh;
+    overflow: hidden;
+    background: #060b14;
+}
+
+.pg-viewer-shot img {
+    width: 100%;
+    max-height: 62dvh;
+    object-fit: contain;
+    display: block;
+}
+
+.pg-viewer-text {
+    margin: 0;
+    padding: 46px 24px;
+    font-size: 15px;
+    line-height: 1.9;
+    text-align: center;
+}
+
+.pg-viewer-x {
+    position: absolute;
+    inset-inline-end: 10px;
+    top: 10px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line-2);
+    border-radius: 50%;
+    background: rgba(8, 14, 26, .8);
+    backdrop-filter: blur(8px);
+    font-size: 13px;
+}
+
+/* زرّ الخريطة على الصورة نفسها */
+.pg-map-btn {
+    position: absolute;
+    inset-inline-start: 12px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid rgba(251, 171, 21, .55);
+    border-radius: 999px;
+    background: rgba(8, 14, 26, .88);
+    backdrop-filter: blur(10px);
+    color: var(--gold);
+    font-size: 12.5px;
+    font-weight: 800;
+}
+
+.pg-map-btn:hover { background: rgba(251, 171, 21, .22); }
+
+/* ── أسفل العارض ── */
+.pg-viewer-foot {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+.pg-viewer-note {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.8;
+}
+
+.pg-viewer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.pg-addr { width: 100%; }
+
+.pg-remain { font-weight: 800; }
+.pg-remain.is-live { color: var(--good); }
+.pg-remain.is-soon { color: var(--warn); }
+.pg-remain.is-gone { color: #94a3b8; }
+.pg-remain.is-ever { color: var(--gold); }
+
+.pg-hint { font-size: 11px; line-height: 1.7; color: var(--muted); }
+
+@media (max-width: 380px) {
+    .pg-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+    .pg-scroll { padding-inline: 12px; }
+}

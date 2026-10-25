@@ -1669,6 +1669,146 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
     }
 };
 
+/* ============================================================
+   مشاركة المنشورات مع المحلّات
+   ============================================================ */
+
+/**
+ * أقرب المحلّات إلى موضع الصورة.
+ *
+ * من يصوّر أمام محلّ يريد ذلك المحلّ في أعلى القائمة لا أن يبحث
+ * عنه بالاسم. فالترتيب بالمسافة من موضع الصورة نفسها لا من موضع
+ * الهاتف الآن — قد تُنشر صورة بعد أن يبتعد صاحبها.
+ */
+const getNearbyShops = async (req, res) => {
+    try {
+        const lat = parseFloat(req.query.latitude);
+        const lng = parseFloat(req.query.longitude);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return res.status(400).json({ error: 'الموضع مطلوب' });
+        }
+
+        const radius = Math.min(20000, Math.max(50, parseInt(req.query.radius, 10) || 1500));
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+
+        const result = await pool.query(`
+            SELECT id, name, category, profile_picture,
+                   latitude, longitude,
+                   ST_Distance(
+                       ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                       ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+                   ) AS distance
+            FROM shops
+            WHERE is_hidden = FALSE
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND ST_DWithin(
+                      ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
+                      ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+                      $3
+                  )
+            ORDER BY distance ASC
+            LIMIT $4
+        `, [lng, lat, radius, limit]);
+
+        res.json({
+            shops: result.rows.map(row => ({ ...row, distance: Math.round(Number(row.distance)) }))
+        });
+    } catch (error) {
+        console.error('Nearby shops error:', error);
+        res.status(500).json({ error: 'تعذّر تحميل المحلّات القريبة' });
+    }
+};
+
+/**
+ * المشاركات الواردة إلى محلّ.
+ *
+ * صاحب المحلّ يرى المعلّق والمقبول، وغيره لا يرى إلّا المقبول:
+ * منشورٌ رُفض أو لم يُنظر فيه بعد ليس من محتوى الصفحة.
+ *
+ * والمنتهي يُعرض هنا ولو اختفى عن الخريطة: المشاركة المقبولة صارت
+ * من محتوى المحلّ، ولا معنى لأن تذوي بعد يوم.
+ */
+const getShopShares = async (req, res) => {
+    try {
+        const shopId = parseInt(req.params.id, 10);
+        if (Number.isNaN(shopId)) return res.status(400).json({ error: 'معرّف غير صالح' });
+
+        const shopRow = await pool.query('SELECT owner_id FROM shops WHERE id = $1', [shopId]);
+        if (!shopRow.rows.length) return res.status(404).json({ error: 'المحل غير موجود' });
+
+        const userId = req.user?.userId || null;
+        const manages = Boolean(userId)
+            && (req.user.role === 'admin' || shopRow.rows[0].owner_id === userId);
+
+        const result = await pool.query(`
+            SELECT
+                t.id, t.status, t.created_at AS shared_at, t.decided_at,
+                p.id AS post_id, p.content, p.image_url, p.media_urls, p.media_type,
+                ST_X(p.location::geometry) AS longitude,
+                ST_Y(p.location::geometry) AS latitude,
+                p.address, p.created_at,
+                u.id AS user_id, u.username, u.full_name, u.profile_picture
+            FROM post_shop_tags t
+            JOIN posts p ON p.id = t.post_id
+            JOIN users u ON u.id = p.user_id
+            WHERE t.shop_id = $1
+              AND ($2::boolean OR t.status = 'approved')
+            ORDER BY
+                CASE WHEN t.status = 'pending' THEN 0 ELSE 1 END,
+                t.created_at DESC
+            LIMIT 120
+        `, [shopId, manages]);
+
+        res.json({
+            manages,
+            pending_count: result.rows.filter(r => r.status === 'pending').length,
+            shares: result.rows
+        });
+    } catch (error) {
+        console.error('Get shop shares error:', error);
+        res.status(500).json({ error: 'تعذّر تحميل المشاركات' });
+    }
+};
+
+/** قبول مشاركة أو رفضها — لصاحب المحلّ أو الأدمن العام */
+const decideShare = async (req, res) => {
+    try {
+        const shopId = parseInt(req.params.id, 10);
+        const tagId = parseInt(req.params.tagId, 10);
+        if (Number.isNaN(shopId) || Number.isNaN(tagId)) {
+            return res.status(400).json({ error: 'معرّف غير صالح' });
+        }
+
+        if (!(await assertShopAccess(shopId, req, res))) return;
+
+        const status = String(req.body.status || '').trim();
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ error: 'القرار إمّا قبول أو رفض' });
+        }
+
+        /* الشرط على ‎shop_id‎ كذلك لا على المعرّف وحده: وإلّا قرّر
+           صاحبُ محلٍّ في مشاركةِ محلٍّ آخر بتمرير معرّف ليس له */
+        const result = await pool.query(`
+            UPDATE post_shop_tags
+            SET status = $1, decided_by = $2, decided_at = NOW()
+            WHERE id = $3 AND shop_id = $4
+            RETURNING id, status, post_id
+        `, [status, req.user.userId, tagId, shopId]);
+
+        if (!result.rows.length) return res.status(404).json({ error: 'المشاركة غير موجودة' });
+
+        res.json({
+            success: true,
+            ...result.rows[0],
+            message: status === 'approved' ? 'نُشرت المشاركة في صفحة المحل' : 'رُفضت المشاركة'
+        });
+    } catch (error) {
+        console.error('Decide share error:', error);
+        res.status(500).json({ error: 'تعذّر تنفيذ القرار' });
+    }
+};
+
 const getAllShopsMap = async (req, res) => {
     try {
         let shopsRes;
@@ -2257,6 +2397,9 @@ module.exports = {
     deletePanoramaHotspot,
     smartSearch,
     getAllShopsMap,
+    getNearbyShops,
+    getShopShares,
+    decideShare,
     getUniversityFacilities,
     getFacilityProfile,
     getPostComments,

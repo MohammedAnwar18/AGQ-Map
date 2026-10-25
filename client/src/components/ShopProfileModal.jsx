@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+
+const ShopShares = React.lazy(() => import('./ShopShares'));
 import { shopService, postService, commentService, getImageUrl } from '../services/api';
 import { cartService } from '../services/cartService';
 import { optimizeImage } from '../utils/imageOptimizer';
@@ -679,6 +681,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
     const ALL_SECTIONS = [
         { key: 'products', label: 'المنتجات / الخدمات' },
         { key: 'timeline', label: 'الأخبار والمنشورات' },
+        { key: 'shares', label: 'المشاركات' },
         { key: 'about', label: 'حول المحل' },
         { key: 'simulate', label: 'محاكي الأعمال' },
     ];
@@ -1636,6 +1639,8 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                             {[
                                 ...((shopData.category === 'صراف آلي' || shopData.category === 'فرع بنك') ? [] : ['products']),
                                 'timeline',
+                                /* المشاركات: منشورات الناس التي وسمت المحل */
+                                'shares',
                                 ...(canEditShop ? ['simulate'] : []),
                                 'about'
                             ]
@@ -1667,6 +1672,7 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                                                 return 'المنتجات';
                                             }
                                             if (tab === 'timeline') return 'أخبار';
+                                            if (tab === 'shares') return 'المشاركات';
 
                                             if (tab === 'mall_map') return 'خريطة المول 🗺️';
                                             if (tab === 'simulate') return 'محاكي الأعمال';
@@ -2916,6 +2922,20 @@ const ShopProfileModal = ({ shop, onClose, currentUser, onFollowChange, userLoca
                         )}
 
                         {/* --- Timeline Tab --- */}
+                        {/*
+                          * ══ المشاركات ══
+                          *
+                          * يُحمَّل عند فتح التبويب لا مع الصفحة: قسمٌ لا
+                          * يُفتح غالباً، وتحميله مع كل زيارة طلبٌ بلا قارئ.
+                          */}
+                        {activeTab === 'shares' && (
+                            <div style={{ padding: '20px 30px 40px' }}>
+                                <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
+                                    <ShopShares shopId={shopData.id} canManage={canEditShop} />
+                                </React.Suspense>
+                            </div>
+                        )}
+
                         {activeTab === 'timeline' && (
                             <div style={{ maxWidth: '700px', margin: '0 auto' }}>
                                 {canEditShop && (

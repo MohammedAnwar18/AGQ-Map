@@ -46,7 +46,7 @@ const ShopAvatar = ({ shop }) => {
     );
 };
 
-const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, onCameraAdded }) => {
+const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, onCameraAdded, onOpenMessages, unreadMessages = 0 }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
@@ -448,6 +448,38 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                         >
                             المحلات والمؤسسات ({allMapShops.length})
                         </button>
+
+                        {/*
+                          * الرسائل — انتقلت إلى هنا من شريط الخريطة.
+                          *
+                          * وليست تبويباً بل زرّ يفتح المحادثات: المحادثة
+                          * شاشة كاملة لها حالتها، وحشرها تبويباً داخل
+                          * نافذة الأصدقاء يجعلها ضيقة بلا سبب.
+                          */}
+                        {onOpenMessages && (
+                            <button
+                                className="tab tab-messages"
+                                onClick={onOpenMessages}
+                                title="المحادثات"
+                                style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}
+                            >
+                                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 2L11 13" />
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                </svg>
+                                الرسائل
+                                {unreadMessages > 0 && (
+                                    <span style={{
+                                        minWidth: 18, height: 18, padding: '0 5px',
+                                        borderRadius: 999, background: '#ef4444', color: '#fff',
+                                        fontSize: '0.68rem', fontWeight: 800,
+                                        display: 'grid', placeItems: 'center'
+                                    }}>
+                                        {unreadMessages}
+                                    </span>
+                                )}
+                            </button>
+                        )}
                     </div>
                 )}
 

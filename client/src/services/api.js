@@ -238,6 +238,17 @@ export const friendService = {
 
 // Post Services
 export const postService = {
+    /*
+     * معرض صاحب المنشور.
+     *
+     * منفصل عن ‎getPosts‎: ذاك موجز الخريطة ويحجب ما انتهى، وهذا كلّ
+     * ما نشره صاحبه ولو انتهى — فالاختفاء من الخريطة لا من المعرض.
+     */
+    myPosts: async (limit = 60) => {
+        const response = await api.get(`/posts/mine?limit=${limit}`);
+        return response.data;
+    },
+
     createPost: async (formData) => {
         const response = await api.post('/posts', formData, {
             headers: {
@@ -433,6 +444,25 @@ export const historicalMapService = {
 
 // Shop Services (Social)
 export const shopService = {
+    /** أقرب المحلّات إلى موضع بعينه — لاختيار وسم المشاركة */
+    nearby: async (latitude, longitude, radius = 1500) => {
+        const response = await api.get(
+            `/shops/nearby?latitude=${latitude}&longitude=${longitude}&radius=${radius}`
+        );
+        return response.data;
+    },
+
+    /** المشاركات الواردة إلى محلّ — والخادم يحجب المعلّق عن غير صاحبه */
+    shares: async (shopId) => {
+        const response = await api.get(`/shops/${shopId}/shares`);
+        return response.data;
+    },
+
+    decideShare: async (shopId, tagId, status) => {
+        const response = await api.patch(`/shops/${shopId}/shares/${tagId}`, { status });
+        return response.data;
+    },
+
     search: async (query) => {
         const response = await api.get(`/shops/search?query=${encodeURIComponent(query)}&t=${Date.now()}`);
         return response.data;
