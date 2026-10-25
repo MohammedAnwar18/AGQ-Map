@@ -96,6 +96,13 @@
 .aia-icon-btn:active { transform: scale(.93); }
 
 /* ── الواجهة قبل البحث: كل شيء في وسط الشاشة ───────────────── */
+/*
+ * قبل البحث: الكتلة أعلى من المنتصف قليلاً.
+ *
+ * ‎center‎ التامّ يضع الحقل حيث تفتحه لوحة المفاتيح فيرتفع
+ * كلّه فجاءةً عند النقر. و‎flex-start‎ مع هامش علويّ نسبيّ يرفعه من
+ * البداية، فيبقى موضعه واحداً قبل الكتابة وبعدها.
+ */
 .aia-hero {
     flex: 1;
     min-height: 0;
@@ -103,10 +110,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 18px;
     text-align: center;
-    padding: 20px 18px calc(36px + env(safe-area-inset-bottom));
+    padding: clamp(18px, 9vh, 76px) 18px calc(36px + env(safe-area-inset-bottom));
 }
 
 .aia-hero-icon {

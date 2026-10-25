@@ -275,7 +275,7 @@ const AIAssistant = ({ onClose, userLocation, onNavigate, onShopClick, onRequest
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-                    placeholder="اسم منتج أو محل… مثل: قهوة أو coffee"
+                    placeholder="ابحث عن محل أو منتج أو خدمة"
                     enterKeyHint="search"
                     autoComplete="off"
                 />
@@ -324,8 +324,8 @@ const AIAssistant = ({ onClose, userLocation, onNavigate, onShopClick, onRequest
             {!isActive && (
                 <div className="aia-hero">
                     <div className="aia-hero-icon"><Icon.Store /></div>
-                    <h1>ابحث عن منتج أو محل</h1>
-                    <p>اكتب بالعربية أو الإنجليزية — نفهم الاثنين ونبحث في كل المحلات ومنتجاتها.</p>
+                    <h1>ابحث عن محل أو منتج أو خدمة</h1>
+                    <p>اكتب بالعربية أو الإنجليزية — نفهم الاثنين ونبحث في المحلات ومنتجاتها وخدماتها.</p>
 
                     {searchBox}
 

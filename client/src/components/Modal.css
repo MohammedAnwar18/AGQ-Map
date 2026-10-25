@@ -1328,3 +1328,90 @@
     color: #fbab15;
     font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   فتح الكاميرا — زرّ واحد في الوسط
+   ============================================================ */
+
+.cp-shoot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 26px 16px 22px;
+}
+
+/*
+ * الزرّ دائرة.
+ *
+ * والدائرة لأنّها شكل زرّ المصراع في كل كاميرا: تُفهَم قبل أن
+ * يُقرأ النصّ تحتها.
+ */
+.cp-shoot-btn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 92px;
+    height: 92px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.cp-shoot-core {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(150deg, #ffc24d, #fbab15 55%, #e08d05);
+    color: #2c1b02;
+    box-shadow: 0 14px 32px -10px rgba(251, 171, 21, .85);
+    transition: transform .14s ease;
+}
+
+.cp-shoot-btn:active .cp-shoot-core { transform: scale(.94); }
+
+/*
+ * الوميض: حلقتان تتّسعان وتخفتان.
+ *
+ * الثانية متأخّرة نصف الدورة فتبدو نبضاً متّصلاً لا قفزة واحدة.
+ * و‎pointer-events: none‎ لأنّهما زينة: الضغط يقع على الزرّ لا عليهما.
+ */
+.cp-shoot-ring {
+    position: absolute;
+    inset: 8px;
+    border: 2px solid rgba(251, 171, 21, .75);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: cpFlash 2s cubic-bezier(.3, 0, .5, 1) infinite;
+}
+
+.cp-shoot-ring.is-late { animation-delay: 1s; }
+
+@keyframes cpFlash {
+    0% { transform: scale(.92); opacity: .75; }
+    70% { transform: scale(1.55); opacity: 0; }
+    100% { transform: scale(1.55); opacity: 0; }
+}
+
+.cp-shoot-label {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary, #f8fafc);
+}
+
+/* الوضع الأخضر للمجتمع النباتي يتبع لونه */
+.cp-shoot.is-flora .cp-shoot-core {
+    background: linear-gradient(150deg, #22c55e, #16a34a 55%, #15803d);
+    color: #fff;
+    box-shadow: 0 14px 32px -10px rgba(22, 163, 74, .85);
+}
+
+.cp-shoot.is-flora .cp-shoot-ring { border-color: rgba(34, 197, 94, .75); }
+
+/* من طلب تقليل الحركة لا يُعطى نبضاً متّصلاً أمام عينه */
+@media (prefers-reduced-motion: reduce) {
+    .cp-shoot-ring { animation: none; opacity: .4; }
+}
