@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 
 import nexusService, { nexusError } from '../services/nexusApi';
 import { getImageUrl } from '../services/api';
+import NexusProduct, { LazyShot } from './NexusProduct';
 import './PalnovaaNexus.css';
 
 /* ============================================================
@@ -34,37 +35,99 @@ const price = (value) => {
     return `${shown} ₪`;
 };
 
+/**
+ * يرصد أين وقف الشريط من طرفيه.
+ *
+ * يُستعمل لإظهار التلاشي عند الحافّة: من لا يرى علامةً لا يعرف أنّ
+ * الشريط يُسحب. ويُقاس بالبكسلات لا بالنسبة لأنّ ‎RTL‎ يجعل
+ * ‎scrollLeft‎ سالباً في بعض المتصفّحات وموجباً في غيرها — والقيمة
+ * المطلقة تُنهي الفرق.
+ */
+const useEdges = () => {
+    const rail = useRef(null);
+    const [edges, setEdges] = useState({ start: false, end: false });
+
+    const measure = useCallback(() => {
+        const node = rail.current;
+        if (!node) return;
+
+        const slack = node.scrollWidth - node.clientWidth;
+
+        // لا فيض؟ لا تلاشي من أي طرف
+        if (slack <= 2) { setEdges({ start: false, end: false }); return; }
+
+        const at = Math.abs(node.scrollLeft);
+        setEdges({ start: at > 2, end: at < slack - 2 });
+    }, []);
+
+    useEffect(() => {
+        const node = rail.current;
+        if (!node) return undefined;
+
+        measure();
+        node.addEventListener('scroll', measure, { passive: true });
+
+        /* تغيّر عدد الرقاقات — بإضافة تصنيف أو حذفه — يغيّر الفيض.
+           و‎ResizeObserver‎ يرصده بلا أن نُراقب الحالة من الخارج */
+        let watcher = null;
+        if (typeof ResizeObserver !== 'undefined') {
+            watcher = new ResizeObserver(measure);
+            watcher.observe(node);
+            for (const child of node.children) watcher.observe(child);
+        }
+
+        window.addEventListener('resize', measure);
+
+        return () => {
+            node.removeEventListener('scroll', measure);
+            window.removeEventListener('resize', measure);
+            watcher?.disconnect();
+        };
+    }, [measure]);
+
+    return { rail, edges, measure };
+};
+
 /* ============================================================
    بطاقة منتج
    ============================================================ */
 
 const ProductCard = ({
     product, mine, canAdopt, isAdmin, picked,
-    onAdopt, onPick, onEdit, onRemove, onToggle
+    onAdopt, onPick, onOpen, onEdit, onRemove, onToggle
 }) => {
     const image = getImageUrl(product.image_url);
     const tag = price(product.price);
 
     return (
         <article className={`pnx-card${mine ? ' is-mine' : ''}${picked ? ' is-picked' : ''}`}>
+            {/*
+              * منطقة الصورة.
+              *
+              * فيها فعلان: الضغط يفتح المنتج، ومربّع التحديد يحدّده.
+              * وهما زرّان **مجاوران** لا متداخلان: زرٌّ داخل زرّ غير
+              * صالح في ‎HTML‎ ولا يصل إليه التنقّل بلوحة المفاتيح،
+              * وبعض المتصفّحات تُخرجه من مكانه.
+              *
+              * فالفتح طبقةٌ تملأ المنطقة تحت التحديد، والتحديد فوقها.
+              */}
             <div className="pnx-shot">
-                {image ? (
-                    <img src={image} alt={product.name} loading="lazy" decoding="async" />
-                ) : (
-                    /* بلا صورة: حرف الاسم الأوّل، لا مستطيل رمادي فارغ */
-                    <span className="pnx-shot-letter">{product.name.trim().charAt(0) || '؟'}</span>
-                )}
+                <LazyShot
+                    src={image}
+                    alt={product.name}
+                    fallback={product.name.trim().charAt(0) || '؟'}
+                />
+
+                <button
+                    className="pnx-open"
+                    onClick={() => onOpen(product)}
+                    aria-label={`اعرض ${product.name}`}
+                />
 
                 {tag && <b className="pnx-tag">{tag}</b>}
                 {isAdmin && !product.is_active && <span className="pnx-off">مخفيّ</span>}
 
-                {/*
-                  * مربّع التحديد على الصورة لا تحتها.
-                  *
-                  * الصورة أكبر ما في البطاقة وأسهل ما يُضغط بالإبهام،
-                  * ومن يحدّد عشرين منتجاً يضغط عشرين ضغطة — فتكون في
-                  * أوسع هدف لا في أصغره.
-                  */}
+                {/* التحديد فوق طبقة الفتح: أوسع هدف في البطاقة */}
                 {canAdopt ? (
                     <>
                         <button
@@ -493,6 +556,7 @@ const PalnovaaNexus = ({ user, onClose }) => {
     const [active, setActive] = useState('all');
     const [query, setQuery] = useState('');
 
+    const [viewing, setViewing] = useState(null);     // منتج يُعرض مكبّراً
     const [adopting, setAdopting] = useState(null);   // مصفوفة منتجات
     const [form, setForm] = useState(null);           // { kind, editing }
 
@@ -503,6 +567,9 @@ const PalnovaaNexus = ({ user, onClose }) => {
      * ثابتة الزمن، والسؤال يُطرح لكل بطاقة في كل إعادة رسم.
      */
     const [marks, setMarks] = useState(() => new Set());
+
+    /* طرفا شريط التصنيفات — لإظهار التلاشي الذي يقول إنّه يُسحب */
+    const { rail, edges, measure } = useEdges();
 
     const isAdmin = Boolean(data?.is_admin) || user?.role === 'admin';
     const shops = data?.shops || [];
@@ -556,6 +623,9 @@ const PalnovaaNexus = ({ user, onClose }) => {
      * ليحدّد منها يريد الاثنين. لكنّ ما حُذف من الكتالوج يُسقط، وإلّا
      * أُرسل معرّف لا وجود له.
      */
+    /* قائمة جديدة تعني عرضاً جديداً للشريط، فيُعاد قياس طرفيه */
+    useEffect(() => { measure(); }, [data?.categories, measure]);
+
     useEffect(() => {
         if (!data?.products || !marks.size) return;
 
@@ -812,7 +882,8 @@ const PalnovaaNexus = ({ user, onClose }) => {
                     </button>
                 )}
 
-                <nav className="pnx-cats" aria-label="التصنيفات">
+                <div className={`pnx-catwrap${edges.start ? ' has-start' : ''}${edges.end ? ' has-end' : ''}`}>
+                <nav className="pnx-cats" aria-label="التصنيفات" ref={rail}>
                     <button
                         className={active === 'all' ? 'is-on' : ''}
                         onClick={() => setActive('all')}
@@ -854,6 +925,7 @@ const PalnovaaNexus = ({ user, onClose }) => {
                         </button>
                     )}
                 </nav>
+                </div>
             </div>
 
             {/* ── المحتوى ── */}
@@ -903,6 +975,7 @@ const PalnovaaNexus = ({ user, onClose }) => {
                                 picked={marks.has(product.id)}
                                 onAdopt={startAdopt}
                                 onPick={toggleMark}
+                                onOpen={setViewing}
                                 onEdit={(p) => setForm({ kind: 'product', editing: p })}
                                 onRemove={removeProduct}
                                 onToggle={toggleProduct}
@@ -933,6 +1006,17 @@ const PalnovaaNexus = ({ user, onClose }) => {
                         أضفها لمحلّي
                     </button>
                 </div>
+            )}
+
+            {viewing && (
+                <NexusProduct
+                    product={viewing}
+                    mine={Boolean(data?.adopted?.[viewing.id]?.length)}
+                    canAdopt={shops.length > 0}
+                    priceOf={price}
+                    onAdopt={startAdopt}
+                    onClose={() => setViewing(null)}
+                />
             )}
 
             {adopting && (
