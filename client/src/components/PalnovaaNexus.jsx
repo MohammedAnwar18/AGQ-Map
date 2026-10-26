@@ -85,7 +85,25 @@ const useEdges = () => {
         };
     }, [measure]);
 
-    return { rail, edges, measure };
+    /**
+     * يجرّ الشريط بمقدار ثلاثة أرباع عرضه.
+     *
+     * لا بمقدار ثابت: شاشة عريضة تُظهر عشر رقاقات وضيقة ثلاثاً،
+     * والمقدار الثابت يقفز في الأولى ويزحف في الثانية. والربع
+     * الباقي يُبقي رقاقةً مشتركة بين المنظرين فلا يُفقد السياق.
+     *
+     * و‎dir‎ هنا منطقيّ لا بصريّ: ‎-1‎ يعني «ما قبل» في ترتيب القراءة،
+     * وفي ‎RTL‎ هو إلى اليمين. و‎scrollBy‎ يحترم الاتّجاه فلا نقلبه.
+     */
+    const nudge = useCallback((dir) => {
+        const node = rail.current;
+        if (!node) return;
+
+        const step = Math.max(140, node.clientWidth * 0.75);
+        node.scrollBy({ left: dir * step, behavior: 'smooth' });
+    }, []);
+
+    return { rail, edges, measure, nudge };
 };
 
 /* ============================================================
@@ -569,7 +587,7 @@ const PalnovaaNexus = ({ user, onClose }) => {
     const [marks, setMarks] = useState(() => new Set());
 
     /* طرفا شريط التصنيفات — لإظهار التلاشي الذي يقول إنّه يُسحب */
-    const { rail, edges, measure } = useEdges();
+    const { rail, edges, measure, nudge } = useEdges();
 
     const isAdmin = Boolean(data?.is_admin) || user?.role === 'admin';
     const shops = data?.shops || [];
@@ -883,6 +901,15 @@ const PalnovaaNexus = ({ user, onClose }) => {
                 )}
 
                 <div className={`pnx-catwrap${edges.start ? ' has-start' : ''}${edges.end ? ' has-end' : ''}`}>
+                <button
+                    className="pnx-nudge is-start"
+                    onClick={() => nudge(-1)}
+                    aria-label="تصنيفات قبل"
+                    tabIndex={-1}
+                >
+                    ‹
+                </button>
+
                 <nav className="pnx-cats" aria-label="التصنيفات" ref={rail}>
                     <button
                         className={active === 'all' ? 'is-on' : ''}
@@ -925,6 +952,15 @@ const PalnovaaNexus = ({ user, onClose }) => {
                         </button>
                     )}
                 </nav>
+
+                <button
+                    className="pnx-nudge is-end"
+                    onClick={() => nudge(1)}
+                    aria-label="تصنيفات بعد"
+                    tabIndex={-1}
+                >
+                    ›
+                </button>
                 </div>
             </div>
 

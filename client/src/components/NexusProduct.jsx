@@ -243,10 +243,18 @@ const NexusProduct = ({
     return (
         <div className="nxp" role="dialog" aria-label={product.name}>
             <header className="nxp-top">
-                <button className="nxp-x" onClick={onClose} aria-label="إغلاق">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                {/*
+                  * الإغلاق: علامة ومعها كلمة.
+                  *
+                  * كان دائرةً بحدٍّ رقيق فوق تدرّج داكن — موجوداً
+                  * ولا يُرى. فصار صريحاً بخلفية صلبة وكلمةٍ تقول إلى
+                  * أين يُرجع، لا علامةً تُخمَّن.
+                  */}
+                <button className="nxp-x" onClick={onClose} aria-label="إغلاق والرجوع إلى المنتجات">
+                    <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
                         <path d="M18 6 6 18M6 6l12 12" />
                     </svg>
+                    <span>رجوع</span>
                 </button>
 
                 <b>{product.name}</b>

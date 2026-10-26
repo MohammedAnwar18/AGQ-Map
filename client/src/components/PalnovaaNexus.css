@@ -240,9 +240,37 @@
 
     /* الإصبع الأفقي للشريط والعموديّ للصفحة */
     touch-action: pan-x;
+
+    /*
+     * شرطة تمرير مرئية أسفل الشريط.
+     *
+     * كانت مخفيّة، وهذا يصلح للمس ولا يصلح للحاسوب: من يستعمل فأرة
+     * لا يسحب الشريط بإصبعه، فبلا شرطة لا يعرف أنّ ثَمّ المزيد ولا
+     * يملك ما يجرّه. فصارت ظاهرةً نحيفة بلون الهوية — تكفي للجرّ
+     * ولا تثقل الشريط.
+     */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(251, 171, 21, .55) transparent;
+    padding-bottom: 7px;
 }
 
-.pnx-cats::-webkit-scrollbar { display: none; }
+.pnx-cats::-webkit-scrollbar {
+    height: 6px;
+}
+
+.pnx-cats::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .06);
+}
+
+.pnx-cats::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(251, 171, 21, .5);
+}
+
+.pnx-cats::-webkit-scrollbar-thumb:hover {
+    background: rgba(251, 171, 21, .8);
+}
 
 .pnx-cats > * { scroll-snap-align: start; }
 
@@ -263,7 +291,8 @@
     content: '';
     position: absolute;
     top: 0;
-    bottom: 2px;
+    /* يتوقّف فوق شرطة التمرير: تغطيتُها تُخفي ما صار يُجَرّ */
+    bottom: 9px;
     width: 26px;
     pointer-events: none;
     z-index: 1;
@@ -283,6 +312,39 @@
 
 .pnx-catwrap.has-start::before { opacity: 1; }
 .pnx-catwrap.has-end::after { opacity: 1; }
+
+/*
+ * سهمان للحاسوب.
+ *
+ * جرُّ شرطةٍ بستّة بكسلات بالفأرة عملٌ دقيق، والسهم ضغطة. ولا
+ * يظهران على اللمس: الإصبع يسحب الشريط مباشرةً، فيكونان زحاماً.
+ */
+.pnx-nudge {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: none;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-top: -5px;
+    transform: translateY(-50%);
+    border: 1px solid var(--line-2);
+    border-radius: 50%;
+    background: rgba(12, 19, 36, .95);
+    color: var(--gold);
+    font-size: 13px;
+    line-height: 1;
+}
+
+.pnx-nudge:hover { background: rgba(251, 171, 21, .22); }
+.pnx-nudge.is-start { inset-inline-start: 2px; }
+.pnx-nudge.is-end { inset-inline-end: 2px; }
+
+@media (pointer: fine) {
+    .pnx-catwrap.has-start .pnx-nudge.is-start,
+    .pnx-catwrap.has-end .pnx-nudge.is-end { display: grid; }
+}
 
 .pnx-cats button {
     display: inline-flex;
@@ -1131,16 +1193,42 @@
     text-overflow: ellipsis;
 }
 
+/*
+ * الإغلاق.
+ *
+ * خلفية صلبة وحدّ ذهبيّ وكلمة «رجوع»: كان دائرةً شفّافة
+ * بحدّ رقيق فوق تدرّج داكن فوق صورة داكنة — موجوداً ولا يُرى.
+ * وهو المخرج الوحيد من نافذة تملأ الشاشة، فغموضه حبس.
+ */
 .nxp-x {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     flex-shrink: 0;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .06);
+    padding: 9px 15px 9px 12px;
+    border: 1.5px solid rgba(251, 171, 21, .65);
+    border-radius: 999px;
+    background: rgba(12, 19, 36, .96);
+    color: var(--gold);
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
 }
+
+.nxp-x:hover { background: rgba(251, 171, 21, .22); }
+.nxp-x:active { transform: scale(.97); }
+
+.nxp-x span { line-height: 1; }
+
+/* الشريط العلويّ يطفو فوق الصورة لا يأخذ من طولها */
+.nxp-top {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    z-index: 4;
+}
+
+.nxp-stage { padding-top: calc(60px + env(safe-area-inset-top)); }
 
 .nxp-reset {
     flex-shrink: 0;
