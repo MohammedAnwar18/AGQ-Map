@@ -188,7 +188,8 @@ const getCategoryEmoji = (category) => {
         'حديقة': '🌳', 'منتزه': '🏞️', 'نادي رياضي': '🏋️', 'مدرسة': '🏫',
         'مكتبة': '📚', 'حلويات': '🍰', 'معجنات': '🥐', 'احذية': '👟',
         'صالون رجالي': '💈', 'صالون نسائي': '💇‍♀️', 'وزارة': '🏛️',
-        'دوار': '🔄', 'مقبرة': '🪦', 'مسجد': '🕌', 'كنيسة': '⛪', 'ملعب': '🏟️'
+        'دوار': '🔄', 'مقبرة': '🪦', 'مسجد': '🕌', 'كنيسة': '⛪', 'ملعب': '🏟️',
+        'محطة وقود': '⛽'
     };
     return map[category] || '🏪';
 };
@@ -213,6 +214,7 @@ const getMarkerBorder = (category) => {
     if (category === 'كنيسة') return '4px solid #818cf8';
     if (category === 'حديقة' || category === 'منتزه') return '4px solid #34d399';
     if (category === 'دوار') return '4px solid #94a3b8';
+    if (category === 'محطة وقود') return '3px solid #fb923c';
     if (category === 'ملعب') return '4px solid #2dd4bf';
     if (category === 'وزارة') return '4px solid #fbab15';
     return '3px solid white';
@@ -220,6 +222,14 @@ const getMarkerBorder = (category) => {
 
 // حجم الـ marker حسب التصنيف
 const getMarkerSize = (category) => {
+    /*
+     * محطّة الوقود أصغر من المحلّ.
+     *
+     * المحطّات على أطراف الطرق ومتقاربة، وبحجم المحلّ تُزاحم ما
+     * حولها وتُغرق الخريطة. وأربعون كحجم الدوار: علامة طريق لا
+     * واجهة محلّ.
+     */
+    if (category === 'محطة وقود') return 40;
     if (category === 'دوار') return 40;                                              // حجم صغير
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return 58;          // حجم كبير
     if (['حديقة', 'منتزه', 'وزارة', 'مدرسة', 'مستشفى', 'مركز تسوق', 'مجمع تجاري'].includes(category)) return 54;
@@ -227,6 +237,7 @@ const getMarkerSize = (category) => {
 };
 
 const getMarkerEmojiFontSize = (category) => {
+    if (category === 'محطة وقود') return '18px';
     if (category === 'دوار') return '18px';
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return '24px';
     return '20px';
@@ -241,12 +252,13 @@ const getNameBadgeBgColor = (category) => {
     if (category === 'حديقة' || category === 'منتزه') return '#059669';
     if (category === 'دوار') return '#475569';
     if (category === 'ملعب') return '#0d9488';
+    if (category === 'محطة وقود') return '#c2410c';
     if (category === 'وزارة') return '#0f172a';
     return 'white';
 };
 
 const getNameBadgeTextColor = (category) => {
-    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall' || category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية' || category === 'مسجد' || category === 'كنيسة' || category === 'حديقة' || category === 'منتزه' || category === 'دوار' || category === 'ملعب') return 'white';
+    if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall' || category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية' || category === 'مسجد' || category === 'كنيسة' || category === 'حديقة' || category === 'منتزه' || category === 'دوار' || category === 'ملعب' || category === 'محطة وقود') return 'white';
     if (category === 'وزارة') return '#fbab15';
     return 'black';
 };

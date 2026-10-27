@@ -809,6 +809,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         <option value="صيدلية">صيدلية 💊</option>
                                                         <option value="بلدية">بلدية 🏩</option>
                                                         <option value="بنك">بنك 🏦</option>
+                                                        {/* الكازية: الاسم الدارج مع الرسميّ
+                                                            في العنوان، والمحفوظ هو الرسميّ */}
+                                                        <option value="محطة وقود">محطة وقود (كازية) ⛽</option>
                                                         <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
                                                         <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
                                                         <option value="Restaurant">مطعم</option>
