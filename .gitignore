@@ -48,3 +48,7 @@ coverage/
 # Misc
 *.pem
 .cache/
+
+# ملفّات Vite المؤقّتة — تُكتب بجانب الإعداد عند كل بناء
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
