@@ -1064,10 +1064,8 @@ const MapComponent = () => {
         };
     }, [posts]);
     
-    useEffect(() => {
-        console.log("Map State - Zoom:", viewState.zoom);
-        console.log("Map State - Facilities Count:", allFacilitiesMap.length);
-    }, [viewState.zoom, allFacilitiesMap]);
+    /* الزوم صار شارةً على الشريط، فلا داعي لطبعه في كل إطار:
+       كان ‎console.log‎ يُنادى مع كل حركة للخريطة */
     const [visibleFriendName, setVisibleFriendName] = useState(null); // Track which friend's name is shown
     const [firstLabelLayerId, setFirstLabelLayerId] = useState(null); // For "built-in" route placement beneath labels
     const [searchResults, setSearchResults] = useState([]); // Added to prevent ReferenceError after revert
@@ -2454,6 +2452,53 @@ const MapComponent = () => {
                             <DefaultAvatar size={42} style={{ border: '2px solid #fbab15', boxShadow: '0 2px 6px rgba(0,0,0,0.15)' }} />
                         )}
                     </button>
+
+                    {/*
+                      * ══ عدّاد الزوم — للأدمن العام ══
+                      *
+                      * المحلّات والأسماء تظهر وتختفي بحدود ‎min_zoom‎
+                      * و‎text_min_zoom‎ التي يضبطها الأدمن بالرقم. وكان
+                      * الرقم يُقرأ من طرفيّة المتصفّح وحدها، فضبطُ حدٍّ
+                      * يعني فتح الأدوات والتخمين.
+                      *
+                      * والقراءة من ‎viewState‎ مجّانية: الخريطة مُتحكَّم
+                      * بها و‎onMove‎ يُحدّث الحالة في كل إطار أصلاً، فلا
+                      * إعادة رسم تُضاف بسبب هذه الشارة.
+                      */}
+                    {user?.role === 'admin' && (
+                        <div className="zoom-meter" title="مستوى تكبير الخريطة">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                                <circle cx="10.5" cy="10.5" r="6.5" />
+                                <path d="m20 20-4.2-4.2M7.6 10.5h5.8M10.5 7.6v5.8" />
+                            </svg>
+
+                            {/*
+                              * الصحيح كبيراً والكسر صغيراً.
+                              *
+                              * الحدود تُكتب أرقاماً صحيحة عادةً، فالصحيح
+                              * هو ما يُقرأ بلمحة. والكسر مطلوب للدقّة
+                              * فيبقى، لكن بحجم أصغر كي لا يُزاحمه.
+                              */}
+                            {/*
+                              * الصحيح والكسر من تقريب واحد.
+                              *
+                              * وفصلهما بـ‎floor‎ و‎%1‎ يكسر عند ‎13.999‎:
+                              * الصحيح ‎13‎ والكسر يُقرّب إلى ‎100‎ فيُطبع
+                              * «13.100». فنُقرّب مرّة ثم نقصّ النصّ.
+                              */}
+                            {(() => {
+                                const shown = (Number(viewState.zoom) || 0).toFixed(2);
+                                const dot = shown.indexOf('.');
+                                return (
+                                    <>
+                                        <b>{shown.slice(0, dot)}</b>
+                                        <i>{shown.slice(dot)}</i>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
+
                     <div className="app-logo">
                         <svg version="1.0" xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 500.000000 500.000000"
