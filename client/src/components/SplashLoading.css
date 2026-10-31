@@ -166,7 +166,8 @@
     letter-spacing: .2px;
     color: rgba(255, 255, 255, .42);
     text-align: center;
-    direction: rtl;
+    /* السطر لاتينيّ كلّه: ‎ltr‎ يرتّبه طبيعياً بلا عزل لكل جزء */
+    direction: ltr;
     user-select: none;
 }
 
@@ -182,15 +183,7 @@
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent);
 }
 
-/*
- * العلامة والسنة.
- *
- * ‎isolate‎ يمنع إعادة الترتيب الاتّجاهي: بلا عزل تتحرّك «©» إلى
- * الطرف الآخر من السطر العربيّ أو تنقلب مع الرقم.
- */
 .splash-rights-mark {
-    direction: ltr;
-    unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
     letter-spacing: .6px;
     white-space: nowrap;

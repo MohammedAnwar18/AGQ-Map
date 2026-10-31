@@ -444,6 +444,21 @@ export const historicalMapService = {
 
 // Shop Services (Social)
 export const shopService = {
+    /**
+     * استيراد دفعة محلّات من ملفّ GeoJSON — للأدمن العام.
+     *
+     * ‎FormData‎ لا ‎JSON‎: الدفعة تحمل صورةً لكل معلم، والصور ملفّات
+     * لا نصوص. والمهلة أطول من الافتراضية لأنّ مئة صورة تُرفع في
+     * الطلب الواحد.
+     */
+    bulkCreate: async (formData) => {
+        const response = await api.post('/shops/bulk', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 180000
+        });
+        return response.data;
+    },
+
     /** أقرب المحلّات إلى موضع بعينه — لاختيار وسم المشاركة */
     nearby: async (latitude, longitude, radius = 1500) => {
         const response = await api.get(

@@ -24,6 +24,10 @@ router.get('/managed/mine', authenticateToken, shopController.getManagedShops);
 // إنشاء محل جديد
 router.post('/', authenticateToken, shopController.createShop);
 
+/* استيراد دفعة من ‎GeoJSON‎ — الصور بأسماء حقول تحمل ترتيبها،
+   فنحتاج ‎any()‎ لا ‎fields()‎. والفحص «أدمن» داخل المتحكّم */
+router.post('/bulk', authenticateToken, upload.any(), shopController.bulkCreateShops);
+
 // تعديل / حذف المحل
 router.put('/:id', authenticateToken, shopController.updateShopProfile);
 router.delete('/:id', authenticateToken, isAdmin, shopController.deleteShop);

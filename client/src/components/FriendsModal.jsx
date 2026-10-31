@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+
+const ShopImport = React.lazy(() => import('./ShopImport'));
 import { friendService, shopService, cameraService, userService, getImageUrl } from '../services/api';
 import ProfileModal from './ProfileModal';
 import PalNovaaMarketDesign from './PalNovaaMarketDesign';
@@ -48,6 +50,7 @@ const ShopAvatar = ({ shop }) => {
 
 const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, currentUser, onShopClick, onShopFollowed, onCameraAdded, onOpenMessages, unreadMessages = 0 }) => {
     const [activeTab, setActiveTab] = useState(isShopsMode ? 'shops' : initialTab);
+    const [showImport, setShowImport] = useState(false);   // استيراد ‎GeoJSON‎
     const [friends, setFriends] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -411,6 +414,33 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                 title="إضافة مكان جديد"
                             >
                                 +
+                            </button>
+                        )}
+
+                        {/*
+                          * استيراد دفعة من ملفّ ‎GeoJSON‎.
+                          *
+                          * بجانب زرّ الإضافة لأنّه نفس الفعل بكمّ آخر:
+                          * من أراد إضافة مئة معلم يبحث حيث يُضاف الواحد.
+                          */}
+                        {isShopsMode && !isCreatingShop && !showCreateOptions && !isCreatingUniversity && currentUser?.role === 'admin' && (
+                            <button
+                                className="btn-small"
+                                onClick={() => setShowImport(true)}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '6px 12px', borderRadius: 999,
+                                    border: '1px solid rgba(251,171,21,.5)',
+                                    background: 'rgba(251,171,21,.14)',
+                                    color: '#fbab15', fontWeight: 800, fontSize: '0.74rem',
+                                    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap'
+                                }}
+                                title="استيراد معالم من ملفّ GeoJSON"
+                            >
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 3v12M7.5 10.5 12 15l4.5-4.5M4 20h16" />
+                                </svg>
+                                GeoJSON
                             </button>
                         )}
                     </div>
@@ -1048,6 +1078,14 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                 }}
                 onSelectUniversity={() => { setShowMarketDesign(false); setShowCreateOptions(false); setIsCreatingUniversity(true); }}
             />
+        )}
+        {showImport && (
+            <React.Suspense fallback={null}>
+                <ShopImport
+                    onClose={() => setShowImport(false)}
+                    onDone={() => { if (onShopFollowed) onShopFollowed(); }}
+                />
+            </React.Suspense>
         )}
         </>
     );

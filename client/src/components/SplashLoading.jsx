@@ -51,17 +51,12 @@ const SplashLoading = () => {
                     <div className="splash-progress-bar"></div>
                 </div>
 
-                {/*
-                  * إشعار الحقوق أسفل شريط التحميل.
-                  *
-                  * والعلامة والسنة معزولتان اتّجاهياً: «© 2026» لاتينيّة
-                  * في سطر عربيّ، وبلا عزل يُعيد المتصفّح ترتيبها فتظهر
-                  * «2026 ©» أو تنتقل إلى آخر السطر.
-                  */}
+                {/* إشعار الحقوق أسفل شريط التحميل — لاتينيّ كلّه،
+                    فاتّجاهه ‎ltr‎ ويرتّبه المتصفّح طبيعياً */}
                 <p className="splash-rights">
                     <span className="splash-rights-mark">© {RIGHTS_YEAR}</span>
-                    <span className="splash-rights-brand">بالنوفا</span>
-                    <span className="splash-rights-text">جميع حقوق النشر محفوظة</span>
+                    <span className="splash-rights-brand">PalNovaa</span>
+                    <span className="splash-rights-text">All rights reserved</span>
                 </p>
             </div>
         </div>

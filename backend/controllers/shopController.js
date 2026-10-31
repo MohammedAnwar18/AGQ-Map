@@ -1670,6 +1670,137 @@ const getFollowedUniversitiesFacilities = async (req, res) => {
 };
 
 /* ============================================================
+   استيراد محلّات من ملفّ GeoJSON
+   ============================================================ */
+
+/* سقف الدفعة. الاستيراد يُراجَع بالعين قبل النشر، ومن يراجع ثلاث مئة
+   معلم في شاشة واحدة لا يراجع — فالسقف حدٌّ عمليّ لا تقنيّ فقط */
+const MAX_IMPORT = 300;
+
+/* ‎is_hidden‎ أُضيف خارج الترحيلات، فوجوده غير مضمون في كل نشر.
+   والعمود هو ما يُظهر المحلّ على الخريطة، فلا نفترضه: نفحصه */
+const hasHiddenFlag = makeColumnProbe('shops', 'is_hidden');
+
+/**
+ * ينشئ محلّات دفعةً واحدة.
+ *
+ * للأدمن العام وحده: إضافة مئة معلم بضغطة أثرٌ واسع لا يُمنح لصاحب
+ * محلّ.
+ *
+ * والدفعة لا تسقط كلّها لأنّ معلماً واحداً فاسد الإحداثيات: كل عنصر
+ * له نتيجته، وما صحّ يُحفظ. ومن راجع ثلاثين معلماً ثمّ خسرها جميعاً
+ * بسبب واحد لن يُراجع ثانيةً.
+ */
+const bulkCreateShops = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ error: 'الاستيراد الجماعي للأدمن العام' });
+        }
+
+        let items;
+        try {
+            items = JSON.parse(req.body.items || '[]');
+        } catch {
+            return res.status(400).json({ error: 'قائمة المعالم غير مقروءة' });
+        }
+
+        if (!Array.isArray(items) || !items.length) {
+            return res.status(400).json({ error: 'لا معالم في الطلب' });
+        }
+        if (items.length > MAX_IMPORT) {
+            return res.status(400).json({ error: `الحدّ ${MAX_IMPORT} معلماً في الدفعة` });
+        }
+
+        /* الصور تأتي بأسماء حقول تحمل ترتيب صاحبها: ‎img_<index>‎.
+           فلا بيانٌ موازٍ قد يختلّ ترتيبه عن ترتيب الملفّات */
+        const shots = new Map();
+        for (const file of (Array.isArray(req.files) ? req.files : [])) {
+            const match = /^img_(\d{1,3})$/.exec(file.fieldname || '');
+            if (match && file.buffer?.length) shots.set(parseInt(match[1], 10), file);
+        }
+
+        const withHidden = await hasHiddenFlag();
+
+        const made = [];
+        const skipped = [];
+
+        await client.query('BEGIN');
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i] || {};
+
+            const name = String(item.name || '').trim();
+            const lat = parseFloat(item.latitude);
+            const lng = parseFloat(item.longitude);
+
+            if (!name) { skipped.push({ index: i, why: 'بلا اسم' }); continue; }
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                skipped.push({ index: i, name, why: 'إحداثيات غير صالحة' });
+                continue;
+            }
+            if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                skipped.push({ index: i, name, why: 'إحداثيات خارج نطاق الأرض' });
+                continue;
+            }
+
+            // الصورة تُرفع هنا لا قبل الحلقة: معلمٌ يُتجاوَز لا تُرفع صورته
+            let picture = null;
+            const shot = shots.get(i);
+            if (shot) {
+                try {
+                    picture = await uploadToCloud(shot.buffer, shot.originalname, shot.mimetype);
+                } catch (shotErr) {
+                    // صورةٌ تفشل لا تُسقط المعلم: يُنشأ بلا صورة ويُقال
+                    console.error('Bulk import image error:', shotErr.message);
+                    skipped.push({ index: i, name, why: 'تعذّر رفع الصورة — أُنشئ بلا صورة', soft: true });
+                }
+            }
+
+            const columns = ['name', 'latitude', 'longitude', 'category', 'profile_picture'];
+            const values = [
+                name.slice(0, 200),
+                lat,
+                lng,
+                String(item.category || 'General').slice(0, 80),
+                picture
+            ];
+
+            if (withHidden) { columns.push('is_hidden'); values.push(false); }
+
+            const marks = values.map((_, at) => `$${at + 1}`).join(', ');
+            const inserted = await client.query(
+                `INSERT INTO shops (${columns.join(', ')}) VALUES (${marks})
+                 RETURNING id, name, category, latitude, longitude, profile_picture`,
+                values
+            );
+
+            made.push({ index: i, ...inserted.rows[0] });
+        }
+
+        await client.query('COMMIT');
+
+        const hard = skipped.filter(entry => !entry.soft).length;
+        res.json({
+            success: true,
+            created: made.length,
+            shops: made,
+            skipped,
+            message: made.length
+                ? `أُضيف ${made.length} معلماً${hard ? ` · ${hard} تُجاوز` : ''}`
+                : 'لم يُضَف شيء — راجع الأسباب'
+        });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('Bulk create shops error:', error);
+        res.status(500).json({ error: 'تعذّر الاستيراد' });
+    } finally {
+        client.release();
+    }
+};
+
+/* ============================================================
    مشاركة المنشورات مع المحلّات
    ============================================================ */
 
@@ -2398,6 +2529,7 @@ module.exports = {
     smartSearch,
     getAllShopsMap,
     getNearbyShops,
+    bulkCreateShops,
     getShopShares,
     decideShare,
     getUniversityFacilities,

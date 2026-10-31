@@ -276,7 +276,8 @@
       letter-spacing: .2px;
       color: rgba(255, 255, 255, .42);
       text-align: center;
-      direction: rtl;
+      /* السطر لاتينيّ كلّه: ‎ltr‎ يرتّبه طبيعياً بلا عزل لكل جزء */
+      direction: ltr;
       user-select: none;
     }
 
@@ -291,11 +292,7 @@
       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent);
     }
 
-    /* «©» و«2026» لاتينيّتان في سطر عربيّ: بلا عزل اتّجاهيّ
-       يُعيد المتصفّح ترتيبهما فتظهر «2026 ©» أو تنتقل للطرف الآخر */
     .splash-rights-mark {
-      direction: ltr;
-      unicode-bidi: isolate;
       font-variant-numeric: tabular-nums;
       letter-spacing: .6px;
       white-space: nowrap;
@@ -379,8 +376,8 @@
            React، فالإشعار هنا لا في المكوّن وحده — وإلّا لم يُرَ -->
       <p class="splash-rights">
         <span class="splash-rights-mark" id="splash-year">© 2026</span>
-        <span class="splash-rights-brand">بالنوفا</span>
-        <span class="splash-rights-text">جميع حقوق النشر محفوظة</span>
+        <span class="splash-rights-brand">PalNovaa</span>
+        <span class="splash-rights-text">All rights reserved</span>
       </p>
     </div>
   </div>

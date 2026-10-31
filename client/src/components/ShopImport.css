@@ -1,0 +1,322 @@
+/* ============================================================
+   استيراد معالم من GeoJSON
+
+   محدّد جذر واحد ‎.imp‎ — يُفتح فوق نافذة المحلّات، فلا قاعدة عامّة
+   على ‎button‎ أو ‎input‎ ولا تسرّب خارج الجذر.
+   ============================================================ */
+
+.imp {
+    --line: rgba(255, 255, 255, .11);
+    --line-2: rgba(255, 255, 255, .2);
+    --card: rgba(255, 255, 255, .04);
+    --text: #f1f5f9;
+    --muted: #93a3b9;
+    --gold: #fbab15;
+    --good: #4ade80;
+    --bad: #fb7185;
+    --warn: #fbbf24;
+
+    position: fixed;
+    inset: 0;
+    z-index: 5100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100dvh;
+    background:
+        radial-gradient(900px 520px at 88% -10%, rgba(251, 171, 21, .1), transparent 60%),
+        #0a1020;
+    color: var(--text);
+    font-family: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    direction: rtl;
+}
+
+.imp button,
+.imp input,
+.imp select { font-family: inherit; color: inherit; }
+
+.imp button { cursor: pointer; }
+
+/* ── الترويسة ── */
+.imp-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    padding: calc(13px + env(safe-area-inset-top)) 16px 13px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(10, 16, 32, .8);
+    backdrop-filter: blur(16px);
+}
+
+.imp-x {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+}
+
+.imp-top > div { flex: 1; min-width: 0; }
+.imp-top b { display: block; font-size: 15.5px; font-weight: 800; }
+
+.imp-top span {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--muted);
+}
+
+.imp-go {
+    flex-shrink: 0;
+    padding: 11px 19px;
+    border: 1px solid rgba(251, 171, 21, .55);
+    border-radius: 999px;
+    background: linear-gradient(180deg, #fdbf3f, var(--gold));
+    color: #2c1b02;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.imp-go:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+/* ── المحتوى ── */
+.imp-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px calc(28px + env(safe-area-inset-bottom));
+}
+
+.imp-drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 22px 18px;
+    border: 1px dashed rgba(251, 171, 21, .5);
+    border-radius: 16px;
+    background: rgba(251, 171, 21, .06);
+    text-align: center;
+    cursor: pointer;
+}
+
+.imp-drop-zone:hover { background: rgba(251, 171, 21, .13); }
+.imp-drop-zone b { font-size: 14px; font-weight: 800; color: var(--gold); }
+
+.imp-drop-zone span {
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: var(--muted);
+    max-width: 46ch;
+}
+
+/* ── الرسائل ── */
+.imp-bad,
+.imp-flash,
+.imp-report {
+    padding: 12px 15px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--card);
+    font-size: 12.5px;
+    line-height: 1.75;
+}
+
+.imp-bad { border-color: rgba(251, 113, 133, .5); color: #fecdd3; }
+.imp-flash.is-ok { border-color: rgba(74, 222, 128, .45); color: #bbf7d0; }
+.imp-flash.is-warn { border-color: rgba(251, 191, 36, .5); color: #fde68a; }
+.imp-flash.is-err { border-color: rgba(251, 113, 133, .5); color: #fecdd3; }
+
+/* ── حصيلة القراءة ── */
+.imp-report {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    color: var(--muted);
+}
+
+.imp-report b { color: var(--text); font-weight: 800; font-variant-numeric: tabular-nums; }
+.imp-report .is-warn { color: #fde68a; }
+.imp-report .is-warn b { color: #fde68a; }
+
+.imp-report details { width: 100%; }
+.imp-report summary { cursor: pointer; font-size: 11.5px; }
+
+.imp-report ul {
+    margin: 8px 0 0;
+    padding-inline-start: 20px;
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.9;
+}
+
+/* ── تصنيف الكلّ ── */
+.imp-bulk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--card);
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.imp-bulk select {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, .35);
+    font-size: 12.5px;
+    outline: none;
+}
+
+.imp-warn { font-style: normal; color: var(--warn); font-weight: 700; }
+
+/* ============================================================
+   قائمة المعالم
+
+   صفٌّ لكل معلم: صورة واسم وتصنيف وموضع. وعلى الشاشة الواسعة
+   عمودان فيُراجع ضعفُ العدد بلا تمرير.
+   ============================================================ */
+
+.imp-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+}
+
+@media (min-width: 780px) {
+    .imp-list { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 1200px) {
+    .imp-list { grid-template-columns: repeat(3, 1fr); }
+}
+
+.imp-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+}
+
+/* المستثنى يخفت ولا يُخفى: يبقى مرئياً كي يُعاد بضغطة */
+.imp-row.is-off { opacity: .4; }
+
+.imp-shot {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px dashed var(--line-2);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .3);
+    color: var(--muted);
+    font-size: 19px;
+    cursor: pointer;
+}
+
+.imp-shot:hover { border-color: rgba(251, 171, 21, .55); color: var(--gold); }
+
+.imp-shot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 11px;
+}
+
+.imp-fields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.imp-name {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, .34);
+    font-size: 13px;
+    outline: none;
+}
+
+.imp-name:focus { border-color: rgba(251, 171, 21, .55); }
+.imp-name::placeholder { color: rgba(251, 191, 36, .55); }
+
+.imp-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.imp-line select {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: rgba(0, 0, 0, .34);
+    font-size: 11.5px;
+    outline: none;
+}
+
+.imp-at {
+    flex-shrink: 0;
+    font-size: 9.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    direction: ltr;
+    unicode-bidi: isolate;
+    white-space: nowrap;
+}
+
+.imp-drop {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .05);
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1;
+}
+
+.imp-drop:hover {
+    border-color: rgba(251, 113, 133, .45);
+    background: rgba(251, 113, 133, .16);
+    color: #fecdd3;
+}
+
+@media (max-width: 420px) {
+    .imp-top { gap: 9px; padding-inline: 12px; }
+    .imp-top span { display: none; }
+    .imp-scroll { padding-inline: 12px; }
+    .imp-shot { width: 50px; height: 50px; }
+}
