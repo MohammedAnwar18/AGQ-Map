@@ -3475,6 +3475,13 @@ const MapComponent = () => {
                         if (cat === 'دوار') {
                             return viewState.zoom >= 17.5; // يظهر فقط عند التكبير الشديد
                         }
+                        if (cat === 'محطة وقود') {
+                            /* الكازيات متقاربة على الطرق، فظهورها من ١٢
+                               يُغرق الخريطة بها. ومن ١٦ تظهر حين يكون
+                               الناظر قريباً فعلاً — وهي حدٌّ يبقى قابلاً
+                               للتجاوز لمحلٍّ بعينه من ‎min_zoom‎ أعلاه */
+                            return viewState.zoom >= 16;
+                        }
                         if (['مقبرة', 'مسجد', 'كنيسة', 'ملعب'].includes(cat)) {
                             return viewState.zoom >= 14.5; // Shows when zoomed in
                         }
@@ -3533,6 +3540,12 @@ const MapComponent = () => {
                                         showName = viewState.zoom >= parseFloat(shop.text_min_zoom);
                                     } else if (shop.category === 'دوار') {
                                         showName = viewState.zoom >= 17.5;
+                                    } else if (shop.category === 'محطة وقود') {
+                                        /* مع العلامة لا بعدها: العامّ يُظهر الاسم من
+                                           ١٦٫٥ والعلامة تظهر من ١٦، فيبقى نصف مستوى
+                                           ترى فيه ⛽ بلا اسم — والاسم هنا هو الشركة،
+                                           وهو ما يُميّز كازيةً من جارتها */
+                                        showName = viewState.zoom >= 16;
                                     } else if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(shop.category)) {
                                         showName = viewState.zoom >= 14.5;
                                     } else if (['حديقة', 'منتزه', 'مدرسة', 'وزارة'].includes(shop.category)) {
