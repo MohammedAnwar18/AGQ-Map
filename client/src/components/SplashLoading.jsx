@@ -1,6 +1,15 @@
 import React, { useEffect } from 'react';
 import './SplashLoading.css';
 
+/*
+ * سنة الحقوق.
+ *
+ * تُقرأ من الساعة لا تُكتب رقماً: إشعارُ حقوقٍ بسنة ماضية يبدو
+ * موقعاً مهجوراً. و‎2026‎ حدٌّ أدنى لأنّ جهازاً بساعة خاطئة قد
+ * يُعطي سنةً أقدم، وأن تتأخّر السنة أهون من أن ترتدّ.
+ */
+const RIGHTS_YEAR = Math.max(2026, new Date().getFullYear());
+
 const SplashLoading = () => {
     useEffect(() => {
         // Safety net: if this component is shown for too long (e.g., failed chunk load),
@@ -41,6 +50,19 @@ const SplashLoading = () => {
                 <div className="splash-progress">
                     <div className="splash-progress-bar"></div>
                 </div>
+
+                {/*
+                  * إشعار الحقوق أسفل شريط التحميل.
+                  *
+                  * والعلامة والسنة معزولتان اتّجاهياً: «© 2026» لاتينيّة
+                  * في سطر عربيّ، وبلا عزل يُعيد المتصفّح ترتيبها فتظهر
+                  * «2026 ©» أو تنتقل إلى آخر السطر.
+                  */}
+                <p className="splash-rights">
+                    <span className="splash-rights-mark">© {RIGHTS_YEAR}</span>
+                    <span className="splash-rights-brand">بالنوفا</span>
+                    <span className="splash-rights-text">جميع حقوق النشر محفوظة</span>
+                </p>
             </div>
         </div>
     );

@@ -232,9 +232,13 @@
       position: relative;
       z-index: 3;
       display: flex;
+      /* عموداً لا صفّاً: الإشعار أسفل الشريط لا بجانبه */
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(10px, 2.2vh, 16px);
       justify-content: center;
       width: 100%;
-      padding-bottom: clamp(8px, 4vh, 28px);
+      padding-bottom: clamp(10px, 4vh, 28px);
       animation: splashFadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 560ms both;
     }
 
@@ -252,6 +256,61 @@
       border-radius: 999px;
       background: linear-gradient(90deg, rgba(245, 163, 16, 0) 0%, #F5A310 55%, #FFC352 100%);
       animation: splashBar 2.1s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+    }
+
+    /* ── إشعار الحقوق ──
+       رسميّ لا زخرفيّ: صغير، خفيض التباين، وفوقه شعرة فاصلة */
+    .splash-rights {
+      position: relative;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+      padding-top: clamp(9px, 1.8vh, 14px);
+      max-width: min(420px, 86vw);
+      font-size: clamp(9.5px, 2.5vw, 11px);
+      font-weight: 500;
+      line-height: 1.6;
+      letter-spacing: .2px;
+      color: rgba(255, 255, 255, .42);
+      text-align: center;
+      direction: rtl;
+      user-select: none;
+    }
+
+    .splash-rights::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: min(150px, 42vw);
+      height: 1px;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent);
+    }
+
+    /* «©» و«2026» لاتينيّتان في سطر عربيّ: بلا عزل اتّجاهيّ
+       يُعيد المتصفّح ترتيبهما فتظهر «2026 ©» أو تنتقل للطرف الآخر */
+    .splash-rights-mark {
+      direction: ltr;
+      unicode-bidi: isolate;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .6px;
+      white-space: nowrap;
+    }
+
+    .splash-rights-brand {
+      font-weight: 700;
+      color: rgba(251, 171, 21, .68);
+      white-space: nowrap;
+    }
+
+    .splash-rights-text { white-space: nowrap; }
+
+    @media (max-height: 520px) {
+      .splash-rights { padding-top: 8px; font-size: 9px; }
     }
 
     @keyframes splashBar {
@@ -315,10 +374,31 @@
       <div class="splash-progress">
         <div class="splash-progress-bar"></div>
       </div>
+
+      <!-- إشعار الحقوق. هذه الشاشة هي أوّل ما يُرسم قبل أن يُقلع
+           React، فالإشعار هنا لا في المكوّن وحده — وإلّا لم يُرَ -->
+      <p class="splash-rights">
+        <span class="splash-rights-mark" id="splash-year">© 2026</span>
+        <span class="splash-rights-brand">بالنوفا</span>
+        <span class="splash-rights-text">جميع حقوق النشر محفوظة</span>
+      </p>
     </div>
   </div>
 
   <div id="root"></div>
+
+  <script>
+    /* سنة الحقوق من ساعة الجهاز، و2026 حدٌّ أدنى: إشعارٌ بسنة ماضية
+       يبدو موقعاً مهجوراً، وساعةٌ خاطئة لا يجوز أن تُرجعه إلى الوراء.
+       والقيمة مكتوبة في الوسم أصلاً فلا يُرى تغيّر هذا العام */
+    (function () {
+      try {
+        var year = Math.max(2026, new Date().getFullYear());
+        var node = document.getElementById('splash-year');
+        if (node) node.textContent = '© ' + year;
+      } catch (e) { /* يبقى المكتوب في الوسم */ }
+    })();
+  </script>
 
   <script type="module" src="/src/main.jsx"></script>
 

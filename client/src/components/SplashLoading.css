@@ -102,9 +102,12 @@
     position: relative;
     z-index: 3;
     display: flex;
-    justify-content: center;
+    /* عموداً لا صفّاً: الإشعار يقع أسفل الشريط لا بجانبه */
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 2.2vh, 16px);
     width: 100%;
-    padding-bottom: clamp(8px, 4vh, 28px);
+    padding-bottom: clamp(10px, 4vh, 28px);
     animation: splashFadeUp 700ms cubic-bezier(0.22, 1, 0.36, 1) 560ms both;
 }
 
@@ -136,4 +139,75 @@
 
 @media (prefers-reduced-motion: reduce) {
     .splash-screen, .splash-screen * { animation: none !important; }
+}
+
+/* ============================================================
+   إشعار الحقوق
+
+   رسميّ لا زخرفيّ: صغير، خفيض التباين، متباعد الحروف قليلاً، وفوقه
+   شعرة فاصلة. هذه هي سمات الإشعار القانوني في كل واجهة — والصخب
+   فيه يجعله يبدو شعاراً تسويقياً لا حقّاً محفوظاً.
+   ============================================================ */
+
+.splash-rights {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding-top: clamp(9px, 1.8vh, 14px);
+    max-width: min(420px, 86vw);
+
+    font-size: clamp(9.5px, 2.5vw, 11px);
+    font-weight: 500;
+    line-height: 1.6;
+    letter-spacing: .2px;
+    color: rgba(255, 255, 255, .42);
+    text-align: center;
+    direction: rtl;
+    user-select: none;
+}
+
+/* الشعرة الفاصلة: عرضها أقصر من النصّ فتبدو خطّاً تحت الشريط */
+.splash-rights::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(150px, 42vw);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .16), transparent);
+}
+
+/*
+ * العلامة والسنة.
+ *
+ * ‎isolate‎ يمنع إعادة الترتيب الاتّجاهي: بلا عزل تتحرّك «©» إلى
+ * الطرف الآخر من السطر العربيّ أو تنقلب مع الرقم.
+ */
+.splash-rights-mark {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .6px;
+    white-space: nowrap;
+}
+
+.splash-rights-brand {
+    font-weight: 700;
+    color: rgba(251, 171, 21, .68);
+    white-space: nowrap;
+}
+
+.splash-rights-text { white-space: nowrap; }
+
+/* شاشة قصيرة جداً: يبقى الإشعار ويضيق تباعده */
+@media (max-height: 520px) {
+    .splash-rights {
+        padding-top: 8px;
+        font-size: 9px;
+    }
 }
