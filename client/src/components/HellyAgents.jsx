@@ -9,6 +9,7 @@ import './helly/SpatialAgent.css';
 /* الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
    محرّكه ورسومه لا يلزمان من جاء للمحاكاة */
 const SpatialAgentPanel = React.lazy(() => import('./helly/SpatialAgentPanel'));
+const LocalSimPanel = React.lazy(() => import('./helly/LocalSimPanel'));
 
 /* ============================================================
    HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
@@ -288,7 +289,7 @@ const HellyAgents = ({ onClose }) => {
             {busy && <div className="hla-busy"><span className="hla-spin" />{busy}</div>}
 
             {/* ── تبويب القسمين ── */}
-            {(view === 'list' || view === 'spatial' || view === 'agent') && (
+            {(view === 'list' || view === 'spatial' || view === 'agent' || view === 'local') && (
                 <nav className="hla-nav">
                     {/*
                       * الوكيل أوّلاً وهو الافتراضي.
@@ -303,11 +304,19 @@ const HellyAgents = ({ onClose }) => {
                     >
                         <Icon.Pin /> الوكيل المكاني
                     </button>
+                    {/* محاكاة محسوبة بلا مفتاح — وتُسبق تبويب المحاكاة
+                        التي تنادي نموذجاً لغوياً وقد تتوقّف بحصّته */}
+                    <button
+                        className={view === 'local' ? 'is-on' : ''}
+                        onClick={() => setView('local')}
+                    >
+                        <Icon.Brain width="17" height="17" /> محاكاة محليّة
+                    </button>
                     <button
                         className={view === 'list' ? 'is-on' : ''}
                         onClick={() => setView('list')}
                     >
-                        <Icon.Brain width="17" height="17" /> المحاكاات
+                        <Icon.Brain width="17" height="17" /> محاكاة بالنموذج
                     </button>
                     <button
                         className={view === 'spatial' ? 'is-on' : ''}
@@ -316,6 +325,15 @@ const HellyAgents = ({ onClose }) => {
                         <Icon.Pin /> الربط المكاني
                     </button>
                 </nav>
+            )}
+
+            {/* ── المحاكاة المحليّة ── */}
+            {view === 'local' && (
+                <div className="hla-body">
+                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل المحرّك…</div>}>
+                        <LocalSimPanel />
+                    </React.Suspense>
+                </div>
             )}
 
             {/* ── الوكيل المكاني ── */}

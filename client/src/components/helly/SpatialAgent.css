@@ -710,3 +710,40 @@
     .ag-hist { height: 124px; }
     .ag-figures b { font-size: 18px; }
 }
+
+/* ============================================================
+   المحاكاة المحليّة — ما يزيد على تنسيق الوكيل
+   ============================================================ */
+
+/* المنزلقات: الإعدادات هنا مديات لا خيارات معدودة */
+.ag-slide {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+/* ── المسار ── */
+.ag-trend { display: flex; flex-direction: column; gap: 10px; }
+
+.ag-trend svg {
+    width: 100%;
+    height: 170px;
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .25);
+}
+
+/* دليل المسار صفّ لا عمود: ثلاثة خطوط تُقرأ في سطر */
+.ag-legend-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 7px 16px;
+}
+
+.ag-legend-row li { flex: 0 0 auto; }
+.ag-legend-row span { flex: 0 0 auto; }
+
+@media (max-width: 520px) {
+    .ag-trend svg { height: 140px; }
+}

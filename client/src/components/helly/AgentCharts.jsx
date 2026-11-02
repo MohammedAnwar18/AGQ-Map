@@ -197,6 +197,74 @@ export const Histogram = ({ values, bins = 6, max, unit = 'م' }) => {
 };
 
 /* ============================================================
+   مسار زمنيّ — لجولات المحاكاة
+   ============================================================ */
+
+/**
+ * خطوط على محور الجولات.
+ *
+ * التقرير يحتاج أن يُرى المسار لا النهاية وحدها: متوسّطٌ انتهى إلى
+ * الصفر قد يكون بقي صفراً، أو صعد ثمّ هبط — وهما حكايتان مختلفتان
+ * تماماً. والخطّ يقولهما، والرقم النهائي يُخفيهما.
+ *
+ * ونرسم بـ‎viewBox‎ ثابت ونسبةٍ محفوظة، فيتمدّد مع الشاشة بلا حساب.
+ */
+export const TrendChart = ({ series, marks = [], domain = [-1, 1], height = 170 }) => {
+    const W = 320;
+    const H = 120;
+    const PAD = 6;
+
+    const lines = useMemo(() => (series || []).filter(s => s.values?.length > 1), [series]);
+    if (!lines.length) return <p className="ag-empty">لا مسار لِيُرسم</p>;
+
+    const steps = Math.max(...lines.map(s => s.values.length)) - 1;
+    const [lo, hi] = domain;
+    const span = hi - lo || 1;
+
+    const xOf = (i) => PAD + (i / Math.max(1, steps)) * (W - PAD * 2);
+    const yOf = (v) => H - PAD - ((v - lo) / span) * (H - PAD * 2);
+
+    const pathOf = (values) => values
+        .map((v, i) => `${i ? 'L' : 'M'}${xOf(i).toFixed(2)} ${yOf(v).toFixed(2)}`)
+        .join(' ');
+
+    return (
+        <div className="ag-trend">
+            <svg viewBox={`0 0 ${W} ${H}`} style={{ height }} role="img" aria-label="مسار المحاكاة">
+                {/* خطّ الصفر: المرجع الذي يُقرأ الميل منه */}
+                {lo < 0 && hi > 0 && (
+                    <line x1={PAD} x2={W - PAD} y1={yOf(0)} y2={yOf(0)}
+                          stroke="rgba(255,255,255,.18)" strokeWidth="1" strokeDasharray="4 4" />
+                )}
+
+                {/* علامات الحوادث: خطّ رأسيّ عند جولتها */}
+                {marks.map((mark, i) => (
+                    <line key={i}
+                          x1={xOf(mark.at)} x2={xOf(mark.at)}
+                          y1={PAD} y2={H - PAD}
+                          stroke="rgba(251,171,21,.5)" strokeWidth="1.4" strokeDasharray="3 3" />
+                ))}
+
+                {lines.map(s => (
+                    <path key={s.label} d={pathOf(s.values)}
+                          fill="none" stroke={s.tone} strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round" />
+                ))}
+            </svg>
+
+            <ul className="ag-legend ag-legend-row">
+                {lines.map(s => (
+                    <li key={s.label}>
+                        <i style={{ background: s.tone }} />
+                        <span>{s.label}</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+/* ============================================================
    مقياس الخطورة
    ============================================================ */
 
