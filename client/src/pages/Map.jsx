@@ -230,7 +230,7 @@ const getMarkerSize = (category) => {
      * واجهة محلّ.
      */
     if (category === 'محطة وقود') return 40;
-    if (category === 'إشارة مرور') return 46;    // ارتفاع رأس الإشارة لا قطرَ دائرة
+    if (category === 'إشارة مرور') return 30;    // رأس إشارةٍ صغير، علامةُ طريقٍ لا واجهة
     if (category === 'دوار') return 40;                                              // حجم صغير
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return 58;          // حجم كبير
     if (['حديقة', 'منتزه', 'وزارة', 'مدرسة', 'مستشفى', 'مركز تسوق', 'مجمع تجاري'].includes(category)) return 54;
