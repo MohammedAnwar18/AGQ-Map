@@ -5,11 +5,12 @@ import { STANCE_TONE, STANCES } from './hellyTheme';
 import { AreaStudio, ForecastPanel } from './HellySpatial';
 import './HellyAgents.css';
 import './helly/SpatialAgent.css';
+import './helly/MapSim.css';
 
 /* الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
    محرّكه ورسومه لا يلزمان من جاء للمحاكاة */
 const SpatialAgentPanel = React.lazy(() => import('./helly/SpatialAgentPanel'));
-const LocalSimPanel = React.lazy(() => import('./helly/LocalSimPanel'));
+const MapSimPanel = React.lazy(() => import('./helly/MapSimPanel'));
 
 /* ============================================================
    HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
@@ -304,13 +305,13 @@ const HellyAgents = ({ onClose }) => {
                     >
                         <Icon.Pin /> الوكيل المكاني
                     </button>
-                    {/* محاكاة محسوبة بلا مفتاح — وتُسبق تبويب المحاكاة
-                        التي تنادي نموذجاً لغوياً وقد تتوقّف بحصّته */}
+                    {/* محاكاة تُرى على الخريطة، بلا مفتاح. وكانت مجرّدة
+                        بأرقام لا تُفهم، فصارت نقاطاً تتلوّن أمام العين */}
                     <button
                         className={view === 'local' ? 'is-on' : ''}
                         onClick={() => setView('local')}
                     >
-                        <Icon.Brain width="17" height="17" /> محاكاة محليّة
+                        <Icon.Pin /> محاكاة على الخريطة
                     </button>
                     <button
                         className={view === 'list' ? 'is-on' : ''}
@@ -327,11 +328,11 @@ const HellyAgents = ({ onClose }) => {
                 </nav>
             )}
 
-            {/* ── المحاكاة المحليّة ── */}
+            {/* ── المحاكاة على الخريطة ── */}
             {view === 'local' && (
                 <div className="hla-body">
-                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل المحرّك…</div>}>
-                        <LocalSimPanel />
+                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل الخريطة…</div>}>
+                        <MapSimPanel />
                     </React.Suspense>
                 </div>
             )}
