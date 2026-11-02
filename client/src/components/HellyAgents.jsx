@@ -4,6 +4,11 @@ import HellyMark from './HellyMark';
 import { STANCE_TONE, STANCES } from './hellyTheme';
 import { AreaStudio, ForecastPanel } from './HellySpatial';
 import './HellyAgents.css';
+import './helly/SpatialAgent.css';
+
+/* الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
+   محرّكه ورسومه لا يلزمان من جاء للمحاكاة */
+const SpatialAgentPanel = React.lazy(() => import('./helly/SpatialAgentPanel'));
 
 /* ============================================================
    HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
@@ -92,7 +97,7 @@ const StanceBar = ({ distribution, total }) => (
 
 // ============================================================
 const HellyAgents = ({ onClose }) => {
-    const [view, setView] = useState('list');        // list | form | sim
+    const [view, setView] = useState('agent');        // list | form | sim
     const [sims, setSims] = useState([]);
     const [sim, setSim] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -263,7 +268,7 @@ const HellyAgents = ({ onClose }) => {
                     {view !== 'list' && (
                         <button
                             className="hla-icon"
-                            onClick={() => { setView('list'); setSim(null); loadList(); }}
+                            onClick={() => { setView('agent'); setSim(null); loadList(); }}
                             aria-label="رجوع"
                         >
                             <Icon.Back />
@@ -272,7 +277,7 @@ const HellyAgents = ({ onClose }) => {
                     <HellyMark size={42} className="hla-brand-mark" />
                     <div>
                         <b>HellyAgents</b>
-                        <span>محاكاة جماعية متعدّدة الوكلاء</span>
+                        <span>وكيل ذكاء اصطناعي مكاني · ومحاكاة متعدّدة الوكلاء</span>
                     </div>
                 </div>
 
@@ -283,8 +288,21 @@ const HellyAgents = ({ onClose }) => {
             {busy && <div className="hla-busy"><span className="hla-spin" />{busy}</div>}
 
             {/* ── تبويب القسمين ── */}
-            {(view === 'list' || view === 'spatial') && (
+            {(view === 'list' || view === 'spatial' || view === 'agent') && (
                 <nav className="hla-nav">
+                    {/*
+                      * الوكيل أوّلاً وهو الافتراضي.
+                      *
+                      * لأنّه الوحيد الذي يعمل بلا مفتاح ولا طلب خارجي:
+                      * من يفتح القسم يجد شيئاً يعمل، ثمّ يختار المحاكاة
+                      * إن أرادها.
+                      */}
+                    <button
+                        className={view === 'agent' ? 'is-on' : ''}
+                        onClick={() => setView('agent')}
+                    >
+                        <Icon.Pin /> الوكيل المكاني
+                    </button>
                     <button
                         className={view === 'list' ? 'is-on' : ''}
                         onClick={() => setView('list')}
@@ -298,6 +316,15 @@ const HellyAgents = ({ onClose }) => {
                         <Icon.Pin /> الربط المكاني
                     </button>
                 </nav>
+            )}
+
+            {/* ── الوكيل المكاني ── */}
+            {view === 'agent' && (
+                <div className="hla-body">
+                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل الوكيل…</div>}>
+                        <SpatialAgentPanel />
+                    </React.Suspense>
+                </div>
             )}
 
             {/* ── الربط المكاني ── */}
