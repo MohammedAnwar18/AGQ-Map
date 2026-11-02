@@ -189,7 +189,7 @@ const getCategoryEmoji = (category) => {
         'مكتبة': '📚', 'حلويات': '🍰', 'معجنات': '🥐', 'احذية': '👟',
         'صالون رجالي': '💈', 'صالون نسائي': '💇‍♀️', 'وزارة': '🏛️',
         'دوار': '🔄', 'مقبرة': '🪦', 'مسجد': '🕌', 'كنيسة': '⛪', 'ملعب': '🏟️',
-        'محطة وقود': '⛽'
+        'محطة وقود': '⛽', 'إشارة مرور': '🚦'
     };
     return map[category] || '🏪';
 };
@@ -230,6 +230,7 @@ const getMarkerSize = (category) => {
      * واجهة محلّ.
      */
     if (category === 'محطة وقود') return 40;
+    if (category === 'إشارة مرور') return 46;    // ارتفاع رأس الإشارة لا قطرَ دائرة
     if (category === 'دوار') return 40;                                              // حجم صغير
     if (['مسجد', 'كنيسة', 'مقبرة', 'ملعب'].includes(category)) return 58;          // حجم كبير
     if (['حديقة', 'منتزه', 'وزارة', 'مدرسة', 'مستشفى', 'مركز تسوق', 'مجمع تجاري'].includes(category)) return 54;
@@ -261,6 +262,50 @@ const getNameBadgeTextColor = (category) => {
     if (category === 'مركز تسوق' || category === 'مجمع تجاري' || category === 'Mall' || category === 'مستشفى' || category === 'مركز طبي' || category === 'عيادة' || category === 'صيدلية' || category === 'مسجد' || category === 'كنيسة' || category === 'حديقة' || category === 'منتزه' || category === 'دوار' || category === 'ملعب' || category === 'محطة وقود') return 'white';
     if (category === 'وزارة') return '#fbab15';
     return 'black';
+};
+
+
+/*
+ * علامة إشارة المرور.
+ *
+ * ليست في دائرةٍ كبقيّة المعالم: الدائرة واجهةُ محلّ، وإشارةُ المرور
+ * عنصرُ طريقٍ له شكله المعروف. فتُرسم رأسَ إشارةٍ قائماً بثلاث عيون —
+ * حمراء فوق، فصفراء، فخضراء — في صندوقٍ داكن، بلا اسمٍ تحتها.
+ *
+ * والعيون الثلاث مضيئةٌ معاً لأنّها أيقونةٌ لا محاكاة تشغيل: المقصود
+ * أن تُعرَف الإشارةُ من شكلها لا أن تُحاكى دورتُها.
+ */
+const TrafficSignalMarker = ({ size = 44 }) => {
+    const lamp = Math.max(7, Math.round(size * 0.26));
+    const pad = Math.round(lamp * 0.34);
+    const gap = Math.round(lamp * 0.30);
+    const radius = Math.round(lamp * 0.62);
+
+    const eye = (glow, bright, deep) => ({
+        width: `${lamp}px`,
+        height: `${lamp}px`,
+        borderRadius: '50%',
+        background: `radial-gradient(circle at 35% 30%, ${bright}, ${glow} 62%, ${deep})`,
+        boxShadow: `0 0 ${Math.round(lamp * 0.6)}px ${Math.round(lamp * 0.14)}px ${glow}cc, inset 0 0 2px rgba(0,0,0,.45)`
+    });
+
+    return (
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: `${gap}px`,
+            padding: `${pad}px ${Math.round(pad * 1.1)}px`,
+            background: 'linear-gradient(180deg, #313b4a 0%, #1b2230 55%, #11161f 100%)',
+            border: '1.5px solid #05070b',
+            borderRadius: `${radius}px`,
+            boxShadow: '0 4px 10px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.14)'
+        }}>
+            <span style={eye('#ef4444', '#ff8a8a', '#9c1c1c')} />
+            <span style={eye('#f59e0b', '#ffd27a', '#9a6206')} />
+            <span style={eye('#22c55e', '#86efac', '#15803d')} />
+        </div>
+    );
 };
 
 
@@ -3467,6 +3512,18 @@ const MapComponent = () => {
                             }
                         }
 
+                        // إشارة المرور: من ١٦ عادةً، ومن ١٣ في وضع الملاحة —
+                        // أي حين يكون مسارٌ نشطاً وتتحوّل الخريطة إلى فيكتور —
+                        // ليراها السائق مبكّراً على طريقه. ويبقى تجاوز المستوى
+                        // لإشارةٍ بعينها ممكناً من min_zoom في الوضع العاديّ.
+                        if ((shop.category || '') === 'إشارة مرور') {
+                            if (routePath) return viewState.zoom >= 13;
+                            if (shop.min_zoom != null && shop.min_zoom !== '') {
+                                return viewState.zoom >= parseFloat(shop.min_zoom);
+                            }
+                            return viewState.zoom >= 16;
+                        }
+
                         // Customized zoom visibility levels or per-shop overrides
                         if (shop.min_zoom != null && shop.min_zoom !== '') {
                             return viewState.zoom >= parseFloat(shop.min_zoom);
@@ -3508,6 +3565,9 @@ const MapComponent = () => {
                                 }
                             }}
                         >
+                            {shop.category === 'إشارة مرور' ? (
+                              <TrafficSignalMarker size={shop.icon_size ? shop.icon_size : getMarkerSize(shop.category)} />
+                            ) : (
                             <div
                               className={String(arrivedShopId) === String(shop.id) ? 'shop-marker-arrived' : undefined}
                               style={{
@@ -3582,6 +3642,7 @@ const MapComponent = () => {
                                     );
                                 })()}
                             </div>
+                            )}
                         </Marker>,
 
                         // Active Drivers

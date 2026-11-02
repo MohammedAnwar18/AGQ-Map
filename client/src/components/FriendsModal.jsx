@@ -842,6 +842,9 @@ const FriendsModal = ({ onClose, initialTab = 'friends', isShopsMode = false, cu
                                                         {/* الكازية: الاسم الدارج مع الرسميّ
                                                             في العنوان، والمحفوظ هو الرسميّ */}
                                                         <option value="محطة وقود">محطة وقود (كازية) ⛽</option>
+                                                        {/* إشارة مرور: تُرسم على شكل إشارةٍ لا في
+                                                            دائرة، وبلا اسمٍ على الخريطة */}
+                                                        <option value="إشارة مرور">إشارة مرور 🚦</option>
                                                         <option value="مركز تسوق">مركز تسوق (مول) 🏢</option>
                                                         <option value="مجمع تجاري">مجمع تجاري 🏘️</option>
                                                         <option value="Restaurant">مطعم</option>
