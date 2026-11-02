@@ -5,12 +5,11 @@ import { STANCE_TONE, STANCES } from './hellyTheme';
 import { AreaStudio, ForecastPanel } from './HellySpatial';
 import './HellyAgents.css';
 import './helly/SpatialAgent.css';
-import './helly/MapSim.css';
+import './helly/AgentStudio.css';
 
-/* الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
-   محرّكه ورسومه لا يلزمان من جاء للمحاكاة */
-const SpatialAgentPanel = React.lazy(() => import('./helly/SpatialAgentPanel'));
-const MapSimPanel = React.lazy(() => import('./helly/MapSimPanel'));
+/* استوديو الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
+   خريطته ومحرّكاته لا تلزم من جاء للمحاكاة بالنموذج */
+const AgentStudio = React.lazy(() => import('./helly/AgentStudio'));
 
 /* ============================================================
    HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
@@ -290,28 +289,23 @@ const HellyAgents = ({ onClose }) => {
             {busy && <div className="hla-busy"><span className="hla-spin" />{busy}</div>}
 
             {/* ── تبويب القسمين ── */}
-            {(view === 'list' || view === 'spatial' || view === 'agent' || view === 'local') && (
+            {(view === 'list' || view === 'spatial' || view === 'agent') && (
                 <nav className="hla-nav">
                     {/*
                       * الوكيل أوّلاً وهو الافتراضي.
                       *
-                      * لأنّه الوحيد الذي يعمل بلا مفتاح ولا طلب خارجي:
-                      * من يفتح القسم يجد شيئاً يعمل، ثمّ يختار المحاكاة
-                      * إن أرادها.
+                      * والتحليل والمحاكاة صفحةٌ واحدة: كلاهما يسأل «أين
+                      * يقع الحدث؟» ثمّ يفترقان، وفصلُهما كان يُجبر من
+                      * يريد الجوابين على إدخال الموضع مرّتين.
+                      *
+                      * وهو الوحيد الذي يعمل بلا مفتاح ولا طلب خارجي،
+                      * فمن يفتح القسم يجد شيئاً يعمل.
                       */}
                     <button
                         className={view === 'agent' ? 'is-on' : ''}
                         onClick={() => setView('agent')}
                     >
                         <Icon.Pin /> الوكيل المكاني
-                    </button>
-                    {/* محاكاة تُرى على الخريطة، بلا مفتاح. وكانت مجرّدة
-                        بأرقام لا تُفهم، فصارت نقاطاً تتلوّن أمام العين */}
-                    <button
-                        className={view === 'local' ? 'is-on' : ''}
-                        onClick={() => setView('local')}
-                    >
-                        <Icon.Pin /> محاكاة على الخريطة
                     </button>
                     <button
                         className={view === 'list' ? 'is-on' : ''}
@@ -328,20 +322,11 @@ const HellyAgents = ({ onClose }) => {
                 </nav>
             )}
 
-            {/* ── المحاكاة على الخريطة ── */}
-            {view === 'local' && (
-                <div className="hla-body">
-                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل الخريطة…</div>}>
-                        <MapSimPanel />
-                    </React.Suspense>
-                </div>
-            )}
-
             {/* ── الوكيل المكاني ── */}
             {view === 'agent' && (
                 <div className="hla-body">
-                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل الوكيل…</div>}>
-                        <SpatialAgentPanel />
+                    <React.Suspense fallback={<div className="hla-busy"><span className="hla-spin" />يُحمّل الاستوديو…</div>}>
+                        <AgentStudio />
                     </React.Suspense>
                 </div>
             )}
