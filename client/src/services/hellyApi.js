@@ -24,6 +24,7 @@ export const hellyService = {
     probeArea: async (ring) => (await api.post('/osm/probe', { ring })).data,
     captureStreet: async (lat, lon, width) => (await api.post('/osm/street', { lat, lon, width })).data,
     searchPlace: async (q) => (await api.get('/osm/search', { params: { q } })).data,
+    readRoads: async (lat, lon, radius) => (await api.post('/osm/roads', { lat, lon, radius })).data,
     forecast: async (id) => (await api.get(`/${id}/forecast`)).data
 };
 

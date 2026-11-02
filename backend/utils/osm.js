@@ -313,6 +313,153 @@ out geom 40;`;
     };
 };
 
+/* ============================================================
+   شبكة الطرق — المدخل الحقيقي للتحليل المروريّ
+   ============================================================ */
+
+/*
+ * تصنيفات الطرق التي تحمل حركة مركبات.
+ *
+ * نستبعد الممرّات والأدراج والمسارات الزراعية: لا سعة لها ولا
+ * تستقبل تحويلاً، ووجودها في النتيجة يُفسد حساب البدائل.
+ */
+const DRIVABLE = [
+    'motorway', 'trunk', 'primary', 'secondary', 'tertiary',
+    'residential', 'unclassified', 'service', 'living_street'
+];
+
+/* ‎OSM‎ يُلحق ‎_link‎ بوصلات التقاطعات — وهي من تصنيف أصلها */
+const baseClass = (highway) => String(highway || '').replace(/_link$/, '');
+
+/*
+ * ‎maxspeed‎ في ‎OSM‎ نصٌّ حرّ: «50» و«50 mph» و«RO:urban».
+ * نقرأ الرقم وندع ما لا يُقرأ ليُستكمل من تصنيف الطريق.
+ */
+const parseSpeed = (raw) => {
+    if (!raw) return null;
+    const text = String(raw);
+    const num = parseFloat(text);
+    if (!Number.isFinite(num) || num <= 0) return null;
+
+    return /mph/i.test(text) ? Math.round(num * 1.609344) : Math.round(num);
+};
+
+const parseLanes = (raw) => {
+    const num = parseInt(raw, 10);
+    return Number.isFinite(num) && num > 0 && num <= 12 ? num : null;
+};
+
+/** طول المسار بالأمتار من هندسته */
+const wayLength = (geom) => {
+    let total = 0;
+    for (let i = 0; i < geom.length - 1; i++) {
+        const kx = METERS_PER_DEG_LAT * Math.cos((geom[i].lat * Math.PI) / 180);
+        total += Math.hypot(
+            (geom[i + 1].lon - geom[i].lon) * kx,
+            (geom[i + 1].lat - geom[i].lat) * METERS_PER_DEG_LAT
+        );
+    }
+    return total;
+};
+
+/**
+ * شبكة الطرق حول نقطة.
+ *
+ * هذه هي البيانات التي يُبنى عليها التحليل المروريّ: التصنيف يُعطي
+ * السعة، و‎lanes‎ يُعطي عددها، و‎oneway‎ يُحدّد هل الالتفاف ممكن،
+ * والهندسة تُرسم على الخريطة وتُقاس منها المسافات.
+ *
+ * ولا نردّ كل مسار على حِدة: ‎OSM‎ يُقطّع الشارع الواحد عند كل تقاطع،
+ * فالشارع الواحد يصير عشرات المسارات. نضمّ ما يحمل الاسم والتصنيف
+ * نفسيهما في عنصر واحد كي يُقرأ كما يُعرف على الأرض.
+ */
+const roadNetwork = async ({ lat, lon, radius = 500 }) => {
+    const r = Math.max(100, Math.min(1500, Math.round(radius)));
+    const filter = DRIVABLE.join('|');
+
+    const query = `[out:json][timeout:30];
+way(around:${r},${Number(lat).toFixed(6)},${Number(lon).toFixed(6)})["highway"~"^(${filter})(_link)?$"];
+out tags geom 400;`;
+
+    const data = await runOverpass(query);
+    const ways = Array.isArray(data?.elements) ? data.elements : [];
+
+    const merged = new Map();
+
+    for (const way of ways) {
+        const geom = Array.isArray(way.geometry) ? way.geometry.filter(g => g && Number.isFinite(g.lat)) : [];
+        if (geom.length < 2) continue;
+
+        const tags = way.tags || {};
+        const cls = baseClass(tags.highway);
+        const name = tags.name || tags['name:ar'] || null;
+
+        // المفتاح: الاسم والتصنيف. وما لا اسم له يبقى قطعةً مستقلّة
+        const key = name ? `${name}::${cls}` : `way::${way.id}`;
+
+        let near = Infinity;
+        for (let i = 0; i < geom.length - 1; i++) {
+            const d = pointToSegmentM({ lat, lon }, geom[i], geom[i + 1]);
+            if (d < near) near = d;
+        }
+
+        const piece = {
+            id: way.id,
+            name,
+            highway: cls,
+            link: /_link$/.test(tags.highway || ''),
+            lanes: parseLanes(tags.lanes),
+            maxspeed: parseSpeed(tags.maxspeed),
+            oneway: tags.oneway === 'yes' || tags.oneway === '1' || tags.oneway === '-1',
+            bridge: tags.bridge === 'yes',
+            tunnel: tags.tunnel === 'yes',
+            surface: tags.surface || null,
+            length: wayLength(geom),
+            distance: near,
+            coords: geom.map(g => [g.lon, g.lat])
+        };
+
+        const found = merged.get(key);
+        if (!found) {
+            merged.set(key, { ...piece, lines: [piece.coords], pieces: 1 });
+            continue;
+        }
+
+        /* الضمّ: أقرب مسافة، ومجموع الأطوال، وأكثر ما وُسم من
+           مسارات وسرعة — فالوسم في ‎OSM‎ ناقص على بعض القطع */
+        found.distance = Math.min(found.distance, piece.distance);
+        found.length += piece.length;
+        found.lanes = Math.max(found.lanes || 0, piece.lanes || 0) || null;
+        found.maxspeed = Math.max(found.maxspeed || 0, piece.maxspeed || 0) || null;
+        found.oneway = found.oneway && piece.oneway;
+        found.lines.push(piece.coords);
+        found.pieces += 1;
+    }
+
+    /* المركز: نقطة وسط أطول خطّ في العنصر — لرسم الوسم عليها */
+    const roads = Array.from(merged.values()).map(road => {
+        const longest = road.lines.reduce((a, b) => (b.length > a.length ? b : a), road.lines[0]);
+        const mid = longest[Math.floor(longest.length / 2)];
+
+        return {
+            ...road,
+            coords: undefined,
+            centre: { longitude: mid[0], latitude: mid[1] },
+            distance: Math.round(road.distance),
+            length: Math.round(road.length)
+        };
+    });
+
+    roads.sort((a, b) => a.distance - b.distance);
+
+    return {
+        centre: { latitude: Number(lat), longitude: Number(lon) },
+        radius: r,
+        count: roads.length,
+        roads: roads.slice(0, 60)
+    };
+};
+
 /** بحث بالاسم — Nominatim، للانتقال إلى مكان بدل التجوال يدوياً */
 const searchPlaces = async (query, { limit = 6 } = {}) => {
     const controller = new AbortController();
@@ -395,6 +542,7 @@ const contextToText = (context, placeName) => {
 module.exports = {
     probeArea,
     nearestStreet,
+    roadNetwork,
     searchPlaces,
     bufferLine,
     reverseName,

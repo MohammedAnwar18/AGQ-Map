@@ -1,5 +1,5 @@
 /* ============================================================
-   استوديو الوكيل المكاني
+   استوديو التحليل المكاني — المنطق العلميّ
 
    محدّد جذر واحد ‎.st‎.
 
@@ -84,27 +84,84 @@
     color: var(--gold);
 }
 
-.st-radius {
+/* أيقونة النوع في زرّه */
+.st-kinds button i { font-style: normal; margin-inline-end: 3px; }
+
+/* ============================================================
+   المقابض — المتغيّرات التي تُغيّر الناتج
+
+   كلٌّ منها يحمل سببه مكتوباً تحته. فمن يُحرّك «اتجاه الريح» يقرأ
+   لماذا يُحرّكه قبل أن يرى الأثر — وهذا ما يجعل التحليل مفهوماً
+   لا مجرّد مقروء.
+   ============================================================ */
+
+.st-dials {
     display: flex;
-    align-items: center;
-    gap: 9px;
-    flex-shrink: 0;
-    padding: 7px 13px;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+}
+
+.st-dial {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1 1 165px;
+    min-width: 0;
+    padding: 8px 12px;
     border: 1px solid var(--line);
-    border-radius: 999px;
+    border-radius: 13px;
     background: var(--card);
 }
 
-.st-radius label { font-size: 11px; color: var(--muted); white-space: nowrap; }
-.st-radius input { width: 110px; accent-color: var(--gold); cursor: pointer; }
+.st-dial.is-wide { flex: 1 1 240px; }
 
-.st-radius b {
+.st-dial label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 10.5px;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.st-dial label b {
     font-size: 12px;
     font-weight: 800;
     color: var(--gold);
     font-variant-numeric: tabular-nums;
-    min-width: 46px;
-    text-align: center;
+}
+
+.st-dial label b.is-peak { color: #fca5a5; }
+
+.st-dial input[type="range"] {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+.st-dial-why {
+    font-size: 9.5px;
+    line-height: 1.6;
+    color: rgba(143, 160, 184, .8);
+}
+
+.st-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.st-chips button {
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .25);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.st-chips button.is-on {
+    border-color: rgba(251, 171, 21, .6);
+    background: rgba(251, 171, 21, .18);
+    color: var(--gold);
 }
 
 /* سطر التوجيه: خطوة واحدة في كل لحظة */
@@ -226,6 +283,58 @@
 .st-key-note { color: var(--muted); font-weight: 600; font-size: 9px; }
 
 /* شريط الزمن */
+/* ============================================================
+   شبكة الطرق — مصدرٌ مفتوح يُعلَن لا يُخفى
+   ============================================================ */
+
+.st-osm {
+    position: absolute;
+    top: 10px;
+    inset-inline-start: 10px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+}
+
+.st-osm button {
+    padding: 7px 13px;
+    border: 1px solid rgba(34, 211, 238, .45);
+    border-radius: 999px;
+    background: rgba(8, 20, 34, .88);
+    backdrop-filter: blur(6px);
+    font-size: 11px;
+    font-weight: 800;
+    color: #a5f3fc;
+}
+
+.st-osm button:hover:not(:disabled) { border-color: rgba(34, 211, 238, .8); }
+.st-osm button:disabled { opacity: .55; cursor: default; }
+
+.st-osm span {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(8, 20, 34, .8);
+    font-size: 8.5px;
+    color: var(--muted);
+}
+
+/* وسم المعلم حين يُمرّ عليه في القائمة */
+.st-tip {
+    display: block;
+    transform: translateY(-6px);
+    padding: 4px 9px;
+    border: 1px solid rgba(251, 171, 21, .5);
+    border-radius: 8px;
+    background: rgba(8, 20, 34, .92);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--gold);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 .st-time {
     position: absolute;
     inset-inline: 10px;
@@ -376,6 +485,140 @@
 .st-nums span { font-size: 10.5px; color: var(--muted); }
 
 /* ── التوصيات ── */
+/* ── تفصيل الشدّة: من أين جاءت كل نقطة ── */
+.st-parts {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .22);
+}
+
+.st-part { display: flex; flex-direction: column; gap: 3px; }
+
+.st-part label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 10.5px;
+    color: var(--muted);
+}
+
+.st-part label b {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.st-part > i {
+    display: block;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .08);
+    overflow: hidden;
+}
+
+.st-part > i em {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--sky), var(--gold));
+    transition: width .25s ease;
+}
+
+.st-part > span { font-size: 9px; color: rgba(143, 160, 184, .75); }
+
+/* ============================================================
+   النتائج — كلٌّ منها رقمٌ ومعه معياره
+
+   والمعيار ليس تذييلاً تجميليّاً: هو ما يُفرّق النتيجة المحسوبة عن
+   الرأي. فيُعرض في كل سطرٍ بخطٍّ مميّز.
+   ============================================================ */
+
+.st-find {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-inline-start-width: 3px;
+    border-radius: 12px;
+    background: var(--card);
+}
+
+.st-find.is-high { border-inline-start-color: var(--bad); background: rgba(251, 113, 133, .07); }
+.st-find.is-warn { border-inline-start-color: var(--warn); background: rgba(251, 191, 36, .07); }
+.st-find.is-info { border-inline-start-color: var(--sky); background: rgba(56, 189, 248, .05); }
+
+.st-find-tag {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.st-find.is-high .st-find-tag { background: rgba(251, 113, 133, .2); color: #fecdd3; }
+.st-find.is-warn .st-find-tag { background: rgba(251, 191, 36, .2); color: #fde68a; }
+.st-find.is-info .st-find-tag { background: rgba(56, 189, 248, .2); color: #bae6fd; }
+
+.st-find b {
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+}
+
+.st-find p {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.85;
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+}
+
+.st-find cite {
+    padding-top: 4px;
+    border-top: 1px dashed var(--line);
+    font-size: 9.5px;
+    font-style: normal;
+    letter-spacing: .2px;
+    color: rgba(143, 160, 184, .85);
+}
+
+/* ── المعايير العالمية ── */
+.st-std {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(0, 0, 0, .22);
+}
+
+.st-std b { font-size: 12px; font-weight: 800; color: var(--sky); letter-spacing: .3px; }
+.st-std em { font-size: 9.5px; font-style: normal; color: var(--muted); }
+
+.st-std p {
+    margin: 2px 0 0;
+    font-size: 11px;
+    line-height: 1.75;
+    color: #cbd5e1;
+}
+
+.st-blank-note {
+    margin-top: 8px !important;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 10.5px !important;
+    color: var(--muted) !important;
+}
+
 .st-move {
     display: flex;
     flex-direction: column;
@@ -468,38 +711,68 @@
 
 .st-list li {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 9px;
-    padding: 7px 10px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 11px;
     border-radius: 9px;
     background: rgba(0, 0, 0, .25);
     font-size: 11px;
+    transition: background .15s;
 }
 
+.st-list li:hover { background: rgba(251, 171, 21, .1); }
+.st-list li.is-shut { opacity: .58; }
+
 .st-list li span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
+    font-weight: 700;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.st-list li i {
+.st-list li em {
+    font-size: 9.5px;
+    font-style: normal;
+    color: var(--muted);
+}
+
+.st-life {
     flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(251, 113, 133, .2);
+    font-size: 8.5px;
+    font-style: normal;
+    font-weight: 800;
+    color: #fecdd3;
+}
+
+.st-list li > i:not(.st-life) {
+    font-size: 10px;
     font-style: normal;
     color: var(--gold);
     font-variant-numeric: tabular-nums;
 }
 
+.st-list.is-roads li > i:not(.st-life) { color: #67e8f9; }
+
 @media (prefers-reduced-motion: reduce) {
     .st-pin { animation: none; }
+    .st-part > i em { transition: none; }
     .st-split i { transition: none; }
 }
 
 @media (max-width: 520px) {
     .st-bar { gap: 9px; }
-    .st-radius { width: 100%; justify-content: space-between; }
-    .st-radius input { flex: 1; width: auto; }
+    .st-dial { flex: 1 1 100%; }
+    .st-dial-why { font-size: 9px; }
+    .st-osm button { padding: 6px 10px; font-size: 10px; }
+    .st-find b { font-size: 12px; }
+    .st-find p { font-size: 11px; }
     .st-map { height: clamp(260px, 42vh, 420px); }
     .st-layers button { padding: 5px 9px; font-size: 9.5px; }
     .st-key { font-size: 9px; padding: 6px 9px; }

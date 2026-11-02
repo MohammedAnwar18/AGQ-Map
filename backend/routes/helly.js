@@ -12,6 +12,7 @@ router.post('/', authenticateToken, ctrl.createSimulation);
 router.post('/osm/probe', authenticateToken, spatial.probeSpatial);
 router.post('/osm/street', authenticateToken, spatial.captureStreet);
 router.get('/osm/search', authenticateToken, spatial.searchPlace);
+router.post('/osm/roads', authenticateToken, spatial.readRoads);
 
 router.get('/:id', authenticateToken, ctrl.getSimulation);
 router.get('/:id/forecast', authenticateToken, spatial.forecast);

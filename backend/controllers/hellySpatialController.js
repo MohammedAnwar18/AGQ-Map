@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 const {
     probeArea, reverseName, polygonAreaKm2, centroid, CATEGORY_LABELS,
-    nearestStreet, searchPlaces, bufferLine
+    nearestStreet, searchPlaces, bufferLine, roadNetwork
 } = require('../utils/osm');
 const { STANCES } = require('./hellyController');
 
@@ -111,6 +111,46 @@ const captureStreet = async (req, res) => {
     } catch (e) {
         console.error('Street capture error:', e);
         res.status(502).json({ error: e.message || 'تعذّر التقاط الشارع' });
+    }
+};
+
+/* ============================================================
+   شبكة الطرق — المدخل الحقيقي للتحليل المروريّ
+   ============================================================ */
+
+/**
+ * يقرأ الطرق الحقيقية حول موضع الحدث من ‎OpenStreetMap‎.
+ *
+ * بلا هذه القراءة يبقى التحليل المروريّ تخميناً: السعة تُحسب من
+ * تصنيف الطريق وعدد مساراته، والبدائل تُعرف من الشبكة نفسها. فما
+ * يُعرض على المستخدم مبنيّ على الشارع الذي يعرفه باسمه.
+ *
+ * ولا نُخزّن شيئاً: القراءة لحظية، وحدود المساحة محفوظة كي لا
+ * نُثقل خوادم ‎Overpass‎ العامّة المجانية.
+ */
+const readRoads = async (req, res) => {
+    try {
+        if (!requireAdmin(req, res)) return;
+
+        const lat = Number(req.body.lat);
+        const lon = Number(req.body.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+            return res.status(400).json({ error: 'إحداثيات غير صالحة' });
+        }
+
+        const radius = clamp(Number(req.body.radius) || 500, 100, 1500);
+        const network = await roadNetwork({ lat, lon, radius });
+
+        if (!network.count) {
+            return res.status(404).json({
+                error: 'لا طرق مسجّلة في OpenStreetMap حول هذه النقطة — وسّع النطاق أو انقر أقرب إلى العمران'
+            });
+        }
+
+        res.json(network);
+    } catch (e) {
+        console.error('Road network error:', e);
+        res.status(502).json({ error: e.message || 'تعذّرت قراءة شبكة الطرق' });
     }
 };
 
@@ -513,4 +553,4 @@ const forecast = async (req, res) => {
     }
 };
 
-module.exports = { probeSpatial, captureStreet, searchPlace, forecast };
+module.exports = { probeSpatial, captureStreet, searchPlace, readRoads, forecast };
