@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
     plugins: [react()],
+    // مكتبة fgdb (قراءة File Geodatabase) من حِقبة browserify تفحص
+    // process.browser لتختار مسار المتصفّح؛ نُثبّته true عند البناء.
+    define: {
+        'process.browser': true,
+    },
     build: {
         target: 'esnext',
         minify: 'esbuild',
