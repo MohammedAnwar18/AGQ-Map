@@ -4,47 +4,53 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&family=Tajawal:wght@200;300;400;500;700;800;900&family=JetBrains+Mono:wght@100..800&family=Inter:wght@400;700&display=swap');
 
   :root {
+    /* ── نظام تصميمٍ احترافيّ بأسلوب ArcGIS Pro: أسطحٌ رماديّةٌ محايدة،
+       زوايا دقيقة، ظلال مسطّحة، والهوية الكهرمانية لوناً مميّزاً وحيداً ── */
     --primary: #F5A623;
     --primary-light: #FFC15E;
     --primary-dark: #D88B0E;
-    --primary-glow: rgba(245, 166, 35, 0.45);
+    --primary-glow: rgba(245, 166, 35, 0.22);
+    --primary-soft: rgba(245, 166, 35, 0.12);
 
-    --accent-cyan: #06D6F2;
+    --accent-cyan: #22B8CF;
+    --accent-blue: #4C9AFF;
     --accent-purple: #8B5CF6;
     --accent-green: #10D9A0;
     --accent-pink: #F472B6;
     --accent-red: #EF4444;
 
-    --bg-0: #050B16;
-    --bg-1: #0A1628;
-    --bg-2: #0F1E33;
-    --bg-3: #142B47;
-    --surface: #142B47;
-    --surface-solid: #142B47;
-    --surface-hover: #1e3a5c;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(245, 166, 35, 0.4);
-    --grid-line: rgba(245, 166, 35, 0.08);
+    /* أسطح رماديّة محايدة متدرّجة (chrome الواجهة) */
+    --bg-0: #15181d;
+    --bg-1: #1b1f26;
+    --bg-2: #20242b;
+    --bg-3: #272c34;
+    --surface: #20242b;
+    --surface-solid: #20242b;
+    --surface-hover: #2b313a;
+    --border: rgba(255, 255, 255, 0.075);
+    --border-strong: rgba(245, 166, 35, 0.5);
+    --grid-line: rgba(255, 255, 255, 0.04);
 
-    --text-primary: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.72);
-    --text-muted: rgba(255, 255, 255, 0.45);
+    --text-primary: #EDEFF3;
+    --text-secondary: rgba(237, 239, 243, 0.70);
+    --text-muted: rgba(237, 239, 243, 0.44);
 
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.55);
-    --shadow-glow: 0 0 40px var(--primary-glow);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 3px 12px rgba(0, 0, 0, 0.42);
+    --shadow-lg: 0 12px 38px rgba(0, 0, 0, 0.55);
+    --shadow-glow: 0 0 0 1px var(--border-strong);
 
-    --radius-sm: 10px;
-    --radius-md: 16px;
-    --radius-lg: 22px;
+    --radius-sm: 5px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
     --radius-full: 999px;
 
     --transition: cubic-bezier(0.4, 0, 0.2, 1);
 
-    --topbar-h: 56px;
-    --statusbar-h: 32px;
-    --sidebar-w: 76px;
-    --panel-w: 320px;
+    --topbar-h: 52px;
+    --statusbar-h: 30px;
+    --sidebar-w: 64px;
+    --panel-w: 336px;
   }
 
   .palnovaa-lab-container {
@@ -252,19 +258,20 @@
   .topbar {
     grid-area: topbar;
     display: flex; align-items: center;
-    padding: 0 16px;
-    background: var(--bg-1);
-    border-bottom: 1px solid var(--border);
+    padding: 0 14px;
+    background: linear-gradient(180deg, #1f242c 0%, var(--bg-1) 100%);
+    border-bottom: 1px solid #0e1115;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, var(--shadow-sm);
     z-index: 10;
-    gap: 16px;
+    gap: 14px;
   }
   .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
   .brand-logo {
-    width: 36px; height: 36px;
+    width: 34px; height: 34px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     display: grid; place-items: center;
-    box-shadow: 0 6px 16px var(--primary-glow);
+    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255,255,255,0.06) inset;
     position: relative; overflow: hidden;
   }
   .brand-logo svg { width: 20px; height: 20px; color: white; }
@@ -295,28 +302,28 @@
   .topbar-actions { display: flex; align-items: center; gap: 8px; }
 
   .top-btn {
-    height: 36px;
-    padding: 0 14px;
-    display: inline-flex; align-items: center; gap: 8px;
-    background: rgba(255,255,255,0.04);
+    height: 34px;
+    padding: 0 12px;
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.045);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
-    font-size: 13px; font-weight: 600;
-    transition: all 0.2s var(--transition);
+    font-size: 12.5px; font-weight: 600;
+    transition: all 0.16s var(--transition);
   }
   .top-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
-    border-color: var(--border-strong);
+    border-color: rgba(255,255,255,0.16);
   }
   .top-btn.primary {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
+    color: #1b1f26;
     border-color: transparent;
-    box-shadow: 0 4px 12px var(--primary-glow);
+    box-shadow: var(--shadow-sm);
   }
-  .top-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px var(--primary-glow); }
+  .top-btn.primary:hover { filter: brightness(1.06); box-shadow: var(--shadow-md); }
   .top-btn svg { width: 16px; height: 16px; }
 
   .user-chip {
@@ -343,36 +350,36 @@
   .sidebar {
     grid-area: sidebar;
     background: var(--bg-1);
-    border-left: 1px solid var(--border);
+    border-left: 1px solid #0e1115;
     display: flex; flex-direction: column;
     align-items: center;
-    padding: 16px 0;
-    gap: 8px;
+    padding: 10px 0;
+    gap: 4px;
     overflow-y: auto;
   }
   .sidebar::-webkit-scrollbar { width: 0; }
 
   .tool {
-    width: 52px; height: 52px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
+    width: 46px; height: 46px;
+    border-radius: var(--radius-md);
+    background: transparent;
     border: 1px solid transparent;
     display: grid; place-items: center;
     color: var(--text-secondary);
-    transition: all 0.25s var(--transition);
+    transition: all 0.15s var(--transition);
     position: relative;
   }
   .tool:hover {
     background: var(--surface-hover);
-    color: var(--primary);
-    transform: translateY(-2px);
+    color: var(--text-primary);
   }
   .tool.active {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    color: white;
-    box-shadow: 0 6px 20px var(--primary-glow);
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-color: rgba(245, 166, 35, 0.38);
+    box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.12);
   }
-  .tool svg { width: 22px; height: 22px; }
+  .tool svg { width: 21px; height: 21px; }
 
   /* ╪¬┘ê┘ä ╪¬┘è╪¿ */
   .tool::after {
@@ -421,17 +428,18 @@
   .map-controls {
     position: absolute;
     top: 16px; left: 16px;
-    display: flex; flex-direction: column; gap: 6px;
+    display: flex; flex-direction: column; gap: 4px;
     background: var(--surface);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 6px;
+    border-radius: var(--radius-md);
+    padding: 5px;
+    box-shadow: var(--shadow-md);
     z-index: 5;
   }
   .map-ctrl {
-    width: 36px; height: 36px;
-    border-radius: 8px;
+    width: 34px; height: 34px;
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     display: grid; place-items: center;
     transition: all 0.2s;
@@ -487,39 +495,39 @@
      ============================================================ */
   .panel {
     grid-area: panel;
-    background: #0A1628;
-    border-right: 1px solid var(--border);
+    background: var(--bg-1);
+    border-right: 1px solid #0e1115;
     display: flex; flex-direction: column;
     overflow: hidden;
-    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+    box-shadow: -1px 0 0 rgba(255,255,255,0.03) inset;
   }
 
 
   .panel-tabs {
     display: flex;
     border-bottom: 1px solid var(--border);
-    background: #050B16;
+    background: var(--bg-0);
     padding: 0 4px;
   }
   .panel-tab {
     flex: 1;
-    padding: 14px 4px;
-    font-size: 13px;
-    font-weight: 800;
+    padding: 12px 4px;
+    font-size: 12.5px;
+    font-weight: 700;
     color: var(--text-muted);
-    border-bottom: 3px solid transparent;
-    transition: all 0.3s var(--transition);
+    border-bottom: 2px solid transparent;
+    transition: all 0.16s var(--transition);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 7px;
     cursor: pointer;
   }
   .panel-tab svg { width: 16px; height: 16px; }
   .panel-tab.active {
     color: var(--primary);
     border-bottom-color: var(--primary);
-    background: rgba(245, 166, 35, 0.08);
+    background: var(--primary-soft);
   }
   .panel-tab:hover:not(.active) {
     color: white;
@@ -679,10 +687,10 @@
     left: 25px;
     right: 25px;
     height: 320px;
-    background: #0A1628;
+    background: var(--bg-1);
     border: 1px solid var(--border);
-    border-top: 3px solid var(--primary);
-    border-radius: 16px;
+    border-top: 2px solid var(--primary);
+    border-radius: var(--radius-lg);
     z-index: 2000;
     display: flex;
     flex-direction: column;
@@ -757,7 +765,7 @@
   .opaque-table th {
     position: sticky;
     top: 0;
-    background: #0F1E33;
+    background: var(--bg-2);
     padding: 12px 15px;
     text-align: right;
     font-weight: 800;
@@ -1006,19 +1014,20 @@
     .user-chip span { display: none; }
   }
 :root {
+  /* توحيدٌ مع لوحة ArcGIS Pro المحايدة المعرّفة أعلاه */
   --primary: #F5A623;
   --primary-dark: #D88B0E;
-  --primary-glow: rgba(245, 166, 35, 0.45);
-  --bg-2: #0F1E33;
-  --bg-3: #142B47;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(245, 166, 35, 0.4);
-  --text-muted: rgba(255, 255, 255, 0.45);
-  --text-secondary: rgba(255, 255, 255, 0.72);
-  --surface-hover: rgba(30, 58, 92, 0.85);
-  --accent-cyan: #06D6F2;
+  --primary-glow: rgba(245, 166, 35, 0.22);
+  --bg-2: #20242b;
+  --bg-3: #272c34;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(245, 166, 35, 0.5);
+  --text-muted: rgba(237, 239, 243, 0.44);
+  --text-secondary: rgba(237, 239, 243, 0.70);
+  --surface-hover: #2b313a;
+  --accent-cyan: #22B8CF;
   --accent-purple: #8B5CF6;
-  --bg-darker: #050B16;
+  --bg-darker: #15181d;
   --font-main: 'Cairo', sans-serif;
 }
 
@@ -1936,7 +1945,7 @@
 .builder-canvas-grid {
   flex: 1;
   position: relative;
-  background: #050B16;
+  background: var(--bg-0);
   overflow: hidden;
   border: 1px solid var(--border);
   cursor: crosshair;
@@ -1990,75 +1999,76 @@
   top: 20px;
   right: 20px;
   width: 280px;
-  background: #0A1628 !important;
-  border: 1px solid var(--accent-cyan);
-  border-radius: 16px;
-  padding: 20px;
+  background: var(--bg-1) !important;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--primary);
+  border-radius: var(--radius-lg);
+  padding: 18px;
   z-index: 1000;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-  color: white;
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
 }
 
 .floating-panel h2 {
   margin-top: 0;
-  color: var(--accent-cyan);
-  font-size: 1.2rem;
-  border-bottom: 1px solid rgba(6, 214, 242, 0.2);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 10px;
   margin-bottom: 15px;
 }
 
 .rename-input {
-  background: rgba(0,0,0,0.5) !important;
-  border: 1px solid var(--accent-cyan) !important;
-  color: white !important;
+  background: rgba(0,0,0,0.35) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
   width: 100%;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
   outline: none;
   font-size: 0.9rem;
 }
 
 /* Opaque UI Elements */
 .opaque-panel {
-  background-color: #050B16 !important;
-  background: #050B16 !important;
+  background-color: var(--bg-0) !important;
+  background: var(--bg-0) !important;
   opacity: 1 !important;
-  border-top: 2px solid var(--accent-cyan);
+  border-top: 2px solid var(--primary);
 }
 
 .opaque-header {
-  background-color: #0F1E33 !important;
-  background: #0F1E33 !important;
+  background-color: var(--bg-2) !important;
+  background: var(--bg-2) !important;
   opacity: 1 !important;
 }
 
 .opaque-table {
-  background-color: #050B16 !important;
-  background: #050B16 !important;
+  background-color: var(--bg-0) !important;
+  background: var(--bg-0) !important;
   width: 100%;
   border-collapse: collapse;
 }
 
 .opaque-table tr, .opaque-table td, .opaque-table th {
-  background-color: #050B16 !important;
-  background: #050B16 !important;
-  color: white !important;
+  background-color: var(--bg-0) !important;
+  background: var(--bg-0) !important;
+  color: var(--text-primary) !important;
   opacity: 1 !important;
 }
 
 .maplibregl-popup-content {
-  background-color: #0A1628 !important;
-  background: #0A1628 !important;
+  background-color: var(--bg-1) !important;
+  background: var(--bg-1) !important;
   opacity: 1 !important;
-  border: 1px solid var(--accent-cyan) !important;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.9) !important;
-  color: white !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-lg) !important;
+  color: var(--text-primary) !important;
 }
 
 .maplibregl-popup-tip {
-  border-top-color: #0A1628 !important;
-  border-bottom-color: #0A1628 !important;
+  border-top-color: var(--bg-1) !important;
+  border-bottom-color: var(--bg-1) !important;
 }
 
 .custom-popup .popup-content {
@@ -2082,8 +2092,8 @@
    ============================================================ */
 .style-editor-popup {
   width: 280px;
-  background: #0F1E33;
-  border: 1px solid var(--primary);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.8);
   overflow: hidden;

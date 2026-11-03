@@ -3086,8 +3086,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مختبر بالنوفا - مخفي بطلب من المستخدم */}
-                        {false && (
+                        {/* مختبر بالنوفا — استوديو التحليل المكانيّ */}
+                        {true && (
                             <button
                                 onClick={() => {
                                     setShowLabModal(true);
