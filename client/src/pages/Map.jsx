@@ -3086,8 +3086,8 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* مختبر بالنوفا — استوديو التحليل المكانيّ */}
-                        {true && (
+                        {/* مختبر بالنوفا — صار صفحةً مستقلّة على /palnovaa-lab، فأُزيل من القائمة */}
+                        {false && (
                             <button
                                 onClick={() => {
                                     setShowLabModal(true);
