@@ -817,6 +817,66 @@ export const directUploadService = {
     }
 };
 
+// ── Aerial (Drone) panorama layer ──────────────────────────────────────────
+// نقاط بانوراما 360° مربوطة بإحداثياتٍ على الخريطة، مستقلّة عن المحلّات.
+export const aerialService = {
+    list: async () => {
+        const response = await api.get(`/aerial?t=${Date.now()}`);
+        return response.data;
+    },
+
+    createFromUrl: async ({ title, latitude, longitude, equirect_url, thumbnail_url }) => {
+        const response = await api.post('/aerial', { title, latitude, longitude, equirect_url, thumbnail_url });
+        return response.data;
+    },
+
+    create: async (formData) => {
+        const response = await api.post('/aerial', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    update: async (id, data) => {
+        const response = await api.put(`/aerial/${id}`, data);
+        return response.data;
+    },
+
+    remove: async (id) => {
+        const response = await api.delete(`/aerial/${id}`);
+        return response.data;
+    },
+
+    addHotspot: async (panoramaId, formData) => {
+        const response = await api.post(`/aerial/${panoramaId}/hotspots`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    addHotspotJson: async (panoramaId, payload) => {
+        const response = await api.post(`/aerial/${panoramaId}/hotspots`, payload);
+        return response.data;
+    },
+
+    updateHotspot: async (hotspotId, formData) => {
+        const response = await api.put(`/aerial/hotspots/${hotspotId}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    updateHotspotJson: async (hotspotId, payload) => {
+        const response = await api.put(`/aerial/hotspots/${hotspotId}`, payload);
+        return response.data;
+    },
+
+    deleteHotspot: async (hotspotId) => {
+        const response = await api.delete(`/aerial/hotspots/${hotspotId}`);
+        return response.data;
+    }
+};
+
 // ── Reel Services (Spatial Reels) ──────────────────────────────────────────
 export const reelService = {
     getReels: async (limit = 30, offset = 0) => {

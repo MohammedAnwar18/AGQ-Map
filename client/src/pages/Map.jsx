@@ -51,7 +51,8 @@ const PostsGallery          = React.lazy(() => import('../components/PostsGaller
 import rasterService, { tileTemplate } from '../services/rasterApi';
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService } from '../services/api';
+import { postService, friendService, authService, notificationService, communityService, shopService, cameraService, getImageUrl, fitnessService, aerialService, directUploadService } from '../services/api';
+import AerialPanoramaViewer from '../components/AerialPanoramaViewer';
 import { isNative, startNativeTracking, stopNativeTracking } from '../utils/nativeLocation';
 import './Map.css';
 
@@ -305,6 +306,37 @@ const TrafficSignalMarker = ({ size = 44 }) => {
             <span style={eye('#f59e0b', '#ffd27a', '#9a6206')} />
             <span style={eye('#22c55e', '#86efac', '#15803d')} />
         </div>
+    );
+};
+
+/*
+ * ═══ علامة المنطاد (الرؤية الجوّية) ═══
+ * منطادٌ هوائيّ احترافيّ يرمز لنقطة صورة 360 على الخريطة.
+ */
+const BalloonMarker = ({ size = 46 }) => {
+    const w = size;
+    const h = Math.round(size * 1.35);
+    return (
+        <svg width={w} height={h} viewBox="0 0 46 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="balloon-env" cx="38%" cy="30%" r="75%">
+                    <stop offset="0%" stopColor="#ffe08a" />
+                    <stop offset="45%" stopColor="#fbab15" />
+                    <stop offset="100%" stopColor="#d97706" />
+                </radialGradient>
+            </defs>
+            {/* الكيس */}
+            <path d="M23 2C12 2 4 10.5 4 21.5c0 9 6.6 15.8 12.1 19.6h13.8C35.4 37.3 42 30.5 42 21.5 42 10.5 34 2 23 2Z"
+                  fill="url(#balloon-env)" stroke="#b45309" strokeWidth="1" />
+            {/* فصوص لتجسيم المنطاد */}
+            <path d="M23 2c-5 6-7.5 13-7.5 20.5S18 36.5 23 41.1" stroke="#d97706" strokeWidth="1.1" opacity=".55" fill="none" />
+            <path d="M23 2c5 6 7.5 13 7.5 20.5S28 36.5 23 41.1" stroke="#d97706" strokeWidth="1.1" opacity=".55" fill="none" />
+            {/* حبال */}
+            <line x1="17.5" y1="41" x2="19.5" y2="49" stroke="#92400e" strokeWidth="1.1" />
+            <line x1="28.5" y1="41" x2="26.5" y2="49" stroke="#92400e" strokeWidth="1.1" />
+            {/* السلّة */}
+            <rect x="18.5" y="49" width="9" height="7" rx="1.6" fill="#7c4a1e" stroke="#5a3415" strokeWidth="1" />
+        </svg>
     );
 };
 
@@ -794,6 +826,87 @@ const MapComponent = () => {
     const [isAdminPickingLocation, setIsAdminPickingLocation] = useState(false);
     const [adminPostDraft, setAdminPostDraft] = useState(null);
 
+    /*
+     * ═══ طبقة الرؤية الجوّية (درون) ═══
+     *
+     * طبقةٌ ثالثةٌ للأدمن: الخريطة قمرٌ صناعيّ بلا محلّات، وعليها
+     * «مناطيد» في مواضع صور 360 الجوّية. يضيف الأدمن نقطةً بالنقر على
+     * الخريطة ثم رفع الصورة، ويفتحها أيّ ضاغطٍ على المنطاد.
+     */
+    const isGeneralAdmin = user?.role === 'admin';
+    const [droneMode, setDroneMode] = useState(false);
+    const [aerialPanoramas, setAerialPanoramas] = useState([]);
+    const [activeAerial, setActiveAerial] = useState(null);
+    const [isPlacingAerial, setIsPlacingAerial] = useState(false);
+    const [aerialUploading, setAerialUploading] = useState(false);
+    const [aerialUploadPct, setAerialUploadPct] = useState(null);
+    const aerialFileInputRef = useRef(null);
+    const aerialPendingCoordsRef = useRef(null);
+
+    const loadAerialPanoramas = useCallback(async () => {
+        try {
+            const data = await aerialService.list();
+            setAerialPanoramas(data.panoramas || []);
+        } catch (e) {
+            console.error('loadAerialPanoramas error:', e);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (droneMode) loadAerialPanoramas();
+    }, [droneMode, loadAerialPanoramas]);
+
+    // عند طلب إضافة نقطة: نُلتقط الإحداثيات من النقر ثم نفتح منتقي الصورة
+    const handleAerialFilePicked = async (file) => {
+        const coords = aerialPendingCoordsRef.current;
+        aerialPendingCoordsRef.current = null;
+        if (!file || !coords) return;
+        setAerialUploading(true);
+        setAerialUploadPct(0);
+        try {
+            let equirectUrl = null;
+            try {
+                equirectUrl = await directUploadService.upload(file, { maxSizeMB: 50, onProgress: setAerialUploadPct });
+            } catch (uploadErr) {
+                console.warn('Direct aerial upload failed, falling back to server upload:', uploadErr);
+            }
+            if (equirectUrl) {
+                await aerialService.createFromUrl({
+                    title: `نقطة ${aerialPanoramas.length + 1}`,
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                    equirect_url: equirectUrl
+                });
+            } else {
+                const fd = new FormData();
+                fd.append('title', `نقطة ${aerialPanoramas.length + 1}`);
+                fd.append('latitude', coords.lat);
+                fd.append('longitude', coords.lng);
+                fd.append('equirect_file', file);
+                await aerialService.create(fd);
+            }
+            await loadAerialPanoramas();
+        } catch (err) {
+            console.error('create aerial error:', err);
+            alert(err.message || 'فشل رفع الصورة الجوّية');
+        } finally {
+            setAerialUploading(false);
+            setAerialUploadPct(null);
+        }
+    };
+
+    const handleDeleteAerial = async (panoramaId) => {
+        if (!window.confirm('حذف هذه النقطة الجوّية وكل عناصرها؟')) return;
+        try {
+            await aerialService.remove(panoramaId);
+            setActiveAerial(null);
+            await loadAerialPanoramas();
+        } catch (err) {
+            console.error('delete aerial error:', err);
+            alert('فشل حذف النقطة');
+        }
+    };
+
 
     const [showChat, setShowChat] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
@@ -1236,13 +1349,14 @@ const MapComponent = () => {
     // --- Dynamic Map Style ---
 
     const mapStyle = useMemo(() => {
+        // طبقة الرؤية الجوّية: قمرٌ صناعيّ دائماً (نتجاوز الشوارع والملاحة)
         // Preference 1: Use MapTiler (requested for high street precision) during navigation!
-        if (routePath) {
+        if (routePath && !droneMode) {
             return MAPTILER_STYLE_URL;
         }
 
         // Preference 2: MapTiler Street Style (Requested for high street precision)
-        if (activeMapType === 'streets') {
+        if (activeMapType === 'streets' && !droneMode) {
             return MAPTILER_STYLE_URL;
         }
 
@@ -1274,7 +1388,7 @@ const MapComponent = () => {
                 }
             ]
         };
-    }, [routePath, activeMapType]);
+    }, [routePath, activeMapType, droneMode]);
 
     // Routing
     // Updated to accept explicit start/end for recalculations and a flag for silent recalc
@@ -1641,6 +1755,15 @@ const MapComponent = () => {
     };
 
     const handleMapClick = (e) => {
+        // وضع إضافة نقطة جوّية: التقط الموقع ثم افتح منتقي صورة 360
+        if (isPlacingAerial) {
+            const { lng, lat } = e.lngLat;
+            aerialPendingCoordsRef.current = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+            setIsPlacingAerial(false);
+            aerialFileInputRef.current?.click();
+            return;
+        }
+
         const clickedFitnessFeature = e.features && e.features.find(f => f.layer.id.startsWith('friends-runs-layer'));
         if (clickedFitnessFeature) {
             const props = clickedFitnessFeature.properties;
@@ -2476,6 +2599,99 @@ const MapComponent = () => {
                 </div>
             )}
 
+            {/*
+              * ═══ واجهة طبقة الرؤية الجوّية (درون) ═══
+              * شريطٌ علويٌّ فيه زرّ «أضف نقطة» والخروج، ولافتةٌ أثناء وضع
+              * المنطاد، ومنتقي الصورة المخفيّ، وطبقة الرفع.
+              */}
+            {droneMode && isGeneralAdmin && !isPlacingAerial && (
+                <div style={{
+                    position: 'absolute', top: '90px', left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 3500, background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(10px)',
+                    border: '1.5px solid #fbab15', borderRadius: '12px', padding: '10px 16px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,.35)', display: 'flex', alignItems: 'center',
+                    gap: '12px', color: '#fff', direction: 'rtl'
+                }}>
+                    <span style={{ fontSize: '1.3rem' }}>🛩️</span>
+                    <span style={{ fontSize: '0.82rem', color: '#e2e8f0', fontWeight: 700 }}>الرؤية الجوّية</span>
+                    <button
+                        type="button"
+                        onClick={() => setIsPlacingAerial(true)}
+                        style={{
+                            background: '#fbab15', color: '#1b2230', border: 'none', padding: '7px 14px',
+                            borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 800
+                        }}
+                    >+ أضف صورة جوّية</button>
+                    <button
+                        type="button"
+                        onClick={() => setDroneMode(false)}
+                        style={{
+                            background: 'rgba(239,68,68,.18)', color: '#f87171', border: '1px solid rgba(239,68,68,.4)',
+                            padding: '7px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700
+                        }}
+                    >خروج</button>
+                </div>
+            )}
+
+            {droneMode && isPlacingAerial && (
+                <div style={{
+                    position: 'absolute', top: '90px', left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 3500, background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(10px)',
+                    border: '1.5px solid #fbab15', borderRadius: '12px', padding: '12px 20px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,.35)', display: 'flex', alignItems: 'center',
+                    gap: '14px', color: '#fff', direction: 'rtl', textAlign: 'right'
+                }}>
+                    <span style={{ fontSize: '1.4rem' }}>🎈</span>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#fbab15' }}>تحديد موقع الصورة الجوّية</span>
+                        <span style={{ fontSize: '0.8rem', color: '#ccc' }}>انقر على الخريطة لوضع المنطاد ثم اختر صورة 360</span>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsPlacingAerial(false)}
+                        style={{
+                            background: 'rgba(239,68,68,.2)', color: '#f87171', border: '1px solid rgba(239,68,68,.4)',
+                            padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold'
+                        }}
+                    >إلغاء</button>
+                </div>
+            )}
+
+            {aerialUploading && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 6000, background: 'rgba(5,8,15,.7)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                    flexDirection: 'column', gap: '14px', direction: 'rtl'
+                }}>
+                    <div className="p360-spinner" />
+                    <span style={{ fontWeight: 700 }}>جاري رفع الصورة الجوّية... {aerialUploadPct ?? 0}%</span>
+                </div>
+            )}
+
+            <input
+                ref={aerialFileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={e => { handleAerialFilePicked(e.target.files?.[0]); e.target.value = ''; }}
+            />
+
+            {activeAerial && (
+                <AerialPanoramaViewer
+                    panorama={activeAerial}
+                    isAdmin={isGeneralAdmin}
+                    onChange={(list) => {
+                        if (Array.isArray(list)) {
+                            setAerialPanoramas(list);
+                            const fresh = list.find(p => p.id === activeAerial.id);
+                            if (fresh) setActiveAerial(fresh);
+                        }
+                    }}
+                    onDelete={handleDeleteAerial}
+                    onClose={() => setActiveAerial(null)}
+                />
+            )}
+
             {/* Top Bar - Clean & Minimalist */}
             {!isGuestMode && !isEmergencyActive && (
                 <div className="top-bar">
@@ -2651,20 +2867,43 @@ const MapComponent = () => {
                                   />
                                   <div className="map-layers-dropdown">
                                       <button 
-                                          className={`dropdown-item ${activeMapType === 'satellite' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
+                                          className={`dropdown-item ${activeMapType === 'satellite' && !droneMode ? 'active' : ''}`}
+                                          onClick={() => { setDroneMode(false); setActiveMapType('satellite'); setShowMapLayersMenu(false); }}
                                           title="قمر صناعي (Google Satellite)"
                                       >
                                           <span className="item-icon">🌍</span>
                                       </button>
 
-                                      <button 
-                                          className={`dropdown-item ${activeMapType === 'streets' ? 'active' : ''}`}
-                                          onClick={() => { setActiveMapType('streets'); setShowMapLayersMenu(false); }}
+                                      <button
+                                          className={`dropdown-item ${activeMapType === 'streets' && !droneMode ? 'active' : ''}`}
+                                          onClick={() => { setDroneMode(false); setActiveMapType('streets'); setShowMapLayersMenu(false); }}
                                           title="خريطة الشوارع (Streets)"
                                       >
                                           <span className="item-icon">🛣️</span>
                                       </button>
+
+                                      {/* طبقة الرؤية الجوّية (درون) — للأدمن العام وحده */}
+                                      {isGeneralAdmin && (
+                                          <button
+                                              className={`dropdown-item ${droneMode ? 'active' : ''}`}
+                                              onClick={() => { setDroneMode(v => !v); setShowMapLayersMenu(false); }}
+                                              title="الرؤية الجوّية (صور 360 درون)"
+                                          >
+                                              <span className="item-icon" aria-label="درون">
+                                                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                                                      <circle cx="5" cy="5" r="2.4" />
+                                                      <circle cx="19" cy="5" r="2.4" />
+                                                      <circle cx="5" cy="19" r="2.4" />
+                                                      <circle cx="19" cy="19" r="2.4" />
+                                                      <rect x="9" y="9" width="6" height="6" rx="1.4" />
+                                                      <line x1="6.7" y1="6.7" x2="9.4" y2="9.4" />
+                                                      <line x1="17.3" y1="6.7" x2="14.6" y2="9.4" />
+                                                      <line x1="6.7" y1="17.3" x2="9.4" y2="14.6" />
+                                                      <line x1="17.3" y1="17.3" x2="14.6" y2="14.6" />
+                                                  </svg>
+                                              </span>
+                                          </button>
+                                      )}
                                   </div>
                               </>
                           )}
@@ -3112,7 +3351,7 @@ const MapComponent = () => {
                     mapStyle={mapStyle}
                     transformRequest={transformRequest}
                     onLoad={onMapLoad}
-                    style={{ width: '100%', height: '100%', cursor: isAdminPickingLocation ? 'crosshair' : 'grab' }}
+                    style={{ width: '100%', height: '100%', cursor: (isAdminPickingLocation || isPlacingAerial) ? 'crosshair' : 'grab' }}
                     onClick={handleMapClick}
                     interactiveLayerIds={['friends-runs-layer-main', 'friends-runs-layer-glow', 'posts-paths-layer-main', 'posts-paths-layer-glow', 'regional-events-unclustered', 'regional-events-clusters']}
                     maxPitch={85}
@@ -3484,8 +3723,37 @@ const MapComponent = () => {
                         );
                     })}
 
+                    {/*
+                      * ═══ مناطيد الرؤية الجوّية ═══
+                      * كل منطادٍ موضعُ صورة 360، يفتحها الضغط عليه.
+                      */}
+                    {droneMode && aerialPanoramas.filter(p =>
+                        Number.isFinite(parseFloat(p.latitude)) && Number.isFinite(parseFloat(p.longitude))
+                    ).map(p => (
+                        <Marker
+                            key={`aerial-${p.id}`}
+                            longitude={parseFloat(p.longitude)}
+                            latitude={parseFloat(p.latitude)}
+                            anchor="bottom"
+                        >
+                            <button
+                                onClick={() => setActiveAerial(p)}
+                                title={p.title || 'صورة جوّية 360'}
+                                style={{
+                                    background: 'transparent', border: 'none', cursor: 'pointer',
+                                    padding: 0, lineHeight: 0, filter: 'drop-shadow(0 6px 8px rgba(0,0,0,.45))',
+                                    transition: 'transform .15s ease'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.12)'}
+                                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                <BalloonMarker />
+                            </button>
+                        </Marker>
+                    ))}
+
                     {/* Managed and Followed Shops/Universities Markers - Visibility based on Zoom */}
-                    {!currentCommunity && allShopsMap.filter(shop => {
+                    {!currentCommunity && !droneMode && allShopsMap.filter(shop => {
                         if (shop.latitude == null || shop.longitude == null || isNaN(parseFloat(shop.latitude))) return false;
 
                         if (isEmergencyActive) {

@@ -115,6 +115,7 @@ app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
 app.use('/api/study-space', studySpaceRoutes);
 app.use('/api/fitness', fitnessRoutes);
+app.use('/api/aerial', require('./routes/aerial'));
 
 // Auto-migrate: ensure shop_drivers table exists with all required columns
 (async () => {
@@ -699,6 +700,42 @@ app.use('/api/fitness', fitnessRoutes);
         console.log('✅ 360 panorama tables ready');
     } catch (err) {
         console.warn('⚠️ panorama tables migration warning:', err.message);
+    }
+})();
+
+
+// Auto-migrate: aerial (drone) panorama layer — 360 points pinned to map coordinates.
+// Independent of the shop panorama system (its own two tables) so it never touches it.
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS aerial_panoramas (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255),
+                latitude DOUBLE PRECISION NOT NULL,
+                longitude DOUBLE PRECISION NOT NULL,
+                equirect_url TEXT,
+                thumbnail_url TEXT,
+                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS aerial_hotspots (
+                id SERIAL PRIMARY KEY,
+                panorama_id INTEGER REFERENCES aerial_panoramas(id) ON DELETE CASCADE,
+                type VARCHAR(20) NOT NULL DEFAULT 'info',
+                pos_x DOUBLE PRECISION,
+                pos_y DOUBLE PRECISION,
+                label VARCHAR(255),
+                value TEXT,
+                image_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ aerial (drone) panorama tables ready');
+    } catch (err) {
+        console.warn('⚠️ aerial panorama tables migration warning:', err.message);
     }
 })();
 
