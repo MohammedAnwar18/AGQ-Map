@@ -40,8 +40,8 @@ button{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #app{height:100%;display:flex;flex-direction:column}
 
-.bar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:8px;margin-inline-end:auto;font:600 20px/1 var(--f-display);white-space:nowrap}
+.bar{position:relative;display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{position:absolute;inset-inline:0;display:flex;align-items:center;justify-content:center;font:600 19px/1 var(--f-display);white-space:nowrap;pointer-events:none;color:var(--ink)}
 .brand svg{width:22px;height:22px;color:var(--accent)}
 .seg{display:inline-flex;background:var(--surface-2);border-radius:10px;padding:3px;gap:2px}
 .seg button{border:0;background:transparent;color:var(--muted);font:500 13px/1 var(--f-body);padding:8px 11px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
@@ -170,10 +170,7 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
 </style>
 <div id="app" dir="rtl">
   <header class="bar">
-    <div class="brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 9l9-5 9 5v10l-9 4-9-4z"/><path d="M3 9l9 4 9-4M12 13v10"/></svg>
-      PalNovaa CadRev
-    </div>
+    <div class="brand">PalNovaa CadRev</div>
     <div class="seg" role="group" aria-label="طريقة العرض">
       <button id="vPlan" data-view="plan" aria-pressed="true">المخطط</button>
       <button id="v3d" data-view="3d" aria-pressed="false">مجسّم 3D</button>
@@ -190,6 +187,7 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
           <button data-tool="rect" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>مستطيل</button>
           <button data-tool="poly" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 18l2-12 9 3 5-4-1 13z"/></svg>مضلّع</button>
           <button data-tool="street" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3L4 21M17 3l3 18"/><path d="M12 4v3M12 11v3M12 18v2"/></svg>شارع</button>
+          <button data-tool="curb" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="6" rx="1"/><path d="M3 12h18"/></svg>رصيف</button>
           <button data-tool="prop" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 21h6"/></svg>مجسّم</button>
           <button data-tool="edit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4l6 15 2-6 6-2z"/></svg>تعديل</button>
         </div>
@@ -307,6 +305,14 @@ const DB={db:null,
   legacy(){return new Promise(res=>{try{const r=indexedDB.open('mujassim',1);r.onupgradeneeded=()=>r.result.createObjectStore('files');r.onerror=()=>res([]);
     r.onsuccess=()=>{try{const out=[];const q=r.result.transaction('files').objectStore('files').openCursor();q.onsuccess=()=>{const c=q.result;if(c){out.push([c.key,c.value]);c.continue();}else res(out);};q.onerror=()=>res(out);}catch(e){res([]);}};}catch(e){res([]);}});}};
 
+/* ---------- أنماط الرصيف (حسب معايير ألوان الرصيف) ---------- */
+const CURB={
+  red:{base:'#D4262B',n:'أحمر وأبيض — ممنوع الوقوف والتوقف كلياً',stripe:true},
+  yellow:{base:'#E6A800',n:'أصفر وأبيض — ممنوع الانتظار (الركن الطويل)',stripe:true},
+  blue:{base:'#2563C9',n:'أزرق وأبيض — موقف مدفوع/خاضع لعداد',stripe:true},
+  gray:{base:'#9AA0A6',n:'رمادي — مسموح الوقوف بشكل عام',stripe:false}};
+const CURB_H=0.35,CURB_BLK=1.0,CURB_WHITE='#F2EEE4';
+
 /* ---------- procedural textures ---------- */
 function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function grain(ctx,w,h,amt,seed){const r=rng(seed);const d=ctx.getImageData(0,0,w,h),a=d.data;for(let i=0;i<a.length;i+=4){const n=(r()-.5)*amt;a[i]+=n;a[i+1]+=n;a[i+2]+=n;}ctx.putImageData(d,0,0);}
@@ -367,13 +373,19 @@ function texInterlock(){const W=512,H=512,c=mkCanvas(W,H),x=c.getContext('2d'),r
   const bh=H/10,bw=W/5;for(let row=0;row<10;row++){const off=row%2?bw/2:0;for(let i=-1;i<=5;i++){const red=r()<.25;x.fillStyle=red?`hsl(12,${30+r()*10}%,${46+r()*6}%)`:`hsl(35,${6+r()*6}%,${62+r()*8}%)`;x.fillRect(i*bw+off+2,row*bh+2,bw-4,bh-4);}}
   grain(x,W,H,16,15);return c;}
 
+function texCurb(pattern){const cfg=CURB[pattern]||CURB.gray;const W=256,H=128,c=mkCanvas(W,H),x=c.getContext('2d');
+  if(!cfg.stripe){x.fillStyle=cfg.base;x.fillRect(0,0,W,H);grain(x,W,H,16,pattern.length*7+3);}
+  else{x.fillStyle=CURB_WHITE;x.fillRect(0,0,W,H);x.fillStyle=cfg.base;x.fillRect(0,0,W/2,H);grain(x,W,H,10,pattern.length*7+3);
+    x.fillStyle='rgba(0,0,0,.10)';x.fillRect(W/2-1,0,2,H);}
+  return c;}
 const TEX={};
 function thumbOf(src,w,h){const c=mkCanvas(172,132),x=c.getContext('2d'),s=Math.max(172/w,132/h);x.drawImage(src,(172-w*s)/2,(132-h*s)/2,w*s,h*s);return c.toDataURL('image/jpeg',.82);}
 function addTex(o){o.thumb=o.thumb||thumbOf(o.src,o.w,o.h);TEX[o.id]=o;return o;}
 [['s-stone-win','حجر بشبابيك',texStoneWin,4,['wall']],['s-stone','حجر قدسي',texStone,2,['wall','roof','walk']],['s-glass','زجاج وألمنيوم',texGlass,4,['wall']],
  ['s-brick','طوب أحمر',texBrick,1,['wall','walk']],['s-plaster','قصارة',texPlaster,2,['wall','roof']],['s-roof','باطون السطح',texRoof,2,['roof']],
  ['r-dash','إسفلت بخط متقطع',()=>texRoad('dash'),6,['road']],['r-double','إسفلت بخطين متصلين',()=>texRoad('double'),6,['road']],['r-none','إسفلت بلا خطوط',()=>texRoad('none'),6,['road']],
- ['w-tiles','بلاط رصيف',texPavers,1,['walk']],['w-inter','انترلوك',texInterlock,1,['walk']]]
+ ['w-tiles','بلاط رصيف',texPavers,1,['walk']],['w-inter','انترلوك',texInterlock,1,['walk']],
+ ['curb-red','رصيف أحمر',()=>texCurb('red'),1,['curbonly']],['curb-yellow','رصيف أصفر',()=>texCurb('yellow'),1,['curbonly']],['curb-blue','رصيف أزرق',()=>texCurb('blue'),1,['curbonly']],['curb-gray','رصيف رمادي',()=>texCurb('gray'),1,['curbonly']]]
  .forEach(([id,name,fn,mw,g])=>{const c=fn();addTex({id,name,src:c,w:c.width,h:c.height,mw,g,sample:true});});
 
 /* ---------- 3D object library ---------- */
@@ -436,16 +448,17 @@ function parseModel(ext,data){return new Promise((res,rej)=>{try{
 }catch(e){rej(e);}});}
 /* ---------- state ---------- */
 const DEFAULT_GEO={lat:31.7767,lon:35.2345};
-const S={buildings:[],streets:[],props:[],sel:null,wallSel:null,view:'plan',tool:'rect',snap:true,propKind:'tree',
+const S={buildings:[],streets:[],props:[],curbs:[],sel:null,wallSel:null,view:'plan',tool:'rect',snap:true,propKind:'tree',curbPattern:'red',
   geo:{...DEFAULT_GEO},map:ART?'off':'gsat',mapOpacity:.85,img:null,vshow:true,calib:null,imgMove:false};
 let hist=[],gps=null,watchId=null;
 const IMG={el:null,name:''},VM={raw:[],feats:[],name:'',ver:0,bbox:null};
 const curB=()=>S.sel&&S.sel.t==='b'?S.buildings.find(b=>b.id===S.sel.id)||null:null;
 const curS=()=>S.sel&&S.sel.t==='s'?S.streets.find(b=>b.id===S.sel.id)||null:null;
 const curP=()=>S.sel&&S.sel.t==='p'?S.props.find(b=>b.id===S.sel.id)||null:null;
+const curC=()=>S.sel&&S.sel.t==='c'?S.curbs.find(b=>b.id===S.sel.id)||null:null;
 const select=(t,id)=>{S.sel=id?{t,id}:null;S.wallSel=null;};
 const snapV=v=>S.snap?Math.round(v*2)/2:Math.round(v*100)/100;
-const isEmpty=()=>!S.buildings.length&&!S.streets.length&&!S.props.length;
+const isEmpty=()=>!S.buildings.length&&!S.streets.length&&!S.props.length&&!S.curbs.length;
 function area(p){let a=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];a+=q[0]*r[1]-r[0]*q[1];}return a/2;}
 function perim(p){let s=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];s+=Math.hypot(r[0]-q[0],r[1]-q[1]);}return s;}
 function polyLen(p){let s=0;for(let i=1;i<p.length;i++)s+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return s;}
@@ -457,22 +470,23 @@ function newBuilding(pts,opt){
   const b=Object.assign({id:uid(),name:'مبنى '+nextNum(S.buildings,/(\d+)$/),pts,floors:3,floorH:3,
     wall:{tex:'s-stone-win',mode:'tile',tileW:4,perFloor:true,offU:0,offV:0,flip:false},roof:{tex:'s-roof',mode:'tile',tileW:2},ov:{}},opt||{});
   normalize(b);return b;}
-function newStreet(pts,opt){return Object.assign({id:uid(),name:'شارع '+nextNum(S.streets,/(\d+)$/),pts,width:8,walk:2,tex:'r-dash',tileW:6,walkTex:'w-tiles',walkW:1},opt||{});}
+function newStreet(pts,opt){return Object.assign({id:uid(),name:'شارع '+nextNum(S.streets,/(\d+)$/),pts,width:8,walk:0,curve:6,tex:'r-dash',tileW:6,walkTex:'w-tiles',walkW:1},opt||{});}
+function newCurb(pts,opt){return Object.assign({id:uid(),name:'رصيف '+nextNum(S.curbs,/(\d+)$/),pts,width:0.5,curve:3,pattern:S.curbPattern||'red'},opt||{});}
 let paintIdx=0;
 function newProp(kind,x,y,opt){const inf=info(kind);const p=Object.assign({id:uid(),kind,x,y,rot:0,h:inf?+inf.fh.toFixed(2):2},opt||{});
   if(inf&&inf.paint&&!p.color)p.color=kind==='bin'?'#2F6B45':PAINTS[(paintIdx++)%5];return p;}
-function snapshot(){return JSON.stringify({b:S.buildings,s:S.streets,p:S.props,sel:S.sel,geo:S.geo});}
+function snapshot(){return JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,sel:S.sel,geo:S.geo});}
 function pushHist(s){S.demo=false;hist.push(s||snapshot());if(hist.length>60)hist.shift();updUndo();}
 function updUndo(){document.querySelectorAll('.undo').forEach(e=>e.disabled=!hist.length&&!draft.pts.length);}
 
 /* ---------- persistence ---------- */
 const KEY='mujassim-map-v1';let saveT=0;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
 function load(){
   let o=null;try{o=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
   if(!o&&ART){try{o=JSON.parse(localStorage.getItem('mujassim-v1')||'null');}catch(e){}if(o&&typeof o.sel==='string')o.sel={t:'b',id:o.sel};}
   if(!o)return false;
-  S.buildings=o.b||[];S.streets=o.s||[];S.props=o.p||[];S.sel=o.sel||null;if(o.geo)S.geo=o.geo;if(o.map&&!ART)S.map=o.map;if(o.op!=null)S.mapOpacity=o.op;
+  S.buildings=o.b||[];S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.sel=o.sel||null;if(o.geo)S.geo=o.geo;if(o.map&&!ART)S.map=o.map;if(o.op!=null)S.mapOpacity=o.op;
   if(o.img)S.img=o.img;if(o.vshow!=null)S.vshow=o.vshow;S.demo=!!o.demo;
   return true;
 }
@@ -496,12 +510,38 @@ function offsets(pts,d){const n=pts.length,out=[];const nrm=(a,b)=>{const dx=b[0
     else{const a=nrm(pts[i-1],pts[i]),b=nrm(pts[i],pts[i+1]);let mx=a[0]+b[0],my=a[1]+b[1];const ml=Math.hypot(mx,my)||1;mx/=ml;my/=ml;const k=1/Math.max(.25,mx*a[0]+my*a[1]);nx=mx*k;ny=my*k;}
     out.push([pts[i][0]+nx*d,pts[i][1]+ny*d]);}
   return out;}
+/* تنعيم زوايا المسار بأقواسٍ دائرية (fillet) بدل الزوايا الحادّة 90° */
+function roundedPath(pts,r){
+  if(!pts||pts.length<3||!(r>0))return pts?pts.map(p=>p.slice()):[];
+  const out=[pts[0].slice()];
+  for(let i=1;i<pts.length-1;i++){
+    const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    let v1x=p0[0]-p1[0],v1y=p0[1]-p1[1],v2x=p2[0]-p1[0],v2y=p2[1]-p1[1];
+    const l1=Math.hypot(v1x,v1y)||1,l2=Math.hypot(v2x,v2y)||1;
+    v1x/=l1;v1y/=l1;v2x/=l2;v2y/=l2;
+    const ang=Math.acos(clamp(v1x*v2x+v1y*v2y,-1,1));
+    if(ang<0.08||ang>Math.PI-0.08){out.push(p1.slice());continue;}
+    const rad=Math.min(r,l1*0.5,l2*0.5),tan=rad/Math.tan(ang/2);
+    const a=[p1[0]+v1x*tan,p1[1]+v1y*tan],b=[p1[0]+v2x*tan,p1[1]+v2y*tan];
+    let bx=v1x+v2x,by=v1y+v2y;const bl=Math.hypot(bx,by)||1;bx/=bl;by/=bl;
+    const cd=rad/Math.sin(ang/2),cx=p1[0]+bx*cd,cy=p1[1]+by*cd;
+    let a0=Math.atan2(a[1]-cy,a[0]-cx),a1=Math.atan2(b[1]-cy,b[0]-cx),d=a1-a0;
+    while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+    const N=Math.max(2,Math.round(Math.abs(d)/0.26));
+    out.push(a);
+    for(let k=1;k<N;k++){const t=a0+d*k/N;out.push([cx+rad*Math.cos(t),cy+rad*Math.sin(t)]);}
+    out.push(b);
+  }
+  out.push(pts[pts.length-1].slice());
+  return out;
+}
 function segDist(px_,py_,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1;const t=clamp(((px_-a[0])*dx+(py_-a[1])*dy)/L2,0,1);return[Math.hypot(a[0]+t*dx-px_,a[1]+t*dy-py_),t];}
 function nearestOnStreet(st,x,y){let best={d:1e9};for(let i=1;i<st.pts.length;i++){const[d]=segDist(x,y,st.pts[i-1],st.pts[i]);if(d<best.d)best={d,i};}return best;}
 function streetAt(x,y){for(let i=S.streets.length-1;i>=0;i--){const st=S.streets[i];if(nearestOnStreet(st,x,y).d<=st.width/2+st.walk)return st;}return null;}
+function curbAt(x,y){for(let i=S.curbs.length-1;i>=0;i--){const c=S.curbs[i];if(c.pts.length>=2&&nearestOnStreet(c,x,y).d<=Math.max(c.width/2,0.7))return c;}return null;}
 function groundY(x,y){let h=0;S.streets.forEach((st,k)=>{const d=nearestOnStreet(st,x,y).d;if(d<=st.width/2)h=Math.max(h,.11+(k%40)*.002);else if(d<=st.width/2+st.walk)h=Math.max(h,.1);});return h;}
 function contentBounds(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,n=0;const add=(x,y)=>{n++;x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);};
-  S.buildings.forEach(b=>b.pts.forEach(p=>add(p[0],p[1])));S.streets.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.props.forEach(p=>add(p.x,p.y));
+  S.buildings.forEach(b=>b.pts.forEach(p=>add(p[0],p[1])));S.streets.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.curbs.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.props.forEach(p=>add(p.x,p.y));
   return n?{x0,y0,x1,y1}:null;}
 
 /* ---------- 2D plan ---------- */
@@ -553,12 +593,22 @@ function drawTiles(w,h){
   return true;
 }
 function drawStreet(st,isSel){
-  if(st.pts.length<2)return;px.lineJoin='miter';px.miterLimit=4;px.lineCap='butt';
-  if(st.walk>0){pathLine(st.pts);px.strokeStyle=T.walk;px.lineWidth=(st.width+2*st.walk)*V.sc;px.stroke();}
-  pathLine(st.pts);px.strokeStyle=T.road;px.lineWidth=st.width*V.sc;px.stroke();
-  if((st.tex==='r-dash'||st.tex==='r-double')&&V.sc>1.5){pathLine(st.pts);px.strokeStyle=st.tex==='r-double'?'#D9AE3A':T.mark;px.lineWidth=Math.max(1,.15*V.sc);if(st.tex==='r-dash')px.setLineDash([3*V.sc,3*V.sc]);px.stroke();px.setLineDash([]);}
-  if(isSel){pathLine(st.pts);px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.stroke();px.setLineDash([]);}
-  px.lineJoin='round';
+  if(st.pts.length<2)return;const rp=roundedPath(st.pts,st.curve!=null?st.curve:6);
+  px.lineJoin='round';px.lineCap='round';
+  if(st.walk>0){pathLine(rp);px.strokeStyle=T.walk;px.lineWidth=(st.width+2*st.walk)*V.sc;px.stroke();}
+  pathLine(rp);px.strokeStyle=T.road;px.lineWidth=st.width*V.sc;px.stroke();
+  if((st.tex==='r-dash'||st.tex==='r-double')&&V.sc>1.5){pathLine(rp);px.strokeStyle=st.tex==='r-double'?'#D9AE3A':T.mark;px.lineWidth=Math.max(1,.15*V.sc);if(st.tex==='r-dash')px.setLineDash([3*V.sc,3*V.sc]);px.stroke();px.setLineDash([]);}
+  if(isSel){pathLine(rp);px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.stroke();px.setLineDash([]);}
+  px.lineCap='butt';
+}
+function drawCurb(c,isSel){
+  if(c.pts.length<2)return;const rp=roundedPath(c.pts,c.curve!=null?c.curve:3),cfg=CURB[c.pattern]||CURB.gray;
+  const lw=Math.max(2.5,c.width*V.sc);px.lineJoin='round';px.lineCap='round';
+  pathLine(rp);px.strokeStyle=cfg.base;px.lineWidth=lw;px.stroke();
+  if(cfg.stripe&&V.sc>0.7){pathLine(rp);px.strokeStyle=CURB_WHITE;px.lineWidth=lw;px.setLineDash([CURB_BLK/2*V.sc,CURB_BLK/2*V.sc]);px.stroke();px.setLineDash([]);}
+  pathLine(rp);px.strokeStyle='rgba(0,0,0,.28)';px.lineWidth=1;px.stroke();
+  if(isSel){pathLine(rp);px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.stroke();px.setLineDash([]);}
+  px.lineCap='butt';
 }
 function drawProp(p,isSel){
   const inf=info(p.kind);const [sx,sy]=w2s(p.x,p.y);
@@ -595,8 +645,9 @@ function drawPlan(){
       for(let gx=Math.floor(wx0/st)*st;gx<=wx1;gx+=st){const isM=Math.abs(gx/major-Math.round(gx/major))<1e-6;if(!hasMap&&isM!==pass)continue;const sx=Math.round(V.ox+gx*V.sc)+.5;px.moveTo(sx,0);px.lineTo(sx,h);}
       for(let gy=Math.floor(wy0/st)*st;gy<=wy1;gy+=st){const isM=Math.abs(gy/major-Math.round(gy/major))<1e-6;if(!hasMap&&isM!==pass)continue;const sy=Math.round(V.oy+gy*V.sc)+.5;px.moveTo(0,sy);px.lineTo(w,sy);}
       px.stroke();px.globalAlpha=1;}}
-  const sb=curB(),ss=curS(),sp=curP();
+  const sb=curB(),ss=curS(),sp=curP(),cc=curC();
   S.streets.forEach(st=>drawStreet(st,st===ss));
+  S.curbs.forEach(c=>drawCurb(c,c===cc));
   const labels=V.sc>2.2;
   S.buildings.forEach(b=>{
     const isSel=b===sb;pathLine(b.pts);px.closePath();
@@ -622,6 +673,10 @@ function drawPlan(){
     for(let i=1;i<ss.pts.length;i++){const a=ss.pts[i-1],c=ss.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>60)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2,T.measure);}
     if(S.tool==='edit'){for(let i=1;i<ss.pts.length;i++){const a=ss.pts[i-1],c=ss.pts[i];plusHandle((a[0]+c[0])/2,(a[1]+c[1])/2);}ss.pts.forEach(handle);}
   }
+  if(cc){
+    for(let i=1;i<cc.pts.length;i++){const a=cc.pts[i-1],c=cc.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>60)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2,T.measure);}
+    if(S.tool==='edit'){for(let i=1;i<cc.pts.length;i++){const a=cc.pts[i-1],c=cc.pts[i];plusHandle((a[0]+c[0])/2,(a[1]+c[1])/2);}cc.pts.forEach(handle);}
+  }
   drawGps();
   if(S.img&&S.imgMove){const cs=imgCorners().map(p=>w2s(p[0],p[1]));px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.beginPath();cs.forEach((q,i)=>i?px.lineTo(q[0],q[1]):px.moveTo(q[0],q[1]));px.closePath();px.stroke();px.setLineDash([]);}
   if(S.calib&&S.calib.pts.length){const ps=S.calib.pts.map(p=>w2s(p[0],p[1]));
@@ -634,7 +689,8 @@ function drawPlan(){
     pill(`${f2(Math.abs(b[0]-a[0]))} م`,(ax+bx)/2,Math.min(ay,by)-16,T.measure,true);pill(`${f2(Math.abs(b[1]-a[1]))} م`,Math.max(ax,bx)+30,(ay+by)/2,T.measure,true);}
   if(draft.pts.length){
     const pts=draft.hover?draft.pts.concat([draft.hover]):draft.pts;
-    if(S.tool==='street'&&pts.length>1){px.globalAlpha=.6;drawStreet({pts,width:8,walk:2,tex:'r-dash'},false);px.globalAlpha=1;}
+    if(S.tool==='street'&&pts.length>1){px.globalAlpha=.6;drawStreet({pts,width:8,walk:0,curve:6,tex:'r-dash'},false);px.globalAlpha=1;}
+    if(S.tool==='curb'&&pts.length>1){px.globalAlpha=.6;drawCurb({pts,width:0.5,curve:3,pattern:S.curbPattern||'red'},false);px.globalAlpha=1;}
     px.strokeStyle=T.accent;px.lineWidth=2;pathLine(pts);px.stroke();
     for(let i=1;i<draft.pts.length;i++){const a=draft.pts[i-1],c=draft.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>40)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2-14,T.measure);}
     draft.pts.forEach((p,i)=>{const [sx,sy]=w2s(p[0],p[1]);const ring=S.tool==='poly'?i===0:i===draft.pts.length-1;px.fillStyle=ring?T.surface:T.accent;px.strokeStyle=T.accent;px.lineWidth=2;px.beginPath();px.arc(sx,sy,ring?10:5,0,7);px.fill();px.stroke();});
@@ -664,17 +720,20 @@ pc.addEventListener('pointerdown',e=>{
   if(S.calib&&S.calib.pts.length<2&&S.img){G.type='calib';return;}
   if(S.imgMove&&S.img){G.type='imgmove';G.o=[S.img.x,S.img.y];G.w0=[wx,wy];return;}
   if(S.tool==='rect'){G.type='rect';G.a=[snapV(wx),snapV(wy)];}
-  else if(S.tool==='poly'||S.tool==='street'||S.tool==='prop'){G.type='tap';}
-  else{const b=curB(),st=curS();let i;
+  else if(S.tool==='poly'||S.tool==='street'||S.tool==='curb'||S.tool==='prop'){G.type='tap';}
+  else{const b=curB(),st=curS(),cc=curC();let i;
     if(st&&(i=hitV(st.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:st,i,list:'s',snap:snapshot()});
     else if(st&&(i=hitMid(st.pts,false,sx,sy))>=0){const sn=snapshot();const a=st.pts[i],c=st.pts[i+1];st.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);Object.assign(G,{type:'vertex',obj:st,i:i+1,list:'s',snap:sn,inserted:true});}
+    else if(cc&&(i=hitV(cc.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:cc,i,list:'c',snap:snapshot()});
+    else if(cc&&(i=hitMid(cc.pts,false,sx,sy))>=0){const sn=snapshot();const a=cc.pts[i],c=cc.pts[i+1];cc.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);Object.assign(G,{type:'vertex',obj:cc,i:i+1,list:'c',snap:sn,inserted:true});}
     else if(b&&(i=hitV(b.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:b,i,list:'b',snap:snapshot()});
     else if(b&&(i=hitMid(b.pts,true,sx,sy))>=0){const sn=snapshot();const a=b.pts[i],c=b.pts[(i+1)%b.pts.length];b.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);b.ov={};Object.assign(G,{type:'vertex',obj:b,i:i+1,list:'b',snap:sn,inserted:true});}
     else{const p=propAt(sx,sy);
       if(p)Object.assign(G,startMove(p,'p',wx,wy));
       else if(b&&(i=hitEdge(b,sx,sy))>=0)Object.assign(G,startMove(b,'b',wx,wy,{edge:i}));
       else{const hb=bAt(wx,wy);if(hb)Object.assign(G,startMove(hb,'b',wx,wy,{edge:-1}));
-        else{const hs=streetAt(wx,wy);if(hs)Object.assign(G,startMove(hs,'s',wx,wy));else G.type='pan';}}}
+        else{const hs=streetAt(wx,wy);if(hs)Object.assign(G,startMove(hs,'s',wx,wy));
+          else{const hc=curbAt(wx,wy);if(hc)Object.assign(G,startMove(hc,'c',wx,wy));else G.type='pan';}}}}
   }
 });
 pc.addEventListener('pointermove',e=>{
@@ -723,11 +782,11 @@ pc.addEventListener('pointerleave',()=>{if(draft.hover&&!ptrs.size){draft.hover=
 pc.addEventListener('wheel',e=>{e.preventDefault();const [sx,sy]=local(e);const k=Math.exp(-e.deltaY*0.0015);const sc=clamp(V.sc*k,.05,400);
   const wx=(sx-V.ox)/V.sc,wy=(sy-V.oy)/V.sc;V.sc=sc;V.ox=sx-wx*sc;V.oy=sy-wy*sc;planSoon();},{passive:false});
 function refreshSel(){renderSheet(true);drawPlan();build3D();}
-function selectAt(wx,wy,sx,sy){const p=propAt(sx,sy);if(p)select('p',p.id);else{const b=bAt(wx,wy);if(b)select('b',b.id);else{const st=streetAt(wx,wy);select(st?'s':null,st&&st.id);}}refreshSel();}
+function selectAt(wx,wy,sx,sy){const p=propAt(sx,sy);if(p)select('p',p.id);else{const b=bAt(wx,wy);if(b)select('b',b.id);else{const st=streetAt(wx,wy);if(st)select('s',st.id);else{const c=curbAt(wx,wy);select(c?'c':null,c&&c.id);}}}refreshSel();}
 function tapDraft(wx,wy,sx,sy){
   const n=draft.pts.length;
   if(S.tool==='poly'&&n>=3){const [fx,fy]=w2s(...draft.pts[0]);if(Math.hypot(fx-sx,fy-sy)<22){finishDraft();return;}}
-  if(S.tool==='street'&&n>=2){const [lx,ly]=w2s(...draft.pts[n-1]);if(Math.hypot(lx-sx,ly-sy)<22){finishDraft();return;}}
+  if((S.tool==='street'||S.tool==='curb')&&n>=2){const [lx,ly]=w2s(...draft.pts[n-1]);if(Math.hypot(lx-sx,ly-sy)<22){finishDraft();return;}}
   const p=[snapV(wx),snapV(wy)],l=draft.pts[n-1];if(l&&l[0]===p[0]&&l[1]===p[1])return;
   draft.pts.push(p);draft.hover=null;updDraftUI();drawPlan();
 }
@@ -737,9 +796,11 @@ function finishDraft(){
     pushHist();draft.pts=[];S.buildings.push(nb);select('b',nb.id);updDraftUI();changed();toast(`أُضيف ${nb.name} · افتح «مجسّم 3D» لتراه`);}
   else if(S.tool==='street'){if(draft.pts.length<2)return;if(polyLen(draft.pts)<1){toast('الشارع قصير جدًا.');return;}
     pushHist();const st=newStreet(draft.pts.map(p=>p.slice()));draft.pts=[];S.streets.push(st);select('s',st.id);updDraftUI();changed();toast(`أُضيف ${st.name} بطول ${f2(polyLen(st.pts))} م`);}
+  else if(S.tool==='curb'){if(draft.pts.length<2)return;if(polyLen(draft.pts)<0.5){toast('الرصيف قصير جدًا.');return;}
+    pushHist();const c=newCurb(draft.pts.map(p=>p.slice()));draft.pts=[];S.curbs.push(c);select('c',c.id);updDraftUI();changed();toast(`أُضيف ${c.name} بطول ${f2(polyLen(c.pts))} م`);}
 }
-function updDraftUI(){const c=$('#closeDraft');const show=(S.tool==='poly'&&draft.pts.length>=3)||(S.tool==='street'&&draft.pts.length>=2);
-  c.hidden=!show;c.textContent=S.tool==='street'?'إنهاء الشارع':'إغلاق الشكل';updUndo();setHint();}
+function updDraftUI(){const c=$('#closeDraft');const show=(S.tool==='poly'&&draft.pts.length>=3)||((S.tool==='street'||S.tool==='curb')&&draft.pts.length>=2);
+  c.hidden=!show;c.textContent=S.tool==='street'?'إنهاء الشارع':(S.tool==='curb'?'إنهاء الرصيف':'إغلاق الشكل');updUndo();setHint();}
 function placeProp(x,y){
   const kind=S.propKind;if(!info(kind)){toast('اختر مجسّمًا من المكتبة أولًا.');return;}
   pushHist();const opt={};
@@ -932,7 +993,7 @@ function convertVM(want){
   pushHist(snap);select(null);changed();groundSoon(true);
   toast(want==='buildings'?`صار ${nb} مبنى ثلاثي الأبعاد · الطوابق تقديرية إن لم تكن مسجّلة`:`صار ${ns} شارعًا قابلًا للتعديل`);
 }
-function dropDemo(){if(!S.demo)return false;S.buildings=[];S.streets=[];S.props=[];S.demo=false;hist=[];return true;}
+function dropDemo(){if(!S.demo)return false;S.buildings=[];S.streets=[];S.props=[];S.curbs=[];S.demo=false;hist=[];return true;}
 function placeImage(img,name,url){const dd=dropDemo();
   IMG.el=img;IMG.name=name;const W=pc.clientWidth||300,H=pc.clientHeight||300;
   const [cx,cy]=s2w(W/2,H/2);const fit=Math.min(W/V.sc,(H/V.sc)*img.naturalWidth/img.naturalHeight)*.9;
@@ -946,8 +1007,9 @@ function applyCalib(real){const c=S.calib;if(!c||c.pts.length<2||!S.img)return;c
 function moveAllHere(){const b=contentBounds();if(!b)return;const [cx,cy]=s2w(pc.clientWidth/2,pc.clientHeight/2);
   const dx=+(cx-(b.x0+b.x1)/2).toFixed(2),dy=+(cy-(b.y0+b.y1)/2).toFixed(2);pushHist();
   S.buildings.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));S.streets.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));
+  S.curbs.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));
   S.props.forEach(p=>{p.x=+(p.x+dx).toFixed(2);p.y=+(p.y+dy).toFixed(2);});changed();groundSoon(true);toast('نُقل المشروع إلى وسط الشاشة');}
-function clearAll(){if(isEmpty())return;pushHist();S.buildings=[];S.streets=[];S.props=[];select(null);changed();toast('أُفرغ المشروع · اضغط تراجع لاسترجاعه');}
+function clearAll(){if(isEmpty())return;pushHist();S.buildings=[];S.streets=[];S.props=[];S.curbs=[];select(null);changed();toast('أُفرغ المشروع · اضغط تراجع لاسترجاعه');}
 /* ---------- palette ---------- */
 function renderPalette(){
   const el=$('#palette');let h=`<button class="pk imp" data-mimport="1">${icon('model')}<span>استيراد</span></button>`;
@@ -970,13 +1032,14 @@ function setHint(){
   if(S.tool==='rect')return hint('اسحب بإصبع لرسم مستطيل · إصبعان للتكبير والتحريك');
   if(S.tool==='poly')return hint(draft.pts.length>=3?'انقر النقطة الأولى أو «إغلاق الشكل» لإنهاء المبنى':'انقر لإضافة كل زاوية من زوايا المبنى');
   if(S.tool==='street')return hint(draft.pts.length>=2?'انقر النقطة الأخيرة مرة ثانية أو «إنهاء الشارع»':'انقر بداية الشارع ثم كل منعطف فيه');
+  if(S.tool==='curb')return hint(draft.pts.length>=2?'انقر النقطة الأخيرة مرة ثانية أو «إنهاء الرصيف»':'انقر بداية الرصيف ثم كل منعطف · غيّر اللون من اللوحة');
   if(S.tool==='prop')return hint(`انقر على الخريطة لوضع ${pn} · اسحب لتحريك العرض`);
   hint('اسحب أي عنصر لتحريكه · اسحب الزوايا أو ⊕ لتعديل الشكل');
 }
 function setTool(t){
   S.tool=t;document.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.tool===t));
   $('#propMode3d').setAttribute('aria-pressed',t==='prop');$('#propMode3d').classList.toggle('primary',t==='prop');
-  if(t!=='poly'&&t!=='street'){draft.pts=[];draft.hover=null;}else if(draft.pts.length&&draft.kind!==t)draft.pts=[];draft.kind=t;
+  if(t!=='poly'&&t!=='street'&&t!=='curb'){draft.pts=[];draft.hover=null;}else if(draft.pts.length&&draft.kind!==t)draft.pts=[];draft.kind=t;
   const pal=t==='prop';$('#palette').hidden=!pal;$('#stage').classList.toggle('has-palette',pal);if(pal)renderPalette();
   updDraftUI();drawPlan();
 }
@@ -1064,6 +1127,11 @@ function ribbonGeo(A,B,y,uvf){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
 function skirtGeo(P,y0,y1){const pos=[],idx=[];P.forEach(p=>pos.push(p[0],y0,p[1],p[0],y1,p[1]));for(let i=0;i<P.length-1;i++){const a=2*i;idx.push(a,a+2,a+3,a,a+3,a+1);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+/* جدارٌ رأسيّ على امتداد المسار مع إحداثيات نسيجٍ بطول القطعة (للرصيف المُخطَّط) */
+function wallRibbon(P,y0,y1,s,blk){const pos=[],uv=[],idx=[];
+  for(let i=0;i<P.length;i++){pos.push(P[i][0],y0,P[i][1],P[i][0],y1,P[i][1]);uv.push(s[i]/blk,0,s[i]/blk,1);}
+  for(let i=0;i<P.length-1;i++){const a=2*i;idx.push(a,a+2,a+3,a,a+3,a+1);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
 let bTimer=0;
 function build3D(){if(!R)return;cancelAnimationFrame(bTimer);bTimer=requestAnimationFrame(build3DNow);}
 function build3DNow(){
@@ -1087,6 +1155,18 @@ function build3DNow(){
         const sk=own(new THREE.Mesh(skirtGeo(O,0,yW),curbMat));sk.userData.pick={t:'s',id:st.id};g.add(sk);});}
     else[A,B].forEach(P=>g.add(own(new THREE.Mesh(skirtGeo(P,0,yR),edgeMat))));
     if(S.sel&&S.sel.id===st.id){const lp=[];st.pts.forEach(p=>lp.push(p[0],yR+.05,p[1]));const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
+      const ln=own(new THREE.Line(lg,new THREE.LineDashedMaterial({color:accent,dashSize:1.5,gapSize:1})));ln.computeLineDistances();g.add(ln);}
+  });
+  /* الأرصفة: كتلة مرتفعة على امتداد المسار بوجهٍ مُخطَّطٍ حسب اللون */
+  S.curbs.forEach(c=>{
+    if(c.pts.length<2)return;const rp=roundedPath(c.pts,c.curve!=null?c.curve:3);
+    const hw=Math.max(.05,c.width/2),H=CURB_H,A=offsets(rp,hw),B=offsets(rp,-hw);
+    const s=[0];for(let i=1;i<rp.length;i++)s.push(s[i-1]+Math.hypot(rp[i][0]-rp[i-1][0],rp[i][1]-rp[i-1][1]));
+    const mat=matFor('curb-'+(CURB[c.pattern]?c.pattern:'gray'),0x9aa0a6,.85);
+    const top=own(new THREE.Mesh(ribbonGeo(A,B,H,(i,side)=>[s[i]/CURB_BLK,side?0:1]),mat));
+    top.receiveShadow=true;top.castShadow=true;top.userData.pick={t:'c',id:c.id};g.add(top);
+    [A,B].forEach(P=>{const sw=own(new THREE.Mesh(wallRibbon(P,0,H,s,CURB_BLK),mat));sw.castShadow=true;sw.receiveShadow=true;sw.userData.pick={t:'c',id:c.id};g.add(sw);});
+    if(S.sel&&S.sel.id===c.id){const lp=[];rp.forEach(p=>lp.push(p[0],H+.05,p[1]));const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
       const ln=own(new THREE.Line(lg,new THREE.LineDashedMaterial({color:accent,dashSize:1.5,gapSize:1})));ln.computeLineDistances();g.add(ln);}
   });
   const many=S.buildings.length>120;
@@ -1164,7 +1244,7 @@ $('#fit3d').addEventListener('click',frame);
 $('#snapBtn').addEventListener('click',e=>{S.snap=!S.snap;e.currentTarget.setAttribute('aria-pressed',S.snap);toast(S.snap?'الالتصاق مفعّل: كل نقطة تقفز لأقرب نصف متر':'الالتصاق متوقف: دقة سنتيمتر');});
 document.querySelectorAll('.undo').forEach(b=>b.addEventListener('click',()=>{
   if(S.view==='plan'&&draft.pts.length){draft.pts.pop();updDraftUI();drawPlan();return;}
-  const s=hist.pop();if(!s)return;const o=JSON.parse(s);S.buildings=o.b;S.streets=o.s||[];S.props=o.p||[];S.sel=o.sel;if(o.geo)S.geo=o.geo;S.wallSel=null;changed();groundSoon(true);toast('تم التراجع');}));
+  const s=hist.pop();if(!s)return;const o=JSON.parse(s);S.buildings=o.b;S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.sel=o.sel;if(o.geo)S.geo=o.geo;S.wallSel=null;changed();groundSoon(true);toast('تم التراجع');}));
 
 function changed(){renderSheet(true);drawPlan();build3D();save();updUndo();setHint();}
 /* ---------- sheet ---------- */
@@ -1183,7 +1263,7 @@ function swatches(target,current){
 }
 function slider(k,label,val,min,max,step,fmt){return `<div class="slider"><label for="r-${k}">${label}</label><input id="r-${k}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}"><output id="o-${k}" class="num">${fmt(val)}</output></div>`;}
 const pct=v=>Math.round(v*100)+'%',deg=v=>Math.round(v)+'°';
-const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct};
+const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct,curve:v=>f2(v)+' م'};
 function numField(id,label,k,val,min,max,step){return `<div class="field"><label for="i-${id}">${label}</label><span class="unit"><input id="i-${id}" type="number" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}">م</span></div>`;}
 function chips(){
   const all=[...S.buildings.map(o=>['b',o]),...S.streets.map(o=>['s',o])];if(all.length<2||all.length>14)return '';
@@ -1228,14 +1308,15 @@ function mapSection(){
     <p class="note">يجلب المباني والشوارع المسجّلة في OpenStreetMap ضمن المنطقة الظاهرة على الشاشة مباشرة. كبّر الخريطة على الحي أولًا.</p>
     <div class="row"><button class="btn" data-act="osm" ${importing?'disabled':''}>${importing?'جارٍ الجلب…':'استيراد المباني والشوارع'}</button><button class="btn" data-act="osm-b" ${importing?'disabled':''}>المباني فقط</button></div></div>`;
   h+=`<div class="sec" data-sec="proj"><h3>المشروع</h3>
-    <p class="note"><b class="num">${n}</b> مبنى · <b class="num">${ns}</b> شارع · <b class="num">${np}</b> مجسّم</p>
+    <p class="note"><b class="num">${n}</b> مبنى · <b class="num">${ns}</b> شارع · <b class="num">${S.curbs.length}</b> رصيف · <b class="num">${np}</b> مجسّم</p>
     ${isEmpty()?'':`<div class="row"><button class="btn" data-act="moveall">انقل كل العناصر إلى وسط الشاشة</button><button class="btn danger" data-act="clear">إفراغ المشروع</button></div>`}</div>`;
   return h;
 }
 function renderSheet(keepScroll){
-  const top=sbody.scrollTop,b=curB(),st=curS(),p=curP();
-  $('#delB').hidden=!(b||st||p);
+  const top=sbody.scrollTop,b=curB(),st=curS(),p=curP(),cu=curC();
+  $('#delB').hidden=!(b||st||p||cu);
   if(st)return renderStreet(st,keepScroll,top);
+  if(cu)return renderCurb(cu,keepScroll,top);
   if(p)return renderProp(p,keepScroll,top);
   if(!b){$('#sTitle').textContent=isEmpty()?'ابدأ على الخريطة':'المشروع والخريطة';$('#sMeta').textContent='';
     sbody.innerHTML=chips()+(isEmpty()?`<div class="empty"><h4>خطّط مكانك الحقيقي</h4><ol>
@@ -1273,15 +1354,26 @@ function renderSheet(keepScroll){
 }
 function renderStreet(st,keepScroll,top){
   const L=polyLen(st.pts),userRoad=TEX[st.tex]&&TEX[st.tex].user;
-  $('#sTitle').textContent=st.name;$('#sMeta').innerHTML=`طول <span class="num">${f2(L)}</span> م · عرض كلي <span class="num">${f2(st.width+2*st.walk)}</span> م`;
+  $('#sTitle').textContent=st.name;$('#sMeta').innerHTML=`طول <span class="num">${f2(L)}</span> م · عرض <span class="num">${f2(st.width)}</span> م`;
   let h=chips();
-  h+=`<div class="sec" data-sec="dims"><h3>المقاسات</h3>
-    ${numField('sw','عرض الشارع (الإسفلت)','width',st.width,2,60,0.1)}
-    ${numField('sk','عرض الرصيف من كل جهة','walk',st.walk,0,15,0.1)}
-    <p class="note">ضع عرض الرصيف <b>0</b> لشارع بلا أرصفة. في «تعديل» اسحب نقاط الشارع أو ⊕ لإضافة منعطف.</p></div>`;
+  h+=`<div class="sec" data-sec="dims"><h3>المقاسات والانحناء</h3>
+    ${numField('sw','عرض الشارع','width',st.width,2,60,0.1)}
+    ${slider('curve','انحناء الزوايا (قوس)',st.curve!=null?st.curve:6,0,30,0.5,v=>f2(v)+' م')}
+    <p class="note">في «تعديل» اسحب نقاط الشارع أو ⊕ لإضافة منعطف. الزوايا تنحني بأقواسٍ تلقائياً. للأرصفة استعمل أداة «رصيف» المستقلّة.</p></div>`;
   h+=`<div class="sec" data-sec="road"><h3>سطح الشارع</h3>${swatches('road',st.tex)}
     ${userRoad?`${numField('stw','طول الصورة على امتداد الشارع','tileW',st.tileW,0.2,200,0.1)}<p class="note">تمتد الصورة على كامل عرض الشارع، وتتكرر على طوله كل <b class="num">${f2(st.tileW)}</b> م.</p>`:'<p class="note">الخطوط مرسومة بمقاس حقيقي: المقطع 3 م والفراغ 3 م.</p>'}</div>`;
-  h+=`<div class="sec" data-sec="walk"><h3>الرصيف</h3>${swatches('walk',st.walkTex)}${numField('wkw','مقاس الصورة على الأرض','walkW',st.walkW,0.1,50,0.05)}</div>`;
+  sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;
+}
+function renderCurb(c,keepScroll,top){
+  const L=polyLen(c.pts);
+  $('#sTitle').textContent=c.name;$('#sMeta').innerHTML=`طول <span class="num">${f2(L)}</span> م · عرض <span class="num">${f2(c.width)}</span> م`;
+  let h=`<div class="sec" data-sec="cdims"><h3>المقاسات والانحناء</h3>
+    ${numField('cw','عرض الرصيف','width',c.width,0.1,6,0.05)}
+    ${slider('curve','انحناء الزوايا (قوس)',c.curve!=null?c.curve:3,0,20,0.5,v=>f2(v)+' م')}
+    <p class="note">في «تعديل» اسحب نقاط الرصيف أو ⊕ لإضافة منعطف. الزوايا تنحني بأقواسٍ تلقائياً.</p></div>`;
+  h+=`<div class="sec" data-sec="cpat"><h3>اللون ومعناه</h3><div class="walls">`;
+  Object.keys(CURB).forEach(k=>{const cfg=CURB[k];h+=`<button class="wrow" data-curbpat="${k}" aria-pressed="${c.pattern===k}"><i style="background:${cfg.base};${cfg.stripe?'background:repeating-linear-gradient(135deg,'+cfg.base+' 0 7px,'+CURB_WHITE+' 7px 14px)':''}"></i><span>${esc(cfg.n)}</span>${c.pattern===k?'<span class="tag">مختار</span>':'<span></span>'}</button>`;});
+  h+=`</div></div>`;
   sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;
 }
 function renderProp(p,keepScroll,top){
@@ -1307,7 +1399,7 @@ function wallPanel(b,i){
     ${swatches('ov',ov&&ov.tex)}
     ${ov?`<label class="chk"><input type="checkbox" data-k="ovfit" ${ov.fit?'checked':''}>شدّ الصورة على الجدار كاملًا بدقة (من الزاوية للزاوية ومن الأرض للسطح)</label>${fitInfo}`:''}</div>`;
 }
-function selObj(){return curB()||curS()||curP();}
+function selObj(){return curB()||curS()||curP()||curC();}
 function setPath(o,k,v){const p=k.split('.');while(p.length>1)o=o[p.shift()];o[p[0]]=v;}
 function getPath(o,k){return k.split('.').reduce((a,p)=>a[p],o);}
 const ZERO_OK={walk:1};
@@ -1358,6 +1450,7 @@ sbody.addEventListener('click',e=>{
   if(a==='moveall'){moveAllHere();return;}
   if(a==='clear'){clearAll();return;}
   const o=selObj();if(!o)return;
+  if(t.dataset.curbpat){pushHist();o.pattern=t.dataset.curbpat;S.curbPattern=o.pattern;changed();return;}
   if(t.dataset.import){importTarget=t.dataset.import;$('#fileIn').click();return;}
   if(t.dataset.sw){assignTex(t.dataset.sw,t.dataset.id);return;}
   if(t.dataset.mode){pushHist();o.wall.mode=t.dataset.mode;changed();return;}
@@ -1371,9 +1464,10 @@ sbody.addEventListener('click',e=>{
   else if(a==='dup'){pushHist();const inf=info(o.kind)||{fw:2,fh:o.h};const c=Object.assign({},o,{id:uid(),x:+(o.x+Math.max(1,inf.fw*o.h/inf.fh+.5)).toFixed(2)});S.props.push(c);select('p',c.id);changed();toast('أُضيفت نسخة');}
 });
 $('#delB').addEventListener('click',()=>{
-  const b=curB(),st=curS(),p=curP();pushHist();
+  const b=curB(),st=curS(),p=curP(),cu=curC();pushHist();
   if(b){S.buildings=S.buildings.filter(x=>x!==b);toast(`حُذف ${b.name} · اضغط تراجع لاسترجاعه`);}
   else if(st){S.streets=S.streets.filter(x=>x!==st);toast(`حُذف ${st.name} · اضغط تراجع لاسترجاعه`);}
+  else if(cu){S.curbs=S.curbs.filter(x=>x!==cu);toast(`حُذف ${cu.name} · اضغط تراجع لاسترجاعه`);}
   else if(p){S.props=S.props.filter(x=>x!==p);toast('حُذف المجسّم · اضغط تراجع لاسترجاعه');}
   select(null);changed();});
 
