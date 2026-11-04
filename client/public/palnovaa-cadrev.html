@@ -166,6 +166,24 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
 .empty{padding-block:14px 4px;display:grid;gap:8px}
 .empty h4{margin:0;font:600 16px var(--f-body)}
 .empty ol{margin:0;padding-inline-start:20px;color:var(--muted);display:grid;gap:4px}
+.ta{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:400 13px/1.6 var(--f-body);padding:8px 10px;resize:vertical;min-height:44px}
+.infoimgs{display:flex;gap:8px;flex-wrap:wrap}
+.ii{position:relative;width:84px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.ii img{width:100%;height:100%;object-fit:cover;display:block}
+.iidel{position:absolute;top:3px;inset-inline-end:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.62);color:#fff;cursor:pointer;font-size:12px;line-height:22px;padding:0}
+.wrow i.flo{display:grid;place-items:center;font:600 13px var(--f-num);color:var(--muted);background:var(--surface-2)}
+.cardback{position:fixed;inset:0;background:rgba(8,12,15,.72);display:grid;place-items:center;z-index:60;padding:18px}
+.card{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+.card .ch{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.card .ch h3{margin:0;font:600 18px/1.2 var(--f-display);flex:1;min-width:0}
+.card .cx{border:0;background:var(--surface-2);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:16px;color:var(--ink);flex:0 0 auto}
+.card .cb{padding:16px;display:grid;gap:16px}
+.card .cb p{margin:0;line-height:1.75;white-space:pre-wrap}
+.card .cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card .cg img{width:100%;border-radius:10px;display:block}
+.card .cflo{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
+.card h4{margin:0;font:600 14px var(--f-body);color:var(--accent)}
+.card .cempty{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div id="app" dir="rtl">
@@ -189,6 +207,7 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
           <button data-tool="shape" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="9" cy="10" r="5.5"/><rect x="11" y="11.5" width="9" height="9" rx="1"/></svg>أشكال</button>
           <button data-tool="street" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3L4 21M17 3l3 18"/><path d="M12 4v3M12 11v3M12 18v2"/></svg>شارع</button>
           <button data-tool="curb" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="6" rx="1"/><path d="M3 12h18"/></svg>رصيف</button>
+          <button data-tool="park" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M8 17V8h3.2a2.4 2.4 0 010 4.8H8"/></svg>موقف</button>
           <button data-tool="prop" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 21h6"/></svg>مجسّم</button>
           <button data-tool="edit" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4l6 15 2-6 6-2z"/></svg>تعديل</button>
         </div>
@@ -241,6 +260,13 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
   <input type="file" id="modelIn" accept=".glb,.gltf,.obj,.dae,.skp" hidden>
   <input type="file" id="mapImgIn" accept="image/*" hidden>
   <input type="file" id="vecIn" accept=".osm,.xml,.geojson,.json,application/json,application/xml,text/xml,application/geo+json" hidden>
+  <input type="file" id="infoImgIn" accept="image/*" multiple hidden>
+</div>
+<div class="cardback" id="infoCard" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+    <div class="ch"><h3 id="cardTitle"></h3><button class="cx" id="cardClose" aria-label="إغلاق">✕</button></div>
+    <div class="cb" id="cardBody"></div>
+  </div>
 </div>
 
 <script>window.MUJ_ARTIFACT=false;</script>
@@ -451,7 +477,7 @@ function parseModel(ext,data){return new Promise((res,rej)=>{try{
 }catch(e){rej(e);}});}
 /* ---------- state ---------- */
 const DEFAULT_GEO={lat:31.7767,lon:35.2345};
-const S={buildings:[],streets:[],props:[],curbs:[],sel:null,wallSel:null,view:'plan',tool:'rect',snap:true,propKind:'tree',curbPattern:'red',shapeKind:'circle',
+const S={buildings:[],streets:[],props:[],curbs:[],parks:[],sel:null,wallSel:null,floorSel:null,view:'plan',tool:'rect',snap:true,propKind:'tree',curbPattern:'red',shapeKind:'circle',
   geo:{...DEFAULT_GEO},map:ART?'off':'gsat',mapOpacity:.85,img:null,vshow:true,calib:null,imgMove:false};
 let hist=[],gps=null,watchId=null;
 const IMG={el:null,name:''},VM={raw:[],feats:[],name:'',ver:0,bbox:null};
@@ -459,9 +485,10 @@ const curB=()=>S.sel&&S.sel.t==='b'?S.buildings.find(b=>b.id===S.sel.id)||null:n
 const curS=()=>S.sel&&S.sel.t==='s'?S.streets.find(b=>b.id===S.sel.id)||null:null;
 const curP=()=>S.sel&&S.sel.t==='p'?S.props.find(b=>b.id===S.sel.id)||null:null;
 const curC=()=>S.sel&&S.sel.t==='c'?S.curbs.find(b=>b.id===S.sel.id)||null:null;
-const select=(t,id)=>{S.sel=id?{t,id}:null;S.wallSel=null;};
+const curK=()=>S.sel&&S.sel.t==='k'?S.parks.find(b=>b.id===S.sel.id)||null:null;
+const select=(t,id)=>{S.sel=id?{t,id}:null;S.wallSel=null;S.floorSel=null;};
 const snapV=v=>S.snap?Math.round(v*2)/2:Math.round(v*100)/100;
-const isEmpty=()=>!S.buildings.length&&!S.streets.length&&!S.props.length&&!S.curbs.length;
+const isEmpty=()=>!S.buildings.length&&!S.streets.length&&!S.props.length&&!S.curbs.length&&!S.parks.length;
 function area(p){let a=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];a+=q[0]*r[1]-r[0]*q[1];}return a/2;}
 function perim(p){let s=0;for(let i=0;i<p.length;i++){const q=p[i],r=p[(i+1)%p.length];s+=Math.hypot(r[0]-q[0],r[1]-q[1]);}return s;}
 function polyLen(p){let s=0;for(let i=1;i<p.length;i++)s+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return s;}
@@ -475,21 +502,28 @@ function newBuilding(pts,opt){
   normalize(b);return b;}
 function newStreet(pts,opt){return Object.assign({id:uid(),name:'شارع '+nextNum(S.streets,/(\d+)$/),pts,width:8,walk:0,curve:6,tex:'r-dash',tileW:6,walkTex:'w-tiles',walkW:1},opt||{});}
 function newCurb(pts,opt){return Object.assign({id:uid(),name:'رصيف '+nextNum(S.curbs,/(\d+)$/),pts,width:0.5,curve:3,pattern:S.curbPattern||'red'},opt||{});}
+function newPark(pts,opt){return Object.assign({id:uid(),name:'موقف '+nextNum(S.parks,/(\d+)$/),pts,width:5,stall:2.5,lineW:0.12,off:0,color:'#F2F2F2',edges:true},opt||{});}
 let paintIdx=0;
-function newProp(kind,x,y,opt){const inf=info(kind);const p=Object.assign({id:uid(),kind,x,y,rot:0,h:inf?+inf.fh.toFixed(2):2},opt||{});
+function newProp(kind,x,y,opt){const inf=info(kind);const p=Object.assign({id:uid(),kind,x,y,rot:0,wscale:1,h:inf?+inf.fh.toFixed(2):2},opt||{});
   if(inf&&inf.paint&&!p.color)p.color=kind==='bin'?'#2F6B45':PAINTS[(paintIdx++)%5];return p;}
-function snapshot(){return JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,sel:S.sel,geo:S.geo});}
+/* علامات المواقف: خطوط عرضيّة متعامدة على المسار كل «stall» متر لتحديد أماكن الوقوف */
+function parkTicks(pts,hw,stall,off){const out=[];if(pts.length<2)return out;let acc=0,next=Math.max(0,off||0);stall=Math.max(.5,stall);
+  for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i];let dx=b[0]-a[0],dy=b[1]-a[1];const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;const nx=-dy,ny=dx;
+    while(next<=acc+L+1e-6){const t=next-acc;const px_=a[0]+dx*t,py_=a[1]+dy*t;out.push([[px_+nx*hw,py_+ny*hw],[px_-nx*hw,py_-ny*hw]]);next+=stall;}
+    acc+=L;}
+  return out;}
+function snapshot(){return JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,k:S.parks,sel:S.sel,geo:S.geo});}
 function pushHist(s){S.demo=false;hist.push(s||snapshot());if(hist.length>60)hist.shift();updUndo();}
 function updUndo(){document.querySelectorAll('.undo').forEach(e=>e.disabled=!hist.length&&!draft.pts.length);}
 
 /* ---------- persistence ---------- */
 const KEY='mujassim-map-v1';let saveT=0;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,k:S.parks,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
 function load(){
   let o=null;try{o=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
   if(!o&&ART){try{o=JSON.parse(localStorage.getItem('mujassim-v1')||'null');}catch(e){}if(o&&typeof o.sel==='string')o.sel={t:'b',id:o.sel};}
   if(!o)return false;
-  S.buildings=o.b||[];S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.sel=o.sel||null;if(o.geo)S.geo=o.geo;if(o.map&&!ART)S.map=o.map;if(o.op!=null)S.mapOpacity=o.op;
+  S.buildings=o.b||[];S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.parks=o.k||[];S.sel=o.sel||null;if(o.geo)S.geo=o.geo;if(o.map&&!ART)S.map=o.map;if(o.op!=null)S.mapOpacity=o.op;
   if(o.img)S.img=o.img;if(o.vshow!=null)S.vshow=o.vshow;S.demo=!!o.demo;
   return true;
 }
@@ -542,9 +576,10 @@ function segDist(px_,py_,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L2=dx*dx+dy*dy||1;
 function nearestOnStreet(st,x,y){let best={d:1e9};for(let i=1;i<st.pts.length;i++){const[d]=segDist(x,y,st.pts[i-1],st.pts[i]);if(d<best.d)best={d,i};}return best;}
 function streetAt(x,y){for(let i=S.streets.length-1;i>=0;i--){const st=S.streets[i];if(nearestOnStreet(st,x,y).d<=st.width/2+st.walk)return st;}return null;}
 function curbAt(x,y){for(let i=S.curbs.length-1;i>=0;i--){const c=S.curbs[i];if(c.pts.length>=2&&nearestOnStreet(c,x,y).d<=Math.max(c.width/2,0.7))return c;}return null;}
+function parkAt(x,y){for(let i=S.parks.length-1;i>=0;i--){const c=S.parks[i];if(c.pts.length>=2&&nearestOnStreet(c,x,y).d<=c.width/2)return c;}return null;}
 function groundY(x,y){let h=0;S.streets.forEach((st,k)=>{const d=nearestOnStreet(st,x,y).d;if(d<=st.width/2)h=Math.max(h,.11+(k%40)*.002);else if(d<=st.width/2+st.walk)h=Math.max(h,.1);});return h;}
 function contentBounds(){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,n=0;const add=(x,y)=>{n++;x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);};
-  S.buildings.forEach(b=>b.pts.forEach(p=>add(p[0],p[1])));S.streets.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.curbs.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.props.forEach(p=>add(p.x,p.y));
+  S.buildings.forEach(b=>b.pts.forEach(p=>add(p[0],p[1])));S.streets.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.curbs.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.parks.forEach(s=>s.pts.forEach(p=>add(p[0],p[1])));S.props.forEach(p=>add(p.x,p.y));
   return n?{x0,y0,x1,y1}:null;}
 
 /* ---------- 2D plan ---------- */
@@ -620,10 +655,22 @@ function drawCurb(c,isSel){
   if(isSel){pathLine(rp);px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.stroke();px.setLineDash([]);}
   px.lineCap='butt';
 }
+function drawPark(pk,isSel){
+  if(pk.pts.length<2)return;const rp=pk.pts,hw=pk.width/2,A=offsets(rp,hw),B=offsets(rp,-hw);
+  px.beginPath();A.forEach((p,i)=>{const [x,y]=w2s(p[0],p[1]);i?px.lineTo(x,y):px.moveTo(x,y);});
+  for(let i=B.length-1;i>=0;i--){const [x,y]=w2s(B[i][0],B[i][1]);px.lineTo(x,y);}px.closePath();
+  px.fillStyle=T.road;px.globalAlpha=.92;px.fill();px.globalAlpha=1;
+  const lw=Math.max(1.2,(pk.lineW||0.12)*V.sc),col=pk.color||'#F2F2F2';px.lineJoin='round';px.lineCap='round';px.strokeStyle=col;px.lineWidth=lw;
+  if(pk.edges!==false){pathLine(A);px.stroke();pathLine(B);px.stroke();}
+  const ticks=parkTicks(rp,hw,pk.stall,pk.off);px.beginPath();
+  ticks.forEach(([a,b])=>{const [ax,ay]=w2s(a[0],a[1]),[bx,by]=w2s(b[0],b[1]);px.moveTo(ax,ay);px.lineTo(bx,by);});px.stroke();
+  px.lineCap='butt';
+  if(isSel){pathLine(rp);px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.stroke();px.setLineDash([]);}
+}
 function drawProp(p,isSel){
   const inf=info(p.kind);const [sx,sy]=w2s(p.x,p.y);
   if(!inf){px.fillStyle=T.prop;px.beginPath();px.arc(sx,sy,5,0,7);px.fill();return;}
-  const s=p.h/inf.fh,w=Math.max(inf.fw*s*V.sc,5),d=Math.max(inf.fd*s*V.sc,5);
+  const wx=p.wscale!=null?p.wscale:1,s=p.h/inf.fh,w=Math.max(inf.fw*s*wx*V.sc,5),d=Math.max(inf.fd*s*wx*V.sc,5);
   px.save();px.translate(sx,sy);px.rotate(-p.rot*Math.PI/180);
   if(inf.shape==='plant'){const r=Math.max(w,d)/2;px.fillStyle=T.plant;px.globalAlpha=.88;px.beginPath();px.arc(0,0,r,0,7);px.fill();px.globalAlpha=1;
     px.strokeStyle=isSel?T.accent:'rgba(0,0,0,.3)';px.lineWidth=isSel?2.5:1;px.stroke();}
@@ -655,7 +702,8 @@ function drawPlan(){
       for(let gx=Math.floor(wx0/st)*st;gx<=wx1;gx+=st){const isM=Math.abs(gx/major-Math.round(gx/major))<1e-6;if(!hasMap&&isM!==pass)continue;const sx=Math.round(V.ox+gx*V.sc)+.5;px.moveTo(sx,0);px.lineTo(sx,h);}
       for(let gy=Math.floor(wy0/st)*st;gy<=wy1;gy+=st){const isM=Math.abs(gy/major-Math.round(gy/major))<1e-6;if(!hasMap&&isM!==pass)continue;const sy=Math.round(V.oy+gy*V.sc)+.5;px.moveTo(0,sy);px.lineTo(w,sy);}
       px.stroke();px.globalAlpha=1;}}
-  const sb=curB(),ss=curS(),sp=curP(),cc=curC();
+  const sb=curB(),ss=curS(),sp=curP(),cc=curC(),ck=curK();
+  S.parks.forEach(k=>drawPark(k,k===ck));
   S.streets.forEach(st=>drawStreet(st,st===ss));
   S.curbs.forEach(c=>drawCurb(c,c===cc));
   const labels=V.sc>2.2;
@@ -687,6 +735,10 @@ function drawPlan(){
     for(let i=1;i<cc.pts.length;i++){const a=cc.pts[i-1],c=cc.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>60)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2,T.measure);}
     if(S.tool==='edit'){for(let i=1;i<cc.pts.length;i++){const a=cc.pts[i-1],c=cc.pts[i];plusHandle((a[0]+c[0])/2,(a[1]+c[1])/2);}cc.pts.forEach(handle);}
   }
+  if(ck){
+    for(let i=1;i<ck.pts.length;i++){const a=ck.pts[i-1],c=ck.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>60)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2,T.measure);}
+    if(S.tool==='edit'){for(let i=1;i<ck.pts.length;i++){const a=ck.pts[i-1],c=ck.pts[i];plusHandle((a[0]+c[0])/2,(a[1]+c[1])/2);}ck.pts.forEach(handle);}
+  }
   drawGps();
   if(S.img&&S.imgMove){const cs=imgCorners().map(p=>w2s(p[0],p[1]));px.strokeStyle=T.accent;px.lineWidth=2;px.setLineDash([8,5]);px.beginPath();cs.forEach((q,i)=>i?px.lineTo(q[0],q[1]):px.moveTo(q[0],q[1]));px.closePath();px.stroke();px.setLineDash([]);}
   if(S.calib&&S.calib.pts.length){const ps=S.calib.pts.map(p=>w2s(p[0],p[1]));
@@ -702,6 +754,7 @@ function drawPlan(){
     const pts=draft.hover?draft.pts.concat([draft.hover]):draft.pts;
     if(S.tool==='street'&&pts.length>1){px.globalAlpha=.6;drawStreet({pts,width:8,walk:0,curve:6,tex:'r-dash'},false);px.globalAlpha=1;}
     if(S.tool==='curb'&&pts.length>1){px.globalAlpha=.6;drawCurb({pts,width:0.5,curve:3,pattern:S.curbPattern||'red'},false);px.globalAlpha=1;}
+    if(S.tool==='park'&&pts.length>1){px.globalAlpha=.6;drawPark({pts,width:5,stall:2.5,lineW:0.12,off:0,color:'#F2F2F2',edges:true},false);px.globalAlpha=1;}
     px.strokeStyle=T.accent;px.lineWidth=2;pathLine(pts);px.stroke();
     for(let i=1;i<draft.pts.length;i++){const a=draft.pts[i-1],c=draft.pts[i];const [ax,ay]=w2s(a[0],a[1]),[cx,cy]=w2s(c[0],c[1]);if(Math.hypot(cx-ax,cy-ay)>40)pill(`${f2(Math.hypot(c[0]-a[0],c[1]-a[1]))} م`,(ax+cx)/2,(ay+cy)/2-14,T.measure);}
     draft.pts.forEach((p,i)=>{const [sx,sy]=w2s(p[0],p[1]);const ring=S.tool==='poly'?i===0:i===draft.pts.length-1;px.fillStyle=ring?T.surface:T.accent;px.strokeStyle=T.accent;px.lineWidth=2;px.beginPath();px.arc(sx,sy,ring?10:5,0,7);px.fill();px.stroke();});
@@ -712,7 +765,7 @@ function drawPlan(){
 }
 function pointIn(p,x,y){let c=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const [xi,yi]=p[i],[xj,yj]=p[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c;}return c;}
 function bAt(x,y){for(let i=S.buildings.length-1;i>=0;i--)if(pointIn(S.buildings[i].pts,x,y))return S.buildings[i];return null;}
-function propAt(sx,sy){let best=null,bd=1e9;S.props.forEach(p=>{const inf=info(p.kind);const [x,y]=w2s(p.x,p.y);const r=inf?Math.max(Math.max(inf.fw,inf.fd)*(p.h/inf.fh)*V.sc/2,15):15;const d=Math.hypot(x-sx,y-sy);if(d<r&&d<bd){bd=d;best=p;}});return best;}
+function propAt(sx,sy){let best=null,bd=1e9;S.props.forEach(p=>{const inf=info(p.kind);const [x,y]=w2s(p.x,p.y);const r=inf?Math.max(Math.max(inf.fw,inf.fd)*(p.h/inf.fh)*(p.wscale!=null?p.wscale:1)*V.sc/2,15):15;const d=Math.hypot(x-sx,y-sy);if(d<r&&d<bd){bd=d;best=p;}});return best;}
 function hitV(pts,sx,sy){for(let i=0;i<pts.length;i++){const [x,y]=w2s(...pts[i]);if(Math.hypot(x-sx,y-sy)<18)return i;}return -1;}
 function hitMid(pts,closed,sx,sy){const n=pts.length,m=closed?n:n-1;for(let i=0;i<m;i++){const a=pts[i],c=pts[(i+1)%n];const [x,y]=w2s((a[0]+c[0])/2,(a[1]+c[1])/2);if(Math.hypot(x-sx,y-sy)<14)return i;}return -1;}
 function hitEdge(b,sx,sy){const n=b.pts.length;let best=-1,bd=14;for(let i=0;i<n;i++){const a=w2s(...b.pts[i]),c=w2s(...b.pts[(i+1)%n]);const [d]=segDist(sx,sy,a,c);if(d<bd){bd=d;best=i;}}return best;}
@@ -732,12 +785,14 @@ pc.addEventListener('pointerdown',e=>{
   if(S.imgMove&&S.img){G.type='imgmove';G.o=[S.img.x,S.img.y];G.w0=[wx,wy];return;}
   if(S.tool==='rect'){G.type='rect';G.a=[snapV(wx),snapV(wy)];}
   else if(S.tool==='shape'){G.type='shape';G.a=[snapV(wx),snapV(wy)];}
-  else if(S.tool==='poly'||S.tool==='street'||S.tool==='curb'||S.tool==='prop'){G.type='tap';}
-  else{const b=curB(),st=curS(),cc=curC();let i;
+  else if(S.tool==='poly'||S.tool==='street'||S.tool==='curb'||S.tool==='park'||S.tool==='prop'){G.type='tap';}
+  else{const b=curB(),st=curS(),cc=curC(),ck=curK();let i;
     if(st&&(i=hitV(st.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:st,i,list:'s',snap:snapshot()});
     else if(st&&(i=hitMid(st.pts,false,sx,sy))>=0){const sn=snapshot();const a=st.pts[i],c=st.pts[i+1];st.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);Object.assign(G,{type:'vertex',obj:st,i:i+1,list:'s',snap:sn,inserted:true});}
     else if(cc&&(i=hitV(cc.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:cc,i,list:'c',snap:snapshot()});
     else if(cc&&(i=hitMid(cc.pts,false,sx,sy))>=0){const sn=snapshot();const a=cc.pts[i],c=cc.pts[i+1];cc.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);Object.assign(G,{type:'vertex',obj:cc,i:i+1,list:'c',snap:sn,inserted:true});}
+    else if(ck&&(i=hitV(ck.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:ck,i,list:'k',snap:snapshot()});
+    else if(ck&&(i=hitMid(ck.pts,false,sx,sy))>=0){const sn=snapshot();const a=ck.pts[i],c=ck.pts[i+1];ck.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);Object.assign(G,{type:'vertex',obj:ck,i:i+1,list:'k',snap:sn,inserted:true});}
     else if(b&&(i=hitV(b.pts,sx,sy))>=0)Object.assign(G,{type:'vertex',obj:b,i,list:'b',snap:snapshot()});
     else if(b&&(i=hitMid(b.pts,true,sx,sy))>=0){const sn=snapshot();const a=b.pts[i],c=b.pts[(i+1)%b.pts.length];b.pts.splice(i+1,0,[snapV((a[0]+c[0])/2),snapV((a[1]+c[1])/2)]);b.ov={};Object.assign(G,{type:'vertex',obj:b,i:i+1,list:'b',snap:sn,inserted:true});}
     else{const p=propAt(sx,sy);
@@ -745,7 +800,8 @@ pc.addEventListener('pointerdown',e=>{
       else if(b&&(i=hitEdge(b,sx,sy))>=0)Object.assign(G,startMove(b,'b',wx,wy,{edge:i}));
       else{const hb=bAt(wx,wy);if(hb)Object.assign(G,startMove(hb,'b',wx,wy,{edge:-1}));
         else{const hs=streetAt(wx,wy);if(hs)Object.assign(G,startMove(hs,'s',wx,wy));
-          else{const hc=curbAt(wx,wy);if(hc)Object.assign(G,startMove(hc,'c',wx,wy));else G.type='pan';}}}}
+          else{const hc=curbAt(wx,wy);if(hc)Object.assign(G,startMove(hc,'c',wx,wy));
+            else{const hk=parkAt(wx,wy);if(hk)Object.assign(G,startMove(hk,'k',wx,wy));else G.type='pan';}}}}}
   }
 });
 pc.addEventListener('pointermove',e=>{
@@ -801,11 +857,11 @@ pc.addEventListener('pointerleave',()=>{if(draft.hover&&!ptrs.size){draft.hover=
 pc.addEventListener('wheel',e=>{e.preventDefault();const [sx,sy]=local(e);const k=Math.exp(-e.deltaY*0.0015);const sc=clamp(V.sc*k,.05,400);
   const wx=(sx-V.ox)/V.sc,wy=(sy-V.oy)/V.sc;V.sc=sc;V.ox=sx-wx*sc;V.oy=sy-wy*sc;planSoon();},{passive:false});
 function refreshSel(){renderSheet(true);drawPlan();build3D();}
-function selectAt(wx,wy,sx,sy){const p=propAt(sx,sy);if(p)select('p',p.id);else{const b=bAt(wx,wy);if(b)select('b',b.id);else{const st=streetAt(wx,wy);if(st)select('s',st.id);else{const c=curbAt(wx,wy);select(c?'c':null,c&&c.id);}}}refreshSel();}
+function selectAt(wx,wy,sx,sy){const p=propAt(sx,sy);if(p)select('p',p.id);else{const b=bAt(wx,wy);if(b)select('b',b.id);else{const st=streetAt(wx,wy);if(st)select('s',st.id);else{const c=curbAt(wx,wy);if(c)select('c',c.id);else{const k=parkAt(wx,wy);select(k?'k':null,k&&k.id);}}}}refreshSel();}
 function tapDraft(wx,wy,sx,sy){
   const n=draft.pts.length;
   if(S.tool==='poly'&&n>=3){const [fx,fy]=w2s(...draft.pts[0]);if(Math.hypot(fx-sx,fy-sy)<22){finishDraft();return;}}
-  if((S.tool==='street'||S.tool==='curb')&&n>=2){const [lx,ly]=w2s(...draft.pts[n-1]);if(Math.hypot(lx-sx,ly-sy)<22){finishDraft();return;}}
+  if((S.tool==='street'||S.tool==='curb'||S.tool==='park')&&n>=2){const [lx,ly]=w2s(...draft.pts[n-1]);if(Math.hypot(lx-sx,ly-sy)<22){finishDraft();return;}}
   const p=[snapV(wx),snapV(wy)],l=draft.pts[n-1];if(l&&l[0]===p[0]&&l[1]===p[1])return;
   draft.pts.push(p);draft.hover=null;updDraftUI();drawPlan();
 }
@@ -817,9 +873,11 @@ function finishDraft(){
     pushHist();const st=newStreet(draft.pts.map(p=>p.slice()));draft.pts=[];S.streets.push(st);select('s',st.id);updDraftUI();changed();toast(`أُضيف ${st.name} بطول ${f2(polyLen(st.pts))} م`);}
   else if(S.tool==='curb'){if(draft.pts.length<2)return;if(polyLen(draft.pts)<0.5){toast('الرصيف قصير جدًا.');return;}
     pushHist();const c=newCurb(draft.pts.map(p=>p.slice()));draft.pts=[];S.curbs.push(c);select('c',c.id);updDraftUI();changed();toast(`أُضيف ${c.name} بطول ${f2(polyLen(c.pts))} م`);}
+  else if(S.tool==='park'){if(draft.pts.length<2)return;if(polyLen(draft.pts)<1){toast('الموقف قصير جدًا.');return;}
+    pushHist();const k=newPark(draft.pts.map(p=>p.slice()));draft.pts=[];S.parks.push(k);select('k',k.id);updDraftUI();changed();toast(`أُضيف ${k.name} · تحكّم بالخطوط من اللوحة`);}
 }
-function updDraftUI(){const c=$('#closeDraft');const show=(S.tool==='poly'&&draft.pts.length>=3)||((S.tool==='street'||S.tool==='curb')&&draft.pts.length>=2);
-  c.hidden=!show;c.textContent=S.tool==='street'?'إنهاء الشارع':(S.tool==='curb'?'إنهاء الرصيف':'إغلاق الشكل');updUndo();setHint();}
+function updDraftUI(){const c=$('#closeDraft');const show=(S.tool==='poly'&&draft.pts.length>=3)||((S.tool==='street'||S.tool==='curb'||S.tool==='park')&&draft.pts.length>=2);
+  c.hidden=!show;c.textContent=S.tool==='street'?'إنهاء الشارع':(S.tool==='curb'?'إنهاء الرصيف':(S.tool==='park'?'إنهاء الموقف':'إغلاق الشكل'));updUndo();setHint();}
 function placeProp(x,y,extra){
   const kind=S.propKind;if(!info(kind)){toast('اختر مجسّمًا من المكتبة أولًا.');return;}
   pushHist();const opt=Object.assign({},extra||{});
@@ -1013,7 +1071,7 @@ function convertVM(want){
   pushHist(snap);select(null);changed();groundSoon(true);
   toast(want==='buildings'?`صار ${nb} مبنى ثلاثي الأبعاد · الطوابق تقديرية إن لم تكن مسجّلة`:`صار ${ns} شارعًا قابلًا للتعديل`);
 }
-function dropDemo(){if(!S.demo)return false;S.buildings=[];S.streets=[];S.props=[];S.curbs=[];S.demo=false;hist=[];return true;}
+function dropDemo(){if(!S.demo)return false;S.buildings=[];S.streets=[];S.props=[];S.curbs=[];S.parks=[];S.demo=false;hist=[];return true;}
 function placeImage(img,name,url){const dd=dropDemo();
   IMG.el=img;IMG.name=name;const W=pc.clientWidth||300,H=pc.clientHeight||300;
   const [cx,cy]=s2w(W/2,H/2);const fit=Math.min(W/V.sc,(H/V.sc)*img.naturalWidth/img.naturalHeight)*.9;
@@ -1028,8 +1086,9 @@ function moveAllHere(){const b=contentBounds();if(!b)return;const [cx,cy]=s2w(pc
   const dx=+(cx-(b.x0+b.x1)/2).toFixed(2),dy=+(cy-(b.y0+b.y1)/2).toFixed(2);pushHist();
   S.buildings.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));S.streets.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));
   S.curbs.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));
+  S.parks.forEach(o=>o.pts=o.pts.map(p=>[+(p[0]+dx).toFixed(2),+(p[1]+dy).toFixed(2)]));
   S.props.forEach(p=>{p.x=+(p.x+dx).toFixed(2);p.y=+(p.y+dy).toFixed(2);});changed();groundSoon(true);toast('نُقل المشروع إلى وسط الشاشة');}
-function clearAll(){if(isEmpty())return;pushHist();S.buildings=[];S.streets=[];S.props=[];S.curbs=[];select(null);changed();toast('أُفرغ المشروع · اضغط تراجع لاسترجاعه');}
+function clearAll(){if(isEmpty())return;pushHist();S.buildings=[];S.streets=[];S.props=[];S.curbs=[];S.parks=[];select(null);changed();toast('أُفرغ المشروع · اضغط تراجع لاسترجاعه');}
 /* ---------- palette ---------- */
 function renderPalette(){
   const el=$('#palette');
@@ -1058,13 +1117,14 @@ function setHint(){
   if(S.tool==='poly')return hint(draft.pts.length>=3?'انقر النقطة الأولى أو «إغلاق الشكل» لإنهاء المبنى':'انقر لإضافة كل زاوية من زوايا المبنى');
   if(S.tool==='street')return hint(draft.pts.length>=2?'انقر النقطة الأخيرة مرة ثانية أو «إنهاء الشارع»':'انقر بداية الشارع ثم كل منعطف فيه');
   if(S.tool==='curb')return hint(draft.pts.length>=2?'انقر النقطة الأخيرة مرة ثانية أو «إنهاء الرصيف»':'انقر بداية الرصيف ثم كل منعطف · غيّر اللون من اللوحة');
+  if(S.tool==='park')return hint(draft.pts.length>=2?'انقر النقطة الأخيرة مرة ثانية أو «إنهاء الموقف»':'ارسم محور الموقف (خطًّا على طوله) · تحكّم بالخطوط من اللوحة');
   if(S.tool==='prop')return hint(`انقر على الخريطة لوضع ${pn} · اسحب لتحريك العرض`);
   hint('اسحب أي عنصر لتحريكه · اسحب الزوايا أو ⊕ لتعديل الشكل');
 }
 function setTool(t){
   S.tool=t;document.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.tool===t));
   $('#propMode3d').setAttribute('aria-pressed',t==='prop');$('#propMode3d').classList.toggle('primary',t==='prop');
-  if(t!=='poly'&&t!=='street'&&t!=='curb'){draft.pts=[];draft.hover=null;}else if(draft.pts.length&&draft.kind!==t)draft.pts=[];draft.kind=t;
+  if(t!=='poly'&&t!=='street'&&t!=='curb'&&t!=='park'){draft.pts=[];draft.hover=null;}else if(draft.pts.length&&draft.kind!==t)draft.pts=[];draft.kind=t;
   draft.poly=null;draft.rect=null;
   const pal=t==='prop'||t==='shape';$('#palette').hidden=!pal;$('#stage').classList.toggle('has-palette',pal);if(pal)renderPalette();
   updDraftUI();drawPlan();
@@ -1196,6 +1256,23 @@ function build3DNow(){
     if(S.sel&&S.sel.id===c.id){const lp=[];rp.forEach(p=>lp.push(p[0],H+.05,p[1]));const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
       const ln=own(new THREE.Line(lg,new THREE.LineDashedMaterial({color:accent,dashSize:1.5,gapSize:1})));ln.computeLineDistances();g.add(ln);}
   });
+  /* المواقف: سطح إسفلتي مع خطوط بيضاء يتحكّم المستخدم بعرضها وتباعدها وسُمكها */
+  S.parks.forEach(pk=>{
+    if(pk.pts.length<2)return;const rp=pk.pts,hw=pk.width/2;
+    const A=offsets(rp,hw),B=offsets(rp,-hw);
+    const sl=[0];for(let i=1;i<rp.length;i++)sl.push(sl[i-1]+Math.hypot(rp[i][0]-rp[i-1][0],rp[i][1]-rp[i-1][1]));
+    const base=own(new THREE.Mesh(ribbonGeo(A,B,.1,(i,side)=>[sl[i]/4,side?0:1]),matFor('r-none',0x46494b,.95)));
+    base.receiveShadow=true;base.userData.pick={t:'k',id:pk.id};g.add(base);
+    const lw=Math.max(.04,pk.lineW||.12),y=.108,pos=[],idx=[];let vc=0;
+    const quad=(p1,p2)=>{let dx=p2[0]-p1[0],dy=p2[1]-p1[1];const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;const nx=-dy*lw/2,ny=dx*lw/2;
+      pos.push(p1[0]+nx,y,p1[1]+ny,p2[0]+nx,y,p2[1]+ny,p2[0]-nx,y,p2[1]-ny,p1[0]-nx,y,p1[1]-ny);idx.push(vc,vc+1,vc+2,vc,vc+2,vc+3);vc+=4;};
+    if(pk.edges!==false){for(let i=1;i<A.length;i++)quad(A[i-1],A[i]);for(let i=1;i<B.length;i++)quad(B[i-1],B[i]);}
+    parkTicks(rp,hw,pk.stall,pk.off).forEach(([a,b])=>quad(a,b));
+    if(pos.length){const mg=new THREE.BufferGeometry();mg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));mg.setIndex(idx);mg.computeVertexNormals();
+      const wm=own(new THREE.Mesh(mg,new THREE.MeshBasicMaterial({color:new THREE.Color(pk.color||'#F2F2F2')})));wm.userData.pick={t:'k',id:pk.id};g.add(wm);}
+    if(S.sel&&S.sel.id===pk.id){const lp=[];rp.forEach(p=>lp.push(p[0],.16,p[1]));const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
+      const ln=own(new THREE.Line(lg,new THREE.LineDashedMaterial({color:accent,dashSize:1.5,gapSize:1})));ln.computeLineDistances();g.add(ln);}
+  });
   const many=S.buildings.length>120;
   S.buildings.forEach(b=>{
     const pts=b.pts,n=pts.length;if(n<3)return;const H=heightOf(b),P=perim(pts);let s0=0;
@@ -1221,13 +1298,20 @@ function build3DNow(){
     const lp=[];for(let i=0;i<n;i++){const a=pts[i],c=pts[(i+1)%n];lp.push(a[0],H+.01,a[1],c[0],H+.01,c[1],a[0],0,a[1],a[0],H+.01,a[1]);}
     const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(lp,3));
     g.add(own(new THREE.LineSegments(lg,new THREE.LineBasicMaterial({color:edgeCol,transparent:true,opacity:.3}))));
+    if(S.sel&&S.sel.id===b.id&&S.floorSel!=null&&S.floorSel<b.floors){
+      const y0=b.floorH*S.floorSel,y1=b.floorH*(S.floorSel+1);
+      const hm=new THREE.MeshStandardMaterial({color:accent,transparent:true,opacity:.4,emissive:accent,emissiveIntensity:.55,side:THREE.DoubleSide,depthWrite:false});hm.userData.cloned=false;
+      for(let i=0;i<n;i++){const a=pts[i],c=pts[(i+1)%n];const gb=new THREE.BufferGeometry();
+        gb.setAttribute('position',new THREE.Float32BufferAttribute([a[0],y0,a[1],c[0],y0,c[1],c[0],y1,c[1],a[0],y1,a[1]],3));gb.setIndex([0,1,2,0,2,3]);gb.computeVertexNormals();
+        const hmm=own(new THREE.Mesh(gb,hm));g.add(hmm);}
+    }
   });
   S.props.forEach(p=>{
     const inf=info(p.kind);if(!inf)return;const tpl=inf.model?inf.model.obj:TPL[p.kind];if(!tpl)return;
     const o=tpl.clone(true);
     if(p.color)o.traverse(c=>{if(c.isMesh&&c.material&&c.material.userData.paint){c.material=c.material.clone();c.material.userData.cloned=true;c.material.color.set(p.color);}});
-    const s=p.h/inf.fh;const y=(p.z||0)+groundY(p.x,p.y);o.scale.setScalar(s);o.position.set(p.x,y,p.y);o.rotation.y=p.rot*Math.PI/180;o.userData.pick={t:'p',id:p.id};g.add(o);
-    if(S.sel&&S.sel.id===p.id){const r=Math.max(inf.fw,inf.fd)*s/2+.4;const ring=own(new THREE.Mesh(new THREE.RingGeometry(r,r+.18,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:accent,side:THREE.DoubleSide})));ring.position.set(p.x,y+.03,p.y);g.add(ring);}
+    const wx=p.wscale!=null?p.wscale:1,s=p.h/inf.fh;const y=(p.z||0)+groundY(p.x,p.y);o.scale.set(s*wx,s,s*wx);o.position.set(p.x,y,p.y);o.rotation.y=p.rot*Math.PI/180;o.userData.pick={t:'p',id:p.id};g.add(o);
+    if(S.sel&&S.sel.id===p.id){const r=Math.max(inf.fw,inf.fd)*s*wx/2+.4;const ring=own(new THREE.Mesh(new THREE.RingGeometry(r,r+.18,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:accent,side:THREE.DoubleSide})));ring.position.set(p.x,y+.03,p.y);g.add(ring);}
   });
   if(gps){const [x,y]=ll2l(gps.lat,gps.lon);const pin=own(new THREE.Mesh(new THREE.ConeGeometry(.9,2.6,16).rotateX(Math.PI),new THREE.MeshStandardMaterial({color:new THREE.Color(T.gps),emissive:new THREE.Color(T.gps),emissiveIntensity:.3})));
     pin.position.set(x,2.2,y);g.add(pin);const dot=own(new THREE.Mesh(new THREE.CircleGeometry(Math.max(1.5,Math.min(gps.acc,40)),32).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:new THREE.Color(T.gps),transparent:true,opacity:.18})));dot.position.set(x,.15,y);g.add(dot);}
@@ -1274,7 +1358,7 @@ $('#fit3d').addEventListener('click',frame);
 $('#snapBtn').addEventListener('click',e=>{S.snap=!S.snap;e.currentTarget.setAttribute('aria-pressed',S.snap);toast(S.snap?'الالتصاق مفعّل: كل نقطة تقفز لأقرب نصف متر':'الالتصاق متوقف: دقة سنتيمتر');});
 document.querySelectorAll('.undo').forEach(b=>b.addEventListener('click',()=>{
   if(S.view==='plan'&&draft.pts.length){draft.pts.pop();updDraftUI();drawPlan();return;}
-  const s=hist.pop();if(!s)return;const o=JSON.parse(s);S.buildings=o.b;S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.sel=o.sel;if(o.geo)S.geo=o.geo;S.wallSel=null;changed();groundSoon(true);toast('تم التراجع');}));
+  const s=hist.pop();if(!s)return;const o=JSON.parse(s);S.buildings=o.b;S.streets=o.s||[];S.props=o.p||[];S.curbs=o.c||[];S.parks=o.k||[];S.sel=o.sel;if(o.geo)S.geo=o.geo;S.wallSel=null;S.floorSel=null;changed();groundSoon(true);toast('تم التراجع');}));
 
 function changed(){renderSheet(true);drawPlan();build3D();save();updUndo();setHint();}
 /* ---------- sheet ---------- */
@@ -1293,7 +1377,7 @@ function swatches(target,current){
 }
 function slider(k,label,val,min,max,step,fmt){return `<div class="slider"><label for="r-${k}">${label}</label><input id="r-${k}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}"><output id="o-${k}" class="num">${fmt(val)}</output></div>`;}
 const pct=v=>Math.round(v*100)+'%',deg=v=>Math.round(v)+'°';
-const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct,curve:v=>f2(v)+' م'};
+const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct,curve:v=>f2(v)+' م',wscale:v=>Math.round(v*100)+'%'};
 function numField(id,label,k,val,min,max,step){return `<div class="field"><label for="i-${id}">${label}</label><span class="unit"><input id="i-${id}" type="number" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}">م</span></div>`;}
 function chips(){
   const all=[...S.buildings.map(o=>['b',o]),...S.streets.map(o=>['s',o])];if(all.length<2||all.length>14)return '';
@@ -1338,15 +1422,16 @@ function mapSection(){
     <p class="note">يجلب المباني والشوارع المسجّلة في OpenStreetMap ضمن المنطقة الظاهرة على الشاشة مباشرة. كبّر الخريطة على الحي أولًا.</p>
     <div class="row"><button class="btn" data-act="osm" ${importing?'disabled':''}>${importing?'جارٍ الجلب…':'استيراد المباني والشوارع'}</button><button class="btn" data-act="osm-b" ${importing?'disabled':''}>المباني فقط</button></div></div>`;
   h+=`<div class="sec" data-sec="proj"><h3>المشروع</h3>
-    <p class="note"><b class="num">${n}</b> مبنى · <b class="num">${ns}</b> شارع · <b class="num">${S.curbs.length}</b> رصيف · <b class="num">${np}</b> مجسّم</p>
+    <p class="note"><b class="num">${n}</b> مبنى · <b class="num">${ns}</b> شارع · <b class="num">${S.curbs.length}</b> رصيف · <b class="num">${S.parks.length}</b> موقف · <b class="num">${np}</b> مجسّم</p>
     ${isEmpty()?'':`<div class="row"><button class="btn" data-act="moveall">انقل كل العناصر إلى وسط الشاشة</button><button class="btn danger" data-act="clear">إفراغ المشروع</button></div>`}</div>`;
   return h;
 }
 function renderSheet(keepScroll){
-  const top=sbody.scrollTop,b=curB(),st=curS(),p=curP(),cu=curC();
-  $('#delB').hidden=!(b||st||p||cu);
+  const top=sbody.scrollTop,b=curB(),st=curS(),p=curP(),cu=curC(),pk=curK();
+  $('#delB').hidden=!(b||st||p||cu||pk);
   if(st)return renderStreet(st,keepScroll,top);
   if(cu)return renderCurb(cu,keepScroll,top);
+  if(pk)return renderPark(pk,keepScroll,top);
   if(p)return renderProp(p,keepScroll,top);
   if(!b){$('#sTitle').textContent=isEmpty()?'ابدأ على الخريطة':'المشروع والخريطة';$('#sMeta').textContent='';
     sbody.innerHTML=chips()+(isEmpty()?`<div class="empty"><h4>خطّط مكانك الحقيقي</h4><ol>
@@ -1380,7 +1465,24 @@ function renderSheet(keepScroll){
   h+=`<div class="sec" data-sec="roof"><h3>السطح</h3>${swatches('roof',r.tex)}
     <div class="seg" role="group" aria-label="طريقة توزيع صورة السطح"><button data-rmode="tile" aria-pressed="${r.mode==='tile'}">بالمتر</button><button data-rmode="fit" aria-pressed="${r.mode==='fit'}">ملء السطح</button></div>
     ${r.mode==='tile'?numField('rW','عرض الصورة على الواقع','roof.tileW',r.tileW,0.1,200,0.05):'<p class="note">تُشدّ الصورة على أبعاد السطح الخارجية، والشمال أعلى الصورة. مناسبة لصورة جوية للسطح.</p>'}</div>`;
+  h+=infoSection(b);
   sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;
+}
+function infoImgsHTML(imgs,scope){if(!imgs||!imgs.length)return '';
+  return `<div class="infoimgs">`+imgs.map((src,i)=>`<div class="ii"><img src="${src}" alt=""><button class="iidel" data-imgdel="${scope}:${i}" aria-label="حذف الصورة">✕</button></div>`).join('')+`</div>`;}
+function infoSection(b){
+  const inf=b.info||{},hasB=!!(inf.text||(inf.imgs&&inf.imgs.length));
+  let h=`<div class="sec" data-sec="info"><h3>بيانات المبنى للعرض</h3>
+    <textarea class="ta" data-info="b-text" rows="3" placeholder="وصف المبنى واستخدامه وأي ملاحظات تُعرض عنه…">${esc(inf.text||'')}</textarea>
+    ${infoImgsHTML(inf.imgs,'b')}
+    <div class="row"><button class="btn" data-infoadd="b">＋ صور للمبنى</button>${hasB?`<button class="btn primary" data-act="showcard">عرض البطاقة</button>`:''}</div></div>`;
+  h+=`<div class="sec" data-sec="floordata"><h3>بيانات الطوابق</h3>
+    <p class="note">اختر طابقًا فيتحدّد مكانه بإضاءة في «مجسّم 3D»، ثم أضف له معلومات وصورًا.</p><div class="walls">`;
+  for(let i=b.floors-1;i>=0;i--){const fi=(inf.floors&&inf.floors[i])||{},has=!!(fi.text||(fi.imgs&&fi.imgs.length));
+    h+=`<button class="wrow" data-floor="${i}" aria-pressed="${S.floorSel===i}"><i class="flo">${i+1}</i><span>الطابق ${i+1}<small>${has?'به بيانات':'—'}</small></span>${S.floorSel===i?'<span class="tag">محدَّد</span>':(has?'<span class="tag">✓</span>':'<span></span>')}</button>`;
+    if(S.floorSel===i)h+=`<div class="wpanel"><textarea class="ta" data-info="f-text" rows="2" placeholder="معلومات الطابق ${i+1}…">${esc(fi.text||'')}</textarea>${infoImgsHTML(fi.imgs,'f')}<div class="row"><button class="btn" data-infoadd="f">＋ صور للطابق</button>${has?`<button class="btn primary" data-act="showcard">عرض البطاقة</button>`:''}</div></div>`;}
+  h+=`</div></div>`;
+  return h;
 }
 function renderStreet(st,keepScroll,top){
   const L=polyLen(st.pts),userRoad=TEX[st.tex]&&TEX[st.tex].user;
@@ -1406,12 +1508,32 @@ function renderCurb(c,keepScroll,top){
   h+=`</div></div>`;
   sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;
 }
+function renderPark(c,keepScroll,top){
+  const L=polyLen(c.pts),n=Math.max(0,Math.floor((L-(c.off||0))/Math.max(.5,c.stall))+1);
+  $('#sTitle').textContent=c.name;$('#sMeta').innerHTML=`طول <span class="num">${f2(L)}</span> م · عرض <span class="num">${f2(c.width)}</span> م`;
+  let h=`<div class="sec" data-sec="kdims"><h3>مقاس الموقف</h3>
+    ${numField('kw','عرض الموقف (عمق المكان)','width',c.width,2,60,0.1)}
+    <p class="note">في «تعديل» اسحب نقاط المحور أو ⊕ لتغيير مساره وطوله.</p></div>`;
+  h+=`<div class="sec" data-sec="klines"><h3>خطوط الوقوف البيضاء</h3>
+    ${numField('ks','المسافة بين خطّين (عرض المكان)','stall',c.stall,0.5,20,0.1)}
+    ${numField('klw','سُمك الخط','lineW',c.lineW,0.02,1,0.01)}
+    ${numField('koff','إزاحة أول خط عن البداية','off',+(c.off||0).toFixed(2),0,200,0.1)}
+    <label class="chk"><input type="checkbox" data-k="edges" ${c.edges!==false?'checked':''}>رسم خطّي الحدّ على جانبَي الموقف</label>
+    <p class="note">عدد الأماكن تقريبًا <b class="num">${n}</b> · الخطوط عموديّة على المحور كل <b class="num">${f2(c.stall)}</b> م.</p></div>`;
+  h+=`<div class="sec" data-sec="kcol"><h3>لون الخطوط</h3><div class="colors">`+
+    [['#F2F2F2','أبيض'],['#E6C200','أصفر'],['#3B82F6','أزرق']].map(([col])=>`<button class="cl ${(c.color||'#F2F2F2').toLowerCase()===col.toLowerCase()?'on':''}" data-pcolor="${col}" style="background:${col}" aria-label="لون ${col}"></button>`).join('')+`</div></div>`;
+  sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;
+}
 function renderProp(p,keepScroll,top){
   const inf=info(p.kind);const s=inf?p.h/inf.fh:1;
   $('#sTitle').textContent=inf?inf.n:'مجسّم غير متوفر';$('#sMeta').innerHTML=inf?`قاعدة <span class="num">${f2(inf.fw*s)} × ${f2(inf.fd*s)}</span> م`:'';
-  let h=`<div class="sec" data-sec="pose"><h3>الوضعية</h3>${slider('rot','الاتجاه',p.rot,-180,180,1,deg)}
+  let h=`<div class="sec" data-sec="size"><h3>الحجم</h3>
+    ${numField('ph','الارتفاع الحقيقي','h',p.h,0.05,1000,0.05)}
+    <div class="row"><button class="btn" data-act="size-">أصغر ×0.8</button><button class="btn" data-act="size+">أكبر ×1.25</button></div>
+    ${slider('wscale','التمدّد الأفقي (العرض والعمق)',p.wscale!=null?p.wscale:1,0.3,4,0.05,FMT.wscale)}
+    <p class="note">الارتفاع يكبّر المجسّم كاملاً بالتناسب، و«التمدّد الأفقي» يوسّع القاعدة أو يضيّقها دون تغيير الارتفاع. يعمل على أي مجسّم تضيفه أو تستورده.</p></div>
+    <div class="sec" data-sec="pose"><h3>الاتجاه</h3>${slider('rot','الاتجاه',p.rot,-180,180,1,deg)}
     <div class="row"><button class="btn" data-act="rot-">تدوير −90°</button><button class="btn" data-act="rot+">تدوير +90°</button></div>
-    ${numField('ph','الارتفاع الحقيقي','h',p.h,0.05,300,0.05)}
     <p class="note">اسحبه في «تعديل» لتغيير مكانه.</p></div>`;
   h+=`<div class="sec" data-sec="place"><h3>الموضع والمنسوب (تحكّم دقيق)</h3>
     ${numField('px','الإحداثي س (شرق)','x',+(p.x).toFixed(2),-1000000,1000000,0.1)}
@@ -1434,15 +1556,19 @@ function wallPanel(b,i){
     ${swatches('ov',ov&&ov.tex)}
     ${ov?`<label class="chk"><input type="checkbox" data-k="ovfit" ${ov.fit?'checked':''}>شدّ الصورة على الجدار كاملًا بدقة (من الزاوية للزاوية ومن الأرض للسطح)</label>${fitInfo}`:''}</div>`;
 }
-function selObj(){return curB()||curS()||curP()||curC();}
+function selObj(){return curB()||curS()||curP()||curC()||curK();}
 function setPath(o,k,v){const p=k.split('.');while(p.length>1)o=o[p.shift()];o[p[0]]=v;}
 function getPath(o,k){return k.split('.').reduce((a,p)=>a[p],o);}
-const ZERO_OK={walk:1};
+const ZERO_OK={walk:1,off:1};
 const FREE={x:1,y:1,z:1};
 let pendingSnap=null;
-sbody.addEventListener('focusin',e=>{if(e.target.matches('input'))pendingSnap=snapshot();});
-sbody.addEventListener('pointerdown',e=>{if(e.target.matches('input'))pendingSnap=snapshot();});
-sbody.addEventListener('input',e=>{const el=e.target,g=el.dataset.g;
+sbody.addEventListener('focusin',e=>{if(e.target.matches('input,textarea'))pendingSnap=snapshot();});
+sbody.addEventListener('pointerdown',e=>{if(e.target.matches('input,textarea'))pendingSnap=snapshot();});
+sbody.addEventListener('input',e=>{const el=e.target;
+  if(el.dataset.info){const b=curB();if(!b)return;const v=el.value;
+    if(el.dataset.info==='b-text')bInfo(b).text=v;else if(el.dataset.info==='f-text'&&S.floorSel!=null)floorInfo(b,S.floorSel).text=v;
+    save();return;}
+  const g=el.dataset.g;
   if(g){const v=el.type==='checkbox'?el.checked:+el.value;
     if(g==='calibReal'){if(S.calib)S.calib.real=v;return;}
     if(g==='img.w'){if(!(v>0)||!S.img)return;S.img.w=v;}
@@ -1460,7 +1586,9 @@ sbody.addEventListener('input',e=>{const el=e.target,g=el.dataset.g;
     if(k==='floorH'){const t=$('#totH');if(t)t.textContent=f2(heightOf(o));}
     if(k==='wall.tileW'){const t=$('#tileH'),wt=TEX[o.wall.tex];if(t&&!o.wall.perFloor&&wt)t.textContent=f2(v*wt.h/wt.w);}
     planSoon();build3D();}});
-sbody.addEventListener('change',e=>{const el=e.target;if(el.dataset.g){if(el.type==='checkbox'||el.dataset.g==='img.w')renderSheet(true);return;}const k=el.dataset.k;if(!k||k==='mapOpacity')return;const o=selObj();if(!o)return;
+sbody.addEventListener('change',e=>{const el=e.target;
+  if(el.dataset.info){if(pendingSnap&&pendingSnap!==snapshot())pushHist(pendingSnap);pendingSnap=null;renderSheet(true);save();return;}
+  if(el.dataset.g){if(el.type==='checkbox'||el.dataset.g==='img.w')renderSheet(true);return;}const k=el.dataset.k;if(!k||k==='mapOpacity')return;const o=selObj();if(!o)return;
   if(el.type==='checkbox'){pushHist(pendingSnap||snapshot());if(k==='ovfit'){const ov=o.ov[S.wallSel];if(ov)ov.fit=el.checked;}else setPath(o,k,el.checked);pendingSnap=null;changed();return;}
   if(pendingSnap&&pendingSnap!==snapshot())pushHist(pendingSnap);pendingSnap=snapshot();
   if(el.type==='number'){const v=parseFloat(el.value);if(!(FREE[k]?Number.isFinite(v):(v>0||(ZERO_OK[k]&&v===0))))el.value=getPath(o,k);}
@@ -1489,6 +1617,11 @@ sbody.addEventListener('click',e=>{
   if(a==='clear'){clearAll();return;}
   const o=selObj();if(!o)return;
   if(t.dataset.curbpat){pushHist();o.pattern=t.dataset.curbpat;S.curbPattern=o.pattern;changed();return;}
+  if(t.dataset.pcolor){pushHist();o.color=t.dataset.pcolor;changed();return;}
+  if(t.dataset.floor!=null){const i=+t.dataset.floor;S.floorSel=S.floorSel===i?null:i;renderSheet(true);drawPlan();build3D();return;}
+  if(t.dataset.infoadd){infoAddScope=t.dataset.infoadd;$('#infoImgIn').click();return;}
+  if(t.dataset.imgdel){const parts=t.dataset.imgdel.split(':');delInfoImg(parts[0],+parts[1]);return;}
+  if(a==='showcard'){showInfoCard();return;}
   if(t.dataset.import){importTarget=t.dataset.import;$('#fileIn').click();return;}
   if(t.dataset.sw){assignTex(t.dataset.sw,t.dataset.id);return;}
   if(t.dataset.mode){pushHist();o.wall.mode=t.dataset.mode;changed();return;}
@@ -1499,13 +1632,15 @@ sbody.addEventListener('click',e=>{
   else if(a==='resetOff'){pushHist();o.wall.offU=0;o.wall.offV=0;changed();}
   else if(a==='matchH'){const i=S.wallSel,ov=o.ov[i],tx=TEX[(ov&&ov.tex)||o.wall.tex];if(!tx)return;pushHist();o.floorH=+(edgeLen(o,i)*tx.h/tx.w/o.floors).toFixed(3);changed();toast(`ارتفاع المبنى الآن ${f2(heightOf(o))} م ويطابق الصورة`);}
   else if(a==='rot-'||a==='rot+'){pushHist();let r=o.rot+(a==='rot+'?90:-90);if(r>180)r-=360;if(r<-180)r+=360;o.rot=r;changed();}
+  else if(a==='size+'||a==='size-'){pushHist();o.h=clamp(+(o.h*(a==='size+'?1.25:0.8)).toFixed(3),0.05,1000);changed();}
   else if(a==='dup'){pushHist();const inf=info(o.kind)||{fw:2,fh:o.h};const c=Object.assign({},o,{id:uid(),x:+(o.x+Math.max(1,inf.fw*o.h/inf.fh+.5)).toFixed(2)});S.props.push(c);select('p',c.id);changed();toast('أُضيفت نسخة');}
 });
 $('#delB').addEventListener('click',()=>{
-  const b=curB(),st=curS(),p=curP(),cu=curC();pushHist();
+  const b=curB(),st=curS(),p=curP(),cu=curC(),pk=curK();pushHist();
   if(b){S.buildings=S.buildings.filter(x=>x!==b);toast(`حُذف ${b.name} · اضغط تراجع لاسترجاعه`);}
   else if(st){S.streets=S.streets.filter(x=>x!==st);toast(`حُذف ${st.name} · اضغط تراجع لاسترجاعه`);}
   else if(cu){S.curbs=S.curbs.filter(x=>x!==cu);toast(`حُذف ${cu.name} · اضغط تراجع لاسترجاعه`);}
+  else if(pk){S.parks=S.parks.filter(x=>x!==pk);toast(`حُذف ${pk.name} · اضغط تراجع لاسترجاعه`);}
   else if(p){S.props=S.props.filter(x=>x!==p);toast('حُذف المجسّم · اضغط تراجع لاسترجاعه');}
   select(null);changed();});
 
@@ -1555,6 +1690,35 @@ modelIn.addEventListener('change',()=>{const f=modelIn.files&&modelIn.files[0];m
     S.propKind='m:'+id;renderPalette();setHint();
     const big=m.h>200||m.h<0.05;toast(big?`أُضيف «${name}». مقاسه غير مألوف، فاكتب ارتفاعه الحقيقي بعد وضعه`:`أُضيف «${name}» · انقر مكانه لوضعه`);
   })).catch(()=>toast('تعذّر فتح الملف. إذا كان DAE/GLTF بملفاتٍ وصورٍ منفصلة، صدّره كملف GLB واحد.'));});
+
+/* ---------- بيانات المباني والطوابق للعرض (نصوص وصور) ---------- */
+let infoAddScope=null;
+function bInfo(b){if(!b.info)b.info={};return b.info;}
+function floorInfo(b,i){const inf=bInfo(b);if(!inf.floors)inf.floors={};if(!inf.floors[i])inf.floors[i]={};return inf.floors[i];}
+function delInfoImg(scope,ix){const b=curB();if(!b)return;pushHist();
+  if(scope==='b'){if(b.info&&b.info.imgs)b.info.imgs.splice(ix,1);}
+  else if(scope==='f'&&S.floorSel!=null){const fi=b.info&&b.info.floors&&b.info.floors[S.floorSel];if(fi&&fi.imgs)fi.imgs.splice(ix,1);}
+  changed();toast('حُذفت الصورة');}
+$('#infoImgIn').addEventListener('change',e=>{const files=[...(e.target.files||[])];e.target.value='';const scope=infoAddScope;infoAddScope=null;
+  if(!files.length||!scope)return;const b=curB();if(!b)return;if(scope==='f'&&S.floorSel==null)return;
+  pushHist();let pending=files.length,added=0;
+  files.forEach(f=>{const url=URL.createObjectURL(f),img=new Image();
+    img.onload=()=>{URL.revokeObjectURL(url);const s=Math.min(1,1280/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.round(img.naturalWidth*s),h=Math.round(img.naturalHeight*s);
+      const c=mkCanvas(w,h);c.getContext('2d').drawImage(img,0,0,w,h);const durl=c.toDataURL('image/jpeg',.82);
+      const tgt=scope==='b'?bInfo(b):floorInfo(b,S.floorSel);if(!tgt.imgs)tgt.imgs=[];tgt.imgs.push(durl);added++;
+      if(!--pending){changed();toast(added===1?'أُضيفت صورة':`أُضيفت ${added} صور`);}};
+    img.onerror=()=>{URL.revokeObjectURL(url);if(!--pending)changed();};img.src=url;});});
+function showInfoCard(){const b=curB();if(!b)return;const inf=b.info||{};
+  $('#cardTitle').textContent=b.name;
+  const block=(text,imgs)=>{let s='';if(text)s+=`<p>${esc(text)}</p>`;if(imgs&&imgs.length)s+=`<div class="cg">`+imgs.map(src=>`<img src="${src}" alt="">`).join('')+`</div>`;return s;};
+  let h=block(inf.text,inf.imgs)||`<p class="cempty">لا توجد بيانات عامة للمبنى بعد.</p>`;
+  const floors=inf.floors||{},keys=Object.keys(floors).map(Number).filter(i=>floors[i]&&(floors[i].text||(floors[i].imgs&&floors[i].imgs.length))).sort((a,b)=>b-a);
+  keys.forEach(i=>{h+=`<div class="cflo"><h4>الطابق ${i+1}</h4>${block(floors[i].text,floors[i].imgs)||'<p class="cempty">—</p>'}</div>`;});
+  $('#cardBody').innerHTML=h;$('#infoCard').hidden=false;}
+function hideInfoCard(){$('#infoCard').hidden=true;}
+$('#cardClose').addEventListener('click',hideInfoCard);
+$('#infoCard').addEventListener('click',e=>{if(e.target.id==='infoCard')hideInfoCard();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#infoCard').hidden)hideInfoCard();});
 
 /* ---------- theme + boot ---------- */
 function onTheme(){readTokens();drawPlan();if(R){themeScene();build3D();}}
