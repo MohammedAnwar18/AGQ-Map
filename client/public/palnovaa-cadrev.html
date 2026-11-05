@@ -184,6 +184,13 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
 .card .cflo{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:10px}
 .card h4{margin:0;font:600 14px var(--f-body);color:var(--accent)}
 .card .cempty{color:var(--muted);font-size:13px}
+.card .field{flex-direction:column;align-items:stretch;gap:6px;min-height:0}
+.card .field label{color:var(--muted);font-size:12px}
+.card input[type=text],.card input[type=password]{width:100%;height:40px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);font:500 15px var(--f-body);padding:0 12px;text-align:start}
+.card input[readonly]{direction:ltr;font-family:var(--f-num);font-size:12px}
+.card .brandlg{font:600 24px/1 var(--f-display);color:var(--accent);text-align:center}
+.ro #planTools,.ro #threeTools,.ro #palette,.ro #delB,.ro #btnMapPanel,.ro #btnSearch,.ro #btnGps{display:none!important}
+.robadge{position:absolute;top:10px;inset-inline-start:10px;z-index:6;background:var(--veil);border:1px solid var(--accent);color:var(--accent);font:600 11px var(--f-body);padding:5px 10px;border-radius:999px;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <div id="app" dir="rtl">
@@ -268,6 +275,24 @@ input[type=range]{accent-color:var(--accent);flex:1;min-width:110px}
     <div class="cb" id="cardBody"></div>
   </div>
 </div>
+<div class="cardback" id="pubModal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="pubTitle" style="max-width:460px">
+    <div class="ch"><h3 id="pubTitle">نشر المشروع</h3><button class="cx" id="pubX" aria-label="إغلاق">✕</button></div>
+    <div class="cb" id="pubBody"></div>
+  </div>
+</div>
+<div class="cardback" id="loginCard" hidden>
+  <div class="card" role="dialog" aria-modal="true" style="max-width:420px">
+    <div class="cb" style="gap:18px">
+      <div class="brandlg">PalNovaa CadRev</div>
+      <div id="loginName" style="font:600 18px/1.3 var(--f-body);text-align:center"></div>
+      <div class="field"><label for="loginPass">كلمة مرور المشروع</label><input id="loginPass" type="password" placeholder="أدخل كلمة المرور" autocomplete="off"></div>
+      <div class="row" style="justify-content:center"><button class="btn primary" id="loginGo">دخول للعرض</button></div>
+      <p class="note" id="loginMsg" style="text-align:center"></p>
+      <p class="note" style="text-align:center">هذه الصفحة للاطّلاع فقط على المشروع ومعلومات مبانيه، دون أي تعديل.</p>
+    </div>
+  </div>
+</div>
 
 <script>window.MUJ_ARTIFACT=false;</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -286,6 +311,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const mkCanvas=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
 const HAS3=!!window.THREE;
 const ART=!!window.MUJ_ARTIFACT;
+let RO=false,shareId=null,lastPubName='',shareTitle='';
 
 /* ---------- theme tokens ---------- */
 const T={};
@@ -518,7 +544,7 @@ function updUndo(){document.querySelectorAll('.undo').forEach(e=>e.disabled=!his
 
 /* ---------- persistence ---------- */
 const KEY='mujassim-map-v1';let saveT=0;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,k:S.parks,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
+function save(){if(RO)return;clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({b:S.buildings,s:S.streets,p:S.props,c:S.curbs,k:S.parks,sel:S.sel,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow,demo:S.demo}));}catch(e){toast('المشروع كبير على ذاكرة المتصفح، فقد لا يُحفظ كاملًا.');}},400);}
 function load(){
   let o=null;try{o=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
   if(!o&&ART){try{o=JSON.parse(localStorage.getItem('mujassim-v1')||'null');}catch(e){}if(o&&typeof o.sel==='string')o.sel={t:'b',id:o.sel};}
@@ -781,6 +807,7 @@ pc.addEventListener('pointerdown',e=>{
     const [a,b]=[...ptrs.values()];G={type:'pinch',d0:Math.hypot(a.x-b.x,a.y-b.y)||1,c0:{x:(a.x+b.x)/2,y:(a.y+b.y)/2},V0:{...V}};drawPlan();return;}
   if(ptrs.size>2)return;
   const [wx,wy]=s2w(sx,sy);G={sx,sy,moved:false,V0:{...V}};
+  if(RO){G.type='roview';G.w=[wx,wy];return;}
   if(S.calib&&S.calib.pts.length<2&&S.img){G.type='calib';return;}
   if(S.imgMove&&S.img){G.type='imgmove';G.o=[S.img.x,S.img.y];G.w0=[wx,wy];return;}
   if(S.tool==='rect'){G.type='rect';G.a=[snapV(wx),snapV(wy)];}
@@ -815,7 +842,7 @@ pc.addEventListener('pointermove',e=>{
   const [wx,wy]=s2w(sx,sy);
   if(G.type==='rect'){draft.rect=[G.a,[snapV(wx),snapV(wy)]];const r=draft.rect;hint(`${f2(Math.abs(r[1][0]-r[0][0]))} × ${f2(Math.abs(r[1][1]-r[0][1]))} م`);}
   else if(G.type==='shape'){const r=Math.hypot(wx-G.a[0],wy-G.a[1]);draft.poly=shapePolygon(S.shapeKind,G.a[0],G.a[1],r);hint(`${SHAPES[S.shapeKind].n} · نصف القطر ${f2(r)} م`);}
-  else if(G.type==='tap'||G.type==='pan'||G.type==='calib'){V.ox=G.V0.ox+dx;V.oy=G.V0.oy+dy;}
+  else if(G.type==='tap'||G.type==='pan'||G.type==='calib'||G.type==='roview'){V.ox=G.V0.ox+dx;V.oy=G.V0.oy+dy;}
   else if(G.type==='imgmove'){S.img.x=+(G.o[0]+wx-G.w0[0]).toFixed(2);S.img.y=+(G.o[1]+wy-G.w0[1]).toFixed(2);}
   else if(G.type==='vertex'){G.obj.pts[G.i]=[snapV(wx),snapV(wy)];}
   else if(G.type==='move'){const ddx=snapV(wx-G.w0[0]),ddy=snapV(wy-G.w0[1]);
@@ -843,6 +870,7 @@ function endPtr(e){
   }else if(G.type==='tap'){if(!G.moved){
     if(S.tool==='prop'){const hp=propAt(sx,sy);if(hp){select('p',hp.id);refreshSel();}else placeProp(snapV(wx),snapV(wy));}
     else tapDraft(wx,wy,sx,sy);}}
+  else if(G.type==='roview'){if(!G.moved){const b=bAt(wx,wy);if(b){select('b',b.id);refreshSel();openSheet();}else{const p=propAt(sx,sy);if(p){select('p',p.id);refreshSel();}else{select(null);refreshSel();}}}}
   else if(G.type==='pan'){if(!G.moved){select(null);refreshSel();}}
   else if(G.type==='calib'){if(!G.moved){S.calib.pts.push([+wx.toFixed(3),+wy.toFixed(3)]);if(S.calib.pts.length===2){S.calib.real=+f2(Math.hypot(S.calib.pts[1][0]-S.calib.pts[0][0],S.calib.pts[1][1]-S.calib.pts[0][1]));openSheet();}renderSheet(true);drawPlan();if(S.calib.pts.length===2)scrollToSec('calib');}}
   else if(G.type==='imgmove'){if(G.moved){save();groundSoon(true);}}
@@ -1109,6 +1137,7 @@ let toastT=0;
 function hint(t,isToast){const h=$('#hint');h.textContent=t;h.className=isToast?'toast':'';}
 function toast(t){hint(t,true);clearTimeout(toastT);toastT=setTimeout(setHint,3200);}
 function setHint(){
+  if(RO)return hint(S.view==='3d'?'انقر أيّ مبنى لعرض معلوماته · اسحب للدوران':'انقر أيّ مبنى لعرض معلوماته · اسحب للتنقّل');
   const pk=info(S.propKind),pn=pk?pk.n:'المجسّم';
   if(S.view==='3d')return hint(S.tool==='prop'?`انقر على الأرض لوضع ${pn} · اسحب للتدوير`:'اسحب للتدوير · إصبعان للتكبير والتحريك · انقر أي عنصر لتعديله');
   if(isEmpty()&&!draft.pts.length&&S.tool==='rect')return hint('اضغط ⌖ لموقعك أو 🔍 للبحث، ثم ارسم فوق الخريطة');
@@ -1122,6 +1151,7 @@ function setHint(){
   hint('اسحب أي عنصر لتحريكه · اسحب الزوايا أو ⊕ لتعديل الشكل');
 }
 function setTool(t){
+  if(RO)return;
   S.tool=t;document.querySelectorAll('[data-tool]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.tool===t));
   $('#propMode3d').setAttribute('aria-pressed',t==='prop');$('#propMode3d').classList.toggle('primary',t==='prop');
   if(t!=='poly'&&t!=='street'&&t!=='curb'&&t!=='park'){draft.pts=[];draft.hover=null;}else if(draft.pts.length&&draft.kind!==t)draft.pts=[];draft.kind=t;
@@ -1199,6 +1229,7 @@ function updateGround(){
 }
 function wallUV(b,s0,L,P,H,texId,ov){
   if(ov&&ov.fit)return[0,1,0,1];
+  if(ov&&ov.tileW){const tw=Math.max(.05,ov.tileW),th=Math.max(.05,ov.tileH||ov.tileW),oU=ov.offU||0,oV=ov.offV||0;return[oU,L/tw+oU,oV,H/th+oV];}
   const m=b.wall,t=TEX[texId],asp=t?t.h/t.w:0.75,floors=Math.max(1,b.floors);let u0,u1,v1;
   if(m.mode==='fit'){u0=0;u1=1;}else if(m.mode==='wrap'){u0=s0/P;u1=(s0+L)/P;}else{const tw=Math.max(.05,m.tileW);u0=s0/tw;u1=(s0+L)/tw;}
   if(m.perFloor)v1=floors;else if(m.mode==='tile')v1=H/(Math.max(.05,m.tileW)*asp);else v1=1;
@@ -1276,16 +1307,26 @@ function build3DNow(){
   const many=S.buildings.length>120;
   S.buildings.forEach(b=>{
     const pts=b.pts,n=pts.length;if(n<3)return;const H=heightOf(b),P=perim(pts);let s0=0;
+    const hasFT=b.floorTex&&Object.keys(b.floorTex).length;
     for(let i=0;i<n;i++){
       const a=pts[i],c=pts[(i+1)%n],L=Math.hypot(c[0]-a[0],c[1]-a[1]);
-      const ov=b.ov[i],texId=(ov&&ov.tex)||b.wall.tex;
-      const [u0,u1,v0,v1]=wallUV(b,s0,L,P,H,texId,ov);
-      const geo=new THREE.BufferGeometry();
-      geo.setAttribute('position',new THREE.Float32BufferAttribute([a[0],0,a[1],c[0],0,c[1],c[0],H,c[1],a[0],H,a[1]],3));
-      geo.setAttribute('uv',new THREE.Float32BufferAttribute([u0,v0,u1,v0,u1,v1,u0,v1],2));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
-      let mat;if(S.sel&&S.sel.id===b.id&&i===S.wallSel){const tx=getTex(texId);mat=new THREE.MeshStandardMaterial({map:tx,color:tx?0xffffff:0xd8d1c3,roughness:.9,side:THREE.DoubleSide,emissive:accent,emissiveIntensity:.38});}
-      else mat=matFor(texId,0xd8d1c3);
-      const m=own(new THREE.Mesh(geo,mat));m.castShadow=!many;m.receiveShadow=true;m.userData.pick={t:'b',id:b.id,wall:i};g.add(m);s0+=L;
+      const ov=b.ov[i],selw=S.sel&&S.sel.id===b.id&&i===S.wallSel;
+      const addQuad=(y0,y1,uv,texId)=>{const geo=new THREE.BufferGeometry();
+        geo.setAttribute('position',new THREE.Float32BufferAttribute([a[0],y0,a[1],c[0],y0,c[1],c[0],y1,c[1],a[0],y1,a[1]],3));
+        geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.setIndex([0,1,2,0,2,3]);geo.computeVertexNormals();
+        let mat;if(selw){const tx=getTex(texId);mat=new THREE.MeshStandardMaterial({map:tx,color:tx?0xffffff:0xd8d1c3,roughness:.9,side:THREE.DoubleSide,emissive:accent,emissiveIntensity:.38});}
+        else mat=matFor(texId,0xd8d1c3);
+        const m=own(new THREE.Mesh(geo,mat));m.castShadow=!many;m.receiveShadow=true;m.userData.pick={t:'b',id:b.id,wall:i};g.add(m);};
+      if(!ov&&hasFT){
+        const fh=b.floorH;let u0,u1;const tw=Math.max(.05,b.wall.tileW);
+        if(b.wall.mode==='fit'){u0=0;u1=1;}else if(b.wall.mode==='wrap'){u0=s0/P;u1=(s0+L)/P;}else{u0=s0/tw;u1=(s0+L)/tw;}
+        u0+=b.wall.offU;u1+=b.wall.offU;if(b.wall.flip){u0=-u0;u1=-u1;}
+        for(let f=0;f<b.floors;f++){const ftex=(b.floorTex&&b.floorTex[f]!=null)?b.floorTex[f]:b.wall.tex;addQuad(f*fh,(f+1)*fh,[u0,0,u1,0,u1,1,u0,1],ftex);}
+      }else{
+        const texId=(ov&&ov.tex)||b.wall.tex;const [u0,u1,v0,v1]=wallUV(b,s0,L,P,H,texId,ov);
+        addQuad(0,H,[u0,v0,u1,v0,u1,v1,u0,v1],texId);
+      }
+      s0+=L;
     }
     const tri=THREE.ShapeUtils.triangulateShape(pts.map(p=>new THREE.Vector2(p[0],p[1])),[]);
     const xs=pts.map(p=>p[0]),zs=pts.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
@@ -1368,16 +1409,18 @@ $('#grab').addEventListener('click',()=>{const c=sheet.classList.toggle('collaps
 function scrollToSec(id){requestAnimationFrame(()=>{const el=sbody.querySelector(`[data-sec="${id}"]`);if(el)sbody.scrollTo({top:el.offsetTop-sbody.offsetTop-4,behavior:'smooth'});});}
 const plusSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 function swatches(target,current){
-  const grp=target==='ov'?'wall':target;
+  const grp=(target==='ov'||target==='floor')?'wall':target;
   let h=`<div class="swatches"><button class="sw plain" data-import="${target}">${plusSvg}<span>صورة من جهازك</span></button>`;
   if(target==='ov')h+=`<button class="sw plain ${!current?'on':''}" data-sw="ov" data-id=""><span>نفس صورة المبنى</span></button>`;
+  else if(target==='floor')h+=`<button class="sw plain ${!current?'on':''}" data-sw="floor" data-id=""><span>نفس كسوة المبنى</span></button>`;
   Object.values(TEX).filter(t=>t.user||(t.g&&t.g.includes(grp))).sort((a,b)=>(b.user?1:0)-(a.user?1:0))
     .forEach(t=>{h+=`<button class="sw ${t.id===current?'on':''}" data-sw="${target}" data-id="${t.id}" style="background-image:url(${t.thumb})" aria-label="${esc(t.name)}"><span>${esc(t.name)}</span></button>`;});
   return h+`</div>`;
 }
 function slider(k,label,val,min,max,step,fmt){return `<div class="slider"><label for="r-${k}">${label}</label><input id="r-${k}" type="range" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}"><output id="o-${k}" class="num">${fmt(val)}</output></div>`;}
 const pct=v=>Math.round(v*100)+'%',deg=v=>Math.round(v)+'°';
-const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct,curve:v=>f2(v)+' م',wscale:v=>Math.round(v*100)+'%'};
+const FMT={'wall.offU':pct,'wall.offV':pct,rot:deg,mapOpacity:pct,curve:v=>f2(v)+' م',wscale:v=>Math.round(v*100)+'%',ovW:v=>f2(v)+' م',ovH:v=>f2(v)+' م',ovU:pct,ovV:pct};
+const OVK={ovW:'tileW',ovH:'tileH',ovU:'offU',ovV:'offV'};
 function numField(id,label,k,val,min,max,step){return `<div class="field"><label for="i-${id}">${label}</label><span class="unit"><input id="i-${id}" type="number" min="${min}" max="${max}" step="${step}" value="${val}" data-k="${k}">م</span></div>`;}
 function chips(){
   const all=[...S.buildings.map(o=>['b',o]),...S.streets.map(o=>['s',o])];if(all.length<2||all.length>14)return '';
@@ -1424,9 +1467,27 @@ function mapSection(){
   h+=`<div class="sec" data-sec="proj"><h3>المشروع</h3>
     <p class="note"><b class="num">${n}</b> مبنى · <b class="num">${ns}</b> شارع · <b class="num">${S.curbs.length}</b> رصيف · <b class="num">${S.parks.length}</b> موقف · <b class="num">${np}</b> مجسّم</p>
     ${isEmpty()?'':`<div class="row"><button class="btn" data-act="moveall">انقل كل العناصر إلى وسط الشاشة</button><button class="btn danger" data-act="clear">إفراغ المشروع</button></div>`}</div>`;
+  h+=`<div class="sec" data-sec="publish"><h3>النشر والمشاركة</h3>
+    <p class="note">احفظ مشروعك على خادم بالنوفا واحصل على رابطٍ محميٍّ بكلمة مرور، يفتحه أي أحد للاطّلاع على المباني وبياناتها فقط دون تعديل.</p>
+    <div class="row"><button class="btn primary" data-act="publish" ${isEmpty()?'disabled':''}>نشر المشروع ومشاركته برابط</button></div></div>`;
   return h;
 }
+function renderSheetRO(keepScroll){
+  const top=sbody.scrollTop,b=curB();
+  const blk=(text,imgs)=>{let s='';if(text)s+=`<p class="note" style="white-space:pre-wrap;color:var(--ink)">${esc(text)}</p>`;if(imgs&&imgs.length)s+=`<div class="infoimgs">`+imgs.map(src=>`<div class="ii"><img src="${src}" alt=""></div>`).join('')+`</div>`;return s;};
+  if(b){const H=heightOf(b),A=Math.abs(area(b.pts)),inf=b.info||{};
+    $('#sTitle').textContent=b.name;$('#sMeta').innerHTML=`<span class="num">${f2(A)}</span> م² · <span class="num">${b.floors}</span> طوابق · <span class="num">${f2(H)}</span> م`;
+    let h=`<div class="sec"><h3>معلومات المبنى</h3>${blk(inf.text,inf.imgs)||'<p class="note">لا توجد معلومات عامة لهذا المبنى.</p>'}
+      <div class="row"><button class="btn primary" data-act="showcard">عرض البطاقة الكاملة</button></div></div>`;
+    const floors=inf.floors||{},keys=Object.keys(floors).map(Number).filter(i=>floors[i]&&(floors[i].text||(floors[i].imgs&&floors[i].imgs.length))).sort((a,b)=>b-a);
+    if(keys.length){h+=`<div class="sec"><h3>بيانات الطوابق</h3>`;keys.forEach(i=>{h+=`<div style="margin-bottom:12px"><div style="font:600 13px var(--f-body);color:var(--accent);margin-bottom:4px">الطابق ${i+1}</div>${blk(floors[i].text,floors[i].imgs)||'<p class="note">—</p>'}</div>`;});h+=`</div>`;}
+    sbody.innerHTML=h;if(keepScroll)sbody.scrollTop=top;return;}
+  $('#sTitle').textContent=shareTitle||'عرض المشروع';$('#sMeta').textContent='للاطّلاع فقط';
+  sbody.innerHTML=`<div class="empty"><h4>عرض للاطّلاع فقط</h4><ol><li>تنقّل على الخريطة بالسحب والتكبير.</li><li>بدّل بين «المخطط» و«مجسّم 3D» من الأعلى.</li><li>انقر أيّ مبنى لعرض معلوماته وبيانات طوابقه.</li></ol></div>`;
+  if(keepScroll)sbody.scrollTop=top;
+}
 function renderSheet(keepScroll){
+  if(RO)return renderSheetRO(keepScroll);
   const top=sbody.scrollTop,b=curB(),st=curS(),p=curP(),cu=curC(),pk=curK();
   $('#delB').hidden=!(b||st||p||cu||pk);
   if(st)return renderStreet(st,keepScroll,top);
@@ -1476,11 +1537,16 @@ function infoSection(b){
     <textarea class="ta" data-info="b-text" rows="3" placeholder="وصف المبنى واستخدامه وأي ملاحظات تُعرض عنه…">${esc(inf.text||'')}</textarea>
     ${infoImgsHTML(inf.imgs,'b')}
     <div class="row"><button class="btn" data-infoadd="b">＋ صور للمبنى</button>${hasB?`<button class="btn primary" data-act="showcard">عرض البطاقة</button>`:''}</div></div>`;
-  h+=`<div class="sec" data-sec="floordata"><h3>بيانات الطوابق</h3>
-    <p class="note">اختر طابقًا فيتحدّد مكانه بإضاءة في «مجسّم 3D»، ثم أضف له معلومات وصورًا.</p><div class="walls">`;
-  for(let i=b.floors-1;i>=0;i--){const fi=(inf.floors&&inf.floors[i])||{},has=!!(fi.text||(fi.imgs&&fi.imgs.length));
-    h+=`<button class="wrow" data-floor="${i}" aria-pressed="${S.floorSel===i}"><i class="flo">${i+1}</i><span>الطابق ${i+1}<small>${has?'به بيانات':'—'}</small></span>${S.floorSel===i?'<span class="tag">محدَّد</span>':(has?'<span class="tag">✓</span>':'<span></span>')}</button>`;
-    if(S.floorSel===i)h+=`<div class="wpanel"><textarea class="ta" data-info="f-text" rows="2" placeholder="معلومات الطابق ${i+1}…">${esc(fi.text||'')}</textarea>${infoImgsHTML(fi.imgs,'f')}<div class="row"><button class="btn" data-infoadd="f">＋ صور للطابق</button>${has?`<button class="btn primary" data-act="showcard">عرض البطاقة</button>`:''}</div></div>`;}
+  h+=`<div class="sec" data-sec="floordata"><h3>الطوابق: المظهر والبيانات</h3>
+    <p class="note">اختر طابقًا فيتحدّد مكانه بإضاءة في «مجسّم 3D»، ثم اضبط كسوته الخاصّة (كل طابق وجهةٌ مستقلّة) وأضف له معلومات وصورًا.</p><div class="walls">`;
+  for(let i=b.floors-1;i>=0;i--){const fi=(inf.floors&&inf.floors[i])||{},has=!!(fi.text||(fi.imgs&&fi.imgs.length)),ft=b.floorTex&&b.floorTex[i]!=null;
+    h+=`<button class="wrow" data-floor="${i}" aria-pressed="${S.floorSel===i}"><i class="flo">${i+1}</i><span>الطابق ${i+1}<small>${[ft?'كسوة خاصّة':'',has?'بيانات':''].filter(Boolean).join(' · ')||'—'}</small></span>${S.floorSel===i?'<span class="tag">محدَّد</span>':((ft||has)?'<span class="tag">✓</span>':'<span></span>')}</button>`;
+    if(S.floorSel===i)h+=`<div class="wpanel">
+      <div style="font:600 12px var(--f-body);color:var(--muted)">كسوة هذا الطابق</div>
+      ${swatches('floor',ft?b.floorTex[i]:'')}
+      <div style="font:600 12px var(--f-body);color:var(--muted)">معلومات الطابق</div>
+      <textarea class="ta" data-info="f-text" rows="2" placeholder="معلومات الطابق ${i+1}…">${esc(fi.text||'')}</textarea>${infoImgsHTML(fi.imgs,'f')}
+      <div class="row"><button class="btn" data-infoadd="f">＋ صور للطابق</button>${has?`<button class="btn primary" data-act="showcard">عرض البطاقة</button>`:''}</div></div>`;}
   h+=`</div></div>`;
   return h;
 }
@@ -1552,9 +1618,15 @@ function wallPanel(b,i){
     fitInfo=Math.abs(d)<1.5?`<p class="note">نسبة الجدار تطابق نسبة الصورة، فلن يحدث أي تمدّد.</p>`
       :`<p class="note">نسبة الجدار <b class="num">${wa.toFixed(2)}</b> ونسبة الصورة <b class="num">${ia.toFixed(2)}</b>، فستتمدد الصورة ${d>0?'أفقيًا':'عموديًا'} بنسبة <b class="num">${Math.abs(d).toFixed(1)}%</b>.</p>
       <button class="btn" data-act="matchH">اضبط ارتفاع الطابق ليطابق نسبة الصورة (${f2(L*t.h/t.w/b.floors)} م)</button>`;}
+  const sizeUI=(ov&&!ov.fit)?`
+    ${slider('ovW','عرض الصورة على الجدار',ov.tileW!=null?ov.tileW:L,0.2,Math.max(60,L*2),0.05,v=>f2(v)+' م')}
+    ${slider('ovH','ارتفاع الصورة على الجدار',ov.tileH!=null?ov.tileH:H,0.2,Math.max(40,H*2),0.05,v=>f2(v)+' م')}
+    ${slider('ovU','إزاحة أفقية',ov.offU||0,-1,1,0.01,pct)}
+    ${slider('ovV','إزاحة عمودية',ov.offV||0,-1,1,0.01,pct)}
+    <p class="note">اسحب المؤشّرات بالماوس لضبط أبعاد صورتك على هذا الجدار بدقّة. إن صغّرتها عن حجم الجدار تتكرّر لتغطّيه.</p>`:'';
   return `<div class="wpanel"><div class="h"><span>جدار ${i+1}</span><span class="num">${f2(L)} × ${f2(H)} م</span></div>
     ${swatches('ov',ov&&ov.tex)}
-    ${ov?`<label class="chk"><input type="checkbox" data-k="ovfit" ${ov.fit?'checked':''}>شدّ الصورة على الجدار كاملًا بدقة (من الزاوية للزاوية ومن الأرض للسطح)</label>${fitInfo}`:''}</div>`;
+    ${ov?`<label class="chk"><input type="checkbox" data-k="ovfit" ${ov.fit?'checked':''}>شدّ الصورة على الجدار كاملًا (من الزاوية للزاوية ومن الأرض للسطح)</label>${fitInfo}${sizeUI}`:''}</div>`;
 }
 function selObj(){return curB()||curS()||curP()||curC()||curK();}
 function setPath(o,k,v){const p=k.split('.');while(p.length>1)o=o[p.shift()];o[p[0]]=v;}
@@ -1579,7 +1651,9 @@ sbody.addEventListener('input',e=>{const el=e.target;
   const k=el.dataset.k;if(!k)return;
   if(k==='mapOpacity'){S.mapOpacity=+el.value;$('#o-mapOpacity').textContent=pct(S.mapOpacity);planSoon();save();return;}
   const o=selObj();if(!o)return;
-  if(el.type==='range'){const v=+el.value;setPath(o,k,v);const out=document.getElementById('o-'+k);if(out)out.textContent=(FMT[k]||pct)(v);planSoon();build3D();return;}
+  if(el.type==='range'){const v=+el.value;
+    if(OVK[k]&&o.ov&&S.wallSel!=null){const ov=o.ov[S.wallSel];if(ov)ov[OVK[k]]=v;const out=document.getElementById('o-'+k);if(out)out.textContent=(FMT[k]||pct)(v);planSoon();build3D();return;}
+    setPath(o,k,v);const out=document.getElementById('o-'+k);if(out)out.textContent=(FMT[k]||pct)(v);planSoon();build3D();return;}
   if(el.type==='number'){const v=parseFloat(el.value);
     if(FREE[k]){if(!Number.isFinite(v))return;setPath(o,k,v);planSoon();build3D();return;}
     if(!(v>0||(ZERO_OK[k]&&v===0)))return;setPath(o,k,v);
@@ -1589,7 +1663,7 @@ sbody.addEventListener('input',e=>{const el=e.target;
 sbody.addEventListener('change',e=>{const el=e.target;
   if(el.dataset.info){if(pendingSnap&&pendingSnap!==snapshot())pushHist(pendingSnap);pendingSnap=null;renderSheet(true);save();return;}
   if(el.dataset.g){if(el.type==='checkbox'||el.dataset.g==='img.w')renderSheet(true);return;}const k=el.dataset.k;if(!k||k==='mapOpacity')return;const o=selObj();if(!o)return;
-  if(el.type==='checkbox'){pushHist(pendingSnap||snapshot());if(k==='ovfit'){const ov=o.ov[S.wallSel];if(ov)ov.fit=el.checked;}else setPath(o,k,el.checked);pendingSnap=null;changed();return;}
+  if(el.type==='checkbox'){pushHist(pendingSnap||snapshot());if(k==='ovfit'){const ov=o.ov[S.wallSel];if(ov){ov.fit=el.checked;if(!ov.fit&&ov.tileW==null){ov.tileW=+edgeLen(o,S.wallSel).toFixed(2);ov.tileH=+heightOf(o).toFixed(2);ov.offU=0;ov.offV=0;}}}else setPath(o,k,el.checked);pendingSnap=null;changed();return;}
   if(pendingSnap&&pendingSnap!==snapshot())pushHist(pendingSnap);pendingSnap=snapshot();
   if(el.type==='number'){const v=parseFloat(el.value);if(!(FREE[k]?Number.isFinite(v):(v>0||(ZERO_OK[k]&&v===0))))el.value=getPath(o,k);}
   renderSheet(true);save();});
@@ -1615,6 +1689,7 @@ sbody.addEventListener('click',e=>{
   if(a==='osm-b'){importOSM('buildings');return;}
   if(a==='moveall'){moveAllHere();return;}
   if(a==='clear'){clearAll();return;}
+  if(a==='publish'){openPublish();return;}
   const o=selObj();if(!o)return;
   if(t.dataset.curbpat){pushHist();o.pattern=t.dataset.curbpat;S.curbPattern=o.pattern;changed();return;}
   if(t.dataset.pcolor){pushHist();o.color=t.dataset.pcolor;changed();return;}
@@ -1650,7 +1725,8 @@ function assignTex(target,id){const t=TEX[id];
   const b=curB();if(!b)return;pushHist();
   if(target==='wall'){b.wall.tex=id;if(t&&t.mw&&b.wall.mode==='tile')b.wall.tileW=t.mw;if(t&&t.user&&b.wall.mode==='tile')b.wall.perFloor=false;}
   else if(target==='roof'){b.roof.tex=id;if(t&&t.mw&&b.roof.mode==='tile')b.roof.tileW=t.mw;}
-  else if(target==='ov'&&S.wallSel!=null){if(id){const old=b.ov[S.wallSel];b.ov[S.wallSel]={tex:id,fit:old?old.fit:true};}else delete b.ov[S.wallSel];}
+  else if(target==='ov'&&S.wallSel!=null){if(id){const old=b.ov[S.wallSel];const nv={tex:id,fit:old?old.fit:true};if(old&&!old.fit){nv.tileW=old.tileW;nv.tileH=old.tileH;nv.offU=old.offU;nv.offV=old.offV;}b.ov[S.wallSel]=nv;}else delete b.ov[S.wallSel];}
+  else if(target==='floor'&&S.floorSel!=null){if(!b.floorTex)b.floorTex={};if(id)b.floorTex[S.floorSel]=id;else delete b.floorTex[S.floorSel];}
   changed();}
 
 /* ---------- image import ---------- */
@@ -1720,12 +1796,112 @@ $('#cardClose').addEventListener('click',hideInfoCard);
 $('#infoCard').addEventListener('click',e=>{if(e.target.id==='infoCard')hideInfoCard();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#infoCard').hidden)hideInfoCard();});
 
+/* ---------- نشر المشروع ومشاركته برابط محميّ (Feature: publish/share) ---------- */
+function abToB64(buf){let b='';const bytes=new Uint8Array(buf),chunk=0x8000;for(let i=0;i<bytes.length;i+=chunk)b+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));return btoa(b);}
+function b64ToAb(s){const bin=atob(s),len=bin.length,bytes=new Uint8Array(len);for(let i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);return bytes.buffer;}
+async function collectProject(){
+  const state={b:S.buildings,s:S.streets,p:S.props,c:S.curbs,k:S.parks,geo:S.geo,map:S.map,op:S.mapOpacity,img:S.img,vshow:S.vshow};
+  const bundle={v:1,state,texs:[],models:[],mapimg:null,vmap:null};
+  Object.values(TEX).forEach(t=>{if(t.user&&t.url)bundle.texs.push({id:t.id,name:t.name,url:t.url});});
+  const used=new Set(S.props.filter(p=>p.kind&&p.kind.indexOf('m:')===0).map(p=>p.kind.slice(2)));
+  try{const items=await DB.all();items.forEach(([key,val])=>{if(!val)return;
+    if(val.kind==='model'&&val.data&&used.has(val.id)){try{bundle.models.push({id:val.id,name:val.name,ext:val.ext,data:abToB64(val.data)});}catch(e){}}
+    else if(val.kind==='mapimg'&&S.img){bundle.mapimg={name:val.name,url:val.url};}
+    else if(val.kind==='vmap'&&val.raw){bundle.vmap={name:val.name,raw:val.raw};}});}catch(e){}
+  return bundle;
+}
+function openPublish(){
+  if(isEmpty())return toast('المشروع فارغ، ارسم شيئاً أولاً.');
+  $('#pubTitle').textContent='نشر المشروع';
+  $('#pubBody').innerHTML=`
+    <p class="note">سيُحفَظ مشروعك على خادم بالنوفا ويصبح له رابطٌ يفتحه الآخرون للاطّلاع فقط بعد إدخال كلمة المرور.</p>
+    <div class="field"><label for="pubName">اسم المشروع</label><input id="pubName" type="text" maxlength="120" placeholder="مثال: مخطّط حيّ النزهة" value="${esc(lastPubName||'')}"></div>
+    <div class="field"><label for="pubPass">كلمة المرور (تحدّدها أنت)</label><input id="pubPass" type="text" placeholder="٣ أحرف على الأقل" autocomplete="off"></div>
+    <div class="row"><button class="btn primary" id="pubGo">نشر الآن</button><button class="btn" id="pubCancel">إلغاء</button></div>
+    <p class="note" id="pubMsg"></p>`;
+  $('#pubModal').hidden=false;
+  $('#pubGo').onclick=doPublish;$('#pubCancel').onclick=()=>{$('#pubModal').hidden=true;};
+  setTimeout(()=>{const n=$('#pubName');if(n&&!n.value)n.focus();},50);
+}
+async function doPublish(){
+  const name=($('#pubName').value||'').trim(),pass=$('#pubPass').value||'',msg=$('#pubMsg'),go=$('#pubGo');
+  if(!name){msg.textContent='اكتب اسم المشروع.';return;}
+  if(pass.length<3){msg.textContent='كلمة المرور ٣ أحرف على الأقل.';return;}
+  go.disabled=true;msg.textContent='جارٍ تجهيز المشروع ورفعه…';
+  try{
+    const bundle=await collectProject(),data=JSON.stringify(bundle);
+    if(data.length>44*1024*1024){go.disabled=false;msg.textContent='المشروع كبير جداً للنشر. قلّل الصور أو احذف المجسّمات الثقيلة.';return;}
+    const r=await fetch('/api/cadrev/publish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,password:pass,data})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){go.disabled=false;msg.textContent=(j&&j.error)||'فشل النشر على الخادم.';return;}
+    lastPubName=name;
+    const link=location.origin+location.pathname+'?id='+encodeURIComponent(j.id);
+    showPublished(name,link,pass);
+  }catch(e){go.disabled=false;msg.textContent='تعذّر الاتصال بالخادم. تأكد من الإنترنت وحاول ثانية.';}
+}
+function showPublished(name,link,pass){
+  $('#pubTitle').textContent='تمّ النشر بنجاح ✓';
+  $('#pubBody').innerHTML=`
+    <p class="note">مشروع <b>${esc(name)}</b> صار متاحاً عبر الرابط التالي. انسخه وأرسله لمن تريد مع كلمة المرور.</p>
+    <div class="field"><label>رابط المشروع</label><input id="pubLink" type="text" readonly value="${esc(link)}"></div>
+    <div class="row"><button class="btn primary" id="pubCopy">نسخ الرابط</button><button class="btn" id="pubDone">تمّ</button></div>
+    <p class="note">كلمة المرور: <b class="num">${esc(pass)}</b> — احفظها، فلا يمكن استرجاعها لاحقاً.</p>
+    <p class="note" id="pubMsg2"></p>`;
+  const linkInput=$('#pubLink');linkInput.onclick=()=>linkInput.select();
+  $('#pubCopy').onclick=()=>{linkInput.select();const done=()=>{$('#pubMsg2').textContent='نُسِخ الرابط ✓';};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(link).then(done,()=>{try{document.execCommand('copy');done();}catch(e){}});
+    else{try{document.execCommand('copy');done();}catch(e){}}};
+  $('#pubDone').onclick=()=>{$('#pubModal').hidden=true;};
+}
+$('#pubX').addEventListener('click',()=>{$('#pubModal').hidden=true;});
+$('#pubModal').addEventListener('click',e=>{if(e.target.id==='pubModal')$('#pubModal').hidden=true;});
+
+/* ---------- عرض مشروع منشور (قراءة فقط عبر الرابط) ---------- */
+function showLogin(id){
+  $('#loginCard').hidden=false;$('#loginName').textContent='…';
+  fetch('/api/cadrev/'+encodeURIComponent(id)+'/meta').then(r=>r.json().then(j=>({ok:r.ok,j}))).then(({ok,j})=>{
+    if(ok)$('#loginName').textContent=j.name;else{$('#loginName').textContent='المشروع غير موجود أو حُذف';$('#loginGo').disabled=true;}
+  }).catch(()=>{$('#loginName').textContent='تعذّر الاتصال بالخادم';});
+  const go=()=>doOpen(id);$('#loginGo').onclick=go;
+  $('#loginPass').onkeydown=e=>{if(e.key==='Enter')go();};
+  setTimeout(()=>{const p=$('#loginPass');if(p)p.focus();},60);
+}
+async function doOpen(id){
+  const pass=$('#loginPass').value||'',msg=$('#loginMsg'),go=$('#loginGo');
+  if(!pass){msg.textContent='أدخل كلمة المرور.';return;}
+  go.disabled=true;msg.textContent='جارٍ الفتح…';
+  try{
+    const r=await fetch('/api/cadrev/'+encodeURIComponent(id)+'/open',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){go.disabled=false;msg.textContent=(j&&j.error)||'تعذّر الفتح.';return;}
+    let bundle;try{bundle=typeof j.data==='string'?JSON.parse(j.data):j.data;}catch(e){go.disabled=false;msg.textContent='تعذّر قراءة بيانات المشروع.';return;}
+    $('#loginCard').hidden=true;
+    await applyProject(bundle,j.name);
+  }catch(e){go.disabled=false;msg.textContent='تعذّر الاتصال بالخادم.';}
+}
+async function applyProject(bundle,name){
+  const st=(bundle&&bundle.state)||{};
+  (bundle.texs||[]).forEach(t=>{try{if(!TEX[t.id])loadTexURL(t.id,t.name,t.url);}catch(e){}});
+  if(bundle.mapimg&&bundle.mapimg.url){const im=new Image();im.onload=()=>{IMG.el=im;IMG.name=bundle.mapimg.name||'خريطة';groundSoon(true);drawPlan();};im.src=bundle.mapimg.url;}
+  if(bundle.vmap&&Array.isArray(bundle.vmap.raw)){VM.raw=bundle.vmap.raw;VM.name=bundle.vmap.name||'';try{rebuildVM();}catch(e){}}
+  if(HAS3&&bundle.models)for(const m of bundle.models){try{if(!MODELS[m.id]){const mm=await parseModel(m.ext,b64ToAb(m.data));MODELS[m.id]=Object.assign(mm,{id:m.id,name:m.name});}}catch(e){}}
+  S.buildings=st.b||[];S.streets=st.s||[];S.props=st.p||[];S.curbs=st.c||[];S.parks=st.k||[];
+  if(st.geo)S.geo=st.geo;if(st.map)S.map=st.map;if(st.op!=null)S.mapOpacity=st.op;S.img=st.img||null;if(st.vshow!=null)S.vshow=st.vshow;
+  S.sel=null;S.demo=false;shareTitle=name||'المشروع';
+  setAttr();V.inited=true;fitPlan();changed();groundSoon(true);
+  toast('مشروع «'+(name||'')+'» — عرض للاطّلاع فقط');
+}
+
 /* ---------- theme + boot ---------- */
 function onTheme(){readTokens();drawPlan();if(R){themeScene();build3D();}}
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',onTheme);}catch(e){}
 new MutationObserver(onTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 if(ART){['#btnSearch','#btnGps','#btnLayer'].forEach(q=>$(q).hidden=true);}
-if(!load()&&ART)seed();setAttr();
+const shareUrlId=(()=>{try{return new URLSearchParams(location.search).get('id');}catch(e){return null;}})();
+if(shareUrlId){RO=true;shareId=shareUrlId;document.getElementById('app').classList.add('ro');
+  const bd=document.createElement('div');bd.className='robadge';bd.textContent='عرض للاطّلاع فقط';$('#stage').appendChild(bd);}
+else{if(!load()&&ART)seed();}
+setAttr();
 new ResizeObserver(()=>{if(!V.inited&&pc.clientWidth){fitPlan();V.inited=true;}drawPlan();}).observe($('#stage'));
 renderSheet();setHint();updUndo();renderPalette();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawPlan);
@@ -1735,7 +1911,8 @@ function takeStored(items){items.forEach(([k,v])=>{
   else if(v.kind==='model'&&HAS3&&!MODELS[v.id])parseModel(v.ext,v.data).then(m=>{MODELS[v.id]=Object.assign(m,{id:v.id,name:v.name});refreshSoon();}).catch(()=>{});
   else if(v.kind==='mapimg'&&S.img){const im=new Image();im.onload=()=>{IMG.el=im;IMG.name=v.name;refreshSoon();groundSoon(true);};im.src=v.url;}
   else if(v.kind==='vmap'&&Array.isArray(v.raw)){VM.raw=v.raw;VM.name=v.name;rebuildVM();setAttr();refreshSoon();groundSoon(true);}});}
-DB.open().then(()=>DB.all()).then(takeStored).then(()=>ART?DB.legacy().then(takeStored):0);
+if(shareUrlId){showLogin(shareUrlId);}
+else{DB.open().then(()=>DB.all()).then(takeStored).then(()=>ART?DB.legacy().then(takeStored):0);}
 })();
 </script>
 

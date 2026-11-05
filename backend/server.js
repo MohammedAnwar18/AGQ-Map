@@ -116,6 +116,7 @@ app.use('/api/reels', reelsRoutes);
 app.use('/api/study-space', studySpaceRoutes);
 app.use('/api/fitness', fitnessRoutes);
 app.use('/api/aerial', require('./routes/aerial'));
+app.use('/api/cadrev', require('./routes/cadrev'));
 
 // Auto-migrate: ensure shop_drivers table exists with all required columns
 (async () => {
@@ -736,6 +737,27 @@ app.use('/api/aerial', require('./routes/aerial'));
         console.log('✅ aerial (drone) panorama tables ready');
     } catch (err) {
         console.warn('⚠️ aerial panorama tables migration warning:', err.message);
+    }
+})();
+
+
+// Auto-migrate: PalNovaa CadRev published projects (password-protected shareable links).
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cadrev_projects (
+                id TEXT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                password_hash TEXT NOT NULL,
+                data TEXT NOT NULL,
+                views INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('✅ CadRev projects table ready');
+    } catch (err) {
+        console.warn('⚠️ CadRev projects table migration warning:', err.message);
     }
 })();
 
