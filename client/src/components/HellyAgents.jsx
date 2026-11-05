@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { hellyService } from '../services/hellyApi';
-import HellyMark from './HellyMark';
 import { STANCE_TONE, STANCES } from './hellyTheme';
 import { AreaStudio, ForecastPanel } from './HellySpatial';
 import './HellyAgents.css';
@@ -10,6 +9,32 @@ import './helly/AgentStudio.css';
 /* استوديو الوكيل المكاني — يُحمَّل عند فتح تبويبه لا مع المكوّن:
    خريطته ومحرّكاته لا تلزم من جاء للمحاكاة بالنموذج */
 const AgentStudio = React.lazy(() => import('./helly/AgentStudio'));
+
+/* شعار PalNovaa Foresight: نقاطٌ على حلقاتٍ متحدة المركز بتدرّج بنفسجي→برتقالي،
+   بنمطٍ يوحي بالمحاكاة والتنبؤ — بديلٌ محايدٌ عن الشعار القديم. */
+const FsGlyph = ({ size = 48, className = '' }) => {
+    const dots = [];
+    [{ r: 0, n: 1 }, { r: 7, n: 7 }, { r: 14, n: 13 }, { r: 21, n: 20 }].forEach(({ r, n }) => {
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + r * 0.12;
+            dots.push([24 + r * Math.cos(a), 24 + r * Math.sin(a), r]);
+        }
+    });
+    return (
+        <svg width={size} height={size} viewBox="0 0 48 48" className={className} aria-hidden="true">
+            <defs>
+                <radialGradient id="fsGlyphGrad" cx="50%" cy="45%" r="62%">
+                    <stop offset="0%" stopColor="#7b5cff" />
+                    <stop offset="55%" stopColor="#c23bc0" />
+                    <stop offset="100%" stopColor="#ff6a00" />
+                </radialGradient>
+            </defs>
+            {dots.map(([x, y, r], i) => (
+                <circle key={i} cx={x} cy={y} r={r > 17 ? 1.1 : 1.6} fill="url(#fsGlyphGrad)" />
+            ))}
+        </svg>
+    );
+};
 
 /* ============================================================
    HellyAgents — محرّك محاكاة جماعية متعدّد الوكلاء
@@ -275,10 +300,10 @@ const HellyAgents = ({ onClose }) => {
                             <Icon.Back />
                         </button>
                     )}
-                    <HellyMark size={42} className="hla-brand-mark" />
+                    <FsGlyph size={40} className="hla-brand-mark" />
                     <div>
-                        <b>HellyAgents</b>
-                        <span>وكيل ذكاء اصطناعي مكاني · ومحاكاة متعدّدة الوكلاء</span>
+                        <b>PalNovaa Foresight</b>
+                        <span>المحاكاة والتنبؤ ودعم القرار · وكيل ذكاء مكاني متعدّد الوكلاء</span>
                     </div>
                 </div>
 
@@ -356,7 +381,7 @@ const HellyAgents = ({ onClose }) => {
                         <div className="hla-empty"><p>جاري التحميل…</p></div>
                     ) : sims.length === 0 ? (
                         <div className="hla-empty">
-                            <HellyMark size={68} className="hla-empty-icon" />
+                            <FsGlyph size={68} className="hla-empty-icon" />
                             <h3>لا محاكاات بعد</h3>
                             <p>ابدأ بسيناريو: قرار تفكّر فيه، أو خبر تريد قياس أثره.</p>
                         </div>
@@ -397,7 +422,7 @@ const HellyAgents = ({ onClose }) => {
                 <div className="hla-body">
                     <div className="hla-setup">
                         <div className="hla-hero">
-                            <HellyMark size={72} className="hla-hero-icon" />
+                            <FsGlyph size={72} className="hla-hero-icon" />
                             <h2>محاكاة جديدة</h2>
                             <p>سيُبنى مجتمع من وكلاء مستقلّين، لكلٍّ شخصيته وموقفه، ثم يتفاعلون جولةً بعد جولة.</p>
                         </div>

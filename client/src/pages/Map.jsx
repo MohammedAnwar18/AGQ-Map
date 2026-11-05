@@ -31,7 +31,6 @@ const ShopStorefront        = React.lazy(() => import('../components/ShopStorefr
 const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
 const WorldEditor           = React.lazy(() => import('../components/world/WorldEditor'));
 const WorldGame             = React.lazy(() => import('../components/world/WorldGame'));
-import HellyMark from '../components/HellyMark';
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
 const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
@@ -3000,14 +2999,14 @@ const MapComponent = () => {
                             </div>
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        {/* محرّك المحاكاة متعدّد الوكلاء — للأدمن العام وحده */}
-                        {user?.role === 'admin' && (
+                        {/* PalNovaa Foresight (سابقاً HellyAgents): نُقل إلى رابطٍ مستقلّ /palnovaa-foresight وأُزيل من القائمة */}
+                        {false && (
                             <button onClick={() => { setShowMoreMenu(false); setShowHellyAgents(true); }}>
                                 <div className="menu-item-content">
                                     <div className="menu-icon-wrapper">
-                                        <HellyMark size={26} />
+                                        <span>PalNovaa Foresight</span>
                                     </div>
-                                    <span>HellyAgents</span>
+                                    <span>PalNovaa Foresight</span>
                                 </div>
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                             </button>

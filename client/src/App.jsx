@@ -19,6 +19,7 @@ const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
 const GeoportalDesigner = React.lazy(() => import('./pages/GeoportalDesigner'));
 const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
 const PalNovaaLabPage = React.lazy(() => import('./pages/PalNovaaLabPage'));
+const PalNovaaForesightPage = React.lazy(() => import('./pages/PalNovaaForesightPage'));
 import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
@@ -187,6 +188,9 @@ function App() {
                                 {/* مختبر بالنوفا — رابطٌ مستقلٌّ مباشرٌ قابلٌ للأرشفة، بلا مرورٍ بالخريطة */}
                                 <Route path="/palnovaa-lab" element={<PalNovaaLabPage />} />
                                 <Route path="/lab" element={<Navigate to="/palnovaa-lab" replace />} />
+                                {/* PalNovaa Foresight — المحرّك المستقلّ (سابقاً HellyAgents) برابطٍ مباشرٍ قابلٍ للأرشفة */}
+                                <Route path="/palnovaa-foresight" element={<PalNovaaForesightPage />} />
+                                <Route path="/foresight" element={<Navigate to="/palnovaa-foresight" replace />} />
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
                                 <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
