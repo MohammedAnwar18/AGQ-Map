@@ -326,11 +326,23 @@
       height: 100vh;
       height: 100dvh;
     }
+
+    /* على رابط PalNovaa Foresight وحده: لا تُعرض سبلاش الموقع العامّة،
+       فصفحة Foresight لها سبلاشها الخاصّة (تجنّب ظهور سبلاشَيْن) */
+    html.pn-foresight #splash-screen { display: none !important; }
+    html.pn-foresight body.splash-active { background: #000; }
   </style>
 
   <!-- GUARANTEED Splash Screen Removal (runs before React) -->
   <script>
     (function() {
+      // رابط PalNovaa Foresight: أخفِ سبلاش الموقع العامّة فوراً (لصفحته سبلاشها الخاصّة)
+      try {
+        var p = (location.pathname || '').replace(/\/+$/, '');
+        if (p === '/palnovaa-foresight' || p === '/foresight') {
+          document.documentElement.classList.add('pn-foresight');
+        }
+      } catch (e) {}
       function hideSplash() {
         var splash = document.getElementById('splash-screen');
         if (splash) {
