@@ -188,9 +188,10 @@ function App() {
                                 {/* مختبر بالنوفا — رابطٌ مستقلٌّ مباشرٌ قابلٌ للأرشفة، بلا مرورٍ بالخريطة */}
                                 <Route path="/palnovaa-lab" element={<PalNovaaLabPage />} />
                                 <Route path="/lab" element={<Navigate to="/palnovaa-lab" replace />} />
-                                {/* PalNovaa Foresight — سبلاش البداية صفحةٌ ثابتة مستقلّة (/palnovaa-foresight)
-                                    تُسلّم إلى الاستوديو هنا بعد انتهائها (بلا سبلاش الموقع العامّة) */}
-                                <Route path="/palnovaa-foresight/app" element={<PalNovaaForesightPage />} />
+                                {/* PalNovaa Foresight — سبلاش البداية ثم الاستوديو، على رابطٍ نظيفٍ واحد
+                                    (سبلاش الموقع العامّة مكتومة لهذا المسار عبر pn-foresight في index.html) */}
+                                <Route path="/palnovaa-foresight" element={<PalNovaaForesightPage />} />
+                                <Route path="/foresight" element={<Navigate to="/palnovaa-foresight" replace />} />
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
                                 <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
