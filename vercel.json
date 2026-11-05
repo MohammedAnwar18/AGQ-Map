@@ -26,6 +26,8 @@
     { "source": "/health", "destination": "/api/index.js" },
     { "source": "/palnovaa-cadrev", "destination": "/palnovaa-cadrev.html" },
     { "source": "/cadrev", "destination": "/palnovaa-cadrev.html" },
+    { "source": "/palnovaa-foresight", "destination": "/palnovaa-foresight.html" },
+    { "source": "/foresight", "destination": "/palnovaa-foresight.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

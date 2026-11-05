@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PalNovaa Foresight — المحاكاة والتنبؤ ودعم القرار</title>
+<meta name="description" content="PalNovaa Foresight: محرّك محاكاةٍ وتنبؤٍ ودعم قرارٍ مكانيّ من بالنوفا — نمذجة مجتمعاتٍ من الوكلاء، استشراف السيناريوهات، وتحليل أثر الأحداث على الرأي والقرار.">
+<meta name="keywords" content="PalNovaa Foresight, بالنوفا, محاكاة, تنبؤ, دعم القرار, simulation, forecasting, decision support">
+<link rel="canonical" href="https://palnovaa.com/palnovaa-foresight">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PalNovaa">
+<meta property="og:title" content="PalNovaa Foresight — المحاكاة والتنبؤ ودعم القرار">
+<meta property="og:description" content="محرّك محاكاةٍ وتنبؤٍ ودعم قرارٍ مكانيّ من بالنوفا.">
+<meta property="og:url" content="https://palnovaa.com/palnovaa-foresight">
+<meta name="robots" content="index, follow">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body{font-family:'Segoe UI',system-ui,-apple-system,"Segoe UI Arabic",Tahoma,sans-serif}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #wrap{position:fixed;inset:0;transition:opacity .6s ease;cursor:pointer}
+  .scrim{position:absolute;left:0;right:0;bottom:0;height:40%;background:linear-gradient(to top,#000 32%,rgba(0,0,0,0));pointer-events:none}
+  .txt{position:absolute;left:0;right:0;bottom:calc(6vh + env(safe-area-inset-bottom,0px));text-align:center;padding:0 20px}
+  .name{font-size:clamp(26px,6.2vw,42px);font-weight:600;letter-spacing:.02em;line-height:1.1;
+        background:linear-gradient(90deg,#ff7a18 0%,#ff3d7f 45%,#8a5cff 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+  .bar{margin:22px auto 0;height:4px;width:100%;max-width:340px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#8a5cff,#ff3d7f,#ff7a18);box-shadow:0 0 12px rgba(255,120,40,.5);transition:width .18s linear}
+  .c1{margin-top:28px;color:rgba(255,255,255,.58);font-size:12px;letter-spacing:.05em}
+  .c2{margin-top:5px;color:rgba(255,255,255,.4);font-size:11px;letter-spacing:.03em}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div class="scrim"></div>
+  <div class="txt">
+    <div class="name">PalNovaa&nbsp;Foresight</div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="c1">Produced by PalNovaa</div>
+    <div class="c2" id="cr"></div>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var STUDIO = '/palnovaa-foresight/app';
+  var canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+  var barEl = document.getElementById('bar'), wrap = document.getElementById('wrap');
+  document.getElementById('cr').textContent = '© ' + Math.max(2026, new Date().getFullYear()) + ' PalNovaa. All rights reserved.';
+  var w=0,h=0,dpr=1, raf=0, done=false;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function resize(){ dpr=Math.min(window.devicePixelRatio||1,2); w=canvas.clientWidth; h=canvas.clientHeight;
+    canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); }
+  resize(); window.addEventListener('resize', resize);
+
+  var latN=30, lonN=56, pts=[];
+  for(var i=1;i<latN;i++){ var phi=(i/latN)*Math.PI; for(var j=0;j<lonN;j++) pts.push([phi,(j/lonN)*Math.PI*2]); }
+
+  function lerp(a,b,t){return a+(b-a)*t;}
+  var C0=[92,70,230], C1=[196,58,198], C2=[255,96,12];
+  function colorAt(e){ var r,g,b,t;
+    if(e<0.5){ t=e/0.5; r=lerp(C0[0],C1[0],t); g=lerp(C0[1],C1[1],t); b=lerp(C0[2],C1[2],t); }
+    else { t=(e-0.5)/0.5; r=lerp(C1[0],C2[0],t); g=lerp(C1[1],C2[1],t); b=lerp(C1[2],C2[2],t); }
+    return [r|0,g|0,b|0]; }
+
+  function go(){ if(done) return; done=true; if(barEl) barEl.style.width='100%';
+    wrap.style.opacity='0'; setTimeout(function(){ location.replace(STUDIO); }, 620); }
+
+  var t0 = performance.now(), DURATION = 3200;
+  function render(now){
+    var t=(now-t0)/1000;
+    if(!done){ var p=Math.min(1,(now-t0)/DURATION); barEl.style.width=Math.round(p*100)+'%'; if(p>=1) go(); }
+
+    ctx.clearRect(0,0,w,h);
+    var cx=w/2, cy=h*0.37, R=Math.min(w,h)*0.30;
+    var ay=reduced?0.5:t*0.22, ax=-0.42;
+    var cAy=Math.cos(ay), sAy=Math.sin(ay), cAx=Math.cos(ax), sAx=Math.sin(ax);
+    var tw=reduced?0:t, list=[], k;
+    for(k=0;k<pts.length;k++){
+      var phi=pts[k][0], theta=pts[k][1];
+      var sinp=Math.sin(phi), cosp=Math.cos(phi);
+      var ux=sinp*Math.cos(theta), uy=cosp, uz=sinp*Math.sin(theta);
+      var disp=0.15*Math.sin(2.6*phi+tw*1.05)+0.12*Math.sin(3.4*theta+tw*0.8+phi)+0.10*Math.sin(1.9*phi+2.2*theta-tw*1.3);
+      var rr=1+0.22*disp;
+      var x=ux*rr, y=uy*rr, z=uz*rr;
+      var x1=x*cAy+z*sAy, z1=-x*sAy+z*cAy;
+      var y1=y*cAx-z1*sAx, z2=y*sAx+z1*cAx;
+      var e=(Math.hypot(x1,y1)-0.5)/0.6+Math.max(0,disp)*0.75; e=e<0?0:e>1?1:e;
+      list.push([cx+x1*R, cy+y1*R, z2, e]);
+    }
+    list.sort(function(a,b){return a[2]-b[2];});
+    for(k=0;k<list.length;k++){
+      var d=list[k], depth=Math.max(0,Math.min(1,(d[2]+1.3)/2.6)), col=colorAt(d[3]);
+      var alpha=(0.28+0.72*depth)*0.85, size=(0.9+1.5*depth)*(0.8+0.5*d[3]);
+      if(d[3]>0.62){ ctx.beginPath(); ctx.fillStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+(0.10*d[3])+')'; ctx.arc(d[0],d[1],size*3.4,0,6.2832); ctx.fill(); }
+      ctx.beginPath(); ctx.fillStyle='rgba('+col[0]+','+col[1]+','+col[2]+','+alpha+')'; ctx.arc(d[0],d[1],size,0,6.2832); ctx.fill();
+    }
+    raf=requestAnimationFrame(render);
+  }
+  raf=requestAnimationFrame(render);
+  wrap.addEventListener('click', go);
+})();
+</script>
+</body>
+</html>
