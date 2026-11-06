@@ -1,4 +1,4 @@
-import { haversine, bearing, compassOf, readable } from './spatialAgent.js';
+import { haversine, bearing, compassOf, readable, criticalityOf } from './spatialAgent.js';
 import { circlePolygon } from './spatialSim.js';
 import {
     heatRings, FIRE_LOAD, HEAT_FLUX, FIRE_ZONES, fireZoneOf,
@@ -910,6 +910,202 @@ const openSpaceChain = (event, greens, radius, kind, out) => {
 };
 
 /* ============================================================
+   حقل الشدّة الحراريّ — «خريطة حرارة» للأثر، لكل حدث
+
+   الأثر لا يُقرأ حلقاتٍ صمّاء: يُقرأ سطحاً متدرّجاً كاللهب، أشدُّه
+   عند المركز ويخبو مع المسافة — لكنّه لا يخبو بانتظام. فهو ينحرف:
+
+     · مع الريح في الحريق (ممرّ الدخان)
+     · نحو ما يُعظّم الأثر — مدرسةٌ عامرة، مستشفى، محطّة وقود
+     · ويشتدّ في النسيج المبنيّ الكثيف ويخفّ في الأرض المكشوفة
+
+   فالسطح الناتج ليس دائرةً بل «بصمةٌ» لهذا الحدث في هذا المكان في
+   هذه الساعة — وهذا هو الربط المطلوب بين الحدث ومحيطه.
+   ============================================================ */
+
+/*
+ * لكل نوع حدثٍ ملمحُ انتشارٍ مختلف: الحشد يتركّز، والانقطاع ينبسط،
+ * والحريق ينحرف مع الريح، والطارئ الطبّي تجذبه مرافق الرعاية.
+ */
+const HEAT_PROFILE = {
+    accident: { falloff: 1.6, directional: false, placePull: 1.0 },
+    closure: { falloff: 1.3, directional: false, placePull: 1.0 },
+    fire: { falloff: 1.1, directional: true, placePull: 0.8 },
+    power: { falloff: 0.8, directional: false, placePull: 1.3 },
+    crowd: { falloff: 2.2, directional: false, placePull: 0.7 },
+    medical: { falloff: 1.0, directional: false, placePull: 1.5 },
+    default: { falloff: 1.5, directional: false, placePull: 1.0 }
+};
+
+/**
+ * يبني حقل الشدّة نقاطاً موزونةً ترسمها الخريطة طبقةَ حرارة.
+ *
+ * كل نقطةٍ وزنُها بين صفرٍ وواحد: تضاؤلٌ شعاعيّ من المركز، مضروبٌ
+ * في كثافة النسيج المبنيّ، منحرفٌ مع الريح إن كان الحدث حريقاً،
+ * مزيدٌ عليه «نتوءاتٌ» عند المعالم المعرَّضة بقدر امتلائها وحرَجها.
+ * فالسطح يلتصق بالواقع لا بالدائرة.
+ */
+export const heatField = (event, places, kind, radius, { windToward = 90 } = {}, context = null) => {
+    const lat0 = +event.latitude;
+    const lon0 = +event.longitude;
+    if (!Number.isFinite(lat0) || !Number.isFinite(lon0) || !(radius > 0)) {
+        return { type: 'FeatureCollection', features: [] };
+    }
+
+    const kx = METRES_PER_DEG * Math.cos((lat0 * Math.PI) / 180);
+    const ky = METRES_PER_DEG;
+    const prof = HEAT_PROFILE[kind] || HEAT_PROFILE.default;
+
+    /* النسيج المبنيّ يُضخّم الأثر، والأرض المكشوفة تُخفّفه */
+    const built = context ? 0.6 + 0.9 * Math.min(1, context.builtShare ?? 0.5) : 1;
+
+    /* المعالم المعرَّضة كمصادر «جذبٍ» للحقل — مُسبقة الحساب بالأمتار */
+    const bumps = (places || []).map(p => ({
+        ox: ((+p.longitude) - lon0) * kx,
+        oy: ((+p.latitude) - lat0) * ky,
+        s: Math.min(2.2, (((p.heads || 25) / 280) * (criticalityOf(p.category) / 6)
+            * (p.occupancy?.open ? 1 : 0.35)) * prof.placePull),
+        sigma: Math.max(55, Math.min(170, radius * 0.11))
+    })).filter(b => b.s > 0.02);
+
+    const steps = 16;
+    const stepM = radius / steps;
+    const feats = [];
+    let maxW = 0;
+    const raw = [];
+
+    for (let gx = -steps; gx <= steps; gx++) {
+        for (let gy = -steps; gy <= steps; gy++) {
+            const dxm = gx * stepM;
+            const dym = gy * stepM;
+            const d = Math.hypot(dxm, dym);
+            if (d > radius * 1.03) continue;
+
+            let w = Math.pow(Math.max(0, 1 - d / radius), prof.falloff);
+
+            if (prof.directional) {
+                /* الاتّجاه بالبوصلة لهذه النقطة (صفرٌ شمالاً) مقابل الريح */
+                const brg = (Math.atan2(dxm, dym) * 180 / Math.PI + 360) % 360;
+                const off = Math.abs(((brg - windToward + 540) % 360) - 180);
+                const along = Math.cos((Math.min(off, 90) * Math.PI) / 180);
+                w *= 0.4 + 0.6 * Math.max(0, along);   // انحيازٌ مع الريح مع إبقاء أثرٍ حوليّ
+            }
+
+            w *= built;
+
+            for (const b of bumps) {
+                const dd = (dxm - b.ox) ** 2 + (dym - b.oy) ** 2;
+                w += b.s * Math.exp(-dd / (2 * b.sigma * b.sigma));
+            }
+
+            if (w <= 0.001) continue;
+            raw.push([lon0 + dxm / kx, lat0 + dym / ky, w]);
+            if (w > maxW) maxW = w;
+        }
+    }
+
+    if (maxW > 0) {
+        for (const [lon, lat, w] of raw) {
+            const n = w / maxW;
+            if (n < 0.05) continue;         // نُسقط الأطراف الباهتة — أخفُّ وأوضح
+            feats.push({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [lon, lat] },
+                properties: { w: Math.round(n * 1000) / 1000 }
+            });
+        }
+    }
+
+    return { type: 'FeatureCollection', features: feats };
+};
+
+/* ============================================================
+   الغطاء الأرضيّ واستعمال الأرض — ربط الحدث بما على الأرض فعلاً
+   ============================================================ */
+
+/* كثافةٌ سكّانية تقديرية لكل كم² حسب الغالب — لتقدير «المحيطين» */
+const AMBIENT_DENSITY = {
+    'سكنيّ': 9000, 'تجاريّ': 5000, 'تجزئة': 6000, 'تعليميّ': 4000,
+    'مؤسّسيّ': 3000, 'صناعيّ': 1200, 'قيد الإنشاء': 300,
+    'زراعيّ': 120, 'أرض زراعية': 120, 'بستان': 100, 'مرج': 60,
+    'غابة': 30, 'أرض فضاء': 150, 'عسكريّ': 200
+};
+
+/**
+ * يربط الحدث بالغطاء الأرضيّ: ماذا على الأرض، وكيف يُغيّر ذلك الحدث.
+ *
+ * فحريقٌ في نسيجٍ تجاريٍّ كثيفٍ غيرُ حريقٍ في أرضٍ زراعية، وتجمّعٌ
+ * قرب نطاقٍ تجاريّ يُفسَّر، وانقطاعٌ في حيٍّ سكنيّ يمسّ البيوت لا
+ * المصانع. وكلُّ ذلك من مساحاتٍ مقيسةٍ لا من ظنّ.
+ */
+const landContextChain = (event, context, kind, radius, out) => {
+    if (!context || !(context.coveredShare > 0.05)) return out;
+
+    const mix = context.mix || {};
+    const pct = (x) => Math.round((x || 0) * 100);
+    const parts = [];
+    if (mix.urban > 0.02) parts.push(`نسيج مبنيّ ${pct(mix.urban)}٪`);
+    if (mix.veg > 0.02) parts.push(`غطاء نباتيّ ${pct(mix.veg)}٪`);
+    if (mix.water > 0.02) parts.push(`مياه ${pct(mix.water)}٪`);
+    if (mix.bare > 0.02) parts.push(`أرض مكشوفة ${pct(mix.bare)}٪`);
+
+    /* المحيطون: تقديرٌ من الكثافة المبنيّة لا من المعالم وحدها —
+       فأكثر الناس في البيوت لا في المرافق المسجّلة */
+    const scopeKm2 = (Math.PI * radius * radius) / 1e6;
+    const dens = AMBIENT_DENSITY[context.dominant] || 2500;
+    const ambient = Math.round(scopeKm2 * (context.builtShare || 0) * dens);
+
+    out.push(line('info',
+        `الغطاء الأرضيّ: الغالب ${context.dominant || 'غير محدَّد'}`,
+        `${parts.join(' · ') || 'غطاءٌ قليل التسجيل'}. الكثافة المبنيّة نحو `
+        + `${pct(context.builtShare)}٪ من النطاق، فالمحيطون تقديراً نحو ${ambient.toLocaleString('ar-EG')} نسمة `
+        + '(من كثافة النسيج لا من عدّادٍ حقيقيّ). والغطاء يُغيّر قراءة الحدث لا شكله فقط.',
+        'OpenStreetMap landuse/natural — قياس المساحات'));
+
+    /* الربط النوعيّ: ماذا يعني هذا الغطاء لهذا الحدث */
+    const veg = mix.veg || 0;
+    const urban = mix.urban || 0;
+    const dom = context.dominantUse || '';
+
+    if (kind === 'fire') {
+        if (veg > 0.3) out.push(line('high',
+            'الغطاء النباتيّ يرفع خطر الامتداد',
+            `أكثر من ${pct(veg)}٪ غطاءٌ نباتيّ في النطاق — في الطقس الجافّ يحمل النار أفقيّاً `
+            + 'أسرع من المباني. فحزام العزل يُراعى من جهة النبات أوّلاً.',
+            'سلوك حرائق الغطاء النباتيّ — الامتداد السطحيّ'));
+        else if (urban > 0.5) out.push(line('warn',
+            'نسيجٌ مبنيّ كثيف حول الحريق',
+            `${pct(urban)}٪ نسيج مبنيّ متلاصق — الحمل الحراريّ عالٍ واحتمال الامتداد بين المباني `
+            + 'قائم، والإخلاء يحتاج منافذ متعدّدة.',
+            'SFPE — الحمل الحراريّ في النسيج الكثيف'));
+    } else if (kind === 'crowd') {
+        if (dom === 'retail' || dom === 'commercial') out.push(line('info',
+            'نطاقٌ تجاريّ — جاذبٌ للحشود أصلاً',
+            'الغالب تجاريّ/تجزئة، وهو ما يستقطب الكثافة في ساعات الذروة. '
+            + 'فتقدير الحشد يُبنى على ذلك لا على الحدث وحده.',
+            'استعمال الأرض — مولّدات الرحلات'));
+    } else if (kind === 'accident') {
+        if (dom === 'residential') out.push(line('warn',
+            'حيٌّ سكنيّ — مشاةٌ وأطفالٌ على المحكّ',
+            'الغالب سكنيّ، فالمخاطرة على المشاة والأطفال أعلى من طريقٍ تجاريّ، '
+            + 'وأولويّة إبطاء الحركة وتأمين المعابر.',
+            'UN-Habitat — سلامة الطرق في الأحياء السكنية'));
+        else if (dom === 'industrial') out.push(line('warn',
+            'نطاقٌ صناعيّ — مركباتٌ ثقيلة',
+            'الغالب صناعيّ، فحركة الشاحنات أعلى، وأثر فقد المسار على الإمداد أكبر.',
+            'HCM — تركيب المركبات الثقيلة يخفض السعة'));
+    } else if (kind === 'power') {
+        if (dom === 'residential') out.push(line('info',
+            'انقطاعٌ في نسيجٍ سكنيّ',
+            `نحو ${ambient.toLocaleString('ar-EG')} نسمة تقديراً في النطاق السكنيّ — `
+            + 'الأثر منزليّ واسع (تبريدٌ وتدفئةٌ وأجهزةٌ طبّية منزلية) لا مؤسّسيٌّ فقط.',
+            'أثر الانقطاع على الأسر في النسيج السكنيّ'));
+    }
+
+    return { out, ambient };
+};
+
+/* ============================================================
    أنواع الأحداث — لكلٍّ طبيعته
    ============================================================ */
 
@@ -1009,13 +1205,14 @@ export const KNOBS = {
  * @param landmarks معالم الخريطة
  * @param roads     شبكة الطرق من ‎OSM‎ — اختيارية، ودونها يُقال ذلك صريحاً
  */
-export const analyseEvent = (event, landmarks, roads = [], greens = []) => {
+export const analyseEvent = (event, landmarks, roads = [], greens = [], env = {}) => {
     const hazard = HAZARDS[event?.kind] || HAZARDS.accident;
     const radius = Number.isFinite(+event?.radius) ? +event.radius : hazard.radius;
     const hour = Number.isFinite(+event?.hour)
         ? ((Math.round(+event.hour) % 24) + 24) % 24
         : 8;
 
+    const context = env?.context || null;
     const places = exposedPlaces(event, landmarks, radius, hour);
     const findings = [];
     const shapes = [];
@@ -1038,10 +1235,20 @@ export const analyseEvent = (event, landmarks, roads = [], greens = []) => {
     /* المساحات المفتوحة — تُفحص في كل حدثٍ له مُخلَون أو إسناد */
     openSpaceChain(event, greens, radius, event?.kind, findings);
 
+    /* الغطاء الأرضيّ — يربط الحدث بما على الأرض فعلاً */
+    const land = landContextChain(event, context, event?.kind, radius, findings);
+    const ambient = land?.ambient || 0;
+
     const order = { high: 0, warn: 1, info: 2 };
     findings.sort((a, b) => order[a.tone] - order[b.tone]);
 
     const heads = places.reduce((sum, p) => sum + p.heads, 0);
+
+    /* حقل الشدّة — «خريطة حرارة» الأثر، منحازةً إلى المحيط الحقيقيّ */
+    const heat = heatField(
+        event, places, event?.kind, radius,
+        { windToward: event?.windToward }, context
+    );
 
     return {
         hazard,
@@ -1054,6 +1261,8 @@ export const analyseEvent = (event, landmarks, roads = [], greens = []) => {
         roads: (roads || []).map(describeRoad),
         findings,
         shapes: { type: 'FeatureCollection', features: shapes },
+        heat,
+        context,
         standards: standardsFor(hazard.chains),
         totals: {
             places: places.length,
@@ -1061,6 +1270,7 @@ export const analyseEvent = (event, landmarks, roads = [], greens = []) => {
             lifeline: places.filter(p => p.lifeline).length,
             openNow: places.filter(p => p.occupancy.open).length,
             heads: Math.round(heads),
+            ambient,
             urgent: findings.filter(f => f.tone === 'high').length,
             warn: findings.filter(f => f.tone === 'warn').length,
             worst: findings.find(f => f.tone === 'high') || null
