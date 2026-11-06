@@ -184,11 +184,17 @@ router.post('/brief', async (req, res) => {
     const lat = Number.isFinite(+b.lat) ? +b.lat : null;
     const lon = Number.isFinite(+b.lon) ? +b.lon : null;
     const cover = (b.cover || '').toString().slice(0, 60);
+    const description = (b.description || '').toString().slice(0, 300);
     const nearby = Array.isArray(b.nearby) ? b.nearby.slice(0, 10).map(String) : [];
 
     const where = place || city || (lat != null ? `${lat.toFixed(4)}, ${lon.toFixed(4)}` : null);
     if (!where) return res.json({ ok: false, brief: null, sources: [], reason: 'no location' });
-    if (!GEMINI_KEY) return res.json({ ok: false, brief: null, sources: [], reason: 'missing GEMINI_API_KEY' });
+
+    /* المفتاح: من جسم الطلب (متصفّح المستخدم) أوّلاً، ثم متغيّر البيئة.
+       لا يُسجَّل ولا يُخزَّن — يُستعمل لهذا الطلب فقط */
+    const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
+    const KEY = reqKey || GEMINI_KEY;
+    if (!KEY) return res.json({ ok: false, brief: null, sources: [], reason: 'missing GEMINI_API_KEY' });
 
     const key = `${where}::${b.kind}::${hour}`;
     const hit = briefCache.get(key);
@@ -197,6 +203,7 @@ router.post('/brief', async (req, res) => {
     const prompt = [
         `أنت محلّلٌ ميدانيّ خبيرٌ في إدارة الطوارئ ونظم المعلومات الجغرافية.`,
         `وقع سيناريو: «${kindLabel}» عند هذا الموضع: ${where}${city ? ` (${city})` : ''}.`,
+        description ? `وصفه المستخدم هكذا: «${description}».` : '',
         lat != null ? `الإحداثيّات: ${lat.toFixed(5)}, ${lon.toFixed(5)}.` : '',
         cover ? `الغطاء الأرضيّ الغالب حوله: ${cover}.` : '',
         nearby.length ? `معالمُ قريبة مقروءة من الخريطة: ${nearby.join('، ')}.` : '',
@@ -217,7 +224,7 @@ router.post('/brief', async (req, res) => {
     };
 
     try {
-        const data = await postJSON(url, payload, { 'x-goog-api-key': GEMINI_KEY }, 22000);
+        const data = await postJSON(url, payload, { 'x-goog-api-key': KEY }, 22000);
         const cand = data?.candidates?.[0];
         const text = (cand?.content?.parts || [])
             .map(p => p?.text || '').join('').trim();

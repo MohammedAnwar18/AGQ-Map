@@ -39,7 +39,14 @@ const MAP_STYLE = {
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }]
 };
 
-const LABELS_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'];
+/* تسمياتٌ من OpenStreetMap (CARTO) لا من طبقة Esri الإدارية — فلا
+   تظهر مسمّياتُ المجالس/الحدود السياسية، بل أسماءُ الأحياء والطرق */
+const LABELS_TILES = [
+    'https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
+    'https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
+    'https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
+    'https://d.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png'
+];
 
 const TONE_WORD = { high: 'عاجل', warn: 'انتبه', info: 'معلومة' };
 const BAND_WORD = { high: 'شدّة عالية', medium: 'شدّة متوسّطة', low: 'شدّة محدودة' };
@@ -115,8 +122,20 @@ const AgentStudio = () => {
 
     const [tab, setTab] = useState('result');
     const [shown, setShown] = useState({
-        labels: true, impact: true, zones: true, roads: true, greens: true, cover: false, places: false
+        labels: true, streets: true, impact: true, zones: true, roads: true, greens: true, cover: false, places: false
     });
+
+    /* مفتاح Gemini — يُحفظ في المتصفّح وحده (لا في الخادم ولا في الحزمة) */
+    const [geminiKey, setGeminiKey] = useState(() => {
+        try { return localStorage.getItem('foresight_gemini_key') || ''; } catch { return ''; }
+    });
+    const [keyDraft, setKeyDraft] = useState('');
+    const saveKey = () => {
+        const k = keyDraft.trim();
+        try { if (k) localStorage.setItem('foresight_gemini_key', k); else localStorage.removeItem('foresight_gemini_key'); } catch { /* */ }
+        setGeminiKey(k);
+        setKeyDraft('');
+    };
     const [picked, setPicked] = useState(null);
 
     const hazard = HAZARDS[kind] || HAZARDS.accident;
@@ -251,21 +270,22 @@ const AgentStudio = () => {
             setBrief(b => ({ ...b, loading: true }));
             try {
                 const res = await fetchBrief({
+                    description: (query && query.trim()) || null,
                     place: (query && query.trim()) || spotName || null,
                     city: spotCity || null,
                     kind, hour,
                     lat: spot.latitude, lon: spot.longitude,
                     cover: osm.context?.dominant || null,
                     nearby
-                }, { signal: ctrl.signal });
-                setBrief({ loading: false, text: res.brief, sources: res.sources || [], ok: res.ok });
+                }, { signal: ctrl.signal, geminiKey });
+                setBrief({ loading: false, text: res.brief, sources: res.sources || [], ok: res.ok, reason: res.reason, needsKey: res.needsKey });
             } catch (e) {
                 if (e?.name === 'AbortError') return;
                 setBrief({ loading: false, text: null, sources: [], ok: false });
             }
         }, 900);
         return () => { clearTimeout(t); ctrl.abort(); };
-    }, [spot, kind, hour, spotCity, spotName, osm.context, osm.places]);
+    }, [spot, kind, hour, spotCity, spotName, osm.context, osm.places, geminiKey]);
 
     /* ── الترميز الجغرافيّ: من وصفِ مكانٍ إلى إحداثيّة ── */
     const runSearch = useCallback(async () => {
@@ -307,6 +327,19 @@ const AgentStudio = () => {
     const roadsGeo = useMemo(() => pick(report?.shapes, 'road', 'alternative'), [report]);
     const queueGeo = useMemo(() => pick(report?.shapes, 'queue'), [report]);
     const impactGeo = useMemo(() => report?.impact || { type: 'FeatureCollection', features: [] }, [report]);
+
+    /* شبكة الشوارع الكاملة المقروءة من OSM — تُرسم طبقةً ظاهرة فوق
+       الصورة، فيُرى التحليل على الشوارع نفسها لا على ألوانٍ مجرّدة */
+    const networkGeo = useMemo(() => ({
+        type: 'FeatureCollection',
+        features: (osm.roads || []).flatMap(r =>
+            (r.lines || []).map(line => ({
+                type: 'Feature',
+                geometry: { type: 'LineString', coordinates: line },
+                properties: { cls: r.highway, name: r.name || '' }
+            }))
+        )
+    }), [osm.roads]);
 
     const greensGeo = useMemo(() => ({
         type: 'FeatureCollection',
@@ -405,6 +438,61 @@ const AgentStudio = () => {
 
     const impactOn = shown.impact && (impactGeo.features?.length > 0);
 
+    /* بطاقة الموجز الذكيّ — القرار والمصادر، أو إعداد المفتاح إن لزم */
+    const renderBrief = () => (
+        <>
+            {brief.loading && (
+                <div className="st-news-busy"><span className="hla-spin" />يحلّل السياق ويبحث في المصادر…</div>
+            )}
+
+            {!brief.loading && brief.text && (
+                <article className="st-brief">
+                    <div className="st-brief-head"><span>✦</span> القرار الذكيّ</div>
+                    <div className="st-brief-body">
+                        {brief.text.split('\n').filter(Boolean).map((ln, i) => (
+                            <p key={i} className={ln.trim().startsWith('•') ? 'is-bullet' : ''}>{ln.replace(/^•\s*/, '')}</p>
+                        ))}
+                    </div>
+                    {brief.sources.length > 0 && (
+                        <div className="st-brief-src">
+                            <b>المصادر</b>
+                            <div>
+                                {brief.sources.map((s, i) => (
+                                    <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" title={s.title}>
+                                        {i + 1}. {(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.title; } })()}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </article>
+            )}
+
+            {!brief.loading && !brief.text && (
+                <div className="st-brief-setup">
+                    <p>
+                        {brief.needsKey || !geminiKey
+                            ? 'التحليل الذكيّ (Gemini + بحث حيّ) يحتاج مفتاحك — يُحفظ في متصفّحك وحده ولا يُرسل لأحد غير Google:'
+                            : (brief.reason ? `تعذّر التحليل: ${brief.reason}` : 'حدّد موضعاً ووصفاً ليُبنى القرار الذكيّ.')}
+                    </p>
+                    <div className="st-keyrow">
+                        <input type="password" placeholder="الصق مفتاح Gemini هنا…" value={keyDraft}
+                               onChange={(e) => setKeyDraft(e.target.value)}
+                               onKeyDown={(e) => e.key === 'Enter' && saveKey()} />
+                        <button onClick={saveKey} disabled={!keyDraft.trim()}>حفظ</button>
+                    </div>
+                    {geminiKey && (
+                        <small className="st-key-saved">
+                            مفتاحٌ محفوظ ✓
+                            <button className="st-link" onClick={() => { setGeminiKey(''); try { localStorage.removeItem('foresight_gemini_key'); } catch { /* */ } }}>إزالة</button>
+                        </small>
+                    )}
+                    <small className="st-key-help">تحصل على المفتاح من Google AI Studio → API keys.</small>
+                </div>
+            )}
+        </>
+    );
+
     return (
         <div className="st">
             {/* ══ شريط وصف الحدث ومكانه ══ */}
@@ -439,19 +527,17 @@ const AgentStudio = () => {
                 )}
             </div>
 
-            {/* ══ أنواع الأحداث ══ */}
+            {/* ══ السيناريو المُستدَلّ من وصف المستخدم ══ */}
             <div className="st-bar">
-                <div className="st-kinds">
-                    {Object.entries(HAZARDS).map(([key, h]) => (
-                        <button
-                            key={key}
-                            className={kind === key ? 'is-on' : ''}
-                            onClick={() => changeKind(key)}
-                            title={h.physics}
-                        >
-                            <i>{h.icon}</i> {h.label}
-                        </button>
-                    ))}
+                <div className="st-scenario">
+                    <span className="st-scenario-tag">السيناريو المُستدَلّ من وصفك</span>
+                    <b>{hazard.icon} {hazard.label}</b>
+                    <select value={kind} onChange={(e) => changeKind(e.target.value)} title="صحّحه إن لزم">
+                        {Object.entries(HAZARDS).map(([key, h]) => (
+                            <option key={key} value={key}>{h.icon} {h.label}</option>
+                        ))}
+                    </select>
+                    <em>{hazard.physics}</em>
                 </div>
 
                 <div className="st-dials">
@@ -579,6 +665,30 @@ const AgentStudio = () => {
                             </Source>
                         )}
 
+                        {/* شبكة الشوارع الكاملة من OSM — ظاهرةٌ ليُقرأ التحليل عليها */}
+                        {shown.streets && (
+                            <Source id="st-network" type="geojson" data={networkGeo}>
+                                <Layer id="st-network-case" type="line"
+                                       layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                                       paint={{
+                                           'line-color': 'rgba(2,6,16,.55)',
+                                           'line-width': ['match', ['get', 'cls'],
+                                               'motorway', 6, 'trunk', 5.5, 'primary', 4.5, 'secondary', 3.6, 'tertiary', 2.8, 2],
+                                           'line-opacity': 0.5
+                                       }} />
+                                <Layer id="st-network-line" type="line"
+                                       layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+                                       paint={{
+                                           'line-color': ['match', ['get', 'cls'],
+                                               'motorway', '#fcd34d', 'trunk', '#fcd34d', 'primary', '#fde68a',
+                                               'secondary', '#e5e7eb', 'tertiary', '#e5e7eb', 'rgba(255,255,255,.75)'],
+                                           'line-width': ['match', ['get', 'cls'],
+                                               'motorway', 3.2, 'trunk', 3, 'primary', 2.4, 'secondary', 1.8, 'tertiary', 1.4, 0.9],
+                                           'line-opacity': 0.9
+                                       }} />
+                            </Source>
+                        )}
+
                         {shown.zones && (
                             <Source id="st-zones" type="geojson" data={zonesGeo}>
                                 <Layer id="st-plume-fill" type="fill" filter={['==', ['get', 'layer'], 'plume']}
@@ -662,9 +772,10 @@ const AgentStudio = () => {
                     <div className="st-layers">
                         {[
                             ['labels', 'الأسماء'],
+                            ['streets', 'شبكة الشوارع'],
                             ['impact', 'مؤشّر الشدّة'],
                             ['zones', 'النطاقات'],
-                            ['roads', 'الطرق'],
+                            ['roads', 'الطرق المتأثّرة'],
                             ['greens', 'المساحات الخضراء'],
                             ['cover', 'استعمال الأرض'],
                             ['places', 'المعالم']
@@ -747,6 +858,8 @@ const AgentStudio = () => {
                             {tab === 'result' && (
                                 <div className="st-pane">
                                     {spotName && <div className="st-where">📍 {spotName}</div>}
+
+                                    {renderBrief()}
 
                                     <div className="st-top">
                                         <Gauge score={severity.score} band={severity.band}
@@ -848,42 +961,12 @@ const AgentStudio = () => {
                             {tab === 'news' && (
                                 <div className="st-pane">
                                     <p className="st-hint">
-                                        تحليلٌ ذكيّ يفهم «{hazard.label}» عند «{spotCity || spotName || 'الموضع'}»،
+                                        قرارٌ ذكيّ يفهم «{hazard.label}» عند «{spotCity || spotName || 'الموضع'}»،
                                         يجلب ما يتّصل به من مصادرَ حيّة ويربطه بموضع الوقوع والسيناريو
-                                        (Gemini + بحث Google) — سياقٌ يُقرأ مع التحليل لا جزءٌ من الحساب.
+                                        (Gemini + بحث Google) — سياقٌ يُقرأ مع التحليل العلميّ لا جزءٌ من حسابه.
                                     </p>
 
-                                    {/* الموجز الذكيّ */}
-                                    {brief.loading && <div className="st-news-busy"><span className="hla-spin" />يحلّل السياق ويبحث في المصادر…</div>}
-                                    {!brief.loading && brief.text && (
-                                        <article className="st-brief">
-                                            <div className="st-brief-head"><span>✦</span> موجزٌ ذكيّ</div>
-                                            <div className="st-brief-body">
-                                                {brief.text.split('\n').filter(Boolean).map((ln, i) => (
-                                                    <p key={i} className={ln.trim().startsWith('•') ? 'is-bullet' : ''}>{ln.replace(/^•\s*/, '')}</p>
-                                                ))}
-                                            </div>
-                                            {brief.sources.length > 0 && (
-                                                <div className="st-brief-src">
-                                                    <b>المصادر</b>
-                                                    <div>
-                                                        {brief.sources.map((s, i) => (
-                                                            <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" title={s.title}>
-                                                                {i + 1}. {(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.title; } })()}
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </article>
-                                    )}
-                                    {!brief.loading && !brief.text && (
-                                        <div className="st-news-empty">
-                                            {brief.ok === false
-                                                ? 'تعذّر التحليل الذكيّ الآن (قد يكون المفتاح أو الخدمة غير متاحين).'
-                                                : 'لا موجز بعد — حدِّد موضعاً ونوع حدثٍ ليُبنى التحليل.'}
-                                        </div>
-                                    )}
+                                    {renderBrief()}
 
                                     {/* عناوين إخبارية حيّة (GDELT) */}
                                     {(news.loading || news.items.length > 0) && (

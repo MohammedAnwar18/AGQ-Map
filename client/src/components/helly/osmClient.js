@@ -631,31 +631,42 @@ export const fetchNews = async (q, { kind = null, city = null, signal, limit = 1
 /* ============================================================
    الموجز الذكيّ — تحليلٌ مسنودٌ بالبحث الحيّ (Gemini + Google Search)
 
-   وسيطٌ في الخادم يستدعي نموذجاً ذكيّاً مزوّداً بالبحث: يفهم الحدث
-   ومكانه، ويجلب ما يتّصل به من مصادرَ حيّة، ويربطه بموضع الوقوع
-   والسيناريو — فيردّ موجزاً عربيّاً مع مصادره الموثّقة. والمفتاح
-   يبقى في الخادم لا في المتصفّح، فلا يُكشف لكل زائر.
+   يفهم الحدث ومكانه، ويجلب ما يتّصل به من مصادرَ حيّة، ويربطه بموضع
+   الوقوع والسيناريو — فيردّ قراراً عربيّاً مرتّباً مع مصادره الموثّقة.
+
+   مساران: إن أدخل المستخدم مفتاحه في الصفحة (يُحفظ في متصفّحه وحده)
+   نستدعي Gemini مباشرةً — فلا يحتاج إعداد خادمٍ ولا يُكشف المفتاح لغيره.
+   وإلّا جرّبنا وسيط المنصّة ‎/api/foresight/brief‎ إن كان مُعدّاً.
    ============================================================ */
-export const fetchBrief = async (payload, { signal } = {}) => {
+/*
+ * نمرّ دائماً بوسيط المنصّة (نفس الأصل) تفادياً لقيود CORS على نقطة
+ * Gemini من المتصفّح. مفتاح المستخدم (إن أدخله) يُرسَل في جسم الطلب
+ * من متصفّحه إلى خادمه هو، فيستدعي الخادمُ Gemini — فلا يُكشف المفتاح
+ * في الحزمة ولا في المستودع، ولا لأيّ زائرٍ آخر.
+ */
+export const fetchBrief = async (payload, { signal, geminiKey } = {}) => {
     try {
+        const body = { ...(payload || {}) };
+        if (geminiKey) body.key = geminiKey;
         const res = await fetch(`${API_BASE}/foresight/brief`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload || {}),
+            body: JSON.stringify(body),
             signal
         });
-        if (!res.ok) return { ok: false, brief: null, sources: [], reason: `HTTP ${res.status}` };
+        if (!res.ok) return { ok: false, brief: null, sources: [], reason: `HTTP ${res.status}`, needsKey: !geminiKey };
         const data = await res.json();
         return {
             ok: data?.ok !== false,
             brief: data?.brief || null,
             sources: Array.isArray(data?.sources) ? data.sources : [],
             model: data?.model || null,
-            reason: data?.reason || null
+            reason: data?.reason || null,
+            needsKey: !geminiKey && (data?.reason === 'missing GEMINI_API_KEY')
         };
     } catch (e) {
         if (e?.name === 'AbortError') throw e;
-        return { ok: false, brief: null, sources: [], reason: 'تعذّر الوصول إلى خدمة التحليل الذكيّ' };
+        return { ok: false, brief: null, sources: [], reason: 'تعذّر الوصول إلى خدمة التحليل', needsKey: !geminiKey };
     }
 };
 
