@@ -1,0 +1,401 @@
+/* ============================================================================
+   PalNovaa Foresight — GeoStudio theme
+   نظامٌ بصريّ واحد: «لوحة تحكّم تحليليّة» بهويّة بالنوفا (بنفسجيّ→برتقاليّ)
+   على قماشٍ ليليّ عميق، بزجاجيّاتٍ دقيقة وحوافَّ ناعمة. مُقيَّدٌ بالكامل تحت
+   .geo-studio فلا يتسرّب إلى باقي التطبيق. داكنٌ افتراضاً، مع نمطٍ نهاريّ.
+   ============================================================================ */
+
+.geo-studio {
+    /* قماش داكن افتراضيّ */
+    --bg: #0a0e1a;
+    --bg-grid: rgba(123, 92, 255, .05);
+    --panel: rgba(20, 26, 44, .82);
+    --panel-solid: #141a2c;
+    --panel-2: #1a2136;
+    --panel-3: #222a42;
+    --ink: #eef1f8;
+    --ink-soft: #9aa3bd;
+    --ink-faint: #6b7493;
+    --line: rgba(255, 255, 255, .09);
+    --line-soft: rgba(255, 255, 255, .055);
+    --accent: #7b5cff;          /* بنفسجيّ بالنوفا */
+    --accent-2: #9b7bff;
+    --accent-soft: rgba(123, 92, 255, .16);
+    --cyan: #22d3ee;
+    --geo-draw: #7b5cff;        /* عناصر المستخدم */
+    --geo-layer: #22d3ee;       /* الطبقات المستوردة */
+    --geo-result: #f59e0b;      /* مخرجات التحليل */
+    --node: #60a5fa;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --hh: #f87171; --ll: #60a5fa; --hl: #fbbf24; --lh: #93c5fd; --ns: #4b5571;
+    --shadow: 0 18px 50px rgba(0, 0, 0, .55);
+    --shadow-sm: 0 4px 16px rgba(0, 0, 0, .4);
+    --radius: 16px;
+    --grad: linear-gradient(135deg, #7b5cff 0%, #c23bc0 52%, #ff7a18 100%);
+
+    position: absolute;
+    inset: 0;
+    direction: rtl;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: "Readex Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+}
+
+/* نمطٌ نهاريّ */
+.geo-studio[data-theme="light"] {
+    --bg: #eef1f8;
+    --bg-grid: rgba(123, 92, 255, .06);
+    --panel: rgba(255, 255, 255, .9);
+    --panel-solid: #ffffff;
+    --panel-2: #f5f7fc;
+    --panel-3: #eceffa;
+    --ink: #161b2e;
+    --ink-soft: #566078;
+    --ink-faint: #8a93ab;
+    --line: rgba(20, 26, 44, .12);
+    --line-soft: rgba(20, 26, 44, .07);
+    --accent: #6d49f5;
+    --accent-2: #5a38d8;
+    --accent-soft: rgba(109, 73, 245, .12);
+    --geo-draw: #6d49f5;
+    --geo-layer: #0891b2;
+    --geo-result: #d97706;
+    --node: #2563eb;
+    --good: #059669;
+    --warn: #b45309;
+    --bad: #dc2626;
+    --hh: #dc2626; --ll: #2563eb; --hl: #d97706; --lh: #60a5fa; --ns: #c3c9d8;
+    --shadow: 0 14px 44px rgba(27, 35, 60, .16);
+    --shadow-sm: 0 3px 12px rgba(27, 35, 60, .1);
+    color-scheme: light;
+}
+
+.geo-studio * { box-sizing: border-box; }
+
+/* ===================== شريط الأوامر ===================== */
+.geo-studio #topbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--panel-solid);
+    border-bottom: 1px solid var(--line);
+    z-index: 1200;
+    position: relative;
+}
+.geo-studio .brand { display: flex; align-items: center; gap: 11px; flex: 0 0 auto; }
+.geo-studio .brand .mk {
+    width: 34px; height: 34px; border-radius: 11px;
+    background: var(--grad); color: #fff; display: grid; place-items: center;
+    font-size: 18px; flex: 0 0 auto; box-shadow: 0 4px 14px rgba(123, 92, 255, .4);
+}
+.geo-studio .brand-txt { display: flex; flex-direction: column; font-weight: 700; font-size: 15px; letter-spacing: .2px; line-height: 1.15; }
+.geo-studio .brand-txt small { font-weight: 500; font-size: 10.5px; color: var(--ink-faint); letter-spacing: .3px; margin-top: 2px; }
+.geo-studio .spacer { flex: 1; }
+
+/* بحث المواقع */
+.geo-studio .gs-search {
+    position: relative; display: flex; align-items: center;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 11px; padding: 0 6px 0 10px; height: 38px;
+    width: clamp(180px, 34vw, 380px); margin-inline-start: 8px;
+    transition: border-color .15s, box-shadow .15s;
+}
+.geo-studio .gs-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.geo-studio .gs-search-ico { color: var(--ink-faint); font-size: 15px; margin-inline-start: 2px; }
+.geo-studio .gs-search input {
+    flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+    color: var(--ink); font: inherit; font-size: 12.5px; padding: 0 8px;
+}
+.geo-studio .gs-search input::placeholder { color: var(--ink-faint); }
+.geo-studio .gs-search-go {
+    font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 6px 11px;
+}
+.geo-studio .gs-search-go:hover { background: var(--accent-2); }
+.geo-studio .gs-search-res {
+    position: absolute; top: calc(100% + 6px); inset-inline: 0; z-index: 1400;
+    background: var(--panel-solid); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); overflow: hidden; display: none; max-height: 320px; overflow-y: auto;
+}
+.geo-studio .gs-search-res.show { display: block; }
+.geo-studio .gs-sr-item { padding: 9px 13px; font-size: 12px; color: var(--ink); cursor: pointer; border-bottom: 1px solid var(--line-soft); line-height: 1.5; }
+.geo-studio .gs-sr-item:last-child { border-bottom: none; }
+.geo-studio .gs-sr-item:hover { background: var(--accent-soft); }
+.geo-studio .gs-sr-item.muted { color: var(--ink-faint); cursor: default; font-style: italic; }
+
+.geo-studio .tbtn {
+    font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap;
+    background: var(--panel-2); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 6px;
+    transition: border-color .15s, background .15s, transform .1s;
+}
+.geo-studio .tbtn .ic { font-size: 13px; }
+.geo-studio .tbtn:hover { border-color: var(--accent); }
+.geo-studio .tbtn:active { transform: scale(.96); }
+.geo-studio .tbtn.ghost { background: transparent; }
+.geo-studio .tbtn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+.geo-studio .tbtn.pri:hover { background: var(--accent-2); }
+.geo-studio .tbtn.gs-close { width: 38px; justify-content: center; padding: 8px 0; color: var(--ink-soft); }
+.geo-studio .tbtn.gs-close:hover { color: var(--bad); border-color: var(--bad); }
+
+/* ===================== الجسم ===================== */
+.geo-studio #main { flex: 1 1 auto; position: relative; min-height: 0; }
+.geo-studio #map {
+    position: absolute; inset: 0; background: var(--bg);
+    background-image: radial-gradient(var(--bg-grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+}
+
+.geo-studio #coords {
+    position: absolute; inset-inline-end: 14px; bottom: 14px; z-index: 1050;
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: 11px;
+    color: var(--ink-soft); box-shadow: var(--shadow-sm); font-variant-numeric: tabular-nums;
+    display: flex; gap: 12px; align-items: center; pointer-events: none;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; direction: ltr;
+}
+.geo-studio #coords b { color: var(--ink); font-weight: 600; }
+.geo-studio #coords .sep { width: 1px; height: 14px; background: var(--line); }
+
+/* ===================== الرّف الجانبيّ ===================== */
+.geo-studio #rail {
+    position: absolute; top: 14px; inset-inline-start: 14px; width: 352px;
+    max-width: calc(100% - 28px); max-height: calc(100% - 28px);
+    background: var(--panel); backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; z-index: 1100;
+}
+.geo-studio .railtabs { display: flex; padding: 8px; gap: 5px; border-bottom: 1px solid var(--line); }
+.geo-studio .railtab {
+    flex: 1; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    background: transparent; color: var(--ink-soft); border: 1px solid transparent; border-radius: 10px;
+    padding: 9px 6px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: all .15s;
+}
+.geo-studio .railtab:hover { color: var(--ink); background: var(--panel-2); }
+.geo-studio .railtab.active { color: #fff; background: var(--accent); border-color: var(--accent); box-shadow: 0 4px 12px rgba(123, 92, 255, .35); }
+.geo-studio .railtab .g { font-size: 14px; }
+.geo-studio #railbody { overflow-y: auto; }
+.geo-studio .pane { display: none; }
+.geo-studio .pane.active { display: block; }
+
+.geo-studio .sec { border-bottom: 1px solid var(--line-soft); }
+.geo-studio .sec:last-child { border-bottom: none; }
+.geo-studio .sechd {
+    padding: 13px 15px 10px; font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 700; display: flex; align-items: center; gap: 8px;
+}
+.geo-studio .sechd .ico {
+    font-size: 12px; color: var(--accent); width: 22px; height: 22px; border-radius: 7px;
+    background: var(--accent-soft); display: grid; place-items: center;
+}
+.geo-studio .sechd .tip {
+    margin-inline-start: auto; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--panel-3); color: var(--ink-faint); font-size: 10px; display: grid; place-items: center;
+    cursor: help; font-weight: 400;
+}
+
+.geo-studio .toolrow { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 13px 11px; }
+.geo-studio .tool {
+    flex: 1 1 0; min-width: 0; font: inherit; font-size: 11px; cursor: pointer;
+    background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 11px;
+    padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: all .14s;
+}
+.geo-studio .tool .g { font-size: 17px; line-height: 1; }
+.geo-studio .tool:hover { border-color: var(--accent); transform: translateY(-2px); background: var(--panel-3); }
+.geo-studio .tool.active { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 5px 14px rgba(123, 92, 255, .4); }
+
+.geo-studio .draw-opts { padding: 0 13px 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+.geo-studio .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-soft); cursor: pointer; }
+.geo-studio .chk input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+.geo-studio .ops { padding: 2px 11px 9px; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.geo-studio .op {
+    font: inherit; font-size: 12px; cursor: pointer; text-align: start;
+    background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 11px;
+    padding: 10px 10px; display: flex; align-items: center; gap: 8px; transition: all .14s; position: relative;
+}
+.geo-studio .op .g { font-size: 15px; flex: 0 0 auto; width: 18px; text-align: center; color: var(--accent); }
+.geo-studio .op:hover:not(:disabled) { border-color: var(--geo-result); background: var(--panel-3); transform: translateY(-2px); }
+.geo-studio .op:disabled { opacity: .36; cursor: not-allowed; }
+.geo-studio .op.full { grid-column: 1 / -1; }
+.geo-studio .op.star { border-color: color-mix(in srgb, var(--accent) 32%, var(--line)); }
+.geo-studio .op.star .g { color: var(--geo-result); }
+.geo-studio .op .badge {
+    position: absolute; inset-inline-end: 7px; top: 7px; font-size: 8px; font-weight: 700;
+    background: var(--grad); color: #fff; padding: 2px 5px; border-radius: 5px; letter-spacing: .4px;
+}
+.geo-studio .opgrouphd { padding: 11px 15px 5px; font-size: 10.5px; letter-spacing: .4px; color: var(--ink-faint); font-weight: 700; }
+
+/* لوحة المعاملات */
+.geo-studio #paramPanel { position: absolute; inset: 0; background: var(--panel-solid); z-index: 20; display: none; flex-direction: column; }
+.geo-studio #paramPanel.show { display: flex; }
+.geo-studio #paramPanel .ph { padding: 13px 15px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 13.5px; }
+.geo-studio #paramPanel .ph .g { color: var(--geo-result); font-size: 16px; }
+.geo-studio #paramPanel .ph .back { margin-inline-start: auto; background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 20px; line-height: 1; }
+.geo-studio #paramPanel .pc { padding: 15px; overflow-y: auto; flex: 1; }
+.geo-studio #paramPanel .pf { padding: 13px 15px; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+.geo-studio .pdesc {
+    font-size: 12px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 16px; padding: 11px 13px;
+    background: var(--accent-soft); border-radius: 10px; border-inline-start: 3px solid var(--accent);
+}
+.geo-studio .pdesc .ref { display: block; margin-top: 7px; font-size: 10.5px; color: var(--ink-faint); }
+.geo-studio .field { margin-bottom: 16px; }
+.geo-studio .field > label { font-size: 12.5px; font-weight: 500; display: block; margin-bottom: 8px; color: var(--ink); }
+.geo-studio .prow { display: flex; align-items: center; gap: 10px; }
+.geo-studio .prow input[type=range] { flex: 1; accent-color: var(--accent); }
+.geo-studio .prow .val { font-weight: 700; font-size: 13px; min-width: 72px; text-align: start; font-variant-numeric: tabular-nums; color: var(--geo-result); }
+
+.geo-studio input[type=number], .geo-studio select, .geo-studio input[type=text] {
+    font: inherit; font-size: 12.5px; background: var(--panel-2); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100%;
+}
+.geo-studio select { cursor: pointer; }
+.geo-studio .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.geo-studio .seg button { flex: 1; font: inherit; font-size: 11.5px; cursor: pointer; background: var(--panel-2); color: var(--ink-soft); border: none; padding: 9px 4px; border-inline-start: 1px solid var(--line); }
+.geo-studio .seg button:first-child { border-inline-start: none; }
+.geo-studio .seg button.on { background: var(--accent); color: #fff; }
+
+/* الطبقات */
+.geo-studio .layers { padding: 0 11px 6px; display: flex; flex-direction: column; gap: 6px; }
+.geo-studio .lyr { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2); font-size: 12.5px; }
+.geo-studio .lyr.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.geo-studio .lyr .sw { width: 12px; height: 12px; border-radius: 4px; flex: 0 0 auto; }
+.geo-studio .lyr .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.geo-studio .lyr .ct { color: var(--ink-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.geo-studio .lyr button { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 13px; padding: 2px 3px; border-radius: 6px; }
+.geo-studio .lyr button:hover { color: var(--bad); background: var(--panel-3); }
+.geo-studio .lyr .eye:hover, .geo-studio .lyr .zoom:hover { color: var(--accent); }
+.geo-studio .empty { padding: 4px 15px 15px; font-size: 12px; color: var(--ink-faint); font-style: italic; line-height: 1.7; }
+
+.geo-studio .hint { padding: 12px 15px 16px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.8; }
+.geo-studio .hint strong { color: var(--ink); }
+.geo-studio .hint .k { color: var(--geo-result); font-weight: 600; }
+
+/* باني النماذج */
+.geo-studio #modelPane { padding: 0; }
+.geo-studio .mb-toolbar { padding: 11px 13px; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.geo-studio .mb-add { font: inherit; font-size: 11.5px; cursor: pointer; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+.geo-studio .mb-add:hover { border-color: var(--node); }
+.geo-studio .mb-add .g { font-size: 13px; color: var(--node); }
+.geo-studio .mb-chain { padding: 9px 13px 13px; display: flex; flex-direction: column; }
+.geo-studio .mb-node { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 11px; position: relative; }
+.geo-studio .mb-node.input { border-inline-start: 3px solid var(--geo-layer); }
+.geo-studio .mb-node.op { border-inline-start: 3px solid var(--node); }
+.geo-studio .mb-node.output { border-inline-start: 3px solid var(--geo-result); }
+.geo-studio .mb-node .nh { display: flex; align-items: center; gap: 8px; }
+.geo-studio .mb-node .nh .g { font-size: 15px; }
+.geo-studio .mb-node .nh .ttl { font-weight: 600; font-size: 12.5px; flex: 1; }
+.geo-studio .mb-node .nh .step { font-size: 9.5px; color: var(--ink-faint); background: var(--panel-3); border-radius: 6px; padding: 2px 6px; }
+.geo-studio .mb-node .nh button { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 14px; padding: 2px 3px; }
+.geo-studio .mb-node .nh button:hover { color: var(--bad); }
+.geo-studio .mb-node .nb { margin-top: 9px; display: flex; flex-direction: column; gap: 8px; }
+.geo-studio .mb-node .nb label { font-size: 11px; color: var(--ink-soft); display: flex; flex-direction: column; gap: 5px; }
+.geo-studio .mb-node .nrow { display: flex; align-items: center; gap: 8px; }
+.geo-studio .mb-node .nrow input[type=range] { flex: 1; accent-color: var(--node); }
+.geo-studio .mb-node .nrow .v { font-size: 11px; font-weight: 600; color: var(--node); min-width: 52px; font-variant-numeric: tabular-nums; }
+.geo-studio .mb-connector { height: 18px; display: flex; align-items: center; justify-content: center; color: var(--ink-faint); }
+.geo-studio .mb-connector::before { content: "↓"; font-size: 15px; }
+.geo-studio .mb-empty { padding: 26px 18px; text-align: center; color: var(--ink-faint); font-size: 12px; line-height: 1.8; }
+.geo-studio .mb-empty .big { font-size: 30px; display: block; margin-bottom: 10px; opacity: .55; }
+.geo-studio .mb-run { padding: 13px; border-top: 1px solid var(--line); display: flex; gap: 8px; position: sticky; bottom: 0; background: var(--panel-solid); }
+.geo-studio .mb-status { padding: 9px 15px; font-size: 11px; color: var(--ink-soft); border-top: 1px solid var(--line-soft); min-height: 20px; }
+.geo-studio .mb-status.err { color: var(--bad); }
+.geo-studio .mb-status.ok { color: var(--good); }
+
+/* معايير الملاءمة */
+.geo-studio .crit { display: flex; flex-direction: column; gap: 7px; padding: 11px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2); margin-bottom: 9px; }
+.geo-studio .crit .ch { display: flex; align-items: center; gap: 8px; }
+.geo-studio .crit .ch select { flex: 1; }
+.geo-studio .crit .ch button { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 15px; }
+.geo-studio .crit .wr { display: flex; align-items: center; gap: 8px; }
+.geo-studio .crit .wr input[type=range] { flex: 1; accent-color: var(--accent); }
+.geo-studio .crit .wr .wv { font-size: 12px; font-weight: 700; color: var(--geo-result); min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
+.geo-studio .wtotal { font-size: 11.5px; color: var(--ink-soft); padding: 4px 2px; display: flex; justify-content: space-between; }
+.geo-studio .wtotal b { font-variant-numeric: tabular-nums; }
+.geo-studio .wtotal.bad b { color: var(--bad); }
+.geo-studio .wtotal.ok b { color: var(--good); }
+
+/* درج النتائج */
+.geo-studio #results {
+    position: absolute; inset-inline-end: 14px; bottom: 62px; width: 328px; max-width: calc(100% - 28px);
+    background: var(--panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 1100;
+    overflow: hidden; transform: translateY(calc(100% + 80px)); transition: transform .3s cubic-bezier(.2, .7, .3, 1);
+}
+.geo-studio #results.show { transform: translateY(0); }
+.geo-studio #results header { padding: 12px 15px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 13px; }
+.geo-studio #results header .g { color: var(--geo-result); font-size: 16px; }
+.geo-studio #results header button { margin-inline-start: auto; background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 18px; }
+.geo-studio #results .body { padding: 11px 15px 15px; font-size: 13px; max-height: 44vh; overflow-y: auto; }
+.geo-studio .metric { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--line-soft); }
+.geo-studio .metric:last-child { border-bottom: none; }
+.geo-studio .metric .k { color: var(--ink-soft); font-size: 12px; }
+.geo-studio .metric .v { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.geo-studio .metric .v small { font-weight: 500; font-size: 11px; color: var(--ink-faint); }
+.geo-studio .reslegend { margin-top: 13px; display: flex; flex-wrap: wrap; gap: 9px; }
+.geo-studio .reslegend .li { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-soft); }
+.geo-studio .reslegend .li .sw { width: 12px; height: 12px; border-radius: 4px; }
+.geo-studio .resnote { margin-top: 13px; font-size: 11px; color: var(--ink-faint); line-height: 1.7; border-top: 1px solid var(--line-soft); padding-top: 11px; }
+
+/* إشعارات */
+.geo-studio #toast { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 1500; display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: min(340px, calc(100% - 32px)); }
+.geo-studio .tst { background: var(--panel-solid); color: var(--ink); border: 1px solid var(--line); padding: 11px 15px; border-radius: 11px; font-size: 12.5px; box-shadow: var(--shadow); line-height: 1.55; animation: gsPop .22s ease; }
+.geo-studio .tst.err { background: var(--bad); color: #fff; border-color: transparent; }
+.geo-studio .tst.ok { background: var(--good); color: #06281b; border-color: transparent; font-weight: 600; }
+@keyframes gsPop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* نوافذ */
+.geo-studio .modal { position: absolute; inset: 0; z-index: 2000; display: none; align-items: center; justify-content: center; padding: 22px; background: rgba(5, 7, 14, .62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.geo-studio .modal.show { display: flex; }
+.geo-studio .mbox { background: var(--panel-solid); border: 1px solid var(--line); border-radius: var(--radius); width: min(520px, 100%); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; max-height: 84vh; }
+.geo-studio .mbox header { padding: 14px 17px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.geo-studio .mbox header button { margin-inline-start: auto; background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 19px; }
+.geo-studio .mbox .mbody { padding: 17px; overflow-y: auto; }
+.geo-studio .mbody p { margin: 0 0 11px; font-size: 12.5px; color: var(--ink-soft); line-height: 1.7; }
+.geo-studio .mbody code { background: var(--panel-3); padding: 1px 6px; border-radius: 5px; font-size: 11px; direction: ltr; display: inline-block; }
+.geo-studio .mbody textarea { width: 100%; min-height: 150px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 11px; resize: vertical; direction: ltr; text-align: left; }
+.geo-studio .mbody .samples { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 11px; align-items: center; }
+.geo-studio .chip { font: inherit; font-size: 11.5px; cursor: pointer; background: var(--panel-2); border: 1px solid var(--line); border-radius: 20px; padding: 6px 13px; color: var(--ink); }
+.geo-studio .chip:hover { border-color: var(--accent); background: var(--accent-soft); }
+.geo-studio .mbox footer { padding: 13px 17px; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+.geo-studio .mbox footer input[type=file] { display: none; }
+
+/* ===================== Leaflet (مُقيّد) ===================== */
+.geo-studio .leaflet-container { font-family: inherit; background: var(--bg); }
+.geo-studio .leaflet-control-zoom a { background: var(--panel-solid) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+.geo-studio .leaflet-control-zoom a:hover { background: var(--panel-2) !important; }
+.geo-studio .leaflet-bar { box-shadow: var(--shadow-sm) !important; border: 1px solid var(--line) !important; border-radius: 10px !important; overflow: hidden; }
+.geo-studio .leaflet-popup-content-wrapper, .geo-studio .leaflet-popup-tip { background: var(--panel-solid) !important; color: var(--ink) !important; box-shadow: var(--shadow) !important; }
+.geo-studio .leaflet-popup-content-wrapper { border-radius: 12px !important; border: 1px solid var(--line); }
+.geo-studio .leaflet-popup-content { direction: rtl; font-family: inherit; font-size: 12.5px; line-height: 1.6; }
+.geo-studio .leaflet-popup-content b { color: var(--ink); }
+.geo-studio .leaflet-popup-close-button { color: var(--ink-soft) !important; }
+.geo-studio .leaflet-draw-toolbar { display: none !important; }
+.geo-studio .leaflet-control-attribution { font-size: 9.5px !important; background: var(--panel) !important; color: var(--ink-faint) !important; border-radius: 6px 0 0 0; }
+.geo-studio .leaflet-control-attribution a { color: var(--accent) !important; }
+
+/* شريط التمرير */
+.geo-studio #railbody::-webkit-scrollbar, .geo-studio #results .body::-webkit-scrollbar, .geo-studio .gs-search-res::-webkit-scrollbar, .geo-studio .mbody::-webkit-scrollbar { width: 8px; }
+.geo-studio #railbody::-webkit-scrollbar-thumb, .geo-studio #results .body::-webkit-scrollbar-thumb, .geo-studio .gs-search-res::-webkit-scrollbar-thumb, .geo-studio .mbody::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+.geo-studio #railbody::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+/* ===================== جوّال ===================== */
+@media (max-width: 720px) {
+    .geo-studio #topbar { flex-wrap: wrap; gap: 8px; padding: 9px 12px; }
+    .geo-studio .gs-search { order: 5; width: 100%; margin-inline-start: 0; }
+    .geo-studio .brand-txt small { display: none; }
+    .geo-studio #rail { inset-inline: 10px; width: auto; max-width: none; top: 10px; max-height: 60%; }
+    .geo-studio #results { inset-inline: 10px; width: auto; bottom: 10px; }
+    .geo-studio #coords { display: none; }
+    .geo-studio .ops { grid-template-columns: 1fr; }
+}
