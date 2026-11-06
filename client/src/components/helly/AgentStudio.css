@@ -773,7 +773,189 @@
     .st-osm button { padding: 6px 10px; font-size: 10px; }
     .st-find b { font-size: 12px; }
     .st-find p { font-size: 11px; }
-    .st-map { height: clamp(260px, 42vh, 420px); }
+    .st-map { height: clamp(300px, 52vh, 460px); }
     .st-layers button { padding: 5px 9px; font-size: 9.5px; }
-    .st-key { font-size: 9px; padding: 6px 9px; }
+    .st-search-field input { font-size: 12px; }
+}
+
+/* ============================================================
+   التحديث العصريّ — شريط الوصف، التسميات على الخريطة، والتصدير
+   ============================================================ */
+
+/* ── شريط وصف الحدث ومكانه ── */
+.st-search { position: relative; z-index: 5; }
+
+.st-search-field {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 4px 4px 4px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02));
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
+    transition: border-color .18s, box-shadow .18s;
+}
+
+.st-search-field:focus-within {
+    border-color: rgba(251, 171, 21, .6);
+    box-shadow: 0 0 0 3px rgba(251, 171, 21, .14), 0 8px 28px rgba(0, 0, 0, .34);
+}
+
+.st-search-field > svg { flex-shrink: 0; color: var(--gold); }
+
+.st-search-field input {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 2px;
+    border: 0;
+    background: transparent;
+    font-size: 13.5px;
+    outline: none;
+}
+
+.st-search-field input::placeholder { color: rgba(143, 160, 184, .75); }
+
+.st-search-clear {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .08);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+}
+.st-search-clear:hover { background: rgba(255, 255, 255, .16); color: var(--text); }
+
+.st-search-go {
+    flex-shrink: 0;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #ff7a18, #ff3d7f 55%, #8a5cff);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 800;
+    box-shadow: 0 4px 14px rgba(255, 61, 127, .3);
+    transition: filter .15s, transform .1s;
+}
+.st-search-go:hover:not(:disabled) { filter: brightness(1.08); }
+.st-search-go:active:not(:disabled) { transform: translateY(1px); }
+.st-search-go:disabled { opacity: .5; cursor: default; }
+
+/* نتائج الترميز الجغرافيّ */
+.st-results {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 6px);
+    z-index: 20;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--line-2);
+    border-radius: 14px;
+    background: rgba(12, 20, 36, .97);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .5);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.st-results li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .14s;
+}
+.st-results li:hover { background: rgba(251, 171, 21, .14); }
+.st-results li b { font-size: 12.5px; font-weight: 800; }
+.st-results li span {
+    font-size: 10px;
+    color: var(--muted);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ── اسم الموضع في اللوحة ── */
+.st-where {
+    padding: 8px 12px;
+    border: 1px solid rgba(56, 189, 248, .35);
+    border-radius: 11px;
+    background: rgba(56, 189, 248, .08);
+    font-size: 12px;
+    font-weight: 700;
+    color: #bae6fd;
+    flex-shrink: 0;
+}
+
+/* ── تسميات المساحات الخضراء والطرق على الخريطة ── */
+.st-glabel {
+    display: block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+}
+.st-glabel.is-veg { background: rgba(21, 60, 30, .72); color: #bbf7d0; border: 1px solid rgba(34, 197, 94, .55); }
+.st-glabel.is-water { background: rgba(8, 34, 52, .72); color: #bae6fd; border: 1px solid rgba(56, 189, 248, .55); }
+
+.st-rlabel {
+    display: block;
+    max-width: 180px;
+    padding: 3px 9px;
+    border-radius: 8px;
+    background: rgba(10, 16, 28, .86);
+    border: 1px solid var(--line-2);
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+}
+.st-rlabel.is-alt { color: #a5f3fc; border-color: rgba(34, 211, 238, .5); }
+
+/* ── قائمة المساحات الخضراء ── */
+.st-list.is-greens li > i:not(.st-life) { color: #86efac; }
+
+/* ── زرّ التصدير ── */
+.st-export {
+    align-self: stretch;
+    margin-top: 2px;
+    padding: 11px;
+    border: 1px solid var(--line-2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .04);
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 800;
+    transition: border-color .15s, background .15s;
+}
+.st-export:hover { border-color: rgba(251, 171, 21, .55); background: rgba(251, 171, 21, .12); color: var(--gold); }
+
+/* ── لمسات عصرية على الإطار العام ── */
+.st-map { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04), 0 10px 34px rgba(0, 0, 0, .3); }
+
+.st-osm {
+    inset-inline-start: auto;
+    inset-inline-end: 10px;
+    top: auto;
+    bottom: 10px;
+}
+.st-osm button {
+    border-color: rgba(34, 211, 238, .45);
+    background: rgba(8, 20, 34, .92);
+    backdrop-filter: blur(8px);
 }

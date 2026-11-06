@@ -861,6 +861,54 @@ const peopleChain = (event, places, hour, out) => {
     return out;
 };
 
+/**
+ * المساحات المفتوحة — نقاط تجمّعٍ وإخلاءٍ وإسنادٍ ميدانيّ.
+ *
+ * المساحة الخضراء ليست زينةً على الخريطة: قرب حريقٍ أو حشدٍ أو
+ * حادثٍ هي أقرب فضاءٍ آمنٍ يُجمَّع فيه المُخلَون وتُرابط فيه فرق
+ * الإسناد. فنقيس أقربها ونقول إن كانت تكفي.
+ */
+const openSpaceChain = (event, greens, radius, kind, out) => {
+    if (!greens?.length) return out;
+
+    const near = greens
+        .map(g => ({
+            ...g,
+            d: Number.isFinite(g.distance)
+                ? g.distance
+                : haversine(event, { latitude: g.latitude, longitude: g.longitude })
+        }))
+        .filter(g => Number.isFinite(g.d) && g.d <= radius)
+        .sort((a, b) => a.d - b.d);
+
+    const veg = near.filter(g => g.group === 'veg');
+    const water = near.filter(g => g.group === 'water');
+
+    const wants = ['fire', 'crowd', 'accident', 'medical', 'closure'].includes(kind);
+
+    if (veg.length && wants) {
+        const g = veg[0];
+        const b = bearing(event, { latitude: g.latitude, longitude: g.longitude });
+        out.push(line('info',
+            `مساحة مفتوحة قريبة تصلح نقطة تجمّع/إخلاء: ${g.name || g.say}`,
+            `${g.say} على ${readable(g.d)} ${compassOf(b)}. المساحات المفتوحة `
+            + 'هي ما تُرابط فيه فرق الإسناد ويُجمَّع فيه المُخلَون بعيداً عن المباني، '
+            + `و${veg.length > 1 ? `في النطاق ${veg.length} مساحة خضراء` : 'هذه أقربها'}. `
+            + 'وقربها من الحدث قيمةٌ تشغيليّة لا جماليّة.',
+            'OpenStreetMap — leisure/landuse (مساحات مفتوحة)'));
+    }
+
+    if (water.length && kind === 'fire') {
+        const g = water[0];
+        out.push(line('info',
+            `مصدر مياه مفتوح قريب: ${g.name || g.say}`,
+            `${g.say} على ${readable(g.d)} — قد يُفيد في الإسناد. والاعتماد عليه ميدانيّ لا مؤكَّد من الخريطة وحدها.`,
+            'OpenStreetMap — natural=water'));
+    }
+
+    return out;
+};
+
 /* ============================================================
    أنواع الأحداث — لكلٍّ طبيعته
    ============================================================ */
@@ -961,7 +1009,7 @@ export const KNOBS = {
  * @param landmarks معالم الخريطة
  * @param roads     شبكة الطرق من ‎OSM‎ — اختيارية، ودونها يُقال ذلك صريحاً
  */
-export const analyseEvent = (event, landmarks, roads = []) => {
+export const analyseEvent = (event, landmarks, roads = [], greens = []) => {
     const hazard = HAZARDS[event?.kind] || HAZARDS.accident;
     const radius = Number.isFinite(+event?.radius) ? +event.radius : hazard.radius;
     const hour = Number.isFinite(+event?.hour)
@@ -987,6 +1035,9 @@ export const analyseEvent = (event, landmarks, roads = []) => {
         if (chain === 'people') peopleChain(event, places, hour, findings);
     }
 
+    /* المساحات المفتوحة — تُفحص في كل حدثٍ له مُخلَون أو إسناد */
+    openSpaceChain(event, greens, radius, event?.kind, findings);
+
     const order = { high: 0, warn: 1, info: 2 };
     findings.sort((a, b) => order[a.tone] - order[b.tone]);
 
@@ -1006,6 +1057,7 @@ export const analyseEvent = (event, landmarks, roads = []) => {
         standards: standardsFor(hazard.chains),
         totals: {
             places: places.length,
+            greens: (greens || []).filter(g => Number.isFinite(g.distance) && g.distance <= radius).length,
             lifeline: places.filter(p => p.lifeline).length,
             openNow: places.filter(p => p.occupancy.open).length,
             heads: Math.round(heads),
