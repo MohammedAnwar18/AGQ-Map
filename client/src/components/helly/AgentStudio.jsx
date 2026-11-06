@@ -3,7 +3,7 @@ import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { shopService } from '../../services/api';
-import { readSurroundings, geocode, reverseGeocode, inferKind, fetchNews } from './osmClient';
+import { readSurroundings, geocode, reverseGeocode, inferKind, fetchNews, fetchBrief } from './osmClient';
 import { readable, compassOf } from './spatialAgent';
 import { FIRE_LOAD, hourLabel } from './hazardScience';
 import { HAZARDS, KNOBS, analyseEvent, severityOfEvent } from './consequence';
@@ -50,15 +50,13 @@ const LOS_COLOUR = {
     D: '#f97316', E: '#ef4444', F: '#b91c1c'
 };
 
-/* سلّم ألوان مؤشّر الشدّة — باردٌ منخفض، حارٌّ مرتفع */
-const HEAT_RAMP = [
-    0, 'rgba(0,0,0,0)',
-    0.12, 'rgba(37,99,235,0.55)',
-    0.32, 'rgba(14,165,233,0.72)',
-    0.5, 'rgba(34,197,94,0.78)',
-    0.66, 'rgba(234,179,8,0.85)',
-    0.82, 'rgba(249,115,22,0.9)',
-    1, 'rgba(220,38,38,0.96)'
+/* مستويات نطاقات الشدّة — الأحمر أشدّ، النزول إلى الأصفر أخفّ
+   (مطابقةٌ لـ IMPACT_LEVELS في محرّك التحليل) */
+const IMPACT_UI = [
+    { level: 0, color: '#dc2626', say: 'شديد', op: 0.5 },
+    { level: 1, color: '#f97316', say: 'مرتفع', op: 0.4 },
+    { level: 2, color: '#f59e0b', say: 'متوسّط', op: 0.3 },
+    { level: 3, color: '#facc15', say: 'منخفض', op: 0.2 }
 ];
 
 const boundsOf = (items) => {
@@ -112,9 +110,12 @@ const AgentStudio = () => {
     /* الأخبار اللحظيّة قربَ الموضع */
     const [news, setNews] = useState({ loading: false, items: [], source: null, ok: null });
 
+    /* الموجز الذكيّ (Gemini + بحث حيّ) */
+    const [brief, setBrief] = useState({ loading: false, text: null, sources: [], ok: null });
+
     const [tab, setTab] = useState('result');
     const [shown, setShown] = useState({
-        labels: true, heat: true, zones: true, roads: true, greens: true, cover: false, places: false
+        labels: true, impact: true, zones: true, roads: true, greens: true, cover: false, places: false
     });
     const [picked, setPicked] = useState(null);
 
@@ -241,6 +242,31 @@ const AgentStudio = () => {
         return () => { clearTimeout(t); ctrl.abort(); };
     }, [spot, kind, spotCity, spotName, query]);
 
+    /* ── الموجز الذكيّ: تحليلٌ مسنودٌ بالبحث الحيّ عند استقرار المدخلات ── */
+    useEffect(() => {
+        if (!spot) { setBrief({ loading: false, text: null, sources: [], ok: null }); return; }
+        const ctrl = new AbortController();
+        const nearby = (osm.places || []).slice(0, 10).map(p => `${p.name} (${p.category})`);
+        const t = setTimeout(async () => {
+            setBrief(b => ({ ...b, loading: true }));
+            try {
+                const res = await fetchBrief({
+                    place: (query && query.trim()) || spotName || null,
+                    city: spotCity || null,
+                    kind, hour,
+                    lat: spot.latitude, lon: spot.longitude,
+                    cover: osm.context?.dominant || null,
+                    nearby
+                }, { signal: ctrl.signal });
+                setBrief({ loading: false, text: res.brief, sources: res.sources || [], ok: res.ok });
+            } catch (e) {
+                if (e?.name === 'AbortError') return;
+                setBrief({ loading: false, text: null, sources: [], ok: false });
+            }
+        }, 900);
+        return () => { clearTimeout(t); ctrl.abort(); };
+    }, [spot, kind, hour, spotCity, spotName, osm.context, osm.places]);
+
     /* ── الترميز الجغرافيّ: من وصفِ مكانٍ إلى إحداثيّة ── */
     const runSearch = useCallback(async () => {
         const q = query.trim();
@@ -280,7 +306,7 @@ const AgentStudio = () => {
     const zonesGeo = useMemo(() => pick(report?.shapes, 'scope', 'plume', 'isolate', 'heat'), [report]);
     const roadsGeo = useMemo(() => pick(report?.shapes, 'road', 'alternative'), [report]);
     const queueGeo = useMemo(() => pick(report?.shapes, 'queue'), [report]);
-    const heatGeo = useMemo(() => report?.heat || { type: 'FeatureCollection', features: [] }, [report]);
+    const impactGeo = useMemo(() => report?.impact || { type: 'FeatureCollection', features: [] }, [report]);
 
     const greensGeo = useMemo(() => ({
         type: 'FeatureCollection',
@@ -377,7 +403,7 @@ const AgentStudio = () => {
         URL.revokeObjectURL(url);
     };
 
-    const heatOn = shown.heat && (heatGeo.features?.length > 0);
+    const impactOn = shown.impact && (impactGeo.features?.length > 0);
 
     return (
         <div className="st">
@@ -538,15 +564,17 @@ const AgentStudio = () => {
                             </Source>
                         )}
 
-                        {/* مؤشّر الشدّة — سطحٌ حراريّ متدرّج للأثر */}
-                        {heatOn && (
-                            <Source id="st-heat" type="geojson" data={heatGeo}>
-                                <Layer id="st-heat-layer" type="heatmap" paint={{
-                                    'heatmap-weight': ['get', 'w'],
-                                    'heatmap-intensity': 1.15,
-                                    'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 10, 14, 24, 17, 46],
-                                    'heatmap-opacity': 0.72,
-                                    'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], ...HEAT_RAMP]
+                        {/* مؤشّر الشدّة — نطاقاتٌ متدرّجة ملوّنة (الأحمر أشدّ) */}
+                        {impactOn && (
+                            <Source id="st-impact" type="geojson" data={impactGeo}>
+                                <Layer id="st-impact-fill" type="fill" paint={{
+                                    'fill-color': ['get', 'color'],
+                                    'fill-opacity': ['match', ['get', 'level'], 0, 0.5, 1, 0.4, 2, 0.3, 3, 0.2, 0.25]
+                                }} />
+                                <Layer id="st-impact-line" type="line" paint={{
+                                    'line-color': ['get', 'color'],
+                                    'line-width': 1.1,
+                                    'line-opacity': 0.75
                                 }} />
                             </Source>
                         )}
@@ -634,7 +662,7 @@ const AgentStudio = () => {
                     <div className="st-layers">
                         {[
                             ['labels', 'الأسماء'],
-                            ['heat', 'مؤشّر الشدّة'],
+                            ['impact', 'مؤشّر الشدّة'],
                             ['zones', 'النطاقات'],
                             ['roads', 'الطرق'],
                             ['greens', 'المساحات الخضراء'],
@@ -648,13 +676,18 @@ const AgentStudio = () => {
                         ))}
                     </div>
 
-                    {/* دليل مؤشّر الشدّة — سلّمٌ لونيّ يوضّح الحدّة */}
-                    {heatOn && (
+                    {/* دليل مؤشّر الشدّة — عتباتٌ ملوّنة واضحة الترتيب */}
+                    {impactOn && (
                         <div className="st-heat-legend">
                             <b>مؤشّر شدّة الأثر</b>
-                            <i className="st-heat-bar" />
-                            <div className="st-heat-ticks"><span>منخفض</span><span>متوسّط</span><span>مرتفع</span></div>
-                            <em>سطحٌ متدرّج منحازٌ إلى المحيط: الريح والمعالم المعرَّضة وكثافة البناء</em>
+                            <div className="st-impact-swatches">
+                                {IMPACT_UI.map(l => (
+                                    <span key={l.level}>
+                                        <i style={{ background: l.color }} />{l.say}
+                                    </span>
+                                ))}
+                            </div>
+                            <em>نطاقاتٌ منحازةٌ إلى المحيط: الريح والمعالم المعرَّضة وكثافة البناء</em>
                         </div>
                     )}
 
@@ -701,7 +734,7 @@ const AgentStudio = () => {
                                 {[
                                     ['result', `النتائج (${report.findings.length})`],
                                     ['places', `المعالم (${report.totals.places})`],
-                                    ['news', `الأخبار${news.items.length ? ` (${news.items.length})` : ''}`],
+                                    ['news', 'السياق الذكيّ'],
                                     ['standards', 'المعايير']
                                 ].map(([key, label]) => (
                                     <button key={key} className={tab === key ? 'is-on' : ''}
@@ -815,31 +848,63 @@ const AgentStudio = () => {
                             {tab === 'news' && (
                                 <div className="st-pane">
                                     <p className="st-hint">
-                                        أخبارٌ حديثة (آخر أسبوعين) قربَ «{spotCity || spotName || 'الموضع'}» من فهرس
-                                        GDELT المفتوح — سياقٌ لحظيّ يُقرأ مع التحليل، لا جزءٌ من الحساب.
-                                        {news.source ? ` المصدر: ${news.source}.` : ''}
+                                        تحليلٌ ذكيّ يفهم «{hazard.label}» عند «{spotCity || spotName || 'الموضع'}»،
+                                        يجلب ما يتّصل به من مصادرَ حيّة ويربطه بموضع الوقوع والسيناريو
+                                        (Gemini + بحث Google) — سياقٌ يُقرأ مع التحليل لا جزءٌ من الحساب.
                                     </p>
-                                    {news.loading && <div className="st-news-busy"><span className="hla-spin" />يجلب الأخبار…</div>}
-                                    {!news.loading && !news.items.length && (
+
+                                    {/* الموجز الذكيّ */}
+                                    {brief.loading && <div className="st-news-busy"><span className="hla-spin" />يحلّل السياق ويبحث في المصادر…</div>}
+                                    {!brief.loading && brief.text && (
+                                        <article className="st-brief">
+                                            <div className="st-brief-head"><span>✦</span> موجزٌ ذكيّ</div>
+                                            <div className="st-brief-body">
+                                                {brief.text.split('\n').filter(Boolean).map((ln, i) => (
+                                                    <p key={i} className={ln.trim().startsWith('•') ? 'is-bullet' : ''}>{ln.replace(/^•\s*/, '')}</p>
+                                                ))}
+                                            </div>
+                                            {brief.sources.length > 0 && (
+                                                <div className="st-brief-src">
+                                                    <b>المصادر</b>
+                                                    <div>
+                                                        {brief.sources.map((s, i) => (
+                                                            <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" title={s.title}>
+                                                                {i + 1}. {(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.title; } })()}
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </article>
+                                    )}
+                                    {!brief.loading && !brief.text && (
                                         <div className="st-news-empty">
-                                            {news.ok === false
-                                                ? 'تعذّر الوصول إلى خدمة الأخبار الآن.'
-                                                : 'لا أخبار حديثة مطابقة لهذا الموضع. جرّب اسم مدينةٍ أوضح في وصف الحدث.'}
+                                            {brief.ok === false
+                                                ? 'تعذّر التحليل الذكيّ الآن (قد يكون المفتاح أو الخدمة غير متاحين).'
+                                                : 'لا موجز بعد — حدِّد موضعاً ونوع حدثٍ ليُبنى التحليل.'}
                                         </div>
                                     )}
-                                    <ul className="st-news">
-                                        {news.items.map((a, i) => (
-                                            <li key={i}>
-                                                <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                                    {a.image && <img src={a.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                                                    <div>
-                                                        <b>{a.title}</b>
-                                                        <em>{a.domain || ''}{a.date ? ` · ${new Date(a.date).toLocaleDateString('ar-EG')}` : ''}</em>
-                                                    </div>
-                                                </a>
-                                            </li>
-                                        ))}
-                                    </ul>
+
+                                    {/* عناوين إخبارية حيّة (GDELT) */}
+                                    {(news.loading || news.items.length > 0) && (
+                                        <section className="st-news-sec">
+                                            <h4>عناوين إخبارية قربَ الموضع</h4>
+                                            {news.loading && <div className="st-news-busy"><span className="hla-spin" />يجلب العناوين…</div>}
+                                            <ul className="st-news">
+                                                {news.items.map((a, i) => (
+                                                    <li key={i}>
+                                                        <a href={a.url} target="_blank" rel="noopener noreferrer">
+                                                            {a.image && <img src={a.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+                                                            <div>
+                                                                <b>{a.title}</b>
+                                                                <em>{a.domain || ''}{a.date ? ` · ${new Date(a.date).toLocaleDateString('ar-EG')}` : ''}</em>
+                                                            </div>
+                                                        </a>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </section>
+                                    )}
                                 </div>
                             )}
 

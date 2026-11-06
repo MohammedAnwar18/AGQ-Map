@@ -937,15 +937,49 @@ const HEAT_PROFILE = {
     default: { falloff: 1.5, directional: false, placePull: 1.0 }
 };
 
+/* مستويات الشدّة — من الشديد إلى المنخفض، ولونٌ لكلٍّ لا يلتبس */
+export const IMPACT_LEVELS = [
+    { t: 0.70, color: '#dc2626', say: 'شديد' },
+    { t: 0.45, color: '#f97316', say: 'مرتفع' },
+    { t: 0.25, color: '#f59e0b', say: 'متوسّط' },
+    { t: 0.12, color: '#facc15', say: 'منخفض' }
+];
+
+/** شدّة الأثر عند إزاحةٍ بالأمتار عن مركز الحدث */
+const intensityAt = (dxm, dym, radius, prof, built, windToward, bumps) => {
+    const d = Math.hypot(dxm, dym);
+    let w = Math.pow(Math.max(0, 1 - d / radius), prof.falloff);
+
+    if (prof.directional) {
+        /* الاتّجاه بالبوصلة لهذه النقطة (صفرٌ شمالاً) مقابل الريح */
+        const brg = (Math.atan2(dxm, dym) * 180 / Math.PI + 360) % 360;
+        const off = Math.abs(((brg - windToward + 540) % 360) - 180);
+        const along = Math.cos((Math.min(off, 90) * Math.PI) / 180);
+        w *= 0.4 + 0.6 * Math.max(0, along);   // انحيازٌ مع الريح مع إبقاء أثرٍ حوليّ
+    }
+
+    w *= built;
+
+    for (const b of bumps) {
+        const dd = (dxm - b.ox) ** 2 + (dym - b.oy) ** 2;
+        w += b.s * Math.exp(-dd / (2 * b.sigma * b.sigma));
+    }
+    return w;
+};
+
 /**
- * يبني حقل الشدّة نقاطاً موزونةً ترسمها الخريطة طبقةَ حرارة.
+ * نطاقات الشدّة — مضلّعاتٌ متدرّجةٌ متّحدة المركز، لا دوائرُ صمّاء.
  *
- * كل نقطةٍ وزنُها بين صفرٍ وواحد: تضاؤلٌ شعاعيّ من المركز، مضروبٌ
- * في كثافة النسيج المبنيّ، منحرفٌ مع الريح إن كان الحدث حريقاً،
- * مزيدٌ عليه «نتوءاتٌ» عند المعالم المعرَّضة بقدر امتلائها وحرَجها.
- * فالسطح يلتصق بالواقع لا بالدائرة.
+ * لكل اتّجاهٍ حول الحدث نقيس إلى أين تبلغ كل عتبة شدّة، فينشأ لكل
+ * مستوىً مضلّعٌ يلتفّ حول الأثر الحقيقيّ: ينتفخ مع الريح في الحريق،
+ * وينتفخ نحو المدرسة العامرة والمستشفى ومحطّة الوقود، ويشتدّ في
+ * النسيج المبنيّ. والألوان صريحةٌ مرتّبة — الأحمر أشدّ والأصفر أخفّ —
+ * فلا يلتبس التدرّج ولا ينقلب.
+ *
+ * ويُردّ من الأوسع (الأخفّ) إلى الأضيق (الأشدّ) كي يُرسم الأشدُّ فوق
+ * غيره، فتُقرأ البؤرة بوضوح.
  */
-export const heatField = (event, places, kind, radius, { windToward = 90 } = {}, context = null) => {
+export const impactBands = (event, places, kind, radius, { windToward = 90 } = {}, context = null) => {
     const lat0 = +event.latitude;
     const lon0 = +event.longitude;
     if (!Number.isFinite(lat0) || !Number.isFinite(lon0) || !(radius > 0)) {
@@ -955,11 +989,8 @@ export const heatField = (event, places, kind, radius, { windToward = 90 } = {},
     const kx = METRES_PER_DEG * Math.cos((lat0 * Math.PI) / 180);
     const ky = METRES_PER_DEG;
     const prof = HEAT_PROFILE[kind] || HEAT_PROFILE.default;
-
-    /* النسيج المبنيّ يُضخّم الأثر، والأرض المكشوفة تُخفّفه */
     const built = context ? 0.6 + 0.9 * Math.min(1, context.builtShare ?? 0.5) : 1;
 
-    /* المعالم المعرَّضة كمصادر «جذبٍ» للحقل — مُسبقة الحساب بالأمتار */
     const bumps = (places || []).map(p => ({
         ox: ((+p.longitude) - lon0) * kx,
         oy: ((+p.latitude) - lat0) * ky,
@@ -968,52 +999,56 @@ export const heatField = (event, places, kind, radius, { windToward = 90 } = {},
         sigma: Math.max(55, Math.min(170, radius * 0.11))
     })).filter(b => b.s > 0.02);
 
-    const steps = 16;
-    const stepM = radius / steps;
-    const feats = [];
-    let maxW = 0;
-    const raw = [];
+    const SECTORS = 60;
+    const RSTEPS = 44;
+    const rMax = radius * 1.06;
+    const rStep = rMax / RSTEPS;
 
-    for (let gx = -steps; gx <= steps; gx++) {
-        for (let gy = -steps; gy <= steps; gy++) {
-            const dxm = gx * stepM;
-            const dym = gy * stepM;
-            const d = Math.hypot(dxm, dym);
-            if (d > radius * 1.03) continue;
-
-            let w = Math.pow(Math.max(0, 1 - d / radius), prof.falloff);
-
-            if (prof.directional) {
-                /* الاتّجاه بالبوصلة لهذه النقطة (صفرٌ شمالاً) مقابل الريح */
-                const brg = (Math.atan2(dxm, dym) * 180 / Math.PI + 360) % 360;
-                const off = Math.abs(((brg - windToward + 540) % 360) - 180);
-                const along = Math.cos((Math.min(off, 90) * Math.PI) / 180);
-                w *= 0.4 + 0.6 * Math.max(0, along);   // انحيازٌ مع الريح مع إبقاء أثرٍ حوليّ
-            }
-
-            w *= built;
-
-            for (const b of bumps) {
-                const dd = (dxm - b.ox) ** 2 + (dym - b.oy) ** 2;
-                w += b.s * Math.exp(-dd / (2 * b.sigma * b.sigma));
-            }
-
-            if (w <= 0.001) continue;
-            raw.push([lon0 + dxm / kx, lat0 + dym / ky, w]);
-            if (w > maxW) maxW = w;
+    /* مسحٌ أوّل: شدّةٌ لكل اتجاهٍ ومسافة، مع أقصى شدّةٍ للتسوية */
+    const grid = [];
+    let peak = 0;
+    for (let s = 0; s < SECTORS; s++) {
+        const theta = (s / SECTORS) * Math.PI * 2;
+        const ux = Math.cos(theta);
+        const uy = Math.sin(theta);
+        const row = [];
+        for (let k = 0; k <= RSTEPS; k++) {
+            const r = k * rStep;
+            const w = intensityAt(r * ux, r * uy, radius, prof, built, windToward, bumps);
+            row.push(w);
+            if (w > peak) peak = w;
         }
+        grid.push({ ux, uy, row });
     }
 
-    if (maxW > 0) {
-        for (const [lon, lat, w] of raw) {
-            const n = w / maxW;
-            if (n < 0.05) continue;         // نُسقط الأطراف الباهتة — أخفُّ وأوضح
-            feats.push({
-                type: 'Feature',
-                geometry: { type: 'Point', coordinates: [lon, lat] },
-                properties: { w: Math.round(n * 1000) / 1000 }
-            });
+    if (!(peak > 0)) return { type: 'FeatureCollection', features: [] };
+
+    /* مسحٌ ثانٍ: لكل مستوى، أبعدُ مسافةٍ تبلغها عتبتُه في كل اتجاه */
+    const feats = [];
+    for (let li = IMPACT_LEVELS.length - 1; li >= 0; li--) {
+        const level = IMPACT_LEVELS[li];
+        const thresh = level.t * peak;
+        const ring = [];
+        let any = false;
+
+        for (let s = 0; s < SECTORS; s++) {
+            const { ux, uy, row } = grid[s];
+            let reach = 0;
+            for (let k = 0; k <= RSTEPS; k++) {
+                if (row[k] >= thresh) reach = k * rStep;
+            }
+            if (reach > 0) any = true;
+            const r = Math.max(reach, rStep * 0.6);   // حدٌّ أدنى كي لا ينهار المضلّع
+            ring.push([lon0 + (r * ux) / kx, lat0 + (r * uy) / ky]);
         }
+
+        if (!any) continue;
+        ring.push([...ring[0]]);   // إغلاق الحلقة
+        feats.push({
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [ring] },
+            properties: { level: li, color: level.color, say: level.say, t: level.t }
+        });
     }
 
     return { type: 'FeatureCollection', features: feats };
@@ -1244,8 +1279,8 @@ export const analyseEvent = (event, landmarks, roads = [], greens = [], env = {}
 
     const heads = places.reduce((sum, p) => sum + p.heads, 0);
 
-    /* حقل الشدّة — «خريطة حرارة» الأثر، منحازةً إلى المحيط الحقيقيّ */
-    const heat = heatField(
+    /* نطاقات الشدّة — مضلّعاتٌ متدرّجة منحازةٌ إلى المحيط الحقيقيّ */
+    const impact = impactBands(
         event, places, event?.kind, radius,
         { windToward: event?.windToward }, context
     );
@@ -1261,7 +1296,7 @@ export const analyseEvent = (event, landmarks, roads = [], greens = [], env = {}
         roads: (roads || []).map(describeRoad),
         findings,
         shapes: { type: 'FeatureCollection', features: shapes },
-        heat,
+        impact,
         context,
         standards: standardsFor(hazard.chains),
         totals: {

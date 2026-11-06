@@ -261,7 +261,7 @@ const classifyCover = (tags = {}) => {
    جانب المتصفّح (لا من الخادم وحده)، وإن تأخّر انتُقل إلى التالي.
    ============================================================ */
 
-const runOverpass = async (query, signal, perTryMs = 16000) => {
+const runOverpass = async (query, signal, perTryMs = 20000) => {
     let lastError;
     for (const endpoint of OVERPASS_ENDPOINTS) {
         /* مهلةٌ محلّية لكل خادم — تُجهض الطلب المعلَّق فلا يبقى عالقاً */
@@ -315,23 +315,27 @@ export const readSurroundings = async (lat, lon, radius = 600, { signal } = {}) 
     const at = { latitude: Number(lat), longitude: Number(lon) };
     const g = `${r},${at.latitude.toFixed(6)},${at.longitude.toFixed(6)}`;
 
-    /* نطلب كلَّ ما يُفيد التحليل: الشبكة كاملةً، والمعالم الواسعة،
-       واستعمالات الأرض والطبيعة. مخرجٌ واحدٌ ‎geom‎ — فالعُقَد تحمل
-       إحداثيّها، والطرق والمضلّعات تحمل هندستها، ونحسب المراكز بأنفسنا */
-    const query = `[out:json][timeout:25];
+    /* نطلب ما يُفيد التحليل مُرشَّحاً — لا كلَّ وسمٍ في الأرض: شبكة
+       الطرق (مركبات ومشاة)، والمعالم ذات الأثر، واستعمالات الأرض
+       والطبيعة. والترشيح يُخفّف الحمولة فيعود الطلب أسرعَ وأوثق —
+       وكان الطلب غير المرشَّح سببَ تأخّره حتى لا تظهر الطرق.
+       مخرجٌ واحدٌ ‎geom‎: العُقَد تحمل إحداثيّها، والطرق والمضلّعات
+       تحمل هندستها، ونحسب المراكز بأنفسنا */
+    const roadRe = '^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street|road|pedestrian|footway|path|steps|cycleway|track)(_link)?$';
+    const amenityRe = '^(hospital|clinic|doctors|dentist|pharmacy|fuel|charging_station|school|kindergarten|university|college|bank|atm|police|fire_station|townhall|courthouse|post_office|marketplace|bus_station|restaurant|fast_food|cafe|place_of_worship|parking|hotel)$';
+    const query = `[out:json][timeout:22];
 (
-  way(around:${g})["highway"];
-  nwr(around:${g})["amenity"];
+  way(around:${g})["highway"~"${roadRe}"];
+  nwr(around:${g})["amenity"~"${amenityRe}"];
   nwr(around:${g})["shop"];
-  nwr(around:${g})["office"];
+  nwr(around:${g})["office"="government"];
   nwr(around:${g})["healthcare"];
   nwr(around:${g})["tourism"~"^(hotel|hostel|guest_house|attraction|museum)$"];
   way(around:${g})["leisure"];
   way(around:${g})["landuse"];
   way(around:${g})["natural"];
-  way(around:${g})["amenity"="parking"];
 );
-out tags geom 3000;`;
+out tags geom 2500;`;
 
     const data = await runOverpass(query, signal);
     const elements = Array.isArray(data?.elements) ? data.elements : [];
@@ -624,4 +628,35 @@ export const fetchNews = async (q, { kind = null, city = null, signal, limit = 1
     }
 };
 
-export default { readSurroundings, geocode, reverseGeocode, inferKind, fetchNews };
+/* ============================================================
+   الموجز الذكيّ — تحليلٌ مسنودٌ بالبحث الحيّ (Gemini + Google Search)
+
+   وسيطٌ في الخادم يستدعي نموذجاً ذكيّاً مزوّداً بالبحث: يفهم الحدث
+   ومكانه، ويجلب ما يتّصل به من مصادرَ حيّة، ويربطه بموضع الوقوع
+   والسيناريو — فيردّ موجزاً عربيّاً مع مصادره الموثّقة. والمفتاح
+   يبقى في الخادم لا في المتصفّح، فلا يُكشف لكل زائر.
+   ============================================================ */
+export const fetchBrief = async (payload, { signal } = {}) => {
+    try {
+        const res = await fetch(`${API_BASE}/foresight/brief`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload || {}),
+            signal
+        });
+        if (!res.ok) return { ok: false, brief: null, sources: [], reason: `HTTP ${res.status}` };
+        const data = await res.json();
+        return {
+            ok: data?.ok !== false,
+            brief: data?.brief || null,
+            sources: Array.isArray(data?.sources) ? data.sources : [],
+            model: data?.model || null,
+            reason: data?.reason || null
+        };
+    } catch (e) {
+        if (e?.name === 'AbortError') throw e;
+        return { ok: false, brief: null, sources: [], reason: 'تعذّر الوصول إلى خدمة التحليل الذكيّ' };
+    }
+};
+
+export default { readSurroundings, geocode, reverseGeocode, inferKind, fetchNews, fetchBrief };
