@@ -88,6 +88,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .pk[aria-pressed="true"] svg{color:var(--accent)}
 .pk.imp{border:1px dashed var(--line)}
 .pk.imp svg{color:var(--accent)}
+.pk-model{position:relative}
+.pkdel{position:absolute;top:-2px;inset-inline-start:-2px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;font-size:11px;line-height:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.35)}
 
 .hud{position:absolute;bottom:14px;inset-inline:64px;display:flex;justify-content:center;pointer-events:none;transition:bottom .2s}
 .stage.has-palette .hud{bottom:100px}
@@ -1123,14 +1125,28 @@ function renderPalette(){
   if(S.tool==='shape'){let hs='';Object.keys(SHAPES).forEach(k=>{hs+=`<button class="pk" data-shape="${k}" aria-pressed="${S.shapeKind===k}">${shapeIcon(k)}<span>${SHAPES[k].n}</span></button>`;});el.innerHTML=hs;return;}
   let h=`<button class="pk imp" data-mimport="1">${icon('model')}<span>استيراد</span></button>`;
   Object.keys(KINDS).forEach(k=>{h+=`<button class="pk" data-kind="${k}" aria-pressed="${S.propKind===k}">${icon(k)}<span>${KINDS[k].n}</span></button>`;});
-  Object.values(MODELS).forEach(m=>{const k='m:'+m.id;h+=`<button class="pk" data-kind="${k}" aria-pressed="${S.propKind===k}">${icon('model')}<span>${esc(m.name)}</span></button>`;});
+  Object.values(MODELS).forEach(m=>{const k='m:'+m.id;h+=`<button class="pk pk-model" data-kind="${k}" aria-pressed="${S.propKind===k}">${icon('model')}<span>${esc(m.name)}</span>${RO?'':`<span class="pkdel" data-delmodel="${m.id}" title="حذف المجسّم المستورد" aria-label="حذف ${esc(m.name)}">✕</span>`}</button>`;});
   el.innerHTML=h;
 }
-$('#palette').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+$('#palette').addEventListener('click',e=>{
+  const del=e.target.closest('[data-delmodel]');if(del){e.stopPropagation();deleteModel(del.dataset.delmodel);return;}
+  const b=e.target.closest('button');if(!b)return;
   if(b.dataset.shape){S.shapeKind=b.dataset.shape;document.querySelectorAll('.pk[data-shape]').forEach(x=>x.setAttribute('aria-pressed',x===b));setHint();return;}
   if(b.dataset.mimport){$('#modelIn').click();return;}
   if(!b.dataset.kind)return;
   S.propKind=b.dataset.kind;document.querySelectorAll('.pk[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x===b));setHint();});
+/* حذف مجسّمٍ مستورد من المكتبة (وكل نسخه الموضوعة) نهائياً */
+function deleteModel(id){
+  if(RO)return;const m=MODELS[id];if(!m)return;
+  const kind='m:'+id,used=S.props.filter(p=>p.kind===kind).length;
+  const msg=used?`حذف المجسّم «${m.name}» من المكتبة؟ سيُحذف أيضاً ${used} نسخة موضوعة منه. لا يمكن التراجع.`:`حذف المجسّم «${m.name}» من المكتبة؟`;
+  if(!window.confirm(msg))return;
+  if(used)S.props=S.props.filter(p=>p.kind!==kind);
+  if(S.sel&&S.sel.t==='p'&&!S.props.some(p=>p.id===S.sel.id))select(null);
+  delete MODELS[id];try{DB.del('m-'+id);}catch(e){}
+  if(S.propKind===kind)S.propKind='tree';
+  renderPalette();changed();toast(`حُذف المجسّم «${m.name}»`);
+}
 
 /* ---------- hints ---------- */
 let toastT=0;
