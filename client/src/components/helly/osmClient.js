@@ -315,30 +315,46 @@ export const readSurroundings = async (lat, lon, radius = 600, { signal } = {}) 
     const at = { latitude: Number(lat), longitude: Number(lon) };
     const g = `${r},${at.latitude.toFixed(6)},${at.longitude.toFixed(6)}`;
 
-    /* نطلب ما يُفيد التحليل مُرشَّحاً — لا كلَّ وسمٍ في الأرض: شبكة
-       الطرق (مركبات ومشاة)، والمعالم ذات الأثر، واستعمالات الأرض
-       والطبيعة. والترشيح يُخفّف الحمولة فيعود الطلب أسرعَ وأوثق —
-       وكان الطلب غير المرشَّح سببَ تأخّره حتى لا تظهر الطرق.
-       مخرجٌ واحدٌ ‎geom‎: العُقَد تحمل إحداثيّها، والطرق والمضلّعات
-       تحمل هندستها، ونحسب المراكز بأنفسنا */
+    /* طلبان متوازيان — والفصل مقصود:
+       (١) الأساسيّ: شبكة الطرق والمعالم. خفيفٌ فيعود بسرعة ووثوق،
+           وهو الذي كان يفشل حين كان كلُّ شيءٍ في طلبٍ واحدٍ ثقيل.
+       (٢) الإثرائيّ: استعمالات الأرض والطبيعة. إن تأخّر أو فشل فلا
+           يمنع ظهور الطرق — فالطرق تصل من الطلب الأوّل على كل حال.
+       مخرجٌ ‎geom‎: العُقَد تحمل إحداثيّها، والطرق والمضلّعات هندستها */
     const roadRe = '^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|service|living_street|road|pedestrian|footway|path|steps|cycleway|track)(_link)?$';
-    const amenityRe = '^(hospital|clinic|doctors|dentist|pharmacy|fuel|charging_station|school|kindergarten|university|college|bank|atm|police|fire_station|townhall|courthouse|post_office|marketplace|bus_station|restaurant|fast_food|cafe|place_of_worship|parking|hotel)$';
-    const query = `[out:json][timeout:22];
+    const amenityRe = '^(hospital|clinic|doctors|dentist|pharmacy|fuel|school|kindergarten|university|college|bank|police|fire_station|townhall|marketplace|bus_station|restaurant|fast_food|cafe|place_of_worship)$';
+
+    const coreQuery = `[out:json][timeout:20];
 (
   way(around:${g})["highway"~"${roadRe}"];
   nwr(around:${g})["amenity"~"${amenityRe}"];
-  nwr(around:${g})["shop"];
-  nwr(around:${g})["office"="government"];
-  nwr(around:${g})["healthcare"];
-  nwr(around:${g})["tourism"~"^(hotel|hostel|guest_house|attraction|museum)$"];
+  nwr(around:${g})["shop"~"^(supermarket|mall|department_store|convenience)$"];
+  nwr(around:${g})["healthcare"~"^(hospital|clinic|centre|pharmacy)$"];
+);
+out tags geom 1800;`;
+
+    const coverQuery = `[out:json][timeout:20];
+(
   way(around:${g})["leisure"];
   way(around:${g})["landuse"];
   way(around:${g})["natural"];
 );
-out tags geom 2500;`;
+out tags geom 1500;`;
 
-    const data = await runOverpass(query, signal);
-    const elements = Array.isArray(data?.elements) ? data.elements : [];
+    /* الأساسيّ أوّلاً وبمفرده، كي لا يؤخّره الإثرائيّ */
+    const coreData = await runOverpass(coreQuery, signal);
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+
+    /* الإثرائيّ أفضل جهدٍ: فشله لا يُسقط الطرق */
+    let coverData = null;
+    try { coverData = await runOverpass(coverQuery, signal); }
+    catch (e) { if (signal?.aborted) throw e; /* نتابع بلا غطاء */ }
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+
+    const elements = [
+        ...(Array.isArray(coreData?.elements) ? coreData.elements : []),
+        ...(Array.isArray(coverData?.elements) ? coverData.elements : [])
+    ];
 
     const roadMerge = new Map();
     const walk = [];

@@ -3,7 +3,7 @@ import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { shopService } from '../../services/api';
-import { readSurroundings, geocode, reverseGeocode, inferKind, fetchNews, fetchBrief } from './osmClient';
+import { readSurroundings, geocode, reverseGeocode, inferKind } from './osmClient';
 import { readable, compassOf } from './spatialAgent';
 import { FIRE_LOAD, hourLabel } from './hazardScience';
 import { HAZARDS, KNOBS, analyseEvent, severityOfEvent } from './consequence';
@@ -95,28 +95,10 @@ const AgentStudio = () => {
     const [results, setResults] = useState([]);
     const [searching, setSearching] = useState(false);
 
-    /* الأخبار اللحظيّة قربَ الموضع */
-    const [news, setNews] = useState({ loading: false, items: [], source: null, ok: null });
-
-    /* الموجز الذكيّ (Gemini + بحث حيّ) */
-    const [brief, setBrief] = useState({ loading: false, text: null, sources: [], ok: null });
-
     const [tab, setTab] = useState('result');
     const [shown, setShown] = useState({
         streets: true, roads: true, zones: false, greens: false, cover: false, places: false
     });
-
-    /* مفتاح Gemini — يُحفظ في المتصفّح وحده (لا في الخادم ولا في الحزمة) */
-    const [geminiKey, setGeminiKey] = useState(() => {
-        try { return localStorage.getItem('foresight_gemini_key') || ''; } catch { return ''; }
-    });
-    const [keyDraft, setKeyDraft] = useState('');
-    const saveKey = () => {
-        const k = keyDraft.trim();
-        try { if (k) localStorage.setItem('foresight_gemini_key', k); else localStorage.removeItem('foresight_gemini_key'); } catch { /* */ }
-        setGeminiKey(k);
-        setKeyDraft('');
-    };
     const [picked, setPicked] = useState(null);
 
     const hazard = HAZARDS[kind] || HAZARDS.accident;
@@ -223,50 +205,6 @@ const AgentStudio = () => {
         const t = setTimeout(() => readAround(spot, radius, ctrl.signal), 450);
         return () => { clearTimeout(t); ctrl.abort(); };
     }, [spot, radius, readAround]);
-
-    /* ── الأخبار اللحظيّة: تُجلب عند استقرار الموضع/النوع/المدينة ── */
-    useEffect(() => {
-        if (!spot) { setNews({ loading: false, items: [], source: null, ok: null }); return; }
-        const ctrl = new AbortController();
-        const q = (query && query.trim()) || spotName || spotCity || '';
-        const t = setTimeout(async () => {
-            setNews(n => ({ ...n, loading: true }));
-            try {
-                const res = await fetchNews(q, { kind, city: spotCity, signal: ctrl.signal, limit: 10 });
-                setNews({ loading: false, items: res.articles || [], source: res.source, ok: res.ok });
-            } catch (e) {
-                if (e?.name === 'AbortError') return;
-                setNews({ loading: false, items: [], source: null, ok: false });
-            }
-        }, 700);
-        return () => { clearTimeout(t); ctrl.abort(); };
-    }, [spot, kind, spotCity, spotName, query]);
-
-    /* ── الموجز الذكيّ: تحليلٌ مسنودٌ بالبحث الحيّ عند استقرار المدخلات ── */
-    useEffect(() => {
-        if (!spot) { setBrief({ loading: false, text: null, sources: [], ok: null }); return; }
-        const ctrl = new AbortController();
-        const nearby = (osm.places || []).slice(0, 10).map(p => `${p.name} (${p.category})`);
-        const t = setTimeout(async () => {
-            setBrief(b => ({ ...b, loading: true }));
-            try {
-                const res = await fetchBrief({
-                    description: (query && query.trim()) || null,
-                    place: (query && query.trim()) || spotName || null,
-                    city: spotCity || null,
-                    kind, hour,
-                    lat: spot.latitude, lon: spot.longitude,
-                    cover: osm.context?.dominant || null,
-                    nearby
-                }, { signal: ctrl.signal, geminiKey });
-                setBrief({ loading: false, text: res.brief, sources: res.sources || [], ok: res.ok, reason: res.reason, needsKey: res.needsKey });
-            } catch (e) {
-                if (e?.name === 'AbortError') return;
-                setBrief({ loading: false, text: null, sources: [], ok: false });
-            }
-        }, 900);
-        return () => { clearTimeout(t); ctrl.abort(); };
-    }, [spot, kind, hour, spotCity, spotName, osm.context, osm.places, geminiKey]);
 
     /* ── الترميز الجغرافيّ: من وصفِ مكانٍ إلى إحداثيّة ── */
     const runSearch = useCallback(async () => {
@@ -411,13 +349,8 @@ const AgentStudio = () => {
         lines.push('');
         lines.push('── المعايير ──');
         report.standards.forEach(s => lines.push(`• ${s.code} — ${s.body}: ${s.about}`));
-        if (news.items.length) {
-            lines.push('');
-            lines.push('── أخبارٌ قربَ الموضع (GDELT) ──');
-            news.items.slice(0, 6).forEach(a => lines.push(`• ${a.title} — ${a.domain || ''} (${a.url})`));
-        }
         lines.push('');
-        lines.push('مصادر البيانات: Esri (صور) · OpenStreetMap (طرق واستعمالات أرض ومعالم) · Nominatim (ترميز جغرافي) · GDELT (أخبار)');
+        lines.push('مصادر البيانات: OpenStreetMap (خريطة وطرق واستعمالات أرض ومعالم) · OpenFreeMap (خريطة متّجهة) · Nominatim (ترميز جغرافي)');
 
         const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -427,61 +360,6 @@ const AgentStudio = () => {
         a.click();
         URL.revokeObjectURL(url);
     };
-
-    /* بطاقة الموجز الذكيّ — القرار والمصادر، أو إعداد المفتاح إن لزم */
-    const renderBrief = () => (
-        <>
-            {brief.loading && (
-                <div className="st-news-busy"><span className="hla-spin" />يحلّل السياق ويبحث في المصادر…</div>
-            )}
-
-            {!brief.loading && brief.text && (
-                <article className="st-brief">
-                    <div className="st-brief-head"><span>✦</span> القرار الذكيّ</div>
-                    <div className="st-brief-body">
-                        {brief.text.split('\n').filter(Boolean).map((ln, i) => (
-                            <p key={i} className={ln.trim().startsWith('•') ? 'is-bullet' : ''}>{ln.replace(/^•\s*/, '')}</p>
-                        ))}
-                    </div>
-                    {brief.sources.length > 0 && (
-                        <div className="st-brief-src">
-                            <b>المصادر</b>
-                            <div>
-                                {brief.sources.map((s, i) => (
-                                    <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer" title={s.title}>
-                                        {i + 1}. {(() => { try { return new URL(s.uri).hostname.replace(/^www\./, ''); } catch { return s.title; } })()}
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </article>
-            )}
-
-            {!brief.loading && !brief.text && (
-                <div className="st-brief-setup">
-                    <p>
-                        {brief.needsKey || !geminiKey
-                            ? 'التحليل الذكيّ (Gemini + بحث حيّ) يحتاج مفتاحك — يُحفظ في متصفّحك وحده ولا يُرسل لأحد غير Google:'
-                            : (brief.reason ? `تعذّر التحليل: ${brief.reason}` : 'حدّد موضعاً ووصفاً ليُبنى القرار الذكيّ.')}
-                    </p>
-                    <div className="st-keyrow">
-                        <input type="password" placeholder="الصق مفتاح Gemini هنا…" value={keyDraft}
-                               onChange={(e) => setKeyDraft(e.target.value)}
-                               onKeyDown={(e) => e.key === 'Enter' && saveKey()} />
-                        <button onClick={saveKey} disabled={!keyDraft.trim()}>حفظ</button>
-                    </div>
-                    {geminiKey && (
-                        <small className="st-key-saved">
-                            مفتاحٌ محفوظ ✓
-                            <button className="st-link" onClick={() => { setGeminiKey(''); try { localStorage.removeItem('foresight_gemini_key'); } catch { /* */ } }}>إزالة</button>
-                        </small>
-                    )}
-                    <small className="st-key-help">تحصل على المفتاح من Google AI Studio → API keys.</small>
-                </div>
-            )}
-        </>
-    );
 
     return (
         <div className="st">
@@ -817,7 +695,6 @@ const AgentStudio = () => {
                                 {[
                                     ['result', `النتائج (${report.findings.length})`],
                                     ['places', `المعالم (${report.totals.places})`],
-                                    ['news', 'السياق الذكيّ'],
                                     ['standards', 'المعايير']
                                 ].map(([key, label]) => (
                                     <button key={key} className={tab === key ? 'is-on' : ''}
@@ -830,8 +707,6 @@ const AgentStudio = () => {
                             {tab === 'result' && (
                                 <div className="st-pane">
                                     {spotName && <div className="st-where">📍 {spotName}</div>}
-
-                                    {renderBrief()}
 
                                     <div className="st-top">
                                         <Gauge score={severity.score} band={severity.band}
@@ -922,39 +797,6 @@ const AgentStudio = () => {
                                                         <span>{g.name || g.say}</span>
                                                         <em>{g.say}{g.group === 'water' ? ' · مائي' : ' · أخضر'}</em>
                                                         <i>{readable(g.distance)}</i>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </section>
-                                    )}
-                                </div>
-                            )}
-
-                            {tab === 'news' && (
-                                <div className="st-pane">
-                                    <p className="st-hint">
-                                        قرارٌ ذكيّ يفهم «{hazard.label}» عند «{spotCity || spotName || 'الموضع'}»،
-                                        يجلب ما يتّصل به من مصادرَ حيّة ويربطه بموضع الوقوع والسيناريو
-                                        (Gemini + بحث Google) — سياقٌ يُقرأ مع التحليل العلميّ لا جزءٌ من حسابه.
-                                    </p>
-
-                                    {renderBrief()}
-
-                                    {/* عناوين إخبارية حيّة (GDELT) */}
-                                    {(news.loading || news.items.length > 0) && (
-                                        <section className="st-news-sec">
-                                            <h4>عناوين إخبارية قربَ الموضع</h4>
-                                            {news.loading && <div className="st-news-busy"><span className="hla-spin" />يجلب العناوين…</div>}
-                                            <ul className="st-news">
-                                                {news.items.map((a, i) => (
-                                                    <li key={i}>
-                                                        <a href={a.url} target="_blank" rel="noopener noreferrer">
-                                                            {a.image && <img src={a.image} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
-                                                            <div>
-                                                                <b>{a.title}</b>
-                                                                <em>{a.domain || ''}{a.date ? ` · ${new Date(a.date).toLocaleDateString('ar-EG')}` : ''}</em>
-                                                            </div>
-                                                        </a>
                                                     </li>
                                                 ))}
                                             </ul>
