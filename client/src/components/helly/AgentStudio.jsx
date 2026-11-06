@@ -7,6 +7,8 @@ import { readSurroundings, geocode, reverseGeocode, inferKind } from './osmClien
 import { readable, compassOf } from './spatialAgent';
 import { FIRE_LOAD, hourLabel } from './hazardScience';
 import { HAZARDS, KNOBS, analyseEvent, severityOfEvent } from './consequence';
+import { placeCrowd, runOnMap } from './spatialSim';
+import { tippingPoint } from './simEngine';
 import { Gauge } from './AgentCharts';
 
 /* ============================================================
@@ -46,6 +48,34 @@ const SEV = [
     { color: '#f97316', say: 'متوسّط' },         // 2
     { color: '#dc2626', say: 'شديد' }            // 3
 ];
+
+/* ============================================================
+   محاكاة الوكلاء — انتشار التأثّر/الموقف بين السكّان حول الحدث
+
+   محليّةٌ بالكامل: لا مفتاح ولا توكنز. الحدث يُحرّك «موقف» السكّان
+   (قلِق سلبيّ ↔ مطمئنّ إيجابيّ)، وينتشر عبر الجيرة والشبكة. ولكل
+   نوع حدثٍ شدّةُ دفعٍ واتّجاهٌ مختلف.
+   ============================================================ */
+const STANCE = {
+    fire: { toward: -0.9, force: 0.9 },
+    accident: { toward: -0.55, force: 0.6 },
+    closure: { toward: -0.8, force: 0.72 },
+    power: { toward: -0.7, force: 0.62 },
+    crowd: { toward: -0.4, force: 0.52 },
+    medical: { toward: -0.5, force: 0.55 }
+};
+
+const LEAN_COLOR = { for: '#22c55e', against: '#ef4444', split: '#94a3b8' };
+const LEAN_WORD = { for: 'مطمئنّ', against: 'قلِق', split: 'منقسم' };
+
+/* صندوقٌ حول الموضع بنصف قطرٍ بالأمتار — حدودٌ لشبكة المناطق */
+const boundsAround = (c, r) => {
+    const dLat = r / 111320;
+    const dLon = dLat / Math.max(0.1, Math.cos((c.latitude * Math.PI) / 180));
+    return { south: c.latitude - dLat, north: c.latitude + dLat, west: c.longitude - dLon, east: c.longitude + dLon };
+};
+
+const seedFrom = (c, kind) => Math.abs(Math.round((c.latitude * 9301 + c.longitude * 49297)) ^ (kind || '').length * 233) || 11;
 
 const boundsOf = (items) => {
     const live = (items || []).filter(i => Number.isFinite(+i?.latitude));
@@ -97,8 +127,15 @@ const AgentStudio = () => {
 
     const [tab, setTab] = useState('result');
     const [shown, setShown] = useState({
-        streets: true, roads: true, zones: false, greens: false, cover: false, places: false
+        streets: true, roads: true, zones: false, greens: false, cover: false, places: false,
+        agents: true, districts: true
     });
+
+    /* محاكاة الوكلاء — محليّة بالكامل بلا مفتاح */
+    const [sim, setSim] = useState(null);
+    const [simFrame, setSimFrame] = useState(0);
+    const [simPlaying, setSimPlaying] = useState(false);
+    const [simBusy, setSimBusy] = useState(false);
     const [picked, setPicked] = useState(null);
 
     const hazard = HAZARDS[kind] || HAZARDS.accident;
@@ -270,6 +307,81 @@ const AgentStudio = () => {
             })
         };
     }, [osm.roads, radius, spot]);
+
+    /* ── محاكاة الوكلاء على الخريطة ── */
+    const runSim = useCallback(() => {
+        if (!spot) return;
+        const marks = (landmarks || []).filter(l => Number.isFinite(+l?.latitude) && Number.isFinite(+l?.longitude));
+        if (marks.length < 3) {
+            setProblem('لا معالم كافية لوضع الوكلاء — اقرأ المحيط من OSM أوّلاً');
+            return;
+        }
+        setSimBusy(true);
+        setSimPlaying(false);
+        /* نؤجّله قليلاً كي تُحدَّث الواجهة قبل الحساب المتزامن */
+        setTimeout(() => {
+            try {
+                const seed = seedFrom(spot, kind);
+                const agents = placeCrowd(200, marks, { seed });
+                const st = STANCE[kind] || STANCE.accident;
+                const res = runOnMap({
+                    agents,
+                    bounds: boundsAround(spot, Math.max(500, radius)),
+                    rounds: 24,
+                    cells: 6,
+                    seed,
+                    event: {
+                        latitude: spot.latitude, longitude: spot.longitude,
+                        radius: Math.max(500, radius), at: 4,
+                        toward: st.toward, force: st.force, label: hazard.label
+                    }
+                });
+                setSim(res);
+                setSimFrame(res?.frames?.length ? res.frames.length - 1 : 0);
+                setTab('sim');
+            } catch (e) {
+                setProblem('تعذّرت المحاكاة — ' + (e?.message || ''));
+            } finally {
+                setSimBusy(false);
+            }
+        }, 30);
+    }, [spot, landmarks, kind, radius, hazard]);
+
+    /* الموضع الجديد يُبطِل محاكاةً سابقة (صارت لمكانٍ آخر) */
+    useEffect(() => { setSim(null); setSimPlaying(false); setSimFrame(0); }, [spot]);
+
+    /* تشغيل الشريط الزمنيّ */
+    useEffect(() => {
+        if (!simPlaying || !sim?.frames?.length) return;
+        if (simFrame >= sim.frames.length - 1) { setSimPlaying(false); return; }
+        const t = setTimeout(() => setSimFrame(f => Math.min(sim.frames.length - 1, f + 1)), 430);
+        return () => clearTimeout(t);
+    }, [simPlaying, simFrame, sim]);
+
+    const frame = useMemo(
+        () => (sim?.frames?.length ? sim.frames[Math.min(simFrame, sim.frames.length - 1)] : null),
+        [sim, simFrame]
+    );
+
+    const agentsGeo = useMemo(() => ({
+        type: 'FeatureCollection',
+        features: (frame?.agents || []).map(a => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [a.longitude, a.latitude] },
+            properties: { op: a.opinion }
+        }))
+    }), [frame]);
+
+    const districtsGeo = useMemo(() => ({
+        type: 'FeatureCollection',
+        features: (frame?.districts || []).map(d => ({
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [[[d.west, d.south], [d.east, d.south], [d.east, d.north], [d.west, d.north], [d.west, d.south]]] },
+            properties: { lean: d.lean }
+        }))
+    }), [frame]);
+
+    const tip = useMemo(() => (sim?.frames ? tippingPoint(sim.frames) : null), [sim]);
 
     const greensGeo = useMemo(() => ({
         type: 'FeatureCollection',
@@ -511,6 +623,19 @@ const AgentStudio = () => {
                             </Source>
                         )}
 
+                        {/* مناطق المحاكاة — موقف كل منطقة (قلِق/محايد/مطمئنّ) */}
+                        {shown.districts && frame && (
+                            <Source id="st-districts" type="geojson" data={districtsGeo}>
+                                <Layer id="st-districts-fill" type="fill" paint={{
+                                    'fill-color': ['match', ['get', 'lean'], 'for', LEAN_COLOR.for, 'against', LEAN_COLOR.against, LEAN_COLOR.split],
+                                    'fill-opacity': 0.2
+                                }} />
+                                <Layer id="st-districts-line" type="line" paint={{
+                                    'line-color': 'rgba(255,255,255,.22)', 'line-width': 0.6
+                                }} />
+                            </Source>
+                        )}
+
                         {/* شبكة الشوارع من OSM — سطح التحليل: كل شارعٍ مُلوَّنٌ
                             بشدّة أثر الحدث عليه حسب قربه منه */}
                         {shown.streets && (
@@ -607,6 +732,20 @@ const AgentStudio = () => {
                             </Marker>
                         ))}
 
+                        {/* وكلاء المحاكاة — لونٌ حسب الموقف (أحمر قلِق ← أخضر مطمئنّ) */}
+                        {shown.agents && frame && (
+                            <Source id="st-agents" type="geojson" data={agentsGeo}>
+                                <Layer id="st-agents-dots" type="circle" paint={{
+                                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2, 15, 3.6, 18, 5.5],
+                                    'circle-color': ['interpolate', ['linear'], ['get', 'op'],
+                                        -1, '#ef4444', -0.15, '#f59e0b', 0, '#cbd5e1', 0.15, '#84cc16', 1, '#22c55e'],
+                                    'circle-opacity': 0.9,
+                                    'circle-stroke-width': 0.4,
+                                    'circle-stroke-color': 'rgba(0,0,0,.5)'
+                                }} />
+                            </Source>
+                        )}
+
                         {spot && (
                             <Marker longitude={spot.longitude} latitude={spot.latitude} anchor="center">
                                 <span className="st-pin" />
@@ -625,6 +764,8 @@ const AgentStudio = () => {
                         {[
                             ['streets', 'شبكة الشوارع'],
                             ['roads', 'الطرق المتأثّرة'],
+                            ['agents', 'وكلاء المحاكاة'],
+                            ['districts', 'مناطق الموقف'],
                             ['zones', 'نطاقات الحدث'],
                             ['greens', 'المساحات الخضراء'],
                             ['cover', 'استعمال الأرض'],
@@ -670,6 +811,18 @@ const AgentStudio = () => {
                         </button>
                         <span>خريطةٌ وبياناتٌ مفتوحة · © OpenStreetMap · OpenFreeMap</span>
                     </div>
+
+                    {/* شريط المحاكاة الزمنيّ */}
+                    {sim && frame && (
+                        <div className="st-timeline">
+                            <button className="st-tl-play" onClick={() => setSimPlaying(p => !p)} aria-label="تشغيل">
+                                {simPlaying ? '⏸' : '▶'}
+                            </button>
+                            <input type="range" min="0" max={sim.frames.length - 1} value={simFrame}
+                                   onChange={(e) => { setSimPlaying(false); setSimFrame(+e.target.value); }} />
+                            <span>جولة {frame.round}{frame.note ? ` · ${frame.note}` : ''}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── اللوحة ── */}
@@ -695,6 +848,7 @@ const AgentStudio = () => {
                                 {[
                                     ['result', `النتائج (${report.findings.length})`],
                                     ['places', `المعالم (${report.totals.places})`],
+                                    ['sim', 'المحاكاة'],
                                     ['standards', 'المعايير']
                                 ].map(([key, label]) => (
                                     <button key={key} className={tab === key ? 'is-on' : ''}
@@ -801,6 +955,59 @@ const AgentStudio = () => {
                                                 ))}
                                             </ul>
                                         </section>
+                                    )}
+                                </div>
+                            )}
+
+                            {tab === 'sim' && (
+                                <div className="st-pane">
+                                    <p className="st-hint">
+                                        محاكاةٌ محليّةٌ بالكامل — بلا مفتاح ولا توكنز، ونفس السيناريو يُعطي
+                                        نفس النتيجة. ٢٠٠ وكيلٍ على معالم المحيط يتحرّك موقفهم (قلِق ↔ مطمئنّ)
+                                        حول «{hazard.label}» عبر الجيرة والشبكة
+                                        (Friedkin–Johnsen · Hegselmann–Krause · Watts–Strogatz).
+                                    </p>
+
+                                    <button className="st-sim-run" onClick={runSim} disabled={simBusy || !spot}>
+                                        {simBusy ? 'يحاكي…' : sim ? '↻ أعِد المحاكاة' : '▶ شغّل المحاكاة'}
+                                    </button>
+
+                                    {sim && (
+                                        <>
+                                            <div className="st-sim-shares">
+                                                {[['against', LEAN_WORD.against, sim.outcome.againstShare],
+                                                  ['split', 'محايد', sim.outcome.neutralShare],
+                                                  ['for', LEAN_WORD.for, sim.outcome.forShare]].map(([k, w, v]) => (
+                                                    <div className="st-sim-share" key={k}>
+                                                        <label><i style={{ background: LEAN_COLOR[k] }} />{w}<b>{Math.round((v || 0) * 100)}٪</b></label>
+                                                        <i><em style={{ width: `${Math.round((v || 0) * 100)}%`, background: LEAN_COLOR[k] }} /></i>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="st-nums st-sim-nums">
+                                                <div><b>{sim.outcome.clusters}</b><span>كتلة رأي</span></div>
+                                                <div><b>{sim.outcome.shift >= 0 ? '+' : ''}{sim.outcome.shift.toFixed(2)}</b><span>إزاحة الموقف</span></div>
+                                                <div><b>{tip ? `جولة ${tip.round}` : '—'}</b><span>نقطة الانقلاب</span></div>
+                                            </div>
+
+                                            {sim.outcome.swung && (
+                                                <article className="st-find is-info">
+                                                    <span className="st-find-tag">معلومة</span>
+                                                    <b>أكثر منطقةٍ تحوّلاً في الموقف</b>
+                                                    <p>
+                                                        تغيّر موقفها بمقدار {Math.abs(sim.outcome.swung.shift).toFixed(2)}
+                                                        {sim.outcome.swung.shift < 0 ? ' نحو القلق' : ' نحو الاطمئنان'} خلال المحاكاة —
+                                                        والانتشار يتبع الجيرة لا القرب من الحدث وحده.
+                                                    </p>
+                                                </article>
+                                            )}
+
+                                            <p className="st-hint">
+                                                شغّل الشريط الزمنيّ أسفل الخريطة لرؤية الانتشار جولةً جولة.
+                                                الأحمر قلِق، الأخضر مطمئنّ، والرماديّ محايد.
+                                            </p>
+                                        </>
                                     )}
                                 </div>
                             )}
