@@ -250,11 +250,11 @@ function startStudio(root, L, turf, opts) {
     // ===================================================================== MAP
     var map = L.map($('map'), { zoomControl: false, attributionControl: true }).setView([31.9, 35.2], 9);
     L.control.zoom({ position: 'topright' }).addTo(map);
-    var light = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    var dark = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    var base = L.tileLayer(light, { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap, &copy; CARTO · تحليل: Turf.js' }).addTo(map);
+    // خرائط Google (الطريق — العاديّة)
+    var GOOGLE = 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+    var base = L.tileLayer(GOOGLE, { maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'خرائط Google · تحليل: Turf.js' }).addTo(map);
     function isDark() { return (root.getAttribute('data-theme') || 'dark') !== 'light'; }
-    function syncBase() { base.setUrl(isDark() ? dark : light); }
+    function syncBase() { /* خريطة Google واحدة للوضعين */ }
     syncBase();
 
     // قراءة الإحداثيّات والمقياس
