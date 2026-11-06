@@ -25,28 +25,10 @@ import { Gauge } from './AgentCharts';
    والأخبارُ اللحظيّة عبر وسيط المنصّة العامّ — بلا مفتاح ولا تسجيل.
    ============================================================ */
 
-const MAP_STYLE = {
-    version: 8,
-    sources: {
-        sat: {
-            type: 'raster',
-            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-            tileSize: 256,
-            maxzoom: 19,
-            attribution: 'Esri · Maxar · Earthstar Geographics'
-        }
-    },
-    layers: [{ id: 'sat', type: 'raster', source: 'sat' }]
-};
-
-/* تسمياتٌ من OpenStreetMap (CARTO) لا من طبقة Esri الإدارية — فلا
-   تظهر مسمّياتُ المجالس/الحدود السياسية، بل أسماءُ الأحياء والطرق */
-const LABELS_TILES = [
-    'https://a.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
-    'https://b.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
-    'https://c.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
-    'https://d.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png'
-];
+/* خريطة أساسٍ متّجهة (vector) من OpenStreetMap عبر OpenFreeMap —
+   بلا مفتاح ولا تسجيل، وتعمل لأيّ زائر. والتحليل يُرسم فوقها على
+   الشوارع نفسها. */
+const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
 const TONE_WORD = { high: 'عاجل', warn: 'انتبه', info: 'معلومة' };
 const BAND_WORD = { high: 'شدّة عالية', medium: 'شدّة متوسّطة', low: 'شدّة محدودة' };
@@ -57,13 +39,12 @@ const LOS_COLOUR = {
     D: '#f97316', E: '#ef4444', F: '#b91c1c'
 };
 
-/* مستويات نطاقات الشدّة — الأحمر أشدّ، النزول إلى الأصفر أخفّ
-   (مطابقةٌ لـ IMPACT_LEVELS في محرّك التحليل) */
-const IMPACT_UI = [
-    { level: 0, color: '#dc2626', say: 'شديد', op: 0.5 },
-    { level: 1, color: '#f97316', say: 'مرتفع', op: 0.4 },
-    { level: 2, color: '#f59e0b', say: 'متوسّط', op: 0.3 },
-    { level: 3, color: '#facc15', say: 'منخفض', op: 0.2 }
+/* شدّة أثر الحدث على الشارع حسب قربه — ترسمها الشوارع نفسها */
+const SEV = [
+    { color: '#38bdf8', say: 'خارج النطاق' },   // 0
+    { color: '#facc15', say: 'طرفيّ' },          // 1
+    { color: '#f97316', say: 'متوسّط' },         // 2
+    { color: '#dc2626', say: 'شديد' }            // 3
 ];
 
 const boundsOf = (items) => {
@@ -122,7 +103,7 @@ const AgentStudio = () => {
 
     const [tab, setTab] = useState('result');
     const [shown, setShown] = useState({
-        labels: true, streets: true, impact: true, zones: true, roads: true, greens: true, cover: false, places: false
+        streets: true, roads: true, zones: false, greens: false, cover: false, places: false
     });
 
     /* مفتاح Gemini — يُحفظ في المتصفّح وحده (لا في الخادم ولا في الحزمة) */
@@ -326,20 +307,31 @@ const AgentStudio = () => {
     const zonesGeo = useMemo(() => pick(report?.shapes, 'scope', 'plume', 'isolate', 'heat'), [report]);
     const roadsGeo = useMemo(() => pick(report?.shapes, 'road', 'alternative'), [report]);
     const queueGeo = useMemo(() => pick(report?.shapes, 'queue'), [report]);
-    const impactGeo = useMemo(() => report?.impact || { type: 'FeatureCollection', features: [] }, [report]);
-
-    /* شبكة الشوارع الكاملة المقروءة من OSM — تُرسم طبقةً ظاهرة فوق
-       الصورة، فيُرى التحليل على الشوارع نفسها لا على ألوانٍ مجرّدة */
-    const networkGeo = useMemo(() => ({
-        type: 'FeatureCollection',
-        features: (osm.roads || []).flatMap(r =>
-            (r.lines || []).map(line => ({
-                type: 'Feature',
-                geometry: { type: 'LineString', coordinates: line },
-                properties: { cls: r.highway, name: r.name || '' }
-            }))
-        )
-    }), [osm.roads]);
+    /* شبكة الشوارع من OSM — هي سطح التحليل: كل شارعٍ يُلوَّن بشدّة أثر
+       الحدث عليه حسب قربه منه، فيُقرأ الأثر على الشوارع نفسها لا على
+       مناطقَ مجرّدة. (core=٣٥٪ من النطاق، mid=٧٠٪) */
+    const networkGeo = useMemo(() => {
+        const R = Math.max(1, radius);
+        const core = R * 0.35, mid = R * 0.7;
+        const sevOf = (d) => {
+            if (!Number.isFinite(d)) return 0;
+            if (d <= core) return 3;
+            if (d <= mid) return 2;
+            if (d <= R) return 1;
+            return 0;
+        };
+        return {
+            type: 'FeatureCollection',
+            features: (osm.roads || []).flatMap(r => {
+                const sev = spot ? sevOf(r.distance) : 0;
+                return (r.lines || []).map(line => ({
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: line },
+                    properties: { cls: r.highway, name: r.name || '', sev }
+                }));
+            })
+        };
+    }, [osm.roads, radius, spot]);
 
     const greensGeo = useMemo(() => ({
         type: 'FeatureCollection',
@@ -435,8 +427,6 @@ const AgentStudio = () => {
         a.click();
         URL.revokeObjectURL(url);
     };
-
-    const impactOn = shown.impact && (impactGeo.features?.length > 0);
 
     /* بطاقة الموجز الذكيّ — القرار والمصادر، أو إعداد المفتاح إن لزم */
     const renderBrief = () => (
@@ -610,18 +600,11 @@ const AgentStudio = () => {
                     <Map
                         ref={mapRef}
                         initialViewState={view}
-                        mapStyle={MAP_STYLE}
+                        mapStyle={BASEMAP_STYLE}
                         onClick={(e) => place({ latitude: e.lngLat.lat, longitude: e.lngLat.lng })}
                         attributionControl={false}
                         style={{ width: '100%', height: '100%', cursor: 'crosshair' }}
                     >
-                        {/* طبقة أسماء المناطق والأحياء (Esri) — شفّافة فوق الصورة */}
-                        <Source id="esri-labels" type="raster" tiles={LABELS_TILES} tileSize={256}>
-                            <Layer id="esri-labels-layer" type="raster"
-                                   layout={{ visibility: shown.labels ? 'visible' : 'none' }}
-                                   paint={{ 'raster-opacity': 0.92 }} />
-                        </Source>
-
                         {/* الغطاء الأرضيّ المبنيّ/المكشوف */}
                         {shown.cover && (
                             <Source id="st-cover" type="geojson" data={coverGeo}>
@@ -650,41 +633,32 @@ const AgentStudio = () => {
                             </Source>
                         )}
 
-                        {/* مؤشّر الشدّة — نطاقاتٌ متدرّجة ملوّنة (الأحمر أشدّ) */}
-                        {impactOn && (
-                            <Source id="st-impact" type="geojson" data={impactGeo}>
-                                <Layer id="st-impact-fill" type="fill" paint={{
-                                    'fill-color': ['get', 'color'],
-                                    'fill-opacity': ['match', ['get', 'level'], 0, 0.5, 1, 0.4, 2, 0.3, 3, 0.2, 0.25]
-                                }} />
-                                <Layer id="st-impact-line" type="line" paint={{
-                                    'line-color': ['get', 'color'],
-                                    'line-width': 1.1,
-                                    'line-opacity': 0.75
-                                }} />
-                            </Source>
-                        )}
-
-                        {/* شبكة الشوارع الكاملة من OSM — ظاهرةٌ ليُقرأ التحليل عليها */}
+                        {/* شبكة الشوارع من OSM — سطح التحليل: كل شارعٍ مُلوَّنٌ
+                            بشدّة أثر الحدث عليه حسب قربه منه */}
                         {shown.streets && (
                             <Source id="st-network" type="geojson" data={networkGeo}>
                                 <Layer id="st-network-case" type="line"
                                        layout={{ 'line-cap': 'round', 'line-join': 'round' }}
                                        paint={{
-                                           'line-color': 'rgba(2,6,16,.55)',
-                                           'line-width': ['match', ['get', 'cls'],
-                                               'motorway', 6, 'trunk', 5.5, 'primary', 4.5, 'secondary', 3.6, 'tertiary', 2.8, 2],
-                                           'line-opacity': 0.5
+                                           'line-color': 'rgba(2,6,16,.6)',
+                                           'line-width': ['+',
+                                               ['match', ['get', 'cls'],
+                                                   'motorway', 6, 'trunk', 5.5, 'primary', 4.5, 'secondary', 3.6, 'tertiary', 2.8, 2.2],
+                                               ['match', ['get', 'sev'], 3, 3, 2, 2, 1, 1, 0]]
                                        }} />
                                 <Layer id="st-network-line" type="line"
                                        layout={{ 'line-cap': 'round', 'line-join': 'round' }}
                                        paint={{
-                                           'line-color': ['match', ['get', 'cls'],
-                                               'motorway', '#fcd34d', 'trunk', '#fcd34d', 'primary', '#fde68a',
-                                               'secondary', '#e5e7eb', 'tertiary', '#e5e7eb', 'rgba(255,255,255,.75)'],
-                                           'line-width': ['match', ['get', 'cls'],
-                                               'motorway', 3.2, 'trunk', 3, 'primary', 2.4, 'secondary', 1.8, 'tertiary', 1.4, 0.9],
-                                           'line-opacity': 0.9
+                                           'line-color': ['match', ['get', 'sev'],
+                                               3, '#dc2626', 2, '#f97316', 1, '#facc15',
+                                               ['match', ['get', 'cls'],
+                                                   'motorway', '#f59e0b', 'trunk', '#f59e0b', 'primary', '#fbbf24',
+                                                   'secondary', '#e5e7eb', 'tertiary', '#e5e7eb', '#cbd5e1']],
+                                           'line-width': ['+',
+                                               ['match', ['get', 'cls'],
+                                                   'motorway', 3.2, 'trunk', 3, 'primary', 2.4, 'secondary', 1.8, 'tertiary', 1.4, 1],
+                                               ['match', ['get', 'sev'], 3, 2.2, 2, 1.4, 1, 0.7, 0]],
+                                           'line-opacity': ['match', ['get', 'sev'], 0, 0.82, 0.97]
                                        }} />
                             </Source>
                         )}
@@ -771,11 +745,9 @@ const AgentStudio = () => {
                     {/* مبدّل الطبقات */}
                     <div className="st-layers">
                         {[
-                            ['labels', 'الأسماء'],
                             ['streets', 'شبكة الشوارع'],
-                            ['impact', 'مؤشّر الشدّة'],
-                            ['zones', 'النطاقات'],
                             ['roads', 'الطرق المتأثّرة'],
+                            ['zones', 'نطاقات الحدث'],
                             ['greens', 'المساحات الخضراء'],
                             ['cover', 'استعمال الأرض'],
                             ['places', 'المعالم']
@@ -787,18 +759,18 @@ const AgentStudio = () => {
                         ))}
                     </div>
 
-                    {/* دليل مؤشّر الشدّة — عتباتٌ ملوّنة واضحة الترتيب */}
-                    {impactOn && (
+                    {/* دليل شدّة الأثر على الشوارع */}
+                    {spot && shown.streets && (osm.roads?.length > 0) && (
                         <div className="st-heat-legend">
-                            <b>مؤشّر شدّة الأثر</b>
+                            <b>شدّة الأثر على الشوارع</b>
                             <div className="st-impact-swatches">
-                                {IMPACT_UI.map(l => (
-                                    <span key={l.level}>
-                                        <i style={{ background: l.color }} />{l.say}
+                                {[3, 2, 1].map(s => (
+                                    <span key={s}>
+                                        <i style={{ background: SEV[s].color }} />{SEV[s].say}
                                     </span>
                                 ))}
                             </div>
-                            <em>نطاقاتٌ منحازةٌ إلى المحيط: الريح والمعالم المعرَّضة وكثافة البناء</em>
+                            <em>كلّ شارعٍ يُلوَّن بحسب قربه من الحدث — التحليل على الشبكة نفسها</em>
                         </div>
                     )}
 
@@ -818,7 +790,7 @@ const AgentStudio = () => {
                                     ? `المحيط: ${osm.roads.length} طريق · ${osm.places.length} معلم · ${osm.cover.length} غطاء`
                                     : 'اقرأ المحيط من OSM'}
                         </button>
-                        <span>بيانات مفتوحة · OpenStreetMap + Esri</span>
+                        <span>خريطةٌ وبياناتٌ مفتوحة · © OpenStreetMap · OpenFreeMap</span>
                     </div>
                 </div>
 
@@ -828,11 +800,11 @@ const AgentStudio = () => {
                         <div className="st-blank">
                             <b>ابدأ التحليل</b>
                             <p>
-                                اكتب وصف الحدث ومكانه في الأعلى، أو انقر على الخريطة. فتُقرأ شبكة
-                                الطرق واستعمالات الأرض والمعالم من OpenStreetMap لحظياً، ويُبنى
-                                «مؤشّر شدّةٍ» حراريّ ينحاز إلى المحيط، وتُحسب سلسلة الأثر الماديّة:
-                                سعة الطريق ومستوى خدمته، والطابور، والبدائل، وزمن وصول الإسعاف،
-                                ومن يقع في النطاق هذه الساعة — مع أخبارٍ لحظيّة قربَ الموضع.
+                                اكتب وصف الحدث ومكانه في الأعلى، أو انقر على خريطة OpenStreetMap
+                                المتّجهة. فتُقرأ شبكة الطرق واستعمالات الأرض والمعالم لحظياً، ويُجرى
+                                التحليل على الشوارع نفسها: كلُّ شارعٍ يُلوَّن بشدّة الأثر، مع سلسلة
+                                الأثر الماديّة — سعة الطريق ومستوى خدمته، والطابور، والبدائل، وزمن
+                                وصول الإسعاف، ومن يقع في النطاق هذه الساعة — وقرارٌ ذكيّ مسنودٌ بمصادر.
                             </p>
                             <p className="st-blank-note">
                                 ولكل نتيجةٍ معيارها مكتوباً — HCM · NFPA · SFPE · WHO · UN-Habitat · ERG —
