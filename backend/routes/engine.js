@@ -79,25 +79,27 @@ const SYSTEM_INSTRUCTION = [
     'مهمّتك: من وصف المستخدم، تُنتج تطبيق ويب كاملاً في ملفٍ واحد (single-file HTML) جاهزاً للتشغيل فوراً.',
     '',
     'قواعد صارمة:',
-    '1) أخرِج مستند HTML كاملاً فقط: يبدأ بـ <!doctype html> وينتهي بـ </html>. لا شرح قبله ولا بعده.',
-    '2) ملفٌ واحد مكتفٍ ذاتيّاً: CSS و JavaScript داخل الصفحة. لا ملفات خارجية سوى مكتبات CDN موثوقة.',
-    '3) للخرائط استخدم Leaflet 1.9.4 من cdnjs، وبلاط خرائط Google عبر الرابط:',
+    '1) أخرِج مستند HTML كاملاً فقط: يبدأ بـ <!doctype html> وينتهي بـ </html>. لا شرح ولا نصّ قبله ولا بعده، ولا تضعه داخل أسوار ```.',
+    '2) اكتب الكود كاملاً فعليّاً. ممنوع منعاً باتّاً ترك عناصر نائبة مثل «... بقيّة الكود» أو «أضف المزيد هنا» أو دوالّ فارغة. كلّ دالّة مُنفَّذة بالكامل.',
+    '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجية سوى مكتبات CDN موثوقة.',
+    '4) للخرائط استخدم Leaflet 1.9.4 من cdnjs، وبلاط خرائط Google عبر الرابط:',
     '   https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}  (subdomains: mt0,mt1,mt2,mt3).',
     '   وللتحليل المكانيّ استخدم Turf.js 6.5.0 من cdnjs عند الحاجة.',
-    '4) لا تستخدم أيّ خدمةٍ تتطلّب مفتاح API. كلّ شيء يعمل بلا مفاتيح وبلا تسجيل.',
-    '5) الواجهة عربيّة باتجاه RTL، عصريّة واحترافيّة، متجاوبة مع الجوّال، بتصميمٍ داكنٍ أنيق افتراضاً.',
-    '6) اجعل التطبيق فعليّاً ويعمل: أزرار حقيقيّة، طبقات، تحليل، بيانات تجريبيّة منطقيّة إن لزم (فلسطين/الضفة افتراضاً).',
-    '7) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط:',
+    '5) لا تستخدم أيّ خدمةٍ تتطلّب مفتاح API. كلّ شيء يعمل بلا مفاتيح وبلا تسجيل.',
+    '6) الواجهة عربيّة RTL، عصريّة احترافيّة، متجاوبة مع الجوّال، بتصميمٍ داكنٍ أنيق افتراضاً، بخطوطٍ ومسافاتٍ مريحة.',
+    '7) اجعل التطبيق يعمل فعليّاً بلا أخطاء: هيّئ الخريطة بعد تحميل DOM، اربط كلّ زرٍّ بوظيفةٍ حقيقيّة، وأضِف بياناتٍ تجريبيّة منطقيّة عند الحاجة (فلسطين/الضفة افتراضاً).',
+    '8) فكّر في أفضل تصميمٍ وميزاتٍ للطلب، ونفّذها بإتقان؛ لا تكتفِ بالحدّ الأدنى، لكن اجعل الكود سليماً ومتماسكاً.',
+    '9) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط:',
     '   <!--PNE:{"title":"عنوان قصير للمشروع","summary":"جملة تصف ما بُني"}-->',
-    '8) اجعل <title> مطابقاً للعنوان. لا تتجاوز المعقول في الحجم؛ ركّز على جودة التنفيذ.',
-    'عند التعديل على تطبيقٍ قائم: أعِد إخراج المستند الكامل بعد تطبيق التغيير المطلوب فقط، محافظاً على الباقي.'
+    '10) اجعل <title> مطابقاً للعنوان.',
+    'عند التعديل على تطبيقٍ قائم: أعِد إخراج المستند الكامل بعد تطبيق التغيير فقط، محافظاً على الباقي كما هو.'
 ].join('\n');
 
 /* ---- استخلاص HTML + العنوان + الموجز من ردّ الموديل ---- */
 function parseGenerated(text, fallbackPrompt) {
     let html = (text || '').trim();
-    const fence = html.match(/```(?:html)?\s*([\s\S]*?)```/i);
-    if (fence) html = fence[1].trim();
+    // إزالة أسوار الشيفرة (قد تتكرّر عبر الإكمالات) و كلمة الإنهاء
+    html = html.replace(/```html/gi, '').replace(/```/g, '').replace(/\s*تمّ?\.?\s*$/i, '').trim();
     const di = html.toLowerCase().indexOf('<!doctype');
     const hi = html.toLowerCase().indexOf('<html');
     const start = di >= 0 ? di : hi;
@@ -124,9 +126,14 @@ function pickProvider(KEY) {
     return { kind: 'gemini', url: '', model: GEMINI_MODEL };
 }
 
-/* ---- نداء الموديل: يوحّد مزوّد OpenAI-compatible و Gemini، ويُعيد نصّ الردّ ---- */
+const MAXTOK = parseInt(process.env.PALNOVAA_MAX_TOKENS, 10) || 16000;
+const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت بالضبط (حرفٌ بحرف)، بلا إعادة أيّ جزءٍ سابق وبلا أيّ شرح. إن كان المستند قد اكتمل بـ</html> فاكتب "تمّ".';
+const looksComplete = (s) => /<\/html>\s*$/i.test((s || '').trim());
+
+/* ---- نداء الموديل: يوحّد المزوّدات، ويُكمل تلقائياً إذا قُطِع الكود ---- */
 async function callModel(KEY, prompt, currentHtml) {
     const prov = pickProvider(KEY);
+
     if (prov.kind === 'oai') {
         const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
         if (currentHtml) {
@@ -135,27 +142,45 @@ async function callModel(KEY, prompt, currentHtml) {
         }
         messages.push({ role: 'user', content: prompt });
         const headers = { Authorization: `Bearer ${KEY}` };
-        // ترويسات يطلبها OpenRouter (اختياريّة لكن مفيدة)
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
-        const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.4, max_tokens: 8192 }, headers);
-        const msg = data?.choices?.[0]?.message;
-        return ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '').trim();
+        let full = '';
+        for (let i = 0; i < 5; i++) {
+            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK }, headers);
+            const choice = data?.choices?.[0]; const msg = choice?.message;
+            const piece = ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '');
+            full += piece;
+            const fin = choice?.finish_reason || choice?.native_finish_reason;
+            if (fin !== 'length' || looksComplete(full)) break;       // اكتمل أو توقّف طبيعيّاً
+            messages.push({ role: 'assistant', content: piece });
+            messages.push({ role: 'user', content: CONTINUE_MSG });
+        }
+        return full.trim();
     }
+
     // Gemini
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
     const contents = [];
     if (currentHtml) {
         contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
         contents.push({ role: 'model', parts: [{ text: 'تمام، ما التعديل المطلوب؟' }] });
     }
     contents.push({ role: 'user', parts: [{ text: prompt }] });
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
-    const payload = {
-        systemInstruction: { role: 'system', parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 8192, topP: 0.95 }
-    };
-    const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
-    return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('').trim();
+    let full = '';
+    for (let i = 0; i < 5; i++) {
+        const payload = {
+            systemInstruction: { role: 'system', parts: [{ text: SYSTEM_INSTRUCTION }] },
+            contents,
+            generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 }
+        };
+        const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
+        const cand = data?.candidates?.[0];
+        const piece = (cand?.content?.parts || []).map((p) => p?.text || '').join('');
+        full += piece;
+        if (cand?.finishReason !== 'MAX_TOKENS' || looksComplete(full)) break;
+        contents.push({ role: 'model', parts: [{ text: piece }] });
+        contents.push({ role: 'user', parts: [{ text: CONTINUE_MSG }] });
+    }
+    return full.trim();
 }
 
 /* ============================ التوليد ============================ */
