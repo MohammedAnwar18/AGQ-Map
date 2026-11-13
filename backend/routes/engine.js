@@ -133,17 +133,25 @@ router.post('/generate', optionalAuth, async (req, res) => {
         generationConfig: { temperature: 0.4, maxOutputTokens: 8192, topP: 0.95 }
     };
 
-    try {
-        const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
-        const cand = data?.candidates?.[0];
-        const text = (cand?.content?.parts || []).map((p) => p?.text || '').join('').trim();
-        if (!text) return res.json({ ok: false, reason: 'empty', model: MODEL_NAME });
-        const out = parseGenerated(text, prompt);
-        if (!out.html || out.html.length < 60) return res.json({ ok: false, reason: 'no_html', model: MODEL_NAME });
-        return res.json({ ok: true, model: MODEL_NAME, ...out });
-    } catch (err) {
-        return res.json({ ok: false, reason: String(err.message || 'unavailable'), model: MODEL_NAME });
+    const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
+    let lastErr = 'unavailable';
+    for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt)); // تأخّرٌ تصاعديّ قبل إعادة المحاولة
+        try {
+            const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
+            const cand = data?.candidates?.[0];
+            const text = (cand?.content?.parts || []).map((p) => p?.text || '').join('').trim();
+            if (!text) { lastErr = 'empty'; continue; }
+            const out = parseGenerated(text, prompt);
+            if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
+            return res.json({ ok: true, model: MODEL_NAME, ...out });
+        } catch (err) {
+            lastErr = String(err.message || 'unavailable');
+            if (!isTransient(lastErr)) break; // خطأٌ غير مؤقّت: لا فائدة من التكرار
+        }
     }
+    const reason = isTransient(lastErr) ? 'الموديل مزدحمٌ الآن (ضغطٌ مؤقّت من المزوّد). جرّب بعد لحظات.' : lastErr;
+    return res.json({ ok: false, reason, model: MODEL_NAME });
 });
 
 /* ============================ المشاريع ============================ */
