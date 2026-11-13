@@ -114,9 +114,20 @@ function parseGenerated(text, fallbackPrompt) {
     return { html, title, summary };
 }
 
+/* ---- تحديد المزوّد: من متغيّر البيئة، وإلّا من بادئة المفتاح تلقائياً ---- */
+function pickProvider(KEY) {
+    if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
+    const k = (KEY || '').trim();
+    if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'deepseek/deepseek-chat-v3:free' };
+    if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'llama-3.3-70b-versatile' };
+    if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'deepseek-ai/deepseek-v3' };
+    return { kind: 'gemini', url: '', model: GEMINI_MODEL };
+}
+
 /* ---- نداء الموديل: يوحّد مزوّد OpenAI-compatible و Gemini، ويُعيد نصّ الردّ ---- */
 async function callModel(KEY, prompt, currentHtml) {
-    if (USE_OAI) {
+    const prov = pickProvider(KEY);
+    if (prov.kind === 'oai') {
         const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
         if (currentHtml) {
             messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
@@ -125,8 +136,8 @@ async function callModel(KEY, prompt, currentHtml) {
         messages.push({ role: 'user', content: prompt });
         const headers = { Authorization: `Bearer ${KEY}` };
         // ترويسات يطلبها OpenRouter (اختياريّة لكن مفيدة)
-        if (/openrouter/i.test(OAI_URL)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
-        const data = await postJSON(OAI_URL, { model: OAI_MODEL, messages, temperature: 0.4, max_tokens: 8192 }, headers);
+        if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
+        const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.4, max_tokens: 8192 }, headers);
         const msg = data?.choices?.[0]?.message;
         return ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '').trim();
     }
