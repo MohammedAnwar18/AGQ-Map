@@ -64,12 +64,23 @@ export default function PalNovaaEngineView() {
                 </div>
                 <button onClick={() => navigate('/palnovaa-engine')} style={{ cursor: 'pointer', background: '#192135', color: '#eef1f8', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, padding: '7px 13px', font: 'inherit', fontSize: 12 }}>فتح المحرّك</button>
             </div>
-            <iframe
-                title={state.project.title}
-                sandbox="allow-scripts allow-popups allow-forms allow-modals"
-                srcDoc={state.project.html}
-                style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
-            />
+            {/* عند توفّر رابط R2 نُحمّله من دومينه المنفصل (عزلٌ أمنيّ عن كوكيز/جلسات المنصّة)،
+                وإلّا نعرض الكود مباشرةً في إطارٍ معزول عبر srcDoc. */}
+            {state.project.public_url ? (
+                <iframe
+                    title={state.project.title}
+                    sandbox="allow-scripts allow-popups allow-forms allow-modals"
+                    src={state.project.public_url}
+                    style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
+                />
+            ) : (
+                <iframe
+                    title={state.project.title}
+                    sandbox="allow-scripts allow-popups allow-forms allow-modals"
+                    srcDoc={state.project.html}
+                    style={{ flex: 1, width: '100%', border: 'none', background: '#fff' }}
+                />
+            )}
         </div>
     );
 }

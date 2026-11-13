@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PalNovaa Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0A0B0D; --panel:#0E1013; --surface:#13161A; --surface-2:#191C21; --surface-3:#20242A;
+  --line:#1F2329; --line-2:#2A2F36; --text:#E7E9EC; --text-2:#B9BEC6; --muted:#858C96; --faint:#5A616B;
+  --accent:#E07B39; --accent-2:#F0954F; --accent-soft:rgba(224,123,57,.10); --accent-line:rgba(224,123,57,.35);
+  --ok:#3DB37E; --ok-soft:rgba(61,179,126,.12); --info:#5B9BF0; --info-soft:rgba(91,155,240,.12); --warn:#E3B341;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --sans:"IBM Plex Sans Arabic",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+svg{display:block}
+.mono{font-family:var(--mono);direction:ltr;unicode-bidi:isolate}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+
+/* ===== Shell ===== */
+.app{display:grid;grid-template-columns:264px 1fr;grid-template-rows:100vh;height:100vh}
+.app.collapsed{grid-template-columns:64px 1fr}
+
+/* ===== Sidebar ===== */
+.sidebar{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.brand{display:flex;align-items:center;gap:10px;padding:16px 16px 14px;height:60px}
+.brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(145deg,#EE8A45,#B85A22);display:grid;place-items:center;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.brand-name{font-weight:600;font-size:14px;letter-spacing:.2px;direction:ltr;white-space:nowrap}
+.brand-name span{color:var(--muted);font-weight:400}
+.collapse-btn{margin-inline-start:auto;width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.collapse-btn:hover{background:var(--surface-2);color:var(--text)}
+.new-btn{margin:4px 12px 12px;display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);font-weight:500;white-space:nowrap}
+.new-btn:hover{border-color:#3a414a;background:var(--surface-2)}
+.new-btn kbd{margin-inline-start:auto}
+kbd{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line-2);border-radius:4px;padding:0 5px;direction:ltr}
+.nav{padding:0 8px}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:var(--r-sm);color:var(--text-2);text-decoration:none;white-space:nowrap;cursor:pointer}
+.nav a:hover{background:var(--surface-2);color:var(--text)}
+.nav a.active{background:var(--surface-2);color:var(--text)}
+.nav a .count{margin-inline-start:auto;font-size:11px;color:var(--faint);font-family:var(--mono)}
+.nav svg{flex:none;color:var(--muted)}
+.side-section{padding:18px 18px 6px;font-size:11px;color:var(--faint);letter-spacing:.4px;white-space:nowrap}
+.history{flex:1;overflow-y:auto;padding:0 8px 8px}
+.history a{display:block;padding:7px 10px;border-radius:var(--r-sm);color:var(--text-2);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.history a:hover{background:var(--surface-2);color:var(--text)}
+.history a .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-inline-end:8px;vertical-align:middle}
+.side-foot{border-top:1px solid var(--line);padding:12px;display:flex;align-items:center;gap:10px}
+.avatar{width:32px;height:32px;border-radius:50%;background:#2A3038;display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
+.side-foot .who{min-width:0;white-space:nowrap}
+.side-foot .who b{display:block;font-weight:500;font-size:13px}
+.side-foot .who small{color:var(--faint);font-size:11.5px}
+.collapsed .brand-name,.collapsed .new-btn span,.collapsed .new-btn kbd,.collapsed .nav a span,.collapsed .nav a .count,.collapsed .side-section,.collapsed .history,.collapsed .side-foot .who,.collapsed .collapse-btn{display:none}
+.collapsed .new-btn{justify-content:center;padding:9px}
+.collapsed .nav a{justify-content:center}
+.collapsed .brand{justify-content:center;cursor:pointer}
+
+/* ===== Main ===== */
+.main{display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
+.topbar{height:60px;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--line);flex:none;background:var(--bg);z-index:3}
+.crumbs{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;min-width:0}
+.crumbs b{color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumbs .sep{color:var(--faint)}
+.status-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--text-2);border:1px solid var(--line-2);border-radius:999px;padding:3px 10px 3px 11px;white-space:nowrap}
+.status-pill i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.status-pill.on i{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.top-actions{margin-inline-start:auto;display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--surface-2);border-color:#39404a}
+.btn.primary{background:var(--text);color:#0B0C0E;border-color:var(--text)}
+.btn.primary:hover{background:#fff}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:#170C04}
+.btn.accent:hover{background:var(--accent-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.icon-btn{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:var(--muted);border:1px solid transparent}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+
+
+
+/* cartographic status bar + tracing isoline */
+.mapbar{position:absolute;left:0;right:0;bottom:0;height:40px;display:flex;align-items:center;gap:18px;padding:0 22px;pointer-events:none;z-index:2;
+  font-family:var(--mono);font-size:11px;color:var(--faint);direction:ltr;transition:opacity .4s}
+.mapbar .scale{display:flex;flex-direction:column;gap:3px}
+.mapbar .scale i{display:block;width:96px;height:5px;border:1px solid #3A4049;border-top:0;background:linear-gradient(90deg,#3A4049 0 25%,transparent 25% 50%,#3A4049 50% 75%,transparent 75%)}
+.mapbar .scale span{display:flex;justify-content:space-between;font-size:9.5px}
+.mapbar .xy{display:flex;gap:14px}
+.mapbar .xy b{font-weight:400;color:var(--text-2);display:inline-block;min-width:74px}
+.mapbar .sep{width:1px;height:14px;background:var(--line-2)}
+.mapbar .north{margin-left:auto;display:flex;align-items:center;gap:8px}
+.mapbar .north svg{transition:transform .6s ease}
+.home .home-inner{z-index:2}
+@keyframes trace{from{stroke-dashoffset:1}to{stroke-dashoffset:-1}}
+.isoline{stroke-dasharray:.22 .78;animation:trace 18s linear infinite}
+/* ===== Home ===== */
+.home{flex:1;overflow-y:auto;position:relative}
+.contours{position:absolute;inset:0;pointer-events:none;opacity:.55;mask-image:radial-gradient(ellipse 70% 60% at 50% 38%,#000 20%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 38%,#000 20%,transparent 75%)}
+.home-inner{position:relative;max-width:820px;margin:0 auto;padding:12vh 24px 64px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);border:1px solid var(--line-2);background:rgba(19,22,26,.7);border-radius:999px;padding:4px 12px;margin-bottom:22px}
+.eyebrow b{color:var(--accent);font-weight:500}
+h1.hero{font-size:34px;font-weight:600;letter-spacing:-.2px;line-height:1.3;margin-bottom:28px;text-align:center}
+.hero-sub{color:var(--muted);font-size:15.5px;max-width:600px;margin-bottom:30px}
+
+.composer{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 24px 60px -24px rgba(0,0,0,.7);transition:border-color .15s,box-shadow .15s;position:relative}
+.composer:focus-within{border-color:#3B424C;box-shadow:0 0 0 4px rgba(224,123,57,.07),0 24px 60px -24px rgba(0,0,0,.7)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 0}
+.chips:empty{display:none}
+.chip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 8px 0 10px;border-radius:7px;background:var(--surface-3);border:1px solid var(--line-2);font-size:12.5px}
+.chip .ct{font-family:var(--mono);font-size:10.5px;color:var(--muted);direction:ltr}
+.chip button{color:var(--faint);display:grid;place-items:center;width:18px;height:18px;border-radius:4px}
+.chip button:hover{color:var(--text);background:var(--line-2)}
+.composer textarea{display:block;width:100%;min-height:92px;max-height:260px;resize:none;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
+.composer textarea::placeholder{color:var(--faint)}
+.composer-bar{display:flex;align-items:center;gap:6px;padding:8px 10px 10px}
+.tool{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;border-radius:8px;color:var(--text-2);font-size:12.5px;border:1px solid transparent;white-space:nowrap}
+.tool:hover{background:var(--surface-2);color:var(--text);border-color:var(--line)}
+.tool .v{color:var(--text);font-weight:500}
+.send{margin-inline-start:auto;width:36px;height:36px;border-radius:9px;background:var(--accent);color:#1A0D04;display:grid;place-items:center;transition:background .15s,opacity .15s}
+.send:hover{background:var(--accent-2)}
+.send:disabled{background:var(--surface-3);color:var(--faint);cursor:not-allowed}
+.composer-foot{display:flex;justify-content:space-between;color:var(--faint);font-size:12px;padding:10px 4px 0}
+
+/* menu */
+.menu{position:absolute;z-index:20;background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r);padding:6px;min-width:290px;box-shadow:0 18px 50px -10px rgba(0,0,0,.75);display:none}
+.menu.open{display:block;animation:pop .14s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.menu h6{font-size:11px;font-weight:500;color:var(--faint);padding:8px 10px 4px;letter-spacing:.3px}
+.menu-item{display:flex;align-items:center;gap:11px;width:100%;padding:8px 10px;border-radius:7px;text-align:start}
+.menu-item:hover{background:var(--surface-3)}
+.menu-item .mi-ic{width:30px;height:30px;border-radius:7px;background:var(--surface);border:1px solid var(--line-2);display:grid;place-items:center;flex:none;font-family:var(--mono);font-size:9.5px;font-weight:500;color:var(--text-2)}
+.menu-item b{display:block;font-weight:500;font-size:13px}
+.menu-item small{display:block;color:var(--muted);font-size:11.5px}
+.menu-item .chk{margin-inline-start:auto;color:var(--accent);opacity:0}
+.menu-item.sel .chk{opacity:1}
+
+/* sources strip */
+.block-title{display:flex;align-items:center;justify-content:space-between;margin:40px 0 12px}
+.block-title h3{font-size:13px;font-weight:500;color:var(--text-2)}
+.block-title a{font-size:12.5px;color:var(--muted);cursor:pointer}
+.block-title a:hover{color:var(--text)}
+.sources{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.source{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:rgba(19,22,26,.6);text-align:start}
+.source:hover{border-color:var(--line-2);background:var(--surface)}
+.source .s-ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line-2);flex:none}
+.source b{display:block;font-weight:500;font-size:13px}
+.source small{color:var(--muted);font-size:11.5px;font-family:var(--mono);direction:ltr;display:block;text-align:end}
+.source .st{margin-inline-start:auto;width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.source.add{border-style:dashed;color:var(--muted);justify-content:center}
+.source.add:hover{color:var(--text)}
+
+.templates{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.tpl{display:flex;gap:14px;padding:14px;border:1px solid var(--line);border-radius:var(--r);background:rgba(19,22,26,.6);text-align:start;transition:border-color .15s,background .15s}
+.tpl:hover{border-color:var(--line-2);background:var(--surface)}
+.tpl .thumb{width:64px;height:52px;border-radius:7px;flex:none;background:var(--surface-2);border:1px solid var(--line-2);overflow:hidden}
+.tpl b{display:block;font-weight:500;font-size:13.5px;margin-bottom:2px}
+.tpl p{color:var(--muted);font-size:12.5px;line-height:1.5}
+.tpl .tags{display:flex;gap:6px;margin-top:8px}
+.tag{font-family:var(--mono);font-size:10.5px;color:var(--text-2);background:var(--surface-2);border:1px solid var(--line-2);border-radius:4px;padding:0 6px;direction:ltr}
+
+/* ===== Workspace ===== */
+.workspace{flex:1;display:none;grid-template-columns:440px 1fr;grid-template-rows:minmax(0,1fr);min-height:0}
+.workspace.on{display:grid}
+.chat{border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+.thread{flex:1;overflow-y:auto;padding:22px 20px 12px;display:flex;flex-direction:column;gap:20px}
+.msg-user{align-self:flex-start;max-width:92%;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px}
+.msg-user .chips{padding:8px 0 0}
+.msg-ai{display:flex;gap:12px}
+.msg-ai .ai-av{width:26px;height:26px;border-radius:7px;flex:none;background:linear-gradient(145deg,#EE8A45,#B85A22);display:grid;place-items:center;margin-top:2px}
+.msg-ai .body{flex:1;min-width:0;font-size:14px;color:var(--text-2)}
+.msg-ai .body p{margin-bottom:10px}
+.msg-ai .body p b{color:var(--text);font-weight:500}
+.steps{border:1px solid var(--line-2);border-radius:var(--r);background:var(--surface);overflow:hidden;margin:4px 0 12px}
+.steps-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.steps-head b{color:var(--text);font-weight:500}
+.progress{height:2px;background:var(--line)}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s ease}
+.step{display:flex;align-items:flex-start;gap:11px;padding:10px 14px;font-size:13px;color:var(--faint);border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .si{width:18px;height:18px;flex:none;margin-top:1px;display:grid;place-items:center}
+.step .si .ring{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line-2)}
+.step.run{color:var(--text)}
+.step.run .si .ring{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.step.done{color:var(--text-2)}
+.step .meta{display:block;font-size:11.5px;color:var(--faint);font-family:var(--mono);direction:ltr;text-align:end;margin-top:2px}
+.step .t{margin-inline-start:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.schema{border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;margin:4px 0 12px;background:var(--surface)}
+.schema-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--line);font-size:12.5px}
+.schema-row:last-child{border-bottom:0}
+.schema-row.h{color:var(--faint);font-size:11px;background:var(--surface-2)}
+.schema-row .n{font-family:var(--mono);direction:ltr;text-align:end;color:var(--text)}
+.geom{font-family:var(--mono);font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--info-soft);color:var(--info);direction:ltr}
+.suggests{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.suggest{font-size:12.5px;border:1px solid var(--line-2);border-radius:999px;padding:4px 12px;color:var(--text-2)}
+.suggest:hover{border-color:#3b424c;color:var(--text);background:var(--surface)}
+.fade-in{animation:fade .35s ease-out both}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.chat-composer{padding:12px 16px 16px;border-top:1px solid var(--line)}
+.chat-composer .composer textarea{min-height:52px;font-size:14px;padding:12px 14px 4px}
+.chat-composer .composer-bar{padding:4px 8px 8px}
+
+/* preview */
+.preview{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+.pv-bar{height:46px;display:flex;align-items:center;gap:4px;padding:0 14px;border-bottom:1px solid var(--line);flex:none}
+.tab{height:30px;padding:0 12px;border-radius:7px;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:7px}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--surface-2);color:var(--text)}
+.tab .badge{font-family:var(--mono);font-size:10px;background:var(--surface-3);border-radius:4px;padding:0 5px;color:var(--text-2)}
+.url{margin-inline-start:auto;display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font-family:var(--mono);font-size:11.5px;color:var(--muted);direction:ltr;min-width:0;max-width:340px}
+.url span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.url i{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
+.url.live i{background:var(--ok)}
+.pv-body{flex:1;min-height:0;position:relative;padding:14px}
+.pane{position:absolute;inset:14px;display:none;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--panel)}
+.pane.on{display:block}
+
+/* generated app */
+.gen{display:grid;grid-template-rows:48px minmax(0,1fr);height:100%;direction:rtl}
+.gen-head{display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--line);background:#0C0E11}
+.gen-head b{font-weight:600;font-size:13.5px}
+.gen-head .seg{display:flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;margin-inline-start:16px}
+.gen-head .seg span{font-size:12px;padding:3px 10px;color:var(--muted)}
+.gen-head .seg span.on{background:var(--surface-2);color:var(--text)}
+.gen-head .search{margin-inline-start:auto;display:flex;align-items:center;gap:8px;height:30px;width:220px;border:1px solid var(--line-2);border-radius:7px;padding:0 10px;color:var(--faint);font-size:12px}
+.gen-body{display:grid;grid-template-columns:230px 1fr;min-height:0;overflow:hidden}
+.gen-side{border-left:1px solid var(--line);padding:14px;overflow:auto;background:#0C0E11}
+.gen-side h5{font-size:11px;font-weight:500;color:var(--faint);margin:4px 0 8px;letter-spacing:.3px}
+.layer{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:12.5px;color:var(--text-2)}
+.layer:hover{background:var(--surface-2)}
+.layer .sw{width:12px;height:12px;border-radius:3px;flex:none}
+.layer .tg{margin-inline-start:auto;width:26px;height:15px;border-radius:999px;background:var(--accent);position:relative}
+.layer .tg::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff}
+.layer .tg.off{background:var(--line-2)}.layer .tg.off::after{left:auto;right:2px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--surface)}
+.kpi small{display:block;font-size:10.5px;color:var(--faint)}
+.kpi b{font-family:var(--mono);font-size:15px;white-space:nowrap;font-weight:500;direction:ltr;display:block;text-align:end}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:62px 1fr 34px;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.bar .tr{height:6px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:3px;transition:width .8s ease}
+.bar .v{font-family:var(--mono);font-size:10.5px;text-align:end;direction:ltr}
+.map-wrap{position:relative;overflow:hidden;background:#0B0D10;min-height:0;height:100%}
+.map-wrap svg{width:100%;height:100%}
+.parcel{transition:opacity .5s ease,fill .3s;cursor:pointer}
+.parcel:hover{stroke:#fff;stroke-width:1.4}
+.map-ctrl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;background:rgba(14,16,19,.92)}
+.map-ctrl span{width:30px;height:30px;display:grid;place-items:center;color:var(--text-2);border-bottom:1px solid var(--line-2);font-size:15px}
+.map-ctrl span:last-child{border-bottom:0}
+.legend{position:absolute;bottom:12px;right:12px;background:rgba(14,16,19,.92);border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted)}
+.legend .ramp{display:flex;margin:6px 0 4px;direction:ltr}
+.legend .ramp i{width:26px;height:8px}
+.legend .lb{display:flex;justify-content:space-between;direction:ltr;font-family:var(--mono);font-size:10px}
+.coords{position:absolute;bottom:12px;left:12px;font-family:var(--mono);font-size:10.5px;color:var(--faint);background:rgba(14,16,19,.92);border:1px solid var(--line-2);border-radius:6px;padding:3px 8px;direction:ltr}
+.popup{position:absolute;background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:9px 11px;font-size:11.5px;pointer-events:none;display:none;min-width:170px;box-shadow:0 12px 30px -8px rgba(0,0,0,.7)}
+.popup b{display:block;font-family:var(--mono);font-size:12px;margin-bottom:5px;direction:ltr;text-align:end}
+.popup div{display:flex;justify-content:space-between;gap:12px;color:var(--muted)}
+.popup div span:last-child{color:var(--text);font-family:var(--mono)}
+.scan{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(224,123,57,.08),transparent);width:30%;animation:scan 1.6s linear infinite;display:none}
+@keyframes scan{from{transform:translateX(-120%)}to{transform:translateX(420%)}}
+.pv-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--faint);font-size:13px;background:var(--panel);z-index:2;transition:opacity .4s}
+.pv-empty .ld{display:flex;flex-direction:column;align-items:center;gap:12px}
+.pv-empty .ld .ring{width:22px;height:22px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:spin .8s linear infinite}
+
+/* code / data / logs */
+.code{height:100%;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;direction:ltr;text-align:left;display:grid;grid-template-columns:200px 1fr}
+.files{border-right:1px solid var(--line);padding:12px 8px;background:#0C0E11}
+.files div{padding:4px 10px;border-radius:5px;color:var(--muted);font-size:12px;cursor:pointer}
+.files div.on{background:var(--surface-2);color:var(--text)}
+.files div.d{color:var(--faint)}
+pre{padding:14px 18px;white-space:pre;color:#C9CED6;counter-reset:ln}
+pre .ln{display:block;counter-increment:ln}
+pre .ln::before{content:counter(ln);display:inline-block;width:28px;color:#3C424B;margin-right:14px;text-align:right}
+.k{color:#E09B6B}.s{color:#9CC59A}.c{color:#5E6670;font-style:italic}.f{color:#8FB4EA}.n{color:#D9B86C}
+.data{height:100%;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{position:sticky;top:0;background:var(--surface-2);font-weight:500;color:var(--muted);font-size:11.5px;text-align:start;padding:9px 14px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:8px 14px;border-bottom:1px solid var(--line);color:var(--text-2);white-space:nowrap}
+td.m{font-family:var(--mono);direction:ltr;text-align:end}
+tr:hover td{background:var(--surface)}
+.risk{display:inline-flex;align-items:center;gap:6px}.risk i{width:8px;height:8px;border-radius:2px}
+.logs{height:100%;overflow:auto;padding:14px 18px;font-family:var(--mono);font-size:12px;line-height:1.85;direction:ltr;text-align:left;color:var(--muted)}
+.logs .ts{color:#3E444D;margin-right:12px}
+.logs .ok{color:var(--ok)}.logs .in{color:var(--info)}.logs .wr{color:var(--warn)}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(5,6,8,.7);backdrop-filter:blur(3px);display:none;place-items:center;z-index:50}
+.scrim.open{display:grid;animation:fade .2s}
+.modal{width:min(540px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:0 30px 80px -20px rgba(0,0,0,.8);overflow:hidden}
+.modal-head{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.modal-head .s-ic{width:36px;height:36px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-2);display:grid;place-items:center}
+.modal-head b{display:block;font-weight:600;font-size:15px}
+.modal-head small{color:var(--muted);font-size:12.5px}
+.modal-head .icon-btn{margin-inline-start:auto}
+.modal-body{padding:18px 20px;display:grid;grid-template-columns:1fr 120px;gap:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select{height:38px;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:0 12px;outline:0;font-family:var(--mono);font-size:13px;direction:ltr;text-align:left}
+.field input:focus,.field select:focus{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.ssl{grid-column:1/-1;display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text-2)}
+.test-res{grid-column:1/-1;border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;font-size:12.5px;display:none}
+.test-res.ok{display:block;border-color:rgba(61,179,126,.35);background:var(--ok-soft);color:#9FDDBF}
+.test-res .tbls{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.modal-foot{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid var(--line);background:var(--panel)}
+.modal-foot .note{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px}
+.modal-foot .sp{margin-inline-start:auto}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface-2);border:1px solid var(--line-2);border-radius:9px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:.25s;z-index:60;box-shadow:0 14px 40px -10px rgba(0,0,0,.7)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+
+@media (max-width:1100px){.workspace{grid-template-columns:380px 1fr}.gen-body{grid-template-columns:1fr}.gen-side{display:none}}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}.sidebar{display:none}
+  .sources{grid-template-columns:1fr 1fr}.templates{grid-template-columns:1fr}
+  h1.hero{font-size:26px}.home-inner{padding:8vh 16px 48px}
+  .workspace.on{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.chat{border-left:0;border-bottom:1px solid var(--line)}
+  .top-actions .btn span,.status-pill{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand" id="brand">
+      <div class="brand-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A0D04" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>
+      <div class="brand-name">PalNovaa <span>Engine</span></div>
+      <button class="collapse-btn" id="collapseBtn" title="طي القائمة"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    </div>
+    <button class="new-btn" id="newBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg><span>مشروع جديد</span><kbd>⌘ K</kbd></button>
+    <nav class="nav">
+      <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>المحادثات</span></a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>التطبيقات المنشورة</span><span class="count">6</span></a>
+      <a id="navSources"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span>مصادر البيانات</span><span class="count">3</span></a>
+    </nav>
+    <div class="side-section">الأخيرة</div>
+    <div class="history" id="history">
+      <a><span class="dot" style="background:var(--ok)"></span>لوحة شبكات المياه — بلدية نابلس</a>
+      <a><span class="dot" style="background:var(--ok)"></span>تحليل إمكانية الوصول للمدارس</a>
+      <a><span class="dot" style="background:var(--faint)"></span>خريطة تراخيص البناء 2026</a>
+      <a><span class="dot" style="background:var(--faint)"></span>تتبع أسطول النفايات الصلبة</a>
+      <a><span class="dot" style="background:var(--faint)"></span>مستكشف استخدامات الأراضي</a>
+      <a><span class="dot" style="background:var(--faint)"></span>نموذج الانحدار والجريان السطحي</a>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs"><span>مساحة العمل</span><span class="sep">/</span><b id="crumbTitle">محادثة جديدة</b></div>
+      <span class="status-pill" id="dbPill"><i></i><span id="dbPillText">لا يوجد مصدر بيانات متصل</span></span>
+      <div class="top-actions">
+        <button class="icon-btn" title="السجل"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
+        <button class="btn" id="shareBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/></svg><span>مشاركة</span></button>
+        <button class="btn primary" id="deployBtn" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg><span>نشر التطبيق</span></button>
+      </div>
+    </header>
+
+    <div class="mapbar" id="mapbar">
+      <div class="scale"><i></i><span><em style="font-style:normal">0</em><em style="font-style:normal">250</em><em style="font-style:normal">500 m</em></span></div>
+      <span class="sep"></span>
+      <div class="xy"><span>LAT <b id="lat">32.2211° N</b></span><span>LON <b id="lon">35.2544° E</b></span></div>
+      <span class="sep"></span><span id="crsTxt">EPSG:4326</span>
+      <div class="north"><span>N</span><svg id="northArrow" width="14" height="14" viewBox="0 0 24 24"><path d="M12 2 18 21 12 17 6 21Z" fill="none" stroke="#5A616B" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 2 12 17 6 21Z" fill="#E07B39" opacity=".8"/></svg></div>
+    </div>
+    <!-- ===== HOME ===== -->
+    <section class="home" id="home">
+      <svg class="contours" id="contours" preserveAspectRatio="xMidYMid slice"></svg>
+      <div class="home-inner">
+        <h1 class="hero">ماذا تريد أن تبني اليوم؟</h1>
+
+        <div class="composer" id="composer">
+          <div class="chips" id="chips"></div>
+          <textarea id="prompt" rows="3" placeholder=""></textarea>
+          <div class="composer-bar">
+            <button class="tool" id="attachBtn" title="إرفاق بيانات"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>البيانات</button>
+            <button class="tool" id="modeBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>النوع: <span class="v" id="modeVal">تطبيق ويب</span></button>
+            <button class="tool" id="crsBtn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span class="v mono" id="crsVal">EPSG:4326</span></button>
+            <button class="send" id="sendBtn" disabled title="إرسال"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+          </div>
+        </div>
+        <div class="composer-foot"><span>Enter للإرسال · Shift + Enter لسطر جديد</span><span>يدعم PostGIS · GeoJSON · Shapefile · CSV · WMS/WFS</span></div>
+
+        <div class="block-title"><h3>مصادر البيانات المتصلة</h3><a id="manageSources">إدارة المصادر</a></div>
+        <div class="sources">
+          <button class="source" data-src="postgis"><span class="s-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B9BF0" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span><span><b>gis_nablus</b><small>PostGIS 3.4 · 14 tables</small></span><span class="st"></span></button>
+          <button class="source" data-src="geojson"><span class="s-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3DB37E" stroke-width="1.7"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></span><span><b>flood_zones</b><small>GeoJSON · 2.4 MB</small></span><span class="st"></span></button>
+          <button class="source add" id="addSourceBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>ربط مصدر جديد</button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== WORKSPACE ===== -->
+    <section class="workspace" id="workspace">
+      <div class="chat">
+        <div class="thread" id="thread"></div>
+        <div class="chat-composer">
+          <div class="composer">
+            <textarea id="prompt2" rows="2" placeholder="اطلب تعديلاً: أضف طبقة، غيّر الترميز، أضف فلتر…"></textarea>
+            <div class="composer-bar">
+              <button class="tool"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>البيانات</button>
+              <button class="tool"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l7 18 2.5-7.5L20 11z"/></svg>تحديد على الخريطة</button>
+              <button class="send" id="sendBtn2" disabled><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="pv-bar">
+          <button class="tab on" data-pane="pvApp"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>معاينة</button>
+          <button class="tab" data-pane="pvCode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>الكود</button>
+          <button class="tab" data-pane="pvData"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>البيانات<span class="badge">12,408</span></button>
+          <button class="tab" data-pane="pvLogs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m4 17 6-6-6-6M12 19h8"/></svg>السجل</button>
+          <div class="url" id="url"><i></i><span id="urlText">preview pending…</span></div>
+          <button class="icon-btn" title="فتح في نافذة جديدة"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg></button>
+        </div>
+        <div class="pv-body">
+          <!-- App preview -->
+          <div class="pane on" id="pvApp">
+            <div class="pv-empty" id="pvEmpty"><div class="ld"><div class="ring"></div><span id="pvEmptyText">جارٍ تحضير بيئة المعاينة…</span></div></div>
+            <div class="gen">
+              <div class="gen-head">
+                <b>مؤشر خطر الفيضان — نابلس</b>
+                <div class="seg"><span class="on">الخريطة</span><span>التقارير</span><span>الجدول</span></div>
+                <div class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>ابحث عن قطعة أو حي…</div>
+              </div>
+              <div class="gen-body">
+                <div class="gen-side">
+                  <h5>الطبقات</h5>
+                  <div class="layer"><span class="sw" style="background:#E07B39"></span>قطع الأراضي<span class="tg"></span></div>
+                  <div class="layer"><span class="sw" style="background:#5B9BF0"></span>مناطق الفيضان<span class="tg"></span></div>
+                  <div class="layer"><span class="sw" style="background:#6B7380"></span>شبكة الطرق<span class="tg"></span></div>
+                  <div class="layer"><span class="sw" style="background:#3DB37E"></span>حدود الأحياء<span class="tg off"></span></div>
+                  <div class="kpis">
+                    <div class="kpi"><small>قطع عالية الخطورة</small><b id="kpi1">0</b></div>
+                    <div class="kpi"><small>المساحة المعرضة</small><b id="kpi2">0 km²</b></div>
+                  </div>
+                  <h5>التوزيع حسب الفئة</h5>
+                  <div class="bars" id="bars"></div>
+                </div>
+                <div class="map-wrap" id="mapWrap">
+                  <svg id="map" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid slice"></svg>
+                  <div class="scan" id="scan"></div>
+                  <div class="map-ctrl"><span>+</span><span>−</span><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg></span></div>
+                  <div class="legend"><div>مؤشر خطر الفيضان</div><div class="ramp" id="ramp"></div><div class="lb"><span>0.0</span><span>1.0</span></div></div>
+                  <div class="coords" id="coords">35.2544°E, 32.2211°N · z14</div>
+                  <div class="popup" id="popup"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Code -->
+          <div class="pane" id="pvCode">
+            <div class="code">
+              <div class="files">
+                <div class="d">▾ src</div>
+                <div>  App.tsx</div>
+                <div class="on">  layers/parcels.ts</div>
+                <div>  api/queries.sql</div>
+                <div>  components/Legend.tsx</div>
+                <div class="d">▾ config</div>
+                <div>  datasource.yaml</div>
+              </div>
+              <pre id="codePre"></pre>
+            </div>
+          </div>
+          <!-- Data -->
+          <div class="pane" id="pvData"><div class="data"><table id="dataTbl"></table></div></div>
+          <!-- Logs -->
+          <div class="pane" id="pvLogs"><div class="logs" id="logs"></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Attach menu -->
+<div class="menu" id="attachMenu">
+  <h6>قاعدة بيانات مكانية</h6>
+  <button class="menu-item" data-add="postgis"><span class="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>اتصال مباشر مع قراءة المخطط تلقائياً</small></span></button>
+  <button class="menu-item" data-add="gpkg"><span class="mi-ic">GPKG</span><span><b>GeoPackage</b><small>ملف قاعدة بيانات مكانية محمول</small></span></button>
+  <h6>ملفات</h6>
+  <button class="menu-item" data-add="geojson"><span class="mi-ic">JSON</span><span><b>GeoJSON</b><small>.geojson · .json</small></span></button>
+  <button class="menu-item" data-add="shp"><span class="mi-ic">SHP</span><span><b>Shapefile</b><small>.zip يحوي shp, dbf, prj</small></span></button>
+  <button class="menu-item" data-add="csv"><span class="mi-ic">CSV</span><span><b>CSV / Excel</b><small>أعمدة إحداثيات أو WKT</small></span></button>
+  <button class="menu-item" data-add="tif"><span class="mi-ic">TIF</span><span><b>GeoTIFF</b><small>بيانات نقطية · DEM · صور</small></span></button>
+  <h6>خدمات</h6>
+  <button class="menu-item" data-add="wms"><span class="mi-ic">OGC</span><span><b>WMS / WFS / WMTS</b><small>خدمات خرائط قياسية</small></span></button>
+</div>
+<div class="menu" id="modeMenu" style="min-width:250px">
+  <h6>نوع المُخرَج</h6>
+  <button class="menu-item sel" data-mode="تطبيق ويب"><span><b>تطبيق ويب</b><small>واجهة كاملة مع خريطة ولوحات</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-mode="لوحة مؤشرات"><span><b>لوحة مؤشرات</b><small>مؤشرات ورسوم مرتبطة بالخريطة</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-mode="أداة تحليل"><span><b>أداة تحليل</b><small>تدفق معالجة مكانية قابل للتشغيل</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-mode="API مكاني"><span><b>API مكاني</b><small>نقاط وصول REST / OGC Features</small></span><span class="chk">✓</span></button>
+</div>
+<div class="menu" id="crsMenu" style="min-width:250px">
+  <h6>نظام الإسناد المكاني</h6>
+  <button class="menu-item sel" data-crs="EPSG:4326"><span><b class="mono">EPSG:4326</b><small>WGS 84 — جغرافي</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-crs="EPSG:3857"><span><b class="mono">EPSG:3857</b><small>Web Mercator</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-crs="EPSG:28191"><span><b class="mono">EPSG:28191</b><small>Palestine 1923 / Grid</small></span><span class="chk">✓</span></button>
+  <button class="menu-item" data-crs="EPSG:32636"><span><b class="mono">EPSG:32636</b><small>UTM Zone 36N</small></span><span class="chk">✓</span></button>
+</div>
+
+<!-- PostGIS modal -->
+<div class="scrim" id="scrim">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="s-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5B9BF0" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>
+      <div><b>ربط قاعدة بيانات PostGIS</b><small>سيقرأ المحرك المخطط والجداول المكانية تلقائياً</small></div>
+      <button class="icon-btn" id="closeModal"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>المضيف</label><input value="db.palnovaa.internal"></div>
+      <div class="field"><label>المنفذ</label><input value="5432"></div>
+      <div class="field"><label>قاعدة البيانات</label><input value="gis_nablus"></div>
+      <div class="field"><label>المخطط</label><select><option>public</option><option>planning</option></select></div>
+      <div class="field"><label>المستخدم</label><input value="engine_ro"></div>
+      <div class="field"><label>كلمة المرور</label><input type="password" value="••••••••••"></div>
+      <label class="ssl"><input type="checkbox" checked> اتصال مشفّر (SSL) · صلاحيات قراءة فقط</label>
+      <div class="test-res" id="testRes">✓ تم الاتصال بنجاح — PostgreSQL 16.2 · PostGIS 3.4 · تم العثور على 14 جدولاً مكانياً
+        <div class="tbls"><span class="tag">parcels</span><span class="tag">roads</span><span class="tag">neighborhoods</span><span class="tag">buildings</span><span class="tag">water_network</span><span class="tag">+9</span></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>بيانات الاعتماد مشفّرة ولا تُعرض للنموذج</span>
+      <button class="btn sp" id="testBtn">اختبار الاتصال</button>
+      <button class="btn accent" id="connectBtn">ربط المصدر</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i></i><span id="toastText"></span></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const RAMP=['#2A2F37','#5C4535','#9A5A2F','#D0702F','#F0954F'];
+
+/* ---------- contour background ---------- */
+(function(){
+  const svg=$('#contours'); svg.setAttribute('viewBox','0 0 1200 800');
+  let h='';
+  for(let i=0;i<16;i++){
+    const r=60+i*42, cx=640, cy=300; let d='';
+    for(let a=0;a<=360;a+=6){
+      const t=a*Math.PI/180, w=1+0.12*Math.sin(3*t+i*.5)+0.07*Math.cos(5*t-i*.3);
+      const x=cx+Math.cos(t)*r*1.35*w, y=cy+Math.sin(t)*r*.8*w;
+      d+=(a?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);
+    }
+    h+=`<path d="${d}Z" fill="none" stroke="${i%4===0?'#2B3038':'#1A1E24'}" stroke-width="${i%4===0?1.1:.8}"/>`;
+    if(i===5||i===9)h+=`<path class="isoline" pathLength="1" d="${d}Z" fill="none" stroke="#E07B39" stroke-opacity="${i===5?.85:.5}" stroke-width="1.2" stroke-linecap="round" style="animation-duration:${i===5?18:26}s;${i===9?'animation-direction:reverse':''}"/>`;
+  }
+  svg.innerHTML=h;
+})();
+
+
+/* ---------- cartographic cursor ---------- */
+(function(){
+  const home=$('#home'), lat=$('#lat'), lon=$('#lon'), arrow=$('#northArrow');
+  home.addEventListener('mousemove',e=>{
+    const r=home.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top+home.scrollTop;
+    const fx=(e.clientX-r.left)/r.width, fy=(e.clientY-r.top)/r.height;
+    lat.textContent=(32.2450-fy*0.048).toFixed(4)+'° N';
+    lon.textContent=(35.2150+fx*0.078).toFixed(4)+'° E';
+    arrow.style.transform=`rotate(${(fx-.5)*14}deg)`;
+  });
+})();
+$('#crsMenu').addEventListener('click',e=>{const b=e.target.closest('[data-crs]');if(b)$('#crsTxt').textContent=b.dataset.crs});
+/* ---------- templates ---------- */
+const TPL=[
+ {t:'مؤشر خطر الفيضان',d:'تلوين القطع حسب درجة الخطر مع تقارير لكل حي.',tags:['PostGIS','Choropleth'],p:'ابنِ لي تطبيق ويب يعرض قطع الأراضي في نابلس ملوّنة حسب مؤشر خطر الفيضان، مع لوحة جانبية للطبقات ومؤشرات عدد القطع عالية الخطورة، وإمكانية الضغط على أي قطعة لعرض بياناتها.'},
+ {t:'إدارة شبكات المياه',d:'خطوط الشبكة، الأعطال، وأقرب صمام إغلاق.',tags:['Network','Routing'],p:'أريد لوحة لإدارة شبكة المياه: عرض الأنابيب حسب القطر والعمر، تسجيل الأعطال كنقاط، وإيجاد أقرب صمام إغلاق لأي عطل.'},
+ {t:'إمكانية الوصول للخدمات',d:'مناطق الخدمة بزمن المشي للمدارس والمراكز الصحية.',tags:['Isochrones','Analysis'],p:'ابنِ أداة تحليل تحسب مناطق الوصول بالمشي (5/10/15 دقيقة) حول المدارس والمراكز الصحية وتُظهر الأحياء غير المخدومة.'},
+ {t:'تتبع الأسطول الميداني',d:'مواقع لحظية، مسارات، وتنبيهات خروج عن النطاق.',tags:['Realtime','Geofence'],p:'أريد تطبيق لتتبع مركبات جمع النفايات لحظياً، مع عرض المسارات اليومية وتنبيه عند الخروج عن نطاق العمل المحدد.'}
+];
+function thumb(i){
+  if(i===0){let s='';for(let y=0;y<4;y++)for(let x=0;x<5;x++)s+=`<rect x="${x*13+2}" y="${y*13+1}" width="11" height="11" rx="1.5" fill="${RAMP[(x*3+y*2)%5]}"/>`;return `<svg viewBox="0 0 66 54">${s}</svg>`}
+  if(i===1)return `<svg viewBox="0 0 66 54"><path d="M4 40 L20 30 L34 34 L50 16 L62 20" stroke="#5B9BF0" stroke-width="2" fill="none"/><path d="M20 30 L24 10 M34 34 L38 50" stroke="#5B9BF0" stroke-width="1.2" fill="none" opacity=".6"/><circle cx="34" cy="34" r="3.5" fill="#E07B39"/></svg>`;
+  if(i===2)return `<svg viewBox="0 0 66 54"><circle cx="33" cy="27" r="22" fill="#E07B39" opacity=".12"/><circle cx="33" cy="27" r="14" fill="#E07B39" opacity=".2"/><circle cx="33" cy="27" r="7" fill="#E07B39" opacity=".45"/><circle cx="33" cy="27" r="2.5" fill="#fff"/></svg>`;
+  return `<svg viewBox="0 0 66 54"><rect x="8" y="8" width="50" height="38" rx="4" fill="none" stroke="#3DB37E" stroke-dasharray="3 3"/><path d="M14 38 C24 30, 30 36, 40 20 S52 18, 54 14" stroke="#E07B39" stroke-width="1.6" fill="none"/><circle cx="54" cy="14" r="3" fill="#E07B39"/></svg>`;
+}
+
+/* ---------- composer state ---------- */
+const prompt=$('#prompt'), sendBtn=$('#sendBtn'), chips=$('#chips');
+const SRC={
+  postgis:{n:'gis_nablus',t:'PostGIS'}, geojson:{n:'flood_zones.geojson',t:'GeoJSON'}, shp:{n:'roads_2026.zip',t:'SHP'},
+  csv:{n:'inspections.csv',t:'CSV'}, tif:{n:'dem_10m.tif',t:'GeoTIFF'}, wms:{n:'geomolg / ortho',t:'WMS'}, gpkg:{n:'planning.gpkg',t:'GPKG'}
+};
+let attached=[];
+function renderChips(){
+  chips.innerHTML=attached.map(k=>`<span class="chip"><span class="ct">${SRC[k].t}</span>${SRC[k].n}<button data-rm="${k}" title="إزالة"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>`).join('');
+  const on=attached.includes('postgis');
+  $('#dbPill').classList.toggle('on',attached.length>0);
+  $('#dbPillText').textContent=on?'PostGIS · gis_nablus متصل':attached.length?`${attached.length} مصدر مرفق`:'لا يوجد مصدر بيانات متصل';
+}
+function addSrc(k){ if(!attached.includes(k)){attached.push(k);renderChips();toast(`تم إرفاق ${SRC[k].n}`)} }
+chips.addEventListener('click',e=>{const b=e.target.closest('[data-rm]');if(b){attached=attached.filter(x=>x!==b.dataset.rm);renderChips()}});
+function autosize(t){t.style.height='auto';t.style.height=Math.min(t.scrollHeight,260)+'px'}
+prompt.addEventListener('input',()=>{autosize(prompt);sendBtn.disabled=!prompt.value.trim()});
+prompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(prompt.value.trim())start()}});
+sendBtn.onclick=start;
+$$('.source[data-src]').forEach(b=>b.onclick=()=>addSrc(b.dataset.src));
+
+/* ---------- menus ---------- */
+function openMenu(menu,anchor){
+  $$('.menu').forEach(m=>m!==menu&&m.classList.remove('open'));
+  const r=anchor.getBoundingClientRect();
+  menu.classList.toggle('open');
+  const mh=menu.offsetHeight, below=window.innerHeight-r.bottom;
+  menu.style.top=(below>mh+12? r.bottom+6 : r.top-mh-6)+'px';
+  menu.style.left=Math.max(12,Math.min(r.right-menu.offsetWidth,window.innerWidth-menu.offsetWidth-12))+'px';
+}
+$('#attachBtn').onclick=e=>{e.stopPropagation();openMenu($('#attachMenu'),e.currentTarget)};
+$('#modeBtn').onclick=e=>{e.stopPropagation();openMenu($('#modeMenu'),e.currentTarget)};
+$('#crsBtn').onclick=e=>{e.stopPropagation();openMenu($('#crsMenu'),e.currentTarget)};
+document.addEventListener('click',e=>{if(!e.target.closest('.menu'))$$('.menu').forEach(m=>m.classList.remove('open'))});
+$('#attachMenu').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;$('#attachMenu').classList.remove('open');b.dataset.add==='postgis'?openModal():addSrc(b.dataset.add)});
+function pick(menuSel,attr,valSel){$(menuSel).addEventListener('click',e=>{const b=e.target.closest(`[data-${attr}]`);if(!b)return;$$(menuSel+' .menu-item').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');$(valSel).textContent=b.dataset[attr];$(menuSel).classList.remove('open')})}
+pick('#modeMenu','mode','#modeVal');pick('#crsMenu','crs','#crsVal');
+
+/* ---------- modal ---------- */
+function openModal(){$('#scrim').classList.add('open');$('#testRes').classList.remove('ok')}
+$('#addSourceBtn').onclick=openModal; $('#manageSources').onclick=openModal; $('#navSources').onclick=openModal;
+$('#closeModal').onclick=()=>$('#scrim').classList.remove('open');
+$('#scrim').onclick=e=>{if(e.target.id==='scrim')$('#scrim').classList.remove('open')};
+$('#testBtn').onclick=function(){this.textContent='جارٍ الاختبار…';this.disabled=true;setTimeout(()=>{this.textContent='اختبار الاتصال';this.disabled=false;$('#testRes').classList.add('ok')},900)};
+$('#connectBtn').onclick=()=>{$('#scrim').classList.remove('open');addSrc('postgis')};
+
+/* ---------- sidebar ---------- */
+$('#collapseBtn').onclick=()=>$('#app').classList.add('collapsed');
+$('#brand').onclick=e=>{if($('#app').classList.contains('collapsed')&&!e.target.closest('.collapse-btn'))$('#app').classList.remove('collapsed')};
+$('#newBtn').onclick=()=>location.reload();
+document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();prompt.focus()}if(e.key==='Escape'){$('#scrim').classList.remove('open');$$('.menu').forEach(m=>m.classList.remove('open'))}});
+
+/* ---------- toast ---------- */
+let tt;function toast(m){$('#toastText').textContent=m;$('#toast').classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$('#toast').classList.remove('show'),2200)}
+
+/* ---------- tabs ---------- */
+$$('.tab').forEach(t=>t.onclick=()=>{$$('.tab').forEach(x=>x.classList.remove('on'));t.classList.add('on');$$('.pane').forEach(p=>p.classList.remove('on'));$('#'+t.dataset.pane).classList.add('on')});
+
+/* ---------- map generation ---------- */
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const COLS=18,ROWS=12,W=800,H=520,cw=W/COLS,ch=H/ROWS;
+const pts=[];for(let y=0;y<=ROWS;y++){pts[y]=[];for(let x=0;x<=COLS;x++){const j=(x>0&&x<COLS&&y>0&&y<ROWS)?1:0;pts[y][x]=[x*cw+(rnd()-.5)*cw*.5*j,y*ch+(rnd()-.5)*ch*.5*j]}}
+const riverY=x=>270+Math.sin(x/120)*60+Math.cos(x/53)*18;
+const parcels=[];
+for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+  const p=[pts[y][x],pts[y][x+1],pts[y+1][x+1],pts[y+1][x]];
+  const cx=(p[0][0]+p[2][0])/2, cy=(p[0][1]+p[2][1])/2;
+  const dist=Math.abs(cy-riverY(cx));
+  if(dist<20)continue;
+  // inset polygon toward center (street gaps)
+  const ins=p.map(([px,py])=>[px+(cx-px)*.11,py+(cy-py)*.11]);
+  const risk=Math.max(0,Math.min(1,1-dist/230+(rnd()-.5)*.25));
+  // subdivide some blocks
+  const subs=rnd()>.45?split(ins):[ins];
+  subs.forEach((poly,k)=>parcels.push({poly,risk:Math.max(0,Math.min(1,risk+(rnd()-.5)*.1)),id:`NB-${(1000+parcels.length*7).toString()}`,area:Math.round(400+rnd()*2200),hood:['رفيديا','المخفية','الجبل الشمالي','البلدة القديمة','الضاحية'][Math.floor(cx/165)%5]}));
+}
+function split(q){const m=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];const t=.4+rnd()*.2;
+  if(rnd()>.5){const a=m(q[0],q[1],t),b=m(q[3],q[2],t);return[[q[0],a,b,q[3]].map(sh(.06,q)),[a,q[1],q[2],b].map(sh(.06,q))]}
+  const a=m(q[0],q[3],t),b=m(q[1],q[2],t);return[[q[0],q[1],b,a].map(sh(.06,q)),[a,b,q[2],q[3]].map(sh(.06,q))]}
+function sh(){return p=>p}
+const cls=r=>Math.min(4,Math.floor(r*5));
+function drawMap(){
+  const svg=$('#map');let river='M-10 '+riverY(-10);for(let x=0;x<=W+10;x+=10)river+=` L${x} ${riverY(x).toFixed(1)}`;
+  let grid='';for(let i=0;i<40;i++){grid+=`<path d="M${i*40} 0V${H}" stroke="#12151A"/><path d="M0 ${i*40}H${W}" stroke="#12151A"/>`}
+  let roads='';
+  [3,7,11,15].forEach(x=>{let d='';for(let y=0;y<=ROWS;y++)d+=(y?'L':'M')+pts[y][x].join(' ');roads+=`<path d="${d}" stroke="#2A3039" stroke-width="5" fill="none" stroke-linejoin="round"/>`});
+  [4,8].forEach(y=>{let d='';for(let x=0;x<=COLS;x++)d+=(x?'L':'M')+pts[y][x].join(' ');roads+=`<path d="${d}" stroke="#2A3039" stroke-width="5" fill="none" stroke-linejoin="round"/>`});
+  const ps=parcels.map((p,i)=>`<path class="parcel" data-i="${i}" d="M${p.poly.map(q=>q.map(v=>v.toFixed(1)).join(' ')).join('L')}Z" fill="#1A1E24" stroke="#0B0D10" stroke-width=".8" opacity="0"/>`).join('');
+  svg.innerHTML=`<g>${grid}</g>
+    <path id="floodZone" d="${river}" stroke="#5B9BF0" stroke-opacity=".10" stroke-width="150" fill="none" opacity="0" style="transition:opacity 1s"/>
+    <g id="parcelsG">${ps}</g>${roads}
+    <path d="${river}" stroke="#2E5A8F" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <path d="${river}" stroke="#4A86CF" stroke-width="2" fill="none" stroke-dasharray="1 10" stroke-linecap="round" opacity=".6"/>`;
+  $('#ramp').innerHTML=RAMP.map(c=>`<i style="background:${c}"></i>`).join('');
+}
+drawMap();
+const popup=$('#popup'), mw=$('#mapWrap');
+$('#map').addEventListener('mousemove',e=>{
+  const t=e.target.closest('.parcel'); const r=mw.getBoundingClientRect();
+  const lon=(35.22+(e.clientX-r.left)/r.width*.07).toFixed(4), lat=(32.245-(e.clientY-r.top)/r.height*.045).toFixed(4);
+  $('#coords').textContent=`${lon}°E, ${lat}°N · z14`;
+  if(!t||t.getAttribute('opacity')==='0'){popup.style.display='none';return}
+  const p=parcels[t.dataset.i];
+  popup.innerHTML=`<b>${p.id}</b><div><span>الحي</span><span style="font-family:var(--sans)">${p.hood}</span></div><div><span>المساحة</span><span>${p.area} m²</span></div><div><span>مؤشر الخطر</span><span style="color:${RAMP[cls(p.risk)]}">${p.risk.toFixed(2)}</span></div>`;
+  popup.style.display='block';
+  let x=e.clientX-r.left+14,y=e.clientY-r.top+14; if(x+190>r.width)x-=210; if(y+100>r.height)y-=120;
+  popup.style.left=x+'px';popup.style.top=y+'px';
+});
+$('#map').addEventListener('mouseleave',()=>popup.style.display='none');
+
+/* ---------- code / data ---------- */
+const CODE=[
+`<span class="c">// Auto-generated by PalNovaa Engine · layer: parcels</span>`,
+`<span class="k">import</span> { defineLayer, quantile } <span class="k">from</span> <span class="s">'@palnovaa/runtime'</span>;`,
+``,
+`<span class="k">export default</span> <span class="f">defineLayer</span>({`,
+`  id: <span class="s">'parcels'</span>,`,
+`  source: { type: <span class="s">'postgis'</span>, conn: <span class="s">'gis_nablus'</span>, table: <span class="s">'public.parcels'</span> },`,
+`  geometry: { column: <span class="s">'geom'</span>, type: <span class="s">'MultiPolygon'</span>, srid: <span class="n">4326</span> },`,
+`  tiles: { format: <span class="s">'mvt'</span>, minzoom: <span class="n">11</span>, maxzoom: <span class="n">18</span>, simplify: <span class="n">0.5</span> },`,
+`  query: <span class="s">\`</span>`,
+`<span class="s">    SELECT p.parcel_id, p.area_m2, n.name AS hood,</span>`,
+`<span class="s">           ST_Distance(p.geom::geography, f.geom::geography) AS d_flood,</span>`,
+`<span class="s">           fri.score AS flood_risk</span>`,
+`<span class="s">    FROM parcels p</span>`,
+`<span class="s">    JOIN neighborhoods n ON ST_Intersects(p.geom, n.geom)</span>`,
+`<span class="s">    LEFT JOIN flood_risk_index fri USING (parcel_id)</span>`,
+`<span class="s">    CROSS JOIN LATERAL (SELECT geom FROM flood_zones</span>`,
+`<span class="s">      ORDER BY geom &lt;-&gt; p.geom LIMIT 1) f\`</span>,`,
+`  style: {`,
+`    fill: <span class="f">quantile</span>(<span class="s">'flood_risk'</span>, <span class="n">5</span>, [<span class="s">'#2A2F37'</span>,<span class="s">'#5C4535'</span>,<span class="s">'#9A5A2F'</span>,<span class="s">'#D0702F'</span>,<span class="s">'#F0954F'</span>]),`,
+`    outline: { color: <span class="s">'#0B0D10'</span>, width: <span class="n">0.8</span> },`,
+`  },`,
+`  popup: [<span class="s">'parcel_id'</span>, <span class="s">'hood'</span>, <span class="s">'area_m2'</span>, <span class="s">'flood_risk'</span>],`,
+`  filters: [{ field: <span class="s">'hood'</span>, ui: <span class="s">'multiselect'</span> }, { field: <span class="s">'flood_risk'</span>, ui: <span class="s">'range'</span> }],`,
+`});`];
+$('#codePre').innerHTML=CODE.map(l=>`<span class="ln">${l||' '}</span>`).join('');
+function fillTable(){
+  const rows=parcels.slice(0,60);
+  $('#dataTbl').innerHTML=`<thead><tr><th>parcel_id</th><th>الحي</th><th>area_m2</th><th>flood_risk</th><th>الفئة</th><th>geom</th></tr></thead><tbody>`+
+  rows.map(p=>`<tr><td class="m">${p.id}</td><td>${p.hood}</td><td class="m">${p.area.toLocaleString('en')}</td><td class="m">${p.risk.toFixed(3)}</td><td><span class="risk"><i style="background:${RAMP[cls(p.risk)]}"></i>${['منخفض جداً','منخفض','متوسط','مرتفع','مرتفع جداً'][cls(p.risk)]}</span></td><td class="m" style="color:var(--faint)">MULTIPOLYGON(…)</td></tr>`).join('')+'</tbody>';
+}
+fillTable();
+
+/* ---------- build flow ---------- */
+const thread=$('#thread');
+const AV=`<div class="ai-av"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1A0D04" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg></div>`;
+const STEPS=[
+ {t:'تحليل الطلب واستخراج المتطلبات',m:'intent: web_app · domain: flood_risk'},
+ {t:'قراءة مخطط قاعدة البيانات',m:'gis_nablus.public · 14 tables · SRID 4326'},
+ {t:'بناء الاستعلامات المكانية والفهارس',m:'ST_Intersects · KNN <-> · GIST ok'},
+ {t:'توليد طبقات الخريطة والترميز',m:'parcels → MVT · quantile(5)'},
+ {t:'بناء الواجهة واللوحات',m:'App.tsx · Legend · LayerPanel · KPIs'},
+ {t:'تشغيل الاختبارات ونشر المعاينة',m:'12/12 passed · preview ready'}
+];
+const LOGS=[
+ ['in','engine','session started · model=palnovaa-builder'],
+ ['','parse','intent=web_app entities=[parcels, flood_risk, neighborhoods]'],
+ ['in','db','connecting postgres://engine_ro@db.palnovaa.internal:5432/gis_nablus (ssl)'],
+ ['ok','db','connected · PostgreSQL 16.2 · PostGIS 3.4.2'],
+ ['','schema','public.parcels           MultiPolygon  4326  12,408 rows'],
+ ['','schema','public.neighborhoods     MultiPolygon  4326      38 rows'],
+ ['','schema','public.flood_risk_index  (table)              12,408 rows'],
+ ['wr','schema','flood_zones: srid 28191 → reprojecting to 4326'],
+ ['ok','sql','query plan cost=1842.11 · GIST index used on parcels.geom'],
+ ['','tiles','building vector tiles z11–z18 … 4,212 tiles'],
+ ['ok','ui','generated 7 files · 1,284 lines'],
+ ['ok','test','12/12 checks passed (geometry validity, CRS, popup fields)'],
+ ['ok','deploy','preview → https://flood-risk-nablus.preview.palnovaa.app']
+];
+let logI=0;
+function log(n){for(let k=0;k<n&&logI<LOGS.length;k++,logI++){const [c,s,m]=LOGS[logI];const d=new Date();const ts=d.toTimeString().slice(0,8);$('#logs').insertAdjacentHTML('beforeend',`<div><span class="ts">${ts}</span><span class="${c}">[${s}]</span> ${m.replace(/</g,'&lt;')}</div>`)}}
+
+function start(){
+  const text=prompt.value.trim(); if(!text)return;
+  if(!attached.includes('postgis'))attached.unshift('postgis');
+  $('#home').style.display='none'; $('#mapbar').style.display='none'; $('#workspace').classList.add('on');
+  $('#crumbTitle').textContent='مؤشر خطر الفيضان — نابلس';
+  renderChips();
+  thread.innerHTML=`<div class="msg-user fade-in">${text.replace(/</g,'&lt;')}<div class="chips">${chips.innerHTML.replace(/<button[\s\S]*?<\/button>/g,'')}</div></div>`;
+  setTimeout(()=>{
+    thread.insertAdjacentHTML('beforeend',`<div class="msg-ai fade-in">${AV}<div class="body">
+      <p>فهمت المطلوب. سأبني <b>تطبيق ويب</b> يعرض قطع الأراضي ملوّنة حسب <b>مؤشر خطر الفيضان</b>، مرتبطاً مباشرة بقاعدة <span class="mono">gis_nablus</span>.</p>
+      <div class="steps"><div class="steps-head"><b>خطة البناء</b><span id="stepCount">0 / ${STEPS.length}</span></div><div class="progress"><i id="prog"></i></div>
+      ${STEPS.map((s,i)=>`<div class="step" id="st${i}"><span class="si"><span class="ring"></span></span><span>${s.t}<span class="meta">${s.m}</span></span><span class="t" id="tt${i}"></span></div>`).join('')}</div>
+      <div id="aiMore"></div></div></div>`);
+    run(0);
+  },500);
+  $('#scan').style.display='block'; log(2);
+}
+function run(i){
+  if(i>0){const p=$('#st'+(i-1));p.classList.remove('run');p.classList.add('done');p.querySelector('.si').innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3DB37E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';$('#tt'+(i-1)).textContent=(0.6+Math.random()*1.8).toFixed(1)+'s'}
+  $('#stepCount').textContent=`${i} / ${STEPS.length}`; $('#prog').style.width=(i/STEPS.length*100)+'%';
+  if(i===2)showSchema();
+  if(i===3){$('#pvEmptyText').textContent='جارٍ توليد الطبقات…'}
+  if(i===4){$('#pvEmpty').style.opacity=0;setTimeout(()=>$('#pvEmpty').style.display='none',400);revealParcels()}
+  if(i===5){animateKPIs()}
+  if(i>=STEPS.length){finish();return}
+  $('#st'+i).classList.add('run'); log(2);
+  thread.scrollTop=thread.scrollHeight;
+  setTimeout(()=>run(i+1),i===3?1700:1200+Math.random()*500);
+}
+function showSchema(){
+  $('#aiMore').insertAdjacentHTML('beforeend',`<div class="fade-in"><p>عثرت على الجداول المكانية التالية وسأعتمد عليها:</p>
+  <div class="schema"><div class="schema-row h"><span>الجدول</span><span>الهندسة</span><span>السجلات</span></div>
+  <div class="schema-row"><span class="n">public.parcels</span><span class="geom">MultiPolygon</span><span class="mono">12,408</span></div>
+  <div class="schema-row"><span class="n">public.neighborhoods</span><span class="geom">MultiPolygon</span><span class="mono">38</span></div>
+  <div class="schema-row"><span class="n">flood_zones.geojson</span><span class="geom">Polygon</span><span class="mono">214</span></div>
+  <div class="schema-row"><span class="n">public.flood_risk_index</span><span class="mono" style="color:var(--faint)">—</span><span class="mono">12,408</span></div></div></div>`);
+}
+function revealParcels(){
+  const els=$$('.parcel'); const order=els.map((e,i)=>i).sort((a,b)=>{const pa=parcels[a].poly[0],pb=parcels[b].poly[0];return (pa[0]+pa[1]*.4)-(pb[0]+pb[1]*.4)});
+  order.forEach((idx,k)=>setTimeout(()=>{els[idx].setAttribute('opacity','1');els[idx].setAttribute('fill',RAMP[cls(parcels[idx].risk)])},k*4));
+  setTimeout(()=>$('#floodZone').setAttribute('opacity','1'),600);
+}
+function animateKPIs(){
+  const counts=[0,0,0,0,0];parcels.forEach(p=>counts[cls(p.risk)]++);
+  const tot=parcels.length, names=['منخفض جداً','منخفض','متوسط','مرتفع','مرتفع جداً'];
+  $('#bars').innerHTML=counts.map((c,i)=>`<div class="bar"><span>${names[i]}</span><span class="tr"><i style="width:0;background:${RAMP[i]}"></i></span><span class="v">${Math.round(c/tot*100)}%</span></div>`).join('');
+  requestAnimationFrame(()=>$$('#bars .tr i').forEach((b,i)=>b.style.width=(counts[i]/tot*100)+'%'));
+  countUp($('#kpi1'),1874,''); countUp($('#kpi2'),3.42,' km²',2);
+}
+function countUp(el,to,suf,dec=0){const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/900),v=to*(1-Math.pow(1-k,3));el.textContent=(dec?v.toFixed(dec):Math.round(v).toLocaleString('en'))+suf;if(k<1)requestAnimationFrame(f)})(t0)}
+function finish(){
+  log(10); $('#scan').style.display='none';
+  $('#url').classList.add('live'); $('#urlText').textContent='flood-risk-nablus.preview.palnovaa.app';
+  $('#deployBtn').disabled=false;
+  $('#aiMore').insertAdjacentHTML('beforeend',`<div class="fade-in"><p>التطبيق جاهز للمعاينة. تم إنشاء <b>7 ملفات</b> وربط <b>3 طبقات</b> واجتياز <b>12 فحصاً</b> للتحقق من صحة الهندسة ونظام الإسناد. لاحظت أن <span class="mono">flood_zones</span> كانت بنظام <span class="mono">EPSG:28191</span> فأعدت إسقاطها تلقائياً.</p>
+  <p>يمكنك متابعة التعديل، مثلاً:</p><div class="suggests"><button class="suggest">أضف فلتر حسب الحي</button><button class="suggest">صدّر تقرير PDF لكل حي</button><button class="suggest">أضف طبقة المباني ثلاثية الأبعاد</button><button class="suggest">قيّد الوصول لموظفي البلدية</button></div></div>`);
+  thread.scrollTop=thread.scrollHeight;
+  toast('المعاينة جاهزة');
+}
+$('#prompt2').addEventListener('input',e=>{autosize(e.target);$('#sendBtn2').disabled=!e.target.value.trim()});
+thread.addEventListener('click',e=>{const s=e.target.closest('.suggest');if(s){$('#prompt2').value=s.textContent;$('#sendBtn2').disabled=false;$('#prompt2').focus()}});
+$('#deployBtn').onclick=()=>toast('تم النشر على flood-risk-nablus.palnovaa.app');
+$('#shareBtn').onclick=()=>toast('تم نسخ رابط المشاركة');
+</script>
+</body>
+</html>
