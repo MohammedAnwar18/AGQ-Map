@@ -16,7 +16,7 @@ const router = express.Router();
    ============================================================================ */
 
 const MODEL_NAME = 'PalNovaa 1.0';
-const GEMINI_MODEL = process.env.PALNOVAA_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.PALNOVAA_MODEL || 'gemini-3.8-flash';
 const SERVER_KEY = process.env.PALNOVAA_MODEL_KEY || process.env.GEMINI_API_KEY || '';
 
 /* ---- طلب JSON عبر HTTPS ---- */
