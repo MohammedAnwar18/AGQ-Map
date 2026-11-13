@@ -16,7 +16,14 @@ const router = express.Router();
    ============================================================================ */
 
 const MODEL_NAME = 'PalNovaa 1.0';
+
+/* المزوّد: إمّا نقطةٌ متوافقة مع OpenAI (OpenRouter/Groq/NVIDIA NIM/Mistral…)
+   عبر PALNOVAA_API_URL، وإلّا Google Gemini افتراضاً. يُبدَّل بلا تعديل كود. */
+const OAI_URL = (process.env.PALNOVAA_API_URL || '').trim();         // مثال: https://openrouter.ai/api/v1/chat/completions
+const USE_OAI = !!OAI_URL;
+const OAI_KEY = process.env.PALNOVAA_API_KEY || '';
 const GEMINI_MODEL = process.env.PALNOVAA_MODEL || 'gemini-3.8-flash';
+const OAI_MODEL = process.env.PALNOVAA_MODEL || 'deepseek/deepseek-chat-v3:free';
 const SERVER_KEY = process.env.PALNOVAA_MODEL_KEY || process.env.GEMINI_API_KEY || '';
 
 /* ---- طلب JSON عبر HTTPS ---- */
@@ -107,6 +114,39 @@ function parseGenerated(text, fallbackPrompt) {
     return { html, title, summary };
 }
 
+/* ---- نداء الموديل: يوحّد مزوّد OpenAI-compatible و Gemini، ويُعيد نصّ الردّ ---- */
+async function callModel(KEY, prompt, currentHtml) {
+    if (USE_OAI) {
+        const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
+        if (currentHtml) {
+            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
+            messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
+        }
+        messages.push({ role: 'user', content: prompt });
+        const headers = { Authorization: `Bearer ${KEY}` };
+        // ترويسات يطلبها OpenRouter (اختياريّة لكن مفيدة)
+        if (/openrouter/i.test(OAI_URL)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
+        const data = await postJSON(OAI_URL, { model: OAI_MODEL, messages, temperature: 0.4, max_tokens: 8192 }, headers);
+        const msg = data?.choices?.[0]?.message;
+        return ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '').trim();
+    }
+    // Gemini
+    const contents = [];
+    if (currentHtml) {
+        contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
+        contents.push({ role: 'model', parts: [{ text: 'تمام، ما التعديل المطلوب؟' }] });
+    }
+    contents.push({ role: 'user', parts: [{ text: prompt }] });
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+    const payload = {
+        systemInstruction: { role: 'system', parts: [{ text: SYSTEM_INSTRUCTION }] },
+        contents,
+        generationConfig: { temperature: 0.4, maxOutputTokens: 8192, topP: 0.95 }
+    };
+    const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
+    return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('').trim();
+}
+
 /* ============================ التوليد ============================ */
 // POST /api/engine/generate  { prompt, currentHtml?, key? }
 router.post('/generate', optionalAuth, async (req, res) => {
@@ -116,31 +156,15 @@ router.post('/generate', optionalAuth, async (req, res) => {
     if (!prompt) return res.status(400).json({ ok: false, reason: 'empty prompt' });
 
     const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const KEY = reqKey || SERVER_KEY;
+    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
     if (!KEY) return res.json({ ok: false, reason: 'missing_key', model: MODEL_NAME });
-
-    const contents = [];
-    if (currentHtml) {
-        contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
-        contents.push({ role: 'model', parts: [{ text: 'تمام، التطبيق جاهز. ما التعديل المطلوب؟' }] });
-    }
-    contents.push({ role: 'user', parts: [{ text: prompt }] });
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
-    const payload = {
-        systemInstruction: { role: 'system', parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 8192, topP: 0.95 }
-    };
 
     const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
     let lastErr = 'unavailable';
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt)); // تأخّرٌ تصاعديّ قبل إعادة المحاولة
         try {
-            const data = await postJSON(url, payload, { 'x-goog-api-key': KEY });
-            const cand = data?.candidates?.[0];
-            const text = (cand?.content?.parts || []).map((p) => p?.text || '').join('').trim();
+            const text = await callModel(KEY, prompt, currentHtml);
             if (!text) { lastErr = 'empty'; continue; }
             const out = parseGenerated(text, prompt);
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
