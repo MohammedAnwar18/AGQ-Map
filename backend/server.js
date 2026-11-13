@@ -109,6 +109,7 @@ app.use('/api/storage', storageRoutes);
 app.use('/api/ar-models', require('./routes/arModels'));
 app.use('/api/helly', require('./routes/helly'));
 app.use('/api/foresight', require('./routes/foresight'));
+app.use('/api/engine', require('./routes/engine'));
 app.use('/api/game', require('./routes/game'));
 app.use('/api/ar-indoor', require('./routes/arIndoor'));
 app.use('/api/regional-events', regionalEventsRoutes);

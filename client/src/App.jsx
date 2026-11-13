@@ -20,6 +20,8 @@ const GeoportalDesigner = React.lazy(() => import('./pages/GeoportalDesigner'));
 const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
 const PalNovaaLabPage = React.lazy(() => import('./pages/PalNovaaLabPage'));
 const PalNovaaForesightPage = React.lazy(() => import('./pages/PalNovaaForesightPage'));
+const PalNovaaEnginePage = React.lazy(() => import('./pages/PalNovaaEnginePage'));
+const PalNovaaEngineView = React.lazy(() => import('./pages/PalNovaaEngineView'));
 import WeddingInvite from './pages/WeddingInvite';
 
 import OfflinePage from './components/OfflinePage';
@@ -158,6 +160,8 @@ function App() {
                         <Route path="/geoportal/:slug" element={<GeoportalViewer />} />
                         <Route path="/geoportal" element={<GeoportalViewer />} />
                         <Route path="/p/:slug" element={<PublishedView />} />
+                        {/* عارض مشاريع محرّك بالنوفا — رابطٌ دائم عامّ، بلا حساب */}
+                        <Route path="/pe/:slug" element={<PalNovaaEngineView />} />
                         {/* 🧊 صفحة المجسّم التي يفتحها رمز QR — مستقلّة وبلا حساب */}
                         <Route path="/m/:slug" element={<ARModelView />} />
                         {/* دليل داخلي بالكاميرا — يُفتح بالرابط أو بمسح الرمز، بلا حساب */}
@@ -192,6 +196,9 @@ function App() {
                                     (سبلاش الموقع العامّة مكتومة لهذا المسار عبر pn-foresight في index.html) */}
                                 <Route path="/palnovaa-foresight" element={<PalNovaaForesightPage />} />
                                 <Route path="/foresight" element={<Navigate to="/palnovaa-foresight" replace />} />
+                                {/* محرّك بالنوفا — يبني تطبيقات GIS من وصفٍ نصّيّ بموديل PalNovaa 1.0 */}
+                                <Route path="/palnovaa-engine" element={<PalNovaaEnginePage />} />
+                                <Route path="/engine" element={<Navigate to="/palnovaa-engine" replace />} />
                                 <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
                                 <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
                                 <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
