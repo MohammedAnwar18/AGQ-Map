@@ -22,6 +22,40 @@ const jput = (p, body) => fetch(`${API}${p}`, { method: 'PUT', headers: authHead
 const jget = (p) => fetch(`${API}${p}`, { headers: authHeaders() }).then((r) => r.json());
 const jdel = (p) => fetch(`${API}${p}`, { method: 'DELETE', headers: authHeaders() }).then((r) => r.json());
 
+/* ====== محمّلات مكتبات الخرائط (CDN، كسولة، بلا تكرار) — لعارض البيانات ====== */
+const MAPLIBS = {
+  leafletCss: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css',
+  leaflet: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+  esri: 'https://cdnjs.cloudflare.com/ajax/libs/esri-leaflet/3.0.12/esri-leaflet.js',
+  vectorgrid: 'https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js',
+  proj4: 'https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js',
+  georaster: 'https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js',
+  georasterLayer: 'https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js',
+};
+const _libCache = {};
+const loadScript = (url) => {
+  if (_libCache[url]) return _libCache[url];
+  _libCache[url] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = url; s.async = true;
+    s.onload = () => res(); s.onerror = () => rej(new Error('تعذّر تحميل مكتبة الخريطة'));
+    document.head.appendChild(s);
+  });
+  return _libCache[url];
+};
+const loadCss = (url) => { if (_libCache['css:' + url]) return; _libCache['css:' + url] = true; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = url; document.head.appendChild(l); };
+const ensureLeaflet = async () => { loadCss(MAPLIBS.leafletCss); if (!window.L) await loadScript(MAPLIBS.leaflet); return window.L; };
+const ensureEsri = async () => { await ensureLeaflet(); if (!window.L.esri) await loadScript(MAPLIBS.esri); };
+const ensureVectorGrid = async () => { await ensureLeaflet(); if (!window.L.vectorGrid) await loadScript(MAPLIBS.vectorgrid); };
+const ensureGeoraster = async () => {
+  if (!window.proj4) await loadScript(MAPLIBS.proj4);
+  if (window.proj4 && !window.proj4.defs('EPSG:28191')) {
+    try { window.proj4.defs('EPSG:28191', '+proj=tmerc +lat_0=31.73409694444445 +lon_0=35.21208055555556 +k=1 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +towgs84=-235,-85,264,0,0,0,0 +units=m +no_defs'); } catch { /* */ }
+  }
+  if (!window.parseGeoraster) await loadScript(MAPLIBS.georaster);
+  await ensureLeaflet();
+  if (!window.GeoRasterLayer) await loadScript(MAPLIBS.georasterLayer);
+};
+
 const SRC = {
   postgis: { n: 'PostGIS', t: 'DB', ctx: 'قاعدة بيانات مكانيّة PostGIS' },
   geojson: { n: 'GeoJSON', t: 'JSON', ctx: 'طبقة GeoJSON' },
@@ -59,6 +93,8 @@ const Ico = {
   rocket: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>,
   key: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="8" cy="15" r="4" /><path d="m10.8 12.2 8.2-8.2M17 5l2 2M15 7l2 2" /></svg>,
   eye: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></svg>,
+  eyeOff: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M6.6 6.6A18 18 0 0 0 1 12s4 8 11 8a9 9 0 0 0 5.4-1.6M1 1l22 22M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>,
+  mapIco: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z" /><path d="M9 4v16M15 6v16" /></svg>,
   code: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6" /></svg>,
   ext: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>,
   close: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>,
@@ -222,6 +258,17 @@ export default function PalNovaaEnginePage() {
   const [hdxBusy, setHdxBusy] = useState(false);
   const [hdxErr, setHdxErr] = useState('');
   const [hdxAtt, setHdxAtt] = useState(null);       // رابط المورد قيد الإضافة
+
+  /* عارض البيانات (explorer): خريطة جوجل + طبقات */
+  const [explorerErr, setExplorerErr] = useState('');
+  const [mapReady, setMapReady] = useState(false);
+  const [activeLayers, setActiveLayers] = useState({}); // slug → true
+  const [layerBusy, setLayerBusy] = useState(null);     // slug قيد التحميل
+  const [baseMap, setBaseMap] = useState('streets');
+  const mapRef = useRef(null);
+  const mapElRef = useRef(null);
+  const layerObjs = useRef({});                         // slug → طبقة Leaflet
+  const pendingFocus = useRef(null);
 
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
@@ -614,6 +661,133 @@ export default function PalNovaaEnginePage() {
   };
   const hdxPages = Math.max(1, Math.ceil(hdxCount / 20));
 
+  /* ---- عارض البيانات (Explorer) ---- */
+  const STREETS_URL = 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+  const SAT_URL = 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+  const popupHtml = (props) => {
+    if (!props) return 'لا خصائص';
+    const rows = Object.entries(props).filter(([k]) => !/^(SHAPE__|__|OBJECTID$|globalid$)/i.test(k)).slice(0, 14)
+      .map(([k, v]) => `<div style="display:flex;gap:8px;margin:2px 0;font-size:12px"><b style="color:#8a9;min-width:70px">${k}</b><span style="color:#ddd">${v == null ? '—' : String(v).slice(0, 90)}</span></div>`).join('');
+    return `<div style="min-width:170px;max-height:230px;overflow:auto;direction:rtl">${rows || 'لا خصائص'}</div>`;
+  };
+  const csvToLayer = (text, L) => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) throw new Error('CSV فارغ');
+    const delim = lines[0].includes('\t') ? '\t' : (lines[0].split(';').length > lines[0].split(',').length ? ';' : ',');
+    const header = lines[0].split(delim).map((h) => h.trim().replace(/^"|"$/g, ''));
+    const latI = header.findIndex((h) => /^(lat|latitude|y)$/i.test(h));
+    const lonI = header.findIndex((h) => /^(lon|lng|long|longitude|x)$/i.test(h));
+    if (latI < 0 || lonI < 0) throw new Error('لا أعمدة إحداثيّات (lat/lon)');
+    const grp = L.layerGroup();
+    for (let i = 1; i < lines.length && i < 6000; i++) {
+      const cells = lines[i].split(delim);
+      const lat = parseFloat(cells[latI]), lon = parseFloat(cells[lonI]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const props = {}; header.forEach((h, j) => { props[h] = (cells[j] || '').replace(/^"|"$/g, ''); });
+      L.circleMarker([lat, lon], { radius: 5, color: '#E07B39', fillColor: '#F0954F', fillOpacity: 0.85, weight: 1 }).bindPopup(popupHtml(props)).addTo(grp);
+    }
+    return grp;
+  };
+  const buildLayer = async (d) => {
+    const origin = window.location.origin;
+    if (d.kind === 'geotiff') {
+      await ensureGeoraster();
+      const georaster = await window.parseGeoraster(d.url);
+      return new window.GeoRasterLayer({ georaster, opacity: 0.85, resolution: 256 });
+    }
+    if (d.kind === 'arcgis') {
+      await ensureEsri();
+      const L = window.L; const m = d.meta || {}; const svc = m.serviceUrl; const type = m.serviceType || 'MapServer';
+      if (!svc) throw new Error('هذا المصدر محفوظٌ قديماً — أعِد إضافته');
+      const grp = L.layerGroup();
+      if (type === 'FeatureServer') {
+        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: '#E07B39', weight: 1.5, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
+      } else if (type === 'ImageServer') {
+        L.esri.imageMapLayer({ url: `${svc}/ImageServer`, opacity: 0.85 }).addTo(grp);
+      } else {
+        L.esri.dynamicMapLayer({ url: `${svc}/MapServer`, opacity: 0.85, ...(m.layers && m.layers.length ? { layers: m.layers.map((l) => l.id) } : {}) }).addTo(grp);
+      }
+      return grp;
+    }
+    if (d.kind === 'geojson' && d.meta && d.meta.tiled) {
+      await ensureVectorGrid();
+      const L = window.L;
+      const url = `${origin}/api/engine/datasets/${d.slug}/tiles/{z}/{x}/{y}.pbf`;
+      const vg = L.vectorGrid.protobuf(url, {
+        vectorTileLayerStyles: { data: { color: '#E07B39', weight: 1.2, fill: true, fillColor: '#E07B39', fillOpacity: 0.25, radius: 4 } },
+        interactive: true, maxNativeZoom: 20,
+      });
+      vg.on('click', (e) => { window.L.popup().setLatLng(e.latlng).setContent(popupHtml(e.layer && e.layer.properties)).openOn(mapRef.current); });
+      return vg;
+    }
+    await ensureLeaflet();
+    const L = window.L;
+    const res = await fetch(`${origin}/api/engine/datasets/${d.slug}/data`);
+    if (d.kind === 'csv') return csvToLayer(await res.text(), L);
+    const gj = await res.json();
+    return L.geoJSON(gj, {
+      style: { color: '#E07B39', weight: 1.5, fillColor: '#E07B39', fillOpacity: 0.2 },
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 5, color: '#E07B39', fillColor: '#F0954F', fillOpacity: 0.85, weight: 1 }),
+      onEachFeature: (f, lyr) => { if (f.properties) lyr.bindPopup(popupHtml(f.properties)); },
+    });
+  };
+  const fitToLayer = (d, layer) => {
+    const L = window.L; const map = mapRef.current; if (!map) return;
+    try {
+      if (d.meta && Array.isArray(d.meta.bbox) && d.kind !== 'geotiff') {
+        const [minx, miny, maxx, maxy] = d.meta.bbox;
+        if ([minx, miny, maxx, maxy].every(Number.isFinite) && Math.abs(minx) <= 180 && Math.abs(maxy) <= 90) { map.fitBounds(L.latLngBounds([[miny, minx], [maxy, maxx]]), { maxZoom: 15, padding: [26, 26] }); return; }
+      }
+      if (layer.getBounds) { const b = layer.getBounds(); if (b && b.isValid && b.isValid()) map.fitBounds(b, { maxZoom: 16, padding: [26, 26] }); }
+    } catch { /* */ }
+  };
+  const toggleLayer = async (d) => {
+    const map = mapRef.current; if (!map) return;
+    if (layerObjs.current[d.slug]) {
+      map.removeLayer(layerObjs.current[d.slug]); delete layerObjs.current[d.slug];
+      setActiveLayers((a) => { const n = { ...a }; delete n[d.slug]; return n; });
+      return;
+    }
+    setLayerBusy(d.slug); setExplorerErr('');
+    try {
+      const layer = await buildLayer(d);
+      if (!layer) throw new Error('نوع غير مدعوم');
+      layer.addTo(map); layerObjs.current[d.slug] = layer;
+      setActiveLayers((a) => ({ ...a, [d.slug]: true }));
+      fitToLayer(d, layer);
+    } catch (e) { showToast('تعذّر عرض «' + d.name + '»: ' + String(e.message || '').slice(0, 45)); }
+    setLayerBusy(null);
+  };
+  const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
+  const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; setView('explorer'); };
+
+  // تهيئة خريطة العارض عند الدخول إليه (مرّةً واحدة)
+  useEffect(() => {
+    if (view !== 'explorer') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const L = await ensureLeaflet();
+        if (cancelled) return;
+        if (mapRef.current) { setTimeout(() => mapRef.current.invalidateSize(), 60); setMapReady(true); return; }
+        if (!mapElRef.current) return;
+        const map = L.map(mapElRef.current, { center: [31.95, 35.23], zoom: 9, zoomControl: true, attributionControl: false });
+        map.__base = L.tileLayer(STREETS_URL, { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], maxZoom: 20 }).addTo(map);
+        mapRef.current = map; setMapReady(true);
+        setTimeout(() => map.invalidateSize(), 90);
+      } catch { if (!cancelled) setExplorerErr('تعذّر تحميل الخريطة — تحقّق من الاتصال.'); }
+    })();
+    return () => { cancelled = true; };
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // عرض الطبقة المطلوبة تلقائياً بعد جهوزيّة الخريطة
+  useEffect(() => {
+    if (view === 'explorer' && mapReady && pendingFocus.current) {
+      const d = pendingFocus.current; pendingFocus.current = null;
+      if (!layerObjs.current[d.slug]) toggleLayer(d);
+    }
+  }, [view, mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
@@ -646,6 +820,7 @@ export default function PalNovaaEnginePage() {
             <a className={view === 'home' ? 'active' : ''} onClick={() => { if (view === 'templates') setView('home'); }}>{Ico.chat}<span>المحادثات</span></a>
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
+            <a className={view === 'explorer' ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
@@ -854,6 +1029,33 @@ export default function PalNovaaEnginePage() {
               </div>
             </div>
           </section>
+
+          {/* ===== EXPLORER (معاينة البيانات) ===== */}
+          <section className={`explorer ${view === 'explorer' ? 'on' : ''}`}>
+            <aside className="exp-side">
+              <div className="exp-side-head"><b>طبقات بياناتي</b><span className="count mono">{myDatasets.length}</span></div>
+              <div className="exp-list">
+                {myDatasets.length === 0 && <div className="exp-empty">لا بيانات بعد — أضِفها من «البيانات» (رفع، ArcGIS، HDX).</div>}
+                {myDatasets.map((d) => (
+                  <button className={`exp-item ${activeLayers[d.slug] ? 'on' : ''}`} key={d.slug} onClick={() => toggleLayer(d)}>
+                    <span className="exp-eye">{layerBusy === d.slug ? <span className="ring" /> : (activeLayers[d.slug] ? Ico.eye : Ico.eyeOff)}</span>
+                    <span className="exp-info"><b>{d.name}</b><small>{dsMeta(d)}</small></span>
+                    <span className="exp-badge mono">{dsLabel(d.kind)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="exp-side-foot">اضغط أيّ طبقة لعرضها / إخفائها على الخريطة</div>
+            </aside>
+            <div className="exp-map-wrap">
+              <div className="exp-mapbar">
+                <button className={baseMap === 'streets' ? 'on' : ''} onClick={() => switchBase('streets')}>خريطة</button>
+                <button className={baseMap === 'sat' ? 'on' : ''} onClick={() => switchBase('sat')}>أقمار صناعيّة</button>
+                <span className="exp-shown">{Object.keys(activeLayers).length ? `${Object.keys(activeLayers).length} طبقة معروضة` : 'اختر طبقة من اليمين'}</span>
+              </div>
+              <div ref={mapElRef} className="exp-map" />
+              {explorerErr && <div className="exp-err">⚠️ {explorerErr}</div>}
+            </div>
+          </section>
         </main>
       </div>
 
@@ -881,9 +1083,11 @@ export default function PalNovaaEnginePage() {
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}
+            {myDatasets.length > 0 && <button className="menu-item" onClick={() => openExplorer()}><span className="mi-ic">{Ico.mapIco}</span><span><b>معاينة الكلّ على الخريطة</b><small>افتح العارض التفاعليّ</small></span></button>}
             {myDatasets.map((d) => (
-              <div className="menu-item" key={d.slug}><span className="mi-ic">{dsIcon(d.kind)}</span><span onClick={() => attachDataset(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
-                <button className="del" onClick={async (e) => { e.stopPropagation(); await jdel(`/engine/datasets/${d.slug}`); loadDatasets(); setDatasets((a) => a.filter((x) => x.slug !== d.slug)); }}>{Ico.trash}</button></div>
+              <div className="menu-item" key={d.slug}><span className="mi-ic">{dsIcon(d.kind)}</span><span onClick={() => openExplorer(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{dsMeta(d)} · اضغط للمعاينة</small></span>
+                <button className="del" title="عرض على الخريطة" onClick={(e) => { e.stopPropagation(); openExplorer(d); }} style={{ color: 'var(--muted)' }}>{Ico.eye}</button>
+                <button className="del" title="حذف" onClick={async (e) => { e.stopPropagation(); await jdel(`/engine/datasets/${d.slug}`); loadDatasets(); setDatasets((a) => a.filter((x) => x.slug !== d.slug)); }}>{Ico.trash}</button></div>
             ))}
           </>)}
           {menu.name === 'mode' && (<>

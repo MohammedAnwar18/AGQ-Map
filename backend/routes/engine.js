@@ -1097,14 +1097,15 @@ router.post('/arcgis/save', optionalAuth, async (req, res) => {
             id: Number(l.id), name: (l.name || '').toString().slice(0, 220), geometryType: l.geometryType || null
         })).filter((l) => Number.isFinite(l.id)) : [];
         const content = JSON.stringify({ serviceUrl, serviceType, layers });
+        const meta = { arcgis: true, serviceUrl, serviceType, layers };
         const ownerId = ownerOf(req);
         let slug = makeSlug(), saved = null;
         for (let i = 0; i < 5; i++) {
             try {
                 const r = await pool.query(
-                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id)
-                     VALUES ($1,$2,'arcgis',$3,$4,$5) RETURNING id, slug, name, kind, feature_count, created_at`,
-                    [slug, name, content, layers.length, ownerId]
+                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id, meta)
+                     VALUES ($1,$2,'arcgis',$3,$4,$5,$6::jsonb) RETURNING id, slug, name, kind, feature_count, meta, created_at`,
+                    [slug, name, content, layers.length, ownerId, JSON.stringify(meta)]
                 );
                 saved = r.rows[0]; break;
             } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
