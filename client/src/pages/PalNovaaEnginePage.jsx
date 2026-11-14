@@ -35,11 +35,11 @@ const MODES = ['تطبيق ويب', 'لوحة مؤشرات', 'أداة تحلي�
 const CRS = ['EPSG:4326', 'EPSG:3857', 'EPSG:28191', 'EPSG:32636'];
 
 const STEPS = [
-  { t: 'تحليل الطلب واستخراج المتطلبات', m: 'intent · entities · scope' },
-  { t: 'تصميم بنية التطبيق والطبقات', m: 'layout · layers · state' },
-  { t: 'توليد الخريطة والترميز', m: 'Leaflet · Google tiles · symbology' },
-  { t: 'بناء الواجهة واللوحات والتفاعلات', m: 'panels · legend · KPIs · popups' },
-  { t: 'تجهيز البيانات والتحليل المكانيّ', m: 'GeoJSON · Turf.js' },
+  { t: 'تحليل الطلب وتفعيل المهارات', m: 'intent · skills · scope' },
+  { t: 'تصميم بنية التطبيق والمكوّنات', m: 'layout · components · state' },
+  { t: 'بناء الواجهة والتفاعلات', m: 'charts · tables · forms · maps' },
+  { t: 'ربط البيانات والمنطق', m: 'data · CRUD · API connectors' },
+  { t: 'التصميم والتجاوب', m: 'RTL · responsive · dark theme' },
   { t: 'التحقّق وتشغيل المعاينة', m: 'validate · preview ready' },
 ];
 const TPL = [
@@ -133,10 +133,12 @@ export default function PalNovaaEnginePage() {
     toastTimer.current = setTimeout(() => setToast(''), 2400);
   }, []);
 
+  const [templates, setTemplates] = useState([]);
   const loadProjects = useCallback(() => { jget('/engine/projects').then((d) => { if (d?.ok) setProjects(d.projects || []); }).catch(() => {}); }, []);
   const loadDatasets = useCallback(() => { jget('/engine/datasets').then((d) => { if (d?.ok) setMyDatasets(d.datasets || []); }).catch(() => {}); }, []);
   const loadBalance = useCallback(() => { jget('/engine/balance').then((d) => { if (d?.ok) setBalance(d.balance); }).catch(() => {}); }, []);
-  useEffect(() => { loadProjects(); loadDatasets(); loadBalance(); }, [loadProjects, loadDatasets, loadBalance]);
+  const loadTemplates = useCallback(() => { jget('/engine/templates').then((d) => { if (d?.ok && d.templates?.length) setTemplates(d.templates); }).catch(() => {}); }, []);
+  useEffect(() => { loadProjects(); loadDatasets(); loadBalance(); loadTemplates(); }, [loadProjects, loadDatasets, loadBalance, loadTemplates]);
 
   /* contour background */
   useEffect(() => {
@@ -468,7 +470,7 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                   <textarea value={prompt}
-                    placeholder="صِف تطبيق GIS الذي تريده… مثلاً: خريطة تفاعليّة لقطع الأراضي في نابلس ملوّنة حسب الاستخدام، مع فلترة ولوحة مؤشّرات."
+                    placeholder="صِف التطبيق الذي تريده… مثلاً: لوحة بيانات سكّان فلسطين بخريطة ومخطّطات، أو نظام إدارة مرافق، أو نموذج مسح ميدانيّ…"
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
@@ -482,10 +484,11 @@ export default function PalNovaaEnginePage() {
 
                 <div className="block-title"><h3>قوالب للبدء السريع</h3><a onClick={() => navigate('/map')}>المنصّة</a></div>
                 <div className="templates">
-                  {TPL.map((t, i) => (
-                    <button className="tpl" key={i} onClick={() => setPrompt(t.p)}>
-                      <div className="thumb" />
-                      <div><b>{t.t}</b><p>{t.d}</p><div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div></div>
+                  {(templates.length ? templates : TPL).map((t, i) => (
+                    <button className="tpl" key={t.id || i} onClick={() => { setPrompt(t.prompt || t.p); }}>
+                      {t.icon && <div className="tpl-icon">{t.icon}</div>}
+                      {!t.icon && <div className="thumb" />}
+                      <div><b>{t.title || t.t}</b><p>{t.desc || t.d}</p>{t.tags && <div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div>}</div>
                     </button>
                   ))}
                 </div>
@@ -569,7 +572,7 @@ export default function PalNovaaEnginePage() {
               </div>
               <div className="chat-composer">
                 <div className="composer">
-                  <textarea value={prompt2} placeholder="اطلب تعديلاً: أضِف طبقة، غيّر الترميز، أضِف فلتراً…"
+                  <textarea value={prompt2} placeholder="اطلب تعديلاً: أضِف مخطّطاً، غيّر الألوان، أضِف جدولاً، صدّر PDF…"
                     onChange={(e) => setPrompt2(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEdit(); } }} rows={2} />
                   <div className="composer-bar">

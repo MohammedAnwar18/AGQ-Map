@@ -5,6 +5,7 @@ const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { r2Client } = require('../config/r2');
+const { detectSkills, buildSkillsContext, TEMPLATES } = require('../engine-skills');
 const router = express.Router();
 
 /* ============================================================================
@@ -210,34 +211,60 @@ async function recordUsage(ident, usage) {
 
 /* ---- تعليمات الموديل (ثابتة → تُكاش على Claude) ---- */
 const SYSTEM_INSTRUCTION = [
-    'أنت «PalNovaa 1.0»، محرّكٌ خبيرٌ من الطراز الأوّل يبني تطبيقات نظم المعلومات الجغرافية (GIS) تفاعليّة واحترافيّة.',
+    'أنت «PalNovaa 1.0»، محرّكٌ خبيرٌ من الطراز الأوّل يبني تطبيقات ويب تفاعليّة كاملة الوظائف واحترافيّة.',
+    'تخصّصك الأوّل: نظم المعلومات الجغرافية (GIS) والتحليل المكانيّ — لكنّك تبني أيّ تطبيق ويب: لوحات معلومات (dashboards)، تقارير بيانيّة، نماذج إدخال ومسح ميدانيّ، أنظمة إدارة سجلات (CRUD)، أدوات تحليل، دلائل تفاعليّة، محرّكات حساب، وأكثر.',
     'مهمّتك: من وصف المستخدم، تُنتج تطبيق ويب كاملاً في ملفٍ واحد (single-file HTML) جاهزاً للتشغيل فوراً دون أيّ خطوةٍ إضافيّة.',
     '',
     '— قواعد الإخراج (صارمة) —',
     '1) أخرِج مستند HTML كاملاً فقط: يبدأ بـ <!doctype html> وينتهي بـ </html>. لا شرح ولا نصّ قبله ولا بعده، ولا تضعه داخل أسوار ```.',
     '2) اكتب الكود كاملاً فعليّاً. ممنوع منعاً باتّاً ترك عناصر نائبة مثل «... بقيّة الكود» أو دوالّ فارغة. كلّ دالّة مُنفَّذة بالكامل، وكلّ زرّ موصولٌ بوظيفةٍ حقيقيّة.',
-    '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN موثوقة.',
+    '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN مثبّتة الإصدار من cdnjs.cloudflare.com.',
     '4) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط: <!--PNE:{"title":"عنوان قصير للمشروع","summary":"جملة تصف ما بُني"}-->',
     '5) اجعل <title> مطابقاً للعنوان.',
     '',
-    '— الخرائط والتحليل المكانيّ —',
+    '— المكتبات المتاحة (CDN مثبّت — استخدم حسب الحاجة فقط) —',
+    '• Leaflet 1.9.4 — خرائط تفاعليّة (leaflet.css + leaflet.js)',
+    '• Turf.js 6.5.0 — تحليل مكانيّ (buffer, area, centroid, distance, union, intersect, voronoi, bbox)',
+    '• Chart.js 4.4.1 — رسوم بيانيّة (bar, line, pie, doughnut, radar, scatter, polarArea, bubble, mixed)',
+    '• Leaflet.Draw 1.0.4 — رسم/تعديل أشكال (css+js)',
+    '• Leaflet.MarkerCluster 1.5.3 — تجميع العلامات (css+js)',
+    '• Leaflet.heat 0.2.0 — خرائط حراريّة',
+    '• html2canvas 1.4.1 + jsPDF 2.5.1 — تصدير صور وPDF',
+    '• Papa Parse 5.4.1 — تحليل/تصدير CSV',
+    '• Flatpickr 4.6.13 — منتقي تاريخ (css+js)',
+    '• SortableJS 1.15.0 — سحب وإفلات',
+    'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً. كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت.',
+    '',
+    '— الخرائط والتحليل المكانيّ (تخصّصك الأوّل) —',
     '• استخدم Leaflet 1.9.4 من cdnjs: ضمّن leaflet.css و leaflet.js.',
     "• بلاط الخريطة الأساس: خرائط Google عبر L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {subdomains:['mt0','mt1','mt2','mt3'], maxZoom:20}). يمكنك lyrs=s للأقمار الصناعيّة.",
-    '• للتحليل المكانيّ استخدم Turf.js 6.5.0 من cdnjs: buffer, union, intersect, area, centroid, distance, nearestPoint, pointsWithinPolygon, voronoi, bbox, booleanPointInPolygon.',
-    '• هيّئ الخريطة بعد تحميل DOM، واضبط setView على منطقةٍ منطقيّة (فلسطين/الضفة: [31.95,35.23] zoom 9، أو نابلس [32.22,35.26]).',
+    '• هيّئ الخريطة بعد تحميل DOM، واضبط setView على منطقةٍ منطقيّة (فلسطين/الضفة: [31.95,35.23] zoom 9).',
     '• لا تستخدم أيّ خدمةٍ تتطلّب مفتاح API. للترميز الجغرافيّ استخدم Nominatim العامّ باعتدال.',
     '',
-    '— البيانات —',
-    '• إن زُوِّدت بروابط بياناتٍ حقيقيّة (datasets) فاجلبها فعليّاً وقت التشغيل عبر fetch واعرضها، وعالِج فشل الجلب بلُطف.',
-    '• إن لم تُزوَّد ببيانات، ولّد بياناتٍ تجريبيّة منطقيّة وواقعيّة (GeoJSON مدمج) مناسبة لفلسطين بأسماءٍ عربيّة صحيحة وإحداثيّاتٍ معقولة.',
-    '• لوّن الطبقات ترميزاً متدرّجاً (choropleth) حسب قيمةٍ منطقيّة، وأضِف نافذة منبثقة تعرض خصائص كلّ عنصر.',
+    '— البيانات والموصّلات —',
+    '• إن زُوِّدت بروابط بياناتٍ حقيقيّة (datasets) فاجلبها فعليّاً عبر fetch واعرضها، وعالِج الفشل بلُطف (رسالة + زرّ إعادة).',
+    '• إن لم تُزوَّد ببيانات: ولّد بياناتٍ تجريبيّة واقعيّة ومتنوّعة مناسبة للسياق بأسماءٍ عربيّة صحيحة.',
+    '• موصّلات مجّانيّة بلا مفتاح: OpenStreetMap Overpass API (amenities, buildings, roads)، Open-Meteo (طقس)، Open-Elevation، Nominatim (ترميز جغرافيّ).',
+    '• لوّن الطبقات المكانيّة ترميزاً متدرّجاً (choropleth) وأضِف popup لخصائص كلّ عنصر.',
     '',
     '— الواجهة والتصميم —',
-    '• الواجهة عربيّة RTL، عصريّة واحترافيّة، متجاوبة مع الجوّال، بتصميمٍ داكنٍ أنيق افتراضاً (خلفيّة ~#0A0B0D، لمسة برتقاليّة #E07B39)، بمسافاتٍ مريحة وحوافٍّ ناعمة.',
-    '• أضِف لوحةً جانبيّة للطبقات (تبديل الظهور)، ومفتاح ألوان (legend)، ومؤشّرات (KPIs)، وبحث/فلترة حين تناسب.',
+    '• الواجهة عربيّة RTL، عصريّة واحترافيّة، متجاوبة مع الجوّال (breakpoint ≤768px).',
+    '• تصميمٌ داكنٌ أنيق: خلفيّة #0A0B0D، سطوح #12151A/#1A1E24، حدود #2B3038، نصّ #C8CDD4، لمسة برتقاليّة #E07B39.',
+    '• مسافاتٌ مريحة (padding ≥16px)، حوافٍّ ناعمة (border-radius ≥8px)، أيقونات SVG مدمجة، خطّ system-ui.',
+    '• أضِف تبويبات/أقسام/لوحات حسب الحاجة. بطاقات KPI لكلّ لوحة. مفتاح ألوان (legend) للخرائط.',
+    '',
+    '— إمكانيّات عامّة (طبّقها حين يناسب الطلب) —',
+    '• CRUD: حفظ/تعديل/حذف عبر localStorage + crypto.randomUUID(). نسخة احتياطيّة JSON.',
+    '• جداول: ترتيب بالنقر (▲▼)، بحث/فلترة فوري، ترقيم صفحات، header ثابت.',
+    '• نماذج: تحقّق عربيّ (required+pattern)، أخطاء أسفل الحقل، نماذج متعدّدة الخطوات.',
+    '• تصدير: CSV (Blob+BOM)، GeoJSON، PNG (html2canvas)، PDF (jsPDF)، طباعة (@media print).',
+    '• لوحات معلومات: بطاقات KPI (أيقونة+قيمة+تغيّر↑↓)، مخطّطات Chart.js، جداول، فلاتر.',
+    '• تخطيط: تبويبات، شريط جانبيّ طيّ، modal، toast، accordion، بطاقات grid.',
     '',
     '— الجودة —',
-    '• نفّذ أفضل تصميمٍ وميزاتٍ للطلب بإتقان، واجعل الكود سليماً متماسكاً خالياً من الأخطاء البرمجيّة (لا متغيّرات غير معرّفة، ترتيب تحميل صحيح للمكتبات).',
+    '• نفّذ أفضل تصميمٍ وميزاتٍ للطلب بإتقان. الكود سليمٌ متماسكٌ خالٍ من الأخطاء.',
+    '• لا متغيّرات غير معرّفة. ترتيب تحميل صحيح للمكتبات. min-height:100vh. لا شريط تمرير أفقيّ.',
+    '• كلّ عنصرٍ تفاعليّ يعمل فعلاً: أزرار، فلاتر، بحث، ترتيب، تبويبات.',
     '',
     'عند التعديل على تطبيقٍ قائم: أعِد إخراج المستند الكامل بعد تطبيق التغيير المطلوب فقط، محافظاً على بقيّة الكود والميزات كما هي.'
 ].join('\n');
@@ -302,12 +329,16 @@ const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت ب
 const looksComplete = (s) => /<\/html>\s*$/i.test((s || '').trim());
 const blankUsage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 
-async function callModel(KEY, prompt, currentHtml) {
+async function callModel(KEY, prompt, currentHtml, skillsCtx) {
     const prov = pickProvider(KEY);
     const usage = blankUsage();
+    const fullSys = skillsCtx ? SYSTEM_INSTRUCTION + skillsCtx : SYSTEM_INSTRUCTION;
 
     if (prov.kind === 'anthropic') {
-        const system = [{ type: 'text', text: SYSTEM_INSTRUCTION, cache_control: { type: 'ephemeral' } }];
+        const system = [
+            { type: 'text', text: SYSTEM_INSTRUCTION, cache_control: { type: 'ephemeral' } },
+            ...(skillsCtx ? [{ type: 'text', text: skillsCtx }] : []),
+        ];
         const messages = [];
         if (currentHtml) {
             messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
@@ -332,7 +363,7 @@ async function callModel(KEY, prompt, currentHtml) {
     }
 
     if (prov.kind === 'oai') {
-        const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
+        const messages = [{ role: 'system', content: fullSys }];
         if (currentHtml) {
             messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
@@ -366,7 +397,7 @@ async function callModel(KEY, prompt, currentHtml) {
     contents.push({ role: 'user', parts: [{ text: prompt }] });
     let full = '';
     for (let i = 0; i < 5; i++) {
-        const payload = { systemInstruction: { role: 'system', parts: [{ text: SYSTEM_INSTRUCTION }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 } };
+        const payload = { systemInstruction: { role: 'system', parts: [{ text: fullSys }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 } };
         const data = await postJSON(url, payload, { 'x-goog-api-key': KEY }, 290000);
         const cand = data?.candidates?.[0];
         const piece = (cand?.content?.parts || []).map((p) => p?.text || '').join('');
@@ -418,13 +449,17 @@ function streamHTTPS(url, body, headers, onEvent, timeoutMs = 290000) {
 }
 
 /* ---- بثّ الموديل: يستدعي onDelta لكلّ قطعة نصّ، ويعيد {text, usage} ---- */
-async function streamModel(KEY, prompt, currentHtml, onDelta) {
+async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
     const prov = pickProvider(KEY);
     const usage = blankUsage();
+    const fullSys = skillsCtx ? SYSTEM_INSTRUCTION + skillsCtx : SYSTEM_INSTRUCTION;
     let full = '';
 
     if (prov.kind === 'anthropic') {
-        const system = [{ type: 'text', text: SYSTEM_INSTRUCTION, cache_control: { type: 'ephemeral' } }];
+        const system = [
+            { type: 'text', text: SYSTEM_INSTRUCTION, cache_control: { type: 'ephemeral' } },
+            ...(skillsCtx ? [{ type: 'text', text: skillsCtx }] : []),
+        ];
         const messages = [];
         if (currentHtml) {
             messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
@@ -453,7 +488,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta) {
     }
 
     if (prov.kind === 'oai') {
-        const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
+        const messages = [{ role: 'system', content: fullSys }];
         if (currentHtml) {
             messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
@@ -529,7 +564,9 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
-        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }));
+        const skillIds = detectSkills(prompt);
+        const skillsCtx = buildSkillsContext(skillIds);
+        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx);
         const out = parseGenerated(text, prompt);
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
         let balance = null;
@@ -579,12 +616,14 @@ router.post('/generate', optionalAuth, async (req, res) => {
         } catch (e) { /* ignore dataset errors */ }
     }
 
+    const skillIds = detectSkills(prompt);
+    const skillsCtx = buildSkillsContext(skillIds);
     const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
     let lastErr = 'unavailable';
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt));
         try {
-            const { text, usage } = await callModel(KEY, prompt, currentHtml);
+            const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx);
             if (!text) { lastErr = 'empty'; continue; }
             const out = parseGenerated(text, prompt);
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
@@ -864,6 +903,10 @@ router.delete('/datasets/:slug', optionalAuth, async (req, res) => {
 
 /* ============================ إعداد الدفع (عامّ) ============================ */
 // GET /api/engine/billing-config — قيمٌ عامّة لتهيئة Paddle.js في المتصفّح
+router.get('/templates', (req, res) => {
+    res.json({ ok: true, templates: TEMPLATES });
+});
+
 router.get('/billing-config', (req, res) => {
     res.json({
         ok: true,
