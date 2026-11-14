@@ -12,7 +12,8 @@ const { r2Client } = require('../config/r2');
 const { detectSkills, buildSkillsContext, TEMPLATES } = require('../engine-skills');
 const geojsonvt = require('geojson-vt');
 const vtpbf = require('vt-pbf');
-const geotiff = require('geotiff');
+let _geotiff = null;                        // تحميل كسول (حزمة ESM) لتفادي كسر تهيئة الدالّة
+async function loadGeotiff() { if (!_geotiff) _geotiff = await import('geotiff'); return _geotiff.default || _geotiff; }
 const router = express.Router();
 
 /* ============================================================================
@@ -479,6 +480,7 @@ async function getTileIndex(slug) {
 
 /* ---- تحليل GeoTIFF (نقطيّ): الأبعاد، النطاقات، النطاق المكانيّ، الإسناد ---- */
 async function analyzeGeoTIFF(url, bytes) {
+    const geotiff = await loadGeotiff();
     const tiff = await geotiff.fromUrl(url);                 // يقرأ الترويسة عبر طلبات نطاق (بلا تنزيل كامل)
     const image = await tiff.getImage();
     const width = image.getWidth(), height = image.getHeight();
