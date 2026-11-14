@@ -13,7 +13,14 @@ const { detectSkills, buildSkillsContext, TEMPLATES } = require('../engine-skill
 const geojsonvt = require('geojson-vt');
 const vtpbf = require('vt-pbf');
 let _geotiff = null;                        // تحميل كسول (حزمة ESM) لتفادي كسر تهيئة الدالّة
-async function loadGeotiff() { if (!_geotiff) _geotiff = await import('geotiff'); return _geotiff.default || _geotiff; }
+async function loadGeotiff() {
+    if (_geotiff) return _geotiff;
+    const m = await import('geotiff');
+    _geotiff = (typeof m.fromUrl === 'function') ? m
+        : (m.default && typeof m.default.fromUrl === 'function') ? m.default
+        : m;
+    return _geotiff;
+}
 const router = express.Router();
 
 /* ============================================================================
