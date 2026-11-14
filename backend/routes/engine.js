@@ -862,6 +862,17 @@ router.delete('/datasets/:slug', optionalAuth, async (req, res) => {
     }
 });
 
+/* ============================ إعداد الدفع (عامّ) ============================ */
+// GET /api/engine/billing-config — قيمٌ عامّة لتهيئة Paddle.js في المتصفّح
+router.get('/billing-config', (req, res) => {
+    res.json({
+        ok: true,
+        token: process.env.PADDLE_CLIENT_TOKEN || '',
+        priceId: process.env.PADDLE_PRO_PRICE || '',
+        env: process.env.PADDLE_ENV || 'production'
+    });
+});
+
 /* ============================ الرصيد (balance) ============================ */
 // GET /api/engine/balance — رصيد المستخدم الحاليّ على المفتاح المشترك
 router.get('/balance', optionalAuth, async (req, res) => {

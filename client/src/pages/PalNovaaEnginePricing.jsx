@@ -9,9 +9,10 @@ import './PalNovaaEngine.css';
    وإلّا تعرض «قريباً» بدل دفعٍ وهميّ.
    ============================================================================ */
 
-const PADDLE_TOKEN = import.meta.env.VITE_PADDLE_TOKEN || '';
-const PADDLE_PRO_PRICE = import.meta.env.VITE_PADDLE_PRO_PRICE || '';
-const PADDLE_ENV = import.meta.env.VITE_PADDLE_ENV || 'production';
+const API = import.meta.env.VITE_API_URL || '/api';
+const DEF_TOKEN = import.meta.env.VITE_PADDLE_TOKEN || '';
+const DEF_PRICE = import.meta.env.VITE_PADDLE_PRO_PRICE || '';
+const DEF_ENV = import.meta.env.VITE_PADDLE_ENV || 'production';
 
 const Check = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3DB37E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>;
 const Dash = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A616B" strokeWidth="2.2" strokeLinecap="round"><path d="M5 12h14" /></svg>;
@@ -56,6 +57,7 @@ const PLANS = [
 export default function PalNovaaEnginePricing() {
   const navigate = useNavigate();
   const [toast, setToast] = useState('');
+  const [cfg, setCfg] = useState({ token: DEF_TOKEN, priceId: DEF_PRICE, env: DEF_ENV });
   const contoursRef = useRef(null);
   const toastTimer = useRef(null);
 
@@ -80,31 +82,38 @@ export default function PalNovaaEnginePricing() {
     svg.innerHTML = h;
   }, []);
 
-  /* تحميل Paddle.js فقط إن ضُبِط الـtoken */
+  /* جلب إعداد الدفع من الخادم (قيمٌ عامّة) */
   useEffect(() => {
-    if (!PADDLE_TOKEN || window.Paddle) return;
+    fetch(`${API}/engine/billing-config`).then((r) => r.json()).then((d) => {
+      if (d?.ok && (d.token || d.priceId)) setCfg({ token: d.token || DEF_TOKEN, priceId: d.priceId || DEF_PRICE, env: d.env || DEF_ENV });
+    }).catch(() => {});
+  }, []);
+
+  /* تحميل Paddle.js فقط إن توفّر الـtoken */
+  useEffect(() => {
+    if (!cfg.token || window.Paddle) return;
     const s = document.createElement('script');
     s.src = 'https://cdn.paddle.com/paddle/v2/paddle.js';
     s.async = true;
     s.onload = () => {
       try {
-        if (PADDLE_ENV !== 'production' && window.Paddle?.Environment?.set) window.Paddle.Environment.set(PADDLE_ENV);
-        window.Paddle?.Initialize?.({ token: PADDLE_TOKEN });
+        if (cfg.env !== 'production' && window.Paddle?.Environment?.set) window.Paddle.Environment.set(cfg.env);
+        window.Paddle?.Initialize?.({ token: cfg.token });
       } catch { /* */ }
     };
     document.body.appendChild(s);
-  }, []);
+  }, [cfg.token, cfg.env]);
 
   const subscribe = (plan) => {
     if (plan === 'free') { navigate('/palnovaa-engine'); return; }
     if (plan === 'team') { window.location.href = 'mailto:support@palnovaa.com?subject=PalNovaa%20Engine%20Team'; return; }
     // Pro
-    if (window.Paddle && PADDLE_PRO_PRICE) {
+    if (window.Paddle && cfg.priceId) {
       try {
         const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
         const uid = u?.id || u?.userId;
         window.Paddle.Checkout.open({
-          items: [{ priceId: PADDLE_PRO_PRICE, quantity: 1 }],
+          items: [{ priceId: cfg.priceId, quantity: 1 }],
           ...(u?.email ? { customer: { email: u.email } } : {}),
           ...(uid ? { customData: { ident: `u:${uid}` } } : {}),
         });
