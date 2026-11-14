@@ -422,7 +422,7 @@ function analyzeGeoJSON(content) {
 }
 
 /* ---- تخزين مجموعة بيانات (تحليل + تقرير التقطيع + حفظ + R2) ---- */
-async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 = false, publicUrl = null }) {
+async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 = false, publicUrl = null, slug = null }) {
     const bytes = Buffer.byteLength(content, 'utf8');
     if (bytes > MAX_GEOJSON_BYTES) { const e = new Error(`الملفّ كبيرٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB).`); e.code = 413; throw e; }
     let meta = { bytes }; let count = 0;
@@ -431,8 +431,9 @@ async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 =
     const tiled = kind === 'geojson' && bytes > TILE_THRESHOLD_BYTES && count > 0;
     meta.tiled = tiled; if (tiled) meta.layer = 'data';
 
-    let saved = null, useSlug = makeSlug();
-    for (let i = 0; i < 5; i++) {
+    let saved = null, useSlug = slug || makeSlug();
+    const attempts = slug ? 1 : 5;   // سلاگ صريح (من presign): لا تولّد بديلاً
+    for (let i = 0; i < attempts; i++) {
         try {
             const r = await pool.query(
                 `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id, meta, url)
@@ -440,7 +441,7 @@ async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 =
                 [useSlug, name, kind, content, count, ownerId, JSON.stringify(meta), publicUrl]
             );
             saved = r.rows[0]; break;
-        } catch (e) { if (/unique/i.test(e.message)) { useSlug = makeSlug(); continue; } throw e; }
+        } catch (e) { if (/unique/i.test(e.message) && !slug) { useSlug = makeSlug(); continue; } throw e; }
     }
     if (!saved) throw new Error('slug conflict');
     if (!skipR2 && R2_ON) {
@@ -1193,7 +1194,7 @@ router.post('/datasets/finalize', optionalAuth, async (req, res) => {
         const { status, body } = await httpGetFollow(publicUrl, { maxRedirects: 3, timeoutMs: 45000, maxBytes: MAX_GEOJSON_BYTES + 1024 });
         if (status !== 200 || !body) return res.status(502).json({ ok: false, reason: 'تعذّر قراءة الملفّ المرفوع — أعِد المحاولة.' });
         try {
-            const saved = await createDatasetFromContent({ name, kind, content: body, ownerId: ownerOf(req), skipR2: true, publicUrl });
+            const saved = await createDatasetFromContent({ name, kind, content: body, ownerId: ownerOf(req), skipR2: true, publicUrl, slug });
             return res.json({ ok: true, dataset: saved });
         } catch (e) {
             if (e.code === 413) return res.status(413).json({ ok: false, reason: e.message });
