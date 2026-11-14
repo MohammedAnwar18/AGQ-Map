@@ -68,6 +68,8 @@ const Ico = {
   history: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3v6h6M3 9a9 9 0 1 1 2.5 8" /><path d="M12 8v5l3 2" /></svg>,
   fork: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="20" r="2.5" /><path d="M6 8.5v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-3M12 14.5v3" /></svg>,
   up: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15V3M8 7l4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /></svg>,
+  tpl: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /></svg>,
+  search: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>,
 };
 
 const TICONS = {
@@ -160,7 +162,7 @@ export default function PalNovaaEnginePage() {
   const navigate = useNavigate();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [view, setView] = useState('home');
+  const [view, setView] = useState('home');  // home | workspace | templates
   const [prompt, setPrompt] = useState('');
   const [prompt2, setPrompt2] = useState('');
   const [attached, setAttached] = useState([]);     // تلميحات مصادر عامّة
@@ -188,6 +190,7 @@ export default function PalNovaaEnginePage() {
   const streamBufRef = useRef('');
   const flushSched = useRef(false);
 
+  const [tplSearch, setTplSearch] = useState('');
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
   const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
@@ -238,7 +241,9 @@ export default function PalNovaaEnginePage() {
 
   useEffect(() => {
     const onClick = (e) => { if (!e.target.closest('.menu') && !e.target.closest('[data-menu-anchor]')) setMenu(null); };
-    const onKey = (e) => { if (e.key === 'Escape') { setMenu(null); setModal(null); } };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setMenu(null); setModal(null); }
+    };
     document.addEventListener('click', onClick); document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('click', onClick); document.removeEventListener('keydown', onKey); };
   }, []);
@@ -312,7 +317,7 @@ export default function PalNovaaEnginePage() {
     setMessages((m) => [...m, {
       id: `n${bId}`, role: 'ai', kind: 'note',
       text: isEdit ? 'طبّقتُ التعديل وحدّثت المعاينة.' : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
-      suggests: isEdit ? [] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'أضِف بحثاً عن موقع'],
+      suggests: isEdit ? ['أحسنت — أضِف ميزة أخرى'] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'صدّر PDF', 'أضِف بحثاً عن موقع'],
     }]);
     showToast('المعاينة جاهزة');
   };
@@ -437,7 +442,7 @@ export default function PalNovaaEnginePage() {
     clearTimeout(timerRef.current);
     setView('home'); setMessages([]); setHtml(''); setTitle('محادثة جديدة'); setSummary('');
     setSlug(null); setPublicUrl(''); setDirty(false); setPrompt(''); setPrompt2(''); setMenu(null);
-    setDatasets([]); setAttached([]); setIframeErr('');
+    setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch('');
   };
   const openProject = async (p) => {
     setMenu(null);
@@ -494,7 +499,8 @@ export default function PalNovaaEnginePage() {
           </div>
           <button className="new-btn" onClick={newProject}>{Ico.plus}<span>مشروع جديد</span><kbd>جديد</kbd></button>
           <nav className="nav">
-            <a className="active">{Ico.chat}<span>المحادثات</span></a>
+            <a className={view === 'home' ? 'active' : ''} onClick={() => { if (view === 'templates') setView('home'); }}>{Ico.chat}<span>المحادثات</span></a>
+            <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
           </nav>
@@ -502,8 +508,9 @@ export default function PalNovaaEnginePage() {
           <div className="history">
             {projects.length === 0 && <div className="empty">لا مشاريع بعد</div>}
             {projects.map((p) => (
-              <a key={p.slug} className={slug === p.slug ? 'active' : ''} title={p.title} onClick={() => openProject(p)}>
-                <span className="dot" style={{ background: 'var(--ok)' }} />{p.title}
+              <a key={p.slug} className={`hist-item ${slug === p.slug ? 'active' : ''}`} title={p.title} onClick={() => openProject(p)}>
+                <span className="dot" style={{ background: 'var(--ok)' }} /><span className="hist-title">{p.title}</span>
+                <button className="hist-del" title="حذف" onClick={(e) => deleteProject(p, e)}>{Ico.trash}</button>
               </a>
             ))}
           </div>
@@ -516,7 +523,7 @@ export default function PalNovaaEnginePage() {
         {/* ============ MAIN ============ */}
         <main className="main">
           <header className="topbar">
-            <div className="crumbs"><span>مساحة العمل</span><span className="sep">/</span><b>{title}</b></div>
+            <div className="crumbs"><span style={{ cursor: 'pointer' }} onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span><span className="sep">/</span><b>{view === 'templates' ? 'القوالب الجاهزة' : title}</b></div>
             <span className={`status-pill ${allChips.length ? 'on' : ''}`}><i /><span>{allChips.length ? `${allChips.length} مرفق` : 'لا مصدر بيانات'}</span></span>
             <div className="top-actions">
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
@@ -544,7 +551,7 @@ export default function PalNovaaEnginePage() {
                       ))}
                     </div>
                   )}
-                  <textarea value={prompt}
+                  <textarea value={prompt} maxLength={4000}
                     placeholder="صِف التطبيق الذي تريده… مثلاً: لوحة بيانات سكّان فلسطين بخريطة ومخطّطات، أو نظام إدارة مرافق، أو نموذج مسح ميدانيّ…"
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
@@ -555,17 +562,7 @@ export default function PalNovaaEnginePage() {
                     <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>
                   </div>
                 </div>
-                <div className="composer-foot"><span>Enter للإرسال · Shift + Enter لسطر جديد</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Google Tiles'}</span></div>
-
-                <div className="block-title"><h3>قوالب للبدء السريع</h3><a onClick={() => navigate('/map')}>المنصّة</a></div>
-                <div className="templates">
-                  {(templates.length ? templates : TPL).map((t, i) => (
-                    <button className="tpl" key={t.id || i} onClick={() => { setPrompt(t.prompt || t.p); }}>
-                      <div className="tpl-icon">{TICONS[t.id] || <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E07B39" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z" fill="#E07B39" fillOpacity="0.12"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>}</div>
-                      <div><b>{t.title || t.t}</b><p>{t.desc || t.d}</p>{t.tags && <div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div>}</div>
-                    </button>
-                  ))}
-                </div>
+                <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
                 <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON / CSV</a></div>
                 <div className="sources">
@@ -587,6 +584,39 @@ export default function PalNovaaEnginePage() {
               <span className="sep" /><span>{crs}</span>
               <div className="north"><span>N</span><svg ref={arrowRef} width="14" height="14" viewBox="0 0 24 24"><path d="M12 2 18 21 12 17 6 21Z" fill="none" stroke="#5A616B" strokeWidth="1.5" strokeLinejoin="round" /><path d="M12 2 12 17 6 21Z" fill="#E07B39" opacity=".8" /></svg></div>
             </div>
+          )}
+
+          {/* ===== TEMPLATES ===== */}
+          {view === 'templates' && (
+            <section className="home">
+              <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
+              <div className="home-inner" style={{ paddingTop: '5vh' }}>
+                <div className="tpl-header">
+                  <div>
+                    <h2 className="tpl-title">قوالب جاهزة للبدء السريع</h2>
+                    <p className="tpl-subtitle">اختر قالباً وابدأ البناء بنقرة واحدة — أو عدّل الوصف حسب حاجتك</p>
+                  </div>
+                  <div className="tpl-search">
+                    {Ico.search}
+                    <input type="text" placeholder="ابحث في القوالب…" value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} />
+                  </div>
+                </div>
+                <div className="templates">
+                  {(templates.length ? templates : TPL)
+                    .filter((t) => {
+                      if (!tplSearch.trim()) return true;
+                      const q = tplSearch.toLowerCase();
+                      return (t.title || t.t || '').toLowerCase().includes(q) || (t.desc || t.d || '').toLowerCase().includes(q) || (t.tags || []).some((g) => g.toLowerCase().includes(q));
+                    })
+                    .map((t, i) => (
+                    <button className="tpl" key={t.id || i} onClick={() => { setPrompt(t.prompt || t.p); setView('home'); }}>
+                      <div className="tpl-icon">{TICONS[t.id] || <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="#E07B39" strokeWidth="1.3"><path d="M16 4 4 11l12 7 12-7L16 4Z" fill="#E07B39" fillOpacity="0.12"/><path d="m4 16 12 7 12-7"/><path d="m4 21 12 7 12-7"/></svg>}</div>
+                      <div><b>{t.title || t.t}</b><p>{t.desc || t.d}</p>{t.tags && <div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div>}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
           )}
 
           {/* ===== WORKSPACE ===== */}
@@ -646,7 +676,7 @@ export default function PalNovaaEnginePage() {
               </div>
               <div className="chat-composer">
                 <div className="composer">
-                  <textarea value={prompt2} placeholder="اطلب تعديلاً: أضِف مخطّطاً، غيّر الألوان، أضِف جدولاً، صدّر PDF…"
+                  <textarea value={prompt2} maxLength={4000} placeholder="اطلب تعديلاً: أضِف مخطّطاً، غيّر الألوان، أضِف جدولاً، صدّر PDF…"
                     onChange={(e) => setPrompt2(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEdit(); } }} rows={2} />
                   <div className="composer-bar">
