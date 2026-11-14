@@ -6,9 +6,12 @@ const net = require('net');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
-const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { PutObjectCommand, DeleteObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');
 const { detectSkills, buildSkillsContext, TEMPLATES } = require('../engine-skills');
+const geojsonvt = require('geojson-vt');
+const vtpbf = require('vt-pbf');
 const router = express.Router();
 
 /* ============================================================================
@@ -49,7 +52,9 @@ const PRO_MICRO = Math.round(parseFloat(process.env.PALNOVAA_PRO_USD || '3') * 1
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET || '';
 
 const MAX_VERSIONS = 20;
-const MAX_DATASET_BYTES = 6 * 1024 * 1024;
+const MAX_DATASET_BYTES = 6 * 1024 * 1024;                                   // حدّ التخزين المباشر في قاعدة البيانات (رفع JSON)
+const MAX_GEOJSON_BYTES = parseInt(process.env.PALNOVAA_MAX_GEOJSON, 10) || 40 * 1024 * 1024; // حدّ أقصى صارم
+const TILE_THRESHOLD_BYTES = parseInt(process.env.PALNOVAA_TILE_THRESHOLD, 10) || 2_500_000;  // أكبر منه → تقطيع تايلز
 
 /* ---- التخزين على Cloudflare R2 ---- */
 const R2_BUCKET = process.env.R2_BUCKET_NAME || process.env.R2_GIS_BUCKET_NAME || '';
@@ -175,6 +180,7 @@ function ensureTable() {
                     kind TEXT NOT NULL, content TEXT, url TEXT, feature_count INTEGER DEFAULT 0,
                     owner_id INTEGER, created_at TIMESTAMPTZ DEFAULT now()
                 );`);
+            await pool.query(`ALTER TABLE engine_datasets ADD COLUMN IF NOT EXISTS meta JSONB;`);
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS engine_quota (
                     ident TEXT NOT NULL, day DATE NOT NULL, count INTEGER DEFAULT 0,
@@ -298,7 +304,8 @@ const SYSTEM_INSTRUCTION = [
     '• Flatpickr 4.6.13 — منتقي تاريخ (css+js)',
     '• SortableJS 1.15.0 — سحب وإفلات',
     '• esri-leaflet 3.0.12 — استهلاك خدمات ArcGIS REST (MapServer/FeatureServer/ImageServer) على خريطة Leaflet',
-    'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً. كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت.',
+    '• Leaflet.VectorGrid 1.3.0 — عرض التايلز المتّجهة (MVT) للبيانات الكبيرة. من jsDelivr فقط: <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>',
+    'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً — كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت، باستثناء Leaflet.VectorGrid فمن cdn.jsdelivr.net بالرابط أعلاه حرفيّاً.',
     '',
     '— الخرائط والتحليل المكانيّ (تخصّصك الأوّل) —',
     '• استخدم Leaflet 1.9.4 من cdnjs: ضمّن leaflet.css و leaflet.js.',
@@ -380,23 +387,119 @@ function countFeatures(kind, content) {
     return 0;
 }
 
+/* ---- تحليل GeoJSON بدقّة (نوع، عدد، أنواع الهندسة، النطاق، الحقول، الإسناد) ---- */
+function updateBbox(coords, bb) {
+    if (typeof coords[0] === 'number') {
+        const x = coords[0], y = coords[1];
+        if (x < bb[0]) bb[0] = x; if (y < bb[1]) bb[1] = y;
+        if (x > bb[2]) bb[2] = x; if (y > bb[3]) bb[3] = y;
+        return;
+    }
+    for (const c of coords) updateBbox(c, bb);
+}
+function analyzeGeoJSON(content) {
+    let j; try { j = JSON.parse(content); } catch { throw new Error('الملفّ ليس JSON صالحاً.'); }
+    let features;
+    if (j && j.type === 'FeatureCollection' && Array.isArray(j.features)) features = j.features;
+    else if (j && j.type === 'Feature') features = [j];
+    else if (j && typeof j.type === 'string' && j.coordinates) features = [{ type: 'Feature', geometry: j, properties: {} }];
+    else throw new Error('ليس GeoJSON صالحاً — المتوقّع FeatureCollection أو Feature أو Geometry.');
+    const geometryTypes = {}; const propKeys = new Set(); const bb = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const f of features) {
+        const g = f && f.geometry;
+        if (g && g.type) { geometryTypes[g.type] = (geometryTypes[g.type] || 0) + 1; if (g.coordinates) { try { updateBbox(g.coordinates, bb); } catch { /* */ } } }
+        if (f && f.properties) for (const k of Object.keys(f.properties)) { if (propKeys.size < 60) propKeys.add(k); }
+    }
+    let crsWarning = null;
+    const crsName = j.crs && j.crs.properties && j.crs.properties.name;
+    if (crsName && !/CRS84|:4326/i.test(crsName)) crsWarning = crsName;
+    return {
+        valid: true, type: j.type, featureCount: features.length,
+        geometryTypes, propertyKeys: [...propKeys],
+        bbox: bb[0] === Infinity ? null : bb.map((n) => +n.toFixed(6)),
+        crsWarning
+    };
+}
+
+/* ---- تخزين مجموعة بيانات (تحليل + تقرير التقطيع + حفظ + R2) ---- */
+async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 = false, publicUrl = null }) {
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (bytes > MAX_GEOJSON_BYTES) { const e = new Error(`الملفّ كبيرٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB).`); e.code = 413; throw e; }
+    let meta = { bytes }; let count = 0;
+    if (kind === 'geojson') { const a = analyzeGeoJSON(content); count = a.featureCount; meta = { ...a, bytes }; }
+    else count = countFeatures(kind, content);
+    const tiled = kind === 'geojson' && bytes > TILE_THRESHOLD_BYTES && count > 0;
+    meta.tiled = tiled; if (tiled) meta.layer = 'data';
+
+    let saved = null, useSlug = makeSlug();
+    for (let i = 0; i < 5; i++) {
+        try {
+            const r = await pool.query(
+                `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id, meta, url)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8) RETURNING id, slug, name, kind, feature_count, meta, url, created_at`,
+                [useSlug, name, kind, content, count, ownerId, JSON.stringify(meta), publicUrl]
+            );
+            saved = r.rows[0]; break;
+        } catch (e) { if (/unique/i.test(e.message)) { useSlug = makeSlug(); continue; } throw e; }
+    }
+    if (!saved) throw new Error('slug conflict');
+    if (!skipR2 && R2_ON) {
+        try {
+            const ext = kind === 'geojson' ? 'geojson' : 'csv';
+            await r2Client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: `data/${useSlug}.${ext}`, Body: content, ContentType: kind === 'geojson' ? 'application/geo+json' : 'text/csv' }));
+            if (r2Base) { const u = `${r2Base}/data/${useSlug}.${ext}`; await pool.query(`UPDATE engine_datasets SET url=$1 WHERE slug=$2`, [u, useSlug]); saved.url = u; }
+        } catch { /* */ }
+    }
+    return saved;
+}
+
+/* ---- تقطيع التايلز المتّجهة (geojson-vt + vt-pbf) مع تخزينٍ مؤقّت للفهرس ---- */
+const tileCache = new Map();                 // slug -> { index, ts }
+const TILE_CACHE_MAX = 4;
+async function getTileIndex(slug) {
+    const hit = tileCache.get(slug);
+    if (hit) { hit.ts = Date.now(); return hit; }
+    const r = await pool.query('SELECT content, kind FROM engine_datasets WHERE slug=$1', [slug]);
+    if (!r.rows.length || r.rows[0].kind !== 'geojson' || !r.rows[0].content) return null;
+    let gj; try { gj = JSON.parse(r.rows[0].content); } catch { return null; }
+    const index = geojsonvt(gj, { maxZoom: 20, tolerance: 3, extent: 4096, buffer: 64, indexMaxZoom: 5, indexMaxPoints: 100000 });
+    const entry = { index, ts: Date.now() };
+    tileCache.set(slug, entry);
+    if (tileCache.size > TILE_CACHE_MAX) {
+        let oldest = null;
+        for (const [k, v] of tileCache) if (!oldest || v.ts < oldest[1].ts) oldest = [k, v];
+        if (oldest) tileCache.delete(oldest[0]);
+    }
+    return entry;
+}
+
 /* ---- بناء نصّ حقن مصادر البيانات المرفقة في البرومبت ---- */
 function buildDatasetInjection(rows, origin) {
+    let hasArc = false, hasTiles = false;
     const lines = rows.map((d) => {
         if (d.kind === 'arcgis') {
+            hasArc = true;
             let meta = {}; try { meta = JSON.parse(d.content || '{}'); } catch { /* */ }
             const u = meta.serviceUrl || '';
             const t = meta.serviceType || 'MapServer';
             const ls = (meta.layers || []).map((l) => `${l.id}:${l.name}${l.geometryType ? ` (${l.geometryType})` : ''}`).join('، ') || '—';
             return `• خادم ArcGIS REST «${d.name}» — النوع ${t} — رابط الخدمة: ${u} — الطبقات [${ls}] — استهلكها حيّةً مباشرةً عبر esri-leaflet (dynamicMapLayer للـMapServer، featureLayer لكلّ طبقة FeatureServer). لا تحوّلها إلى GeoJSON ثابت واستخدم الرابط حرفيّاً.`;
         }
+        const meta = d.meta && typeof d.meta === 'object' ? d.meta : (() => { try { return JSON.parse(d.meta || '{}'); } catch { return {}; } })();
+        if (d.kind === 'geojson' && meta.tiled) {
+            hasTiles = true;
+            const gtypes = Object.keys(meta.geometryTypes || {}).join('، ') || 'غير معروف';
+            const keys = (meta.propertyKeys || []).slice(0, 20).join('، ') || '—';
+            const center = meta.bbox ? `مركز العرض ~[${((meta.bbox[1] + meta.bbox[3]) / 2).toFixed(4)}, ${((meta.bbox[0] + meta.bbox[2]) / 2).toFixed(4)}] (lat,lon)` : '';
+            return `• «${d.name}» — GeoJSON كبير (${d.feature_count} عنصراً، هندسة: ${gtypes}) مُقسَّم إلى تايلز متّجهة. استهلكه عبر Leaflet.VectorGrid.Protobuf من قالب الرابط: "${origin}/api/engine/datasets/${d.slug}/tiles/{z}/{x}/{y}.pbf". اسم الطبقة داخل التايل: "data". الحقول: [${keys}]. ${center}. لا تجلب الملفّ كاملاً — استعمل التايلز فقط للأداء.`;
+        }
         return `• «${d.name}» — ${String(d.kind).toUpperCase()} — ${d.feature_count || countFeatures(d.kind, d.content || '')} عنصراً — اجلبها بـ fetch("${origin}/api/engine/datasets/${d.slug}/data") — ${datasetSchema(d.kind, d.content || '')}`;
     });
-    const hasArc = rows.some((d) => d.kind === 'arcgis');
     return '\n\n[مصادر بياناتٍ حقيقيّة مرفقة — استخدمها فعليّاً وقت التشغيل بدل أيّ بياناتٍ تجريبيّة:\n'
         + lines.join('\n')
-        + '\nملاحظة: روابط الرفع تدعم CORS. '
-        + (hasArc ? 'خوادم ArcGIS تُستهلَك مباشرةً من المتصفّح عبر esri-leaflet وتُعيد الإسقاط تلقائياً من PG1923 إلى Web Mercator، فلا حاجة لأيّ تحويل يدويّ. ' : '')
+        + '\nملاحظة: روابط الرفع والتايلز تدعم CORS. '
+        + (hasArc ? 'خوادم ArcGIS تُستهلَك مباشرةً عبر esri-leaflet وتعيد الإسقاط تلقائياً من PG1923 إلى Web Mercator. ' : '')
+        + (hasTiles ? 'للبيانات المُقسَّمة تايلز: ضمّن Leaflet أوّلاً ثمّ VectorGrid، واستعمل L.vectorGrid.protobuf(قالب_الرابط,{vectorTileLayerStyles:{data:{...}},interactive:true,maxNativeZoom:20}).addTo(map) وbindPopup من خصائص الميزة. ' : '')
         + 'اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة وزرّ إعادة.]';
 }
 
@@ -641,7 +744,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
         if (dsSlugs.length) {
             try {
-                const r = await pool.query(`SELECT slug, name, kind, content, feature_count FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
+                const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
                 if (r.rows.length) {
                     const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
                     prompt += buildDatasetInjection(r.rows, origin);
@@ -692,7 +795,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
     if (dsSlugs.length) {
         try {
-            const r = await pool.query(`SELECT slug, name, kind, content, feature_count FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
+            const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
             if (r.rows.length) {
                 const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
                 prompt += buildDatasetInjection(r.rows, origin);
@@ -1020,43 +1123,87 @@ router.post('/hdx/attach', optionalAuth, async (req, res) => {
         if (/\.zip$/.test(urlPath)) return res.status(400).json({ ok: false, reason: 'الملفّ مضغوط (zip) — استخدم التنزيل على الجهاز.' });
         if (!/\.(geojson|json|csv)$/.test(urlPath) && !/geojson|^json$|csv/i.test(fmt)) return res.status(400).json({ ok: false, reason: 'الإضافة التلقائيّة تدعم GeoJSON و CSV فقط — استخدم التنزيل للصيغ الأخرى.' });
 
-        const { status, body } = await httpGetFollow(url, { maxRedirects: 5, timeoutMs: 30000, maxBytes: MAX_DATASET_BYTES + 1024 });
+        const { status, body } = await httpGetFollow(url, { maxRedirects: 5, timeoutMs: 45000, maxBytes: MAX_GEOJSON_BYTES + 1024 });
         if (status >= 400) return res.status(502).json({ ok: false, reason: `تعذّر جلب المورد (HDX ${status})` });
         if (status !== 200 || !body.trim()) return res.status(502).json({ ok: false, reason: 'المورد غير متاح للجلب المباشر — استخدم التنزيل على الجهاز.' });
         if (body.charCodeAt(0) === 0x50 && body.charCodeAt(1) === 0x4b) return res.status(400).json({ ok: false, reason: 'المورد مضغوط (zip) — استخدم التنزيل على الجهاز.' });
-        if (Buffer.byteLength(body, 'utf8') > MAX_DATASET_BYTES) return res.status(413).json({ ok: false, reason: 'الملفّ كبيرٌ جداً (الحدّ 6MB) — استخدم التنزيل بدلاً من الإضافة.' });
 
         let kind = /geojson/i.test(fmt) ? 'geojson' : (fmt === 'csv' ? 'csv' : (/^\s*[{[]/.test(body) ? 'geojson' : 'csv'));
-        if (kind === 'geojson') { try { const j = JSON.parse(body); if (!(j.type === 'FeatureCollection' || j.type === 'Feature' || Array.isArray(j.features))) kind = /^\s*[{[]/.test(body) ? 'geojson' : 'csv'; } catch { return res.status(400).json({ ok: false, reason: 'المحتوى ليس GeoJSON صالحاً' }); } }
-        const count = countFeatures(kind, body);
-        const ownerId = ownerOf(req);
-
-        let slug = makeSlug(), saved = null;
-        for (let i = 0; i < 5; i++) {
-            try {
-                const r = await pool.query(
-                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id)
-                     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, slug, name, kind, feature_count, created_at`,
-                    [slug, name, kind, body, count, ownerId]
-                );
-                saved = r.rows[0]; break;
-            } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
+        try {
+            const saved = await createDatasetFromContent({ name, kind, content: body, ownerId: ownerOf(req) });
+            return res.json({ ok: true, dataset: saved });
+        } catch (e) {
+            if (e.code === 413) return res.status(413).json({ ok: false, reason: e.message });
+            return res.status(400).json({ ok: false, reason: String(e.message || 'المحتوى غير صالح') });
         }
-        if (!saved) throw new Error('slug conflict');
-        if (R2_ON) {
-            try {
-                const ext = kind === 'geojson' ? 'geojson' : 'csv';
-                await r2Client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: `data/${slug}.${ext}`, Body: body, ContentType: kind === 'geojson' ? 'application/geo+json' : 'text/csv' }));
-                if (r2Base) { const u = `${r2Base}/data/${slug}.${ext}`; await pool.query(`UPDATE engine_datasets SET url=$1 WHERE slug=$2`, [u, slug]); saved.url = u; }
-            } catch { /* */ }
-        }
-        return res.json({ ok: true, dataset: saved });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
     }
 });
 
 /* ============================ البيانات (datasets) ============================ */
+/* رفع الملفّات الكبيرة مباشرةً إلى R2 (تجاوز حدّ جسم طلب Vercel ~4.5MB) */
+let r2CorsEnsured = false;
+async function ensureR2Cors() {
+    if (r2CorsEnsured || !R2_ON) return;
+    try {
+        await r2Client.send(new PutBucketCorsCommand({
+            Bucket: R2_BUCKET,
+            CORSConfiguration: { CORSRules: [{ AllowedMethods: ['GET', 'PUT', 'HEAD'], AllowedOrigins: ['*'], AllowedHeaders: ['*'], ExposeHeaders: ['ETag'], MaxAgeSeconds: 3600 }] }
+        }));
+        r2CorsEnsured = true;
+    } catch (e) { console.warn('engine: R2 CORS set failed:', e.message); }
+}
+
+// POST /api/engine/datasets/presign  { name, kind, bytes } → رابط رفع مباشر موقّع
+router.post('/datasets/presign', optionalAuth, async (req, res) => {
+    try {
+        if (!R2_ON || !r2Base) return res.json({ ok: false, reason: 'الرفع الكبير يتطلّب تفعيل التخزين السحابيّ (R2).' });
+        const b = req.body || {};
+        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv'].includes(kind)) kind = 'geojson';
+        const bytes = parseInt(b.bytes, 10) || 0;
+        if (bytes <= 0) return res.status(400).json({ ok: false, reason: 'حجمٌ غير صالح' });
+        if (bytes > MAX_GEOJSON_BYTES) return res.status(413).json({ ok: false, reason: `الملفّ كبيرٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB).` });
+        await ensureR2Cors();
+        const slug = makeSlug();
+        const ext = kind === 'geojson' ? 'geojson' : 'csv';
+        const key = `data/${slug}.${ext}`;
+        const contentType = kind === 'geojson' ? 'application/geo+json' : 'text/csv';
+        const uploadUrl = await getSignedUrl(r2Client, new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: contentType }), { expiresIn: 900 });
+        return res.json({ ok: true, slug, key, kind, uploadUrl, contentType, publicUrl: `${r2Base}/${key}` });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
+// POST /api/engine/datasets/finalize  { slug, name, kind } → يقرأ من R2 ويحلّل ويحفظ
+router.post('/datasets/finalize', optionalAuth, async (req, res) => {
+    try {
+        await ensureTable();
+        if (!R2_ON || !r2Base) return res.status(400).json({ ok: false, reason: 'التخزين السحابيّ غير مُفعّل.' });
+        const b = req.body || {};
+        const slug = (b.slug || '').toString();
+        if (!/^[a-z0-9]{5,12}$/i.test(slug)) return res.status(400).json({ ok: false, reason: 'معرّف غير صالح' });
+        const name = (b.name || 'بيانات').toString().slice(0, 160);
+        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv'].includes(kind)) kind = 'geojson';
+        const ext = kind === 'geojson' ? 'geojson' : 'csv';
+        const publicUrl = `${r2Base}/data/${slug}.${ext}`;
+        const r2Host = (() => { try { return new URL(r2Base).hostname; } catch { return ''; } })();
+        if (new URL(publicUrl).hostname !== r2Host) return res.status(400).json({ ok: false, reason: 'مصدرٌ غير متوقّع' });
+        const { status, body } = await httpGetFollow(publicUrl, { maxRedirects: 3, timeoutMs: 45000, maxBytes: MAX_GEOJSON_BYTES + 1024 });
+        if (status !== 200 || !body) return res.status(502).json({ ok: false, reason: 'تعذّر قراءة الملفّ المرفوع — أعِد المحاولة.' });
+        try {
+            const saved = await createDatasetFromContent({ name, kind, content: body, ownerId: ownerOf(req), skipR2: true, publicUrl });
+            return res.json({ ok: true, dataset: saved });
+        } catch (e) {
+            if (e.code === 413) return res.status(413).json({ ok: false, reason: e.message });
+            return res.status(400).json({ ok: false, reason: String(e.message || 'المحتوى غير صالح') });
+        }
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
 // POST /api/engine/datasets  { name, kind, content }
 router.post('/datasets', optionalAuth, async (req, res) => {
     try {
@@ -1067,33 +1214,14 @@ router.post('/datasets', optionalAuth, async (req, res) => {
         const content = (b.content || '').toString();
         if (!['geojson', 'csv'].includes(kind)) kind = /^\s*[{[]/.test(content) ? 'geojson' : 'csv';
         if (!content) return res.status(400).json({ ok: false, reason: 'empty content' });
-        if (Buffer.byteLength(content, 'utf8') > MAX_DATASET_BYTES) return res.status(413).json({ ok: false, reason: 'الملفّ كبيرٌ جداً (الحدّ 6MB).' });
-        if (kind === 'geojson') { try { JSON.parse(content); } catch { return res.status(400).json({ ok: false, reason: 'GeoJSON غير صالح.' }); } }
-        const count = countFeatures(kind, content);
-        const ownerId = ownerOf(req);
-
-        let slug = makeSlug(), saved = null;
-        for (let i = 0; i < 5; i++) {
-            try {
-                const r = await pool.query(
-                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id)
-                     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, slug, name, kind, feature_count, created_at`,
-                    [slug, name, kind, content, count, ownerId]
-                );
-                saved = r.rows[0]; break;
-            } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
+        if (Buffer.byteLength(content, 'utf8') > MAX_DATASET_BYTES) return res.status(413).json({ ok: false, reason: `الملفّ كبيرٌ جداً للرفع المباشر (الحدّ ${Math.floor(MAX_DATASET_BYTES / 1048576)}MB) — سيُضاف الرفع الكبير قريباً عبر التخزين السحابيّ.` });
+        try {
+            const saved = await createDatasetFromContent({ name, kind, content, ownerId: ownerOf(req) });
+            return res.json({ ok: true, dataset: saved });
+        } catch (e) {
+            if (e.code === 413) return res.status(413).json({ ok: false, reason: e.message });
+            return res.status(400).json({ ok: false, reason: String(e.message || 'GeoJSON غير صالح.') });
         }
-        if (!saved) throw new Error('slug conflict');
-
-        // رفعٌ اختياريّ إلى R2 أيضاً (للجلب المباشر)
-        if (R2_ON) {
-            try {
-                const ext = kind === 'geojson' ? 'geojson' : 'csv';
-                await r2Client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: `data/${slug}.${ext}`, Body: content, ContentType: kind === 'geojson' ? 'application/geo+json' : 'text/csv' }));
-                if (r2Base) { const url = `${r2Base}/data/${slug}.${ext}`; await pool.query(`UPDATE engine_datasets SET url=$1 WHERE slug=$2`, [url, slug]); saved.url = url; }
-            } catch (e) { /* ignore */ }
-        }
-        return res.json({ ok: true, dataset: saved });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
     }
@@ -1105,8 +1233,8 @@ router.get('/datasets', optionalAuth, async (req, res) => {
         await ensureTable();
         const ownerId = ownerOf(req);
         const r = ownerId
-            ? await pool.query(`SELECT slug, name, kind, feature_count, url, created_at FROM engine_datasets WHERE owner_id=$1 ORDER BY id DESC LIMIT 100`, [ownerId])
-            : await pool.query(`SELECT slug, name, kind, feature_count, url, created_at FROM engine_datasets WHERE owner_id IS NULL ORDER BY id DESC LIMIT 50`);
+            ? await pool.query(`SELECT slug, name, kind, feature_count, url, meta, created_at FROM engine_datasets WHERE owner_id=$1 ORDER BY id DESC LIMIT 100`, [ownerId])
+            : await pool.query(`SELECT slug, name, kind, feature_count, url, meta, created_at FROM engine_datasets WHERE owner_id IS NULL ORDER BY id DESC LIMIT 50`);
         return res.json({ ok: true, datasets: r.rows });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error'), datasets: [] });
@@ -1127,6 +1255,27 @@ router.get('/datasets/:slug/data', async (req, res) => {
     } catch (err) {
         res.setHeader('Access-Control-Allow-Origin', '*');
         return res.status(500).json({ error: String(err.message || 'error') });
+    }
+});
+
+// GET /api/engine/datasets/:slug/tiles/:z/:x/:y.pbf  — تايلز متّجهة (MVT) للـGeoJSON الكبير (CORS)
+router.get('/datasets/:slug/tiles/:z/:x/:y', async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    try {
+        const z = parseInt(req.params.z, 10), x = parseInt(req.params.x, 10), y = parseInt(req.params.y, 10);
+        if (![z, x, y].every(Number.isFinite) || z < 0 || z > 24) return res.status(400).end();
+        await ensureTable();
+        const entry = await getTileIndex(req.params.slug);
+        res.setHeader('Content-Type', 'application/x-protobuf');
+        res.setHeader('Cache-Control', 'public, max-age=600');
+        if (!entry) return res.status(404).end();
+        const tile = entry.index.getTile(z, x, y);
+        if (!tile || !tile.features || !tile.features.length) return res.status(204).end();
+        const buf = vtpbf.fromGeojsonVt({ data: tile }, { version: 2 });
+        return res.status(200).send(Buffer.from(buf));
+    } catch (err) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.status(500).end();
     }
 });
 

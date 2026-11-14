@@ -306,16 +306,31 @@ export default function PalNovaaEnginePage() {
   const attachDataset = (d) => { setDatasets((a) => (a.find((x) => x.slug === d.slug) ? a : [...a, d])); showToast(`أُرفقت «${d.name}»`); setMenu(null); };
   const rmDataset = (s) => setDatasets((a) => a.filter((x) => x.slug !== s));
 
+  const SAFE_INLINE_BYTES = 4 * 1024 * 1024;   // تحت حدّ جسم طلب Vercel (~4.5MB)
+  const uploadLargeFile = async (file, name, kind) => {
+    const pre = await jpost('/engine/datasets/presign', { name, kind, bytes: file.size });
+    if (!pre?.ok) return pre;
+    const put = await fetch(pre.uploadUrl, { method: 'PUT', headers: { 'Content-Type': pre.contentType }, body: file });
+    if (!put.ok) return { ok: false, reason: `فشل الرفع إلى التخزين (${put.status})` };
+    return jpost('/engine/datasets/finalize', { slug: pre.slug, name, kind });
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; if (e.target) e.target.value = '';
     if (!f) return;
-    if (f.size > 6 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 6MB)'); return; }
-    const text = await f.text();
+    if (f.size > 40 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 40MB)'); return; }
     const kind = /\.csv$/i.test(f.name) ? 'csv' : 'geojson';
-    showToast('جارٍ رفع البيانات…');
-    const d = await jpost('/engine/datasets', { name: f.name.replace(/\.[^.]+$/, ''), kind, content: text });
-    if (d?.ok) { setMyDatasets((a) => [d.dataset, ...a]); attachDataset(d.dataset); showToast(`أُرفقت «${d.dataset.name}» (${d.dataset.feature_count} عنصر)`); }
-    else showToast(d?.reason || 'تعذّر الرفع');
+    const name = f.name.replace(/\.[^.]+$/, '');
+    showToast(f.size > SAFE_INLINE_BYTES ? 'جارٍ رفع الملفّ الكبير…' : 'جارٍ رفع البيانات…');
+    try {
+      const d = f.size > SAFE_INLINE_BYTES
+        ? await uploadLargeFile(f, name, kind)
+        : await jpost('/engine/datasets', { name, kind, content: await f.text() });
+      if (d?.ok) {
+        setMyDatasets((a) => [d.dataset, ...a]); attachDataset(d.dataset);
+        const tiled = d.dataset.meta && d.dataset.meta.tiled;
+        showToast(`أُرفقت «${d.dataset.name}» (${d.dataset.feature_count} عنصر${tiled ? '، مُقسَّمة إلى تايلز' : ''})`);
+      } else showToast(d?.reason || 'تعذّر الرفع');
+    } catch (err) { showToast('تعذّر الرفع: ' + String(err.message || err).slice(0, 50)); }
   };
 
   const openMenu = (name, e) => {
@@ -599,7 +614,12 @@ export default function PalNovaaEnginePage() {
   const previewDoc = html ? injectCatcher(html) : '';
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : (k || 'DATA').toUpperCase());
   const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : (k || 'D').slice(0, 4).toUpperCase());
-  const dsMeta = (d) => (d.kind === 'arcgis' ? `ArcGIS · ${d.feature_count} طبقة` : `${(d.kind || '').toUpperCase()} · ${d.feature_count}`);
+  const dsMeta = (d) => {
+    if (d.kind === 'arcgis') return `ArcGIS · ${d.feature_count} طبقة`;
+    const gt = d.meta && d.meta.geometryTypes ? Object.keys(d.meta.geometryTypes)[0]?.replace(/^Multi/, '') : null;
+    const tiled = d.meta && d.meta.tiled ? ' · تايلز' : '';
+    return `${(d.kind || '').toUpperCase()} · ${d.feature_count}${gt ? ` · ${gt}` : ''}${tiled}`;
+  };
   const allChips = [...attached.map((k) => ({ k, t: SRC[k].t, n: SRC[k].n, kind: 'src' })), ...datasets.map((d) => ({ k: d.slug, t: dsLabel(d.kind), n: d.name, kind: 'ds' }))];
 
   /* =========================================================================== */
