@@ -317,18 +317,22 @@ export default function PalNovaaEnginePage() {
   const onFile = async (e) => {
     const f = e.target.files?.[0]; if (e.target) e.target.value = '';
     if (!f) return;
-    if (f.size > 40 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 40MB)'); return; }
-    const kind = /\.csv$/i.test(f.name) ? 'csv' : 'geojson';
+    const isTiff = /\.(tif|tiff|geotiff)$/i.test(f.name);
+    const maxBytes = isTiff ? 500 * 1024 * 1024 : 40 * 1024 * 1024;
+    if (f.size > maxBytes) { showToast(`الملفّ كبيرٌ جداً (الحدّ ${isTiff ? 500 : 40}MB)`); return; }
+    const kind = isTiff ? 'geotiff' : (/\.csv$/i.test(f.name) ? 'csv' : 'geojson');
     const name = f.name.replace(/\.[^.]+$/, '');
-    showToast(f.size > SAFE_INLINE_BYTES ? 'جارٍ رفع الملفّ الكبير…' : 'جارٍ رفع البيانات…');
+    showToast(isTiff ? 'جارٍ رفع صورة GeoTIFF…' : (f.size > SAFE_INLINE_BYTES ? 'جارٍ رفع الملفّ الكبير…' : 'جارٍ رفع البيانات…'));
     try {
-      const d = f.size > SAFE_INLINE_BYTES
+      // GeoTIFF دائماً عبر الرفع المباشر (ثنائيّ)؛ GeoJSON/CSV: مباشر إن كبُر وإلّا JSON
+      const d = (isTiff || f.size > SAFE_INLINE_BYTES)
         ? await uploadLargeFile(f, name, kind)
         : await jpost('/engine/datasets', { name, kind, content: await f.text() });
       if (d?.ok) {
         setMyDatasets((a) => [d.dataset, ...a]); attachDataset(d.dataset);
-        const tiled = d.dataset.meta && d.dataset.meta.tiled;
-        showToast(`أُرفقت «${d.dataset.name}» (${d.dataset.feature_count} عنصر${tiled ? '، مُقسَّمة إلى تايلز' : ''})`);
+        const m = d.dataset.meta || {};
+        const note = m.raster ? `${m.width}×${m.height}، ${m.bands} نطاق` : `${d.dataset.feature_count} عنصر${m.tiled ? '، مُقسَّمة إلى تايلز' : ''}`;
+        showToast(`أُرفقت «${d.dataset.name}» (${note})`);
       } else showToast(d?.reason || 'تعذّر الرفع');
     } catch (err) { showToast('تعذّر الرفع: ' + String(err.message || err).slice(0, 50)); }
   };
@@ -612,10 +616,11 @@ export default function PalNovaaEnginePage() {
 
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
-  const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : (k || 'DATA').toUpperCase());
-  const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : (k || 'D').slice(0, 4).toUpperCase());
+  const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
+  const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : k === 'geotiff' ? 'TIF' : (k || 'D').slice(0, 4).toUpperCase());
   const dsMeta = (d) => {
     if (d.kind === 'arcgis') return `ArcGIS · ${d.feature_count} طبقة`;
+    if (d.kind === 'geotiff') { const m = d.meta || {}; return `GeoTIFF · ${m.width || '?'}×${m.height || '?'} · ${m.bands || '?'} نطاق`; }
     const gt = d.meta && d.meta.geometryTypes ? Object.keys(d.meta.geometryTypes)[0]?.replace(/^Multi/, '') : null;
     const tiled = d.meta && d.meta.tiled ? ' · تايلز' : '';
     return `${(d.kind || '').toUpperCase()} · ${d.feature_count}${gt ? ` · ${gt}` : ''}${tiled}`;
@@ -625,7 +630,7 @@ export default function PalNovaaEnginePage() {
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl">
-      <input ref={fileRef} type="file" accept=".geojson,.json,.csv" hidden onChange={onFile} />
+      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff" hidden onChange={onFile} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
@@ -703,9 +708,9 @@ export default function PalNovaaEnginePage() {
                 </div>
                 <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
-                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON / CSV</a></div>
+                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON · CSV · GeoTIFF</a></div>
                 <div className="sources">
-                  <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson · csv</small></span></button>
+                  <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson · csv · tiff</small></span></button>
                   {myDatasets.slice(0, 4).map((d) => (
                     <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span><span className="st" /></button>
                   ))}
@@ -857,7 +862,7 @@ export default function PalNovaaEnginePage() {
         <div className="menu" style={{ top: menu.top, left: menu.left }}>
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع GeoJSON / CSV</b><small>تُخزَّن وتُستخدَم فعليّاً في التطبيق</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON · CSV · GeoTIFF — كبيرها يُقسَّم تلقائياً</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>256 مجموعة فلسطينيّة — بحث وتنزيل وإضافة</small></span></button>
             <button className="menu-item" onClick={() => { setMenu(null); setModal('postgis'); }}><span className="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>كمصدرٍ لبناء التطبيق</small></span></button>
@@ -872,7 +877,7 @@ export default function PalNovaaEnginePage() {
           </>)}
           {menu.name === 'data' && (<>
             <h6>بياناتي</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson · csv</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson · csv · tiff</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}

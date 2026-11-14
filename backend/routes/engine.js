@@ -12,6 +12,7 @@ const { r2Client } = require('../config/r2');
 const { detectSkills, buildSkillsContext, TEMPLATES } = require('../engine-skills');
 const geojsonvt = require('geojson-vt');
 const vtpbf = require('vt-pbf');
+const geotiff = require('geotiff');
 const router = express.Router();
 
 /* ============================================================================
@@ -54,6 +55,7 @@ const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET || '';
 const MAX_VERSIONS = 20;
 const MAX_DATASET_BYTES = 6 * 1024 * 1024;                                   // حدّ التخزين المباشر في قاعدة البيانات (رفع JSON)
 const MAX_GEOJSON_BYTES = parseInt(process.env.PALNOVAA_MAX_GEOJSON, 10) || 40 * 1024 * 1024; // حدّ أقصى صارم
+const MAX_GEOTIFF_BYTES = parseInt(process.env.PALNOVAA_MAX_GEOTIFF, 10) || 500 * 1024 * 1024; // GeoTIFF يُخزَّن في R2 فقط
 const TILE_THRESHOLD_BYTES = parseInt(process.env.PALNOVAA_TILE_THRESHOLD, 10) || 2_500_000;  // أكبر منه → تقطيع تايلز
 
 /* ---- التخزين على Cloudflare R2 ---- */
@@ -305,7 +307,8 @@ const SYSTEM_INSTRUCTION = [
     '• SortableJS 1.15.0 — سحب وإفلات',
     '• esri-leaflet 3.0.12 — استهلاك خدمات ArcGIS REST (MapServer/FeatureServer/ImageServer) على خريطة Leaflet',
     '• Leaflet.VectorGrid 1.3.0 — عرض التايلز المتّجهة (MVT) للبيانات الكبيرة. من jsDelivr فقط: <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>',
-    'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً — كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت، باستثناء Leaflet.VectorGrid فمن cdn.jsdelivr.net بالرابط أعلاه حرفيّاً.',
+    '• georaster + georaster-layer-for-leaflet — عرض صور GeoTIFF النقطيّة على Leaflet. من jsDelivr: georaster@1.6.0/dist/georaster.browser.bundle.min.js ثمّ georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js. تعرض حسب التكبير وتدعم COG بطلبات النطاق.',
+    'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً — كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت، باستثناء Leaflet.VectorGrid و georaster فمن cdn.jsdelivr.net بالروابط أعلاه حرفيّاً.',
     '',
     '— الخرائط والتحليل المكانيّ (تخصّصك الأوّل) —',
     '• استخدم Leaflet 1.9.4 من cdnjs: ضمّن leaflet.css و leaflet.js.',
@@ -474,10 +477,36 @@ async function getTileIndex(slug) {
     return entry;
 }
 
+/* ---- تحليل GeoTIFF (نقطيّ): الأبعاد، النطاقات، النطاق المكانيّ، الإسناد ---- */
+async function analyzeGeoTIFF(url, bytes) {
+    const tiff = await geotiff.fromUrl(url);                 // يقرأ الترويسة عبر طلبات نطاق (بلا تنزيل كامل)
+    const image = await tiff.getImage();
+    const width = image.getWidth(), height = image.getHeight();
+    const bands = image.getSamplesPerPixel();
+    let bbox = null; try { bbox = image.getBoundingBox(); } catch { /* */ }
+    let resolution = null; try { resolution = image.getResolution(); } catch { /* */ }
+    const gk = image.getGeoKeys() || {};
+    const epsg = gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || null;
+    let nodata = null; try { const fd = image.getFileDirectory(); if (fd && fd.GDAL_NODATA != null) nodata = parseFloat(fd.GDAL_NODATA); } catch { /* */ }
+    return {
+        raster: true, width, height, bands,
+        bbox: bbox ? bbox.map((n) => +Number(n).toFixed(6)) : null,
+        resolution: resolution ? resolution.map((n) => +Number(n).toFixed(8)) : null,
+        epsg, nodata, bytes: bytes || null
+    };
+}
+
 /* ---- بناء نصّ حقن مصادر البيانات المرفقة في البرومبت ---- */
 function buildDatasetInjection(rows, origin) {
-    let hasArc = false, hasTiles = false;
+    let hasArc = false, hasTiles = false, hasRaster = false;
     const lines = rows.map((d) => {
+        const meta0 = d.meta && typeof d.meta === 'object' ? d.meta : (() => { try { return JSON.parse(d.meta || '{}'); } catch { return {}; } })();
+        if (d.kind === 'geotiff') {
+            hasRaster = true;
+            const dims = meta0.width && meta0.height ? `${meta0.width}×${meta0.height}px` : '';
+            const epsg = meta0.epsg ? `EPSG:${meta0.epsg}` : 'إسناد غير معروف';
+            return `• «${d.name}» — صورة GeoTIFF نقطيّة (${dims}، ${meta0.bands || '?'} نطاق، ${epsg}) — الرابط: ${d.url || ''}. اعرضها عبر georaster + georaster-layer-for-leaflet: parseGeoraster("${d.url || ''}").then(g=>{const layer=new GeoRasterLayer({georaster:g,opacity:0.9,resolution:256});layer.addTo(map);map.fitBounds(layer.getBounds());}). المكتبة تعرض حسب التكبير (تبليط فعليّ) وتعيد الإسقاط${meta0.epsg && meta0.epsg !== 4326 ? ' (تحتاج proj4 للإسناد غير 4326)' : ''}. لا تجلب الملفّ بـfetch كامل.`;
+        }
         if (d.kind === 'arcgis') {
             hasArc = true;
             let meta = {}; try { meta = JSON.parse(d.content || '{}'); } catch { /* */ }
@@ -501,6 +530,7 @@ function buildDatasetInjection(rows, origin) {
         + '\nملاحظة: روابط الرفع والتايلز تدعم CORS. '
         + (hasArc ? 'خوادم ArcGIS تُستهلَك مباشرةً عبر esri-leaflet وتعيد الإسقاط تلقائياً من PG1923 إلى Web Mercator. ' : '')
         + (hasTiles ? 'للبيانات المُقسَّمة تايلز: ضمّن Leaflet أوّلاً ثمّ VectorGrid، واستعمل L.vectorGrid.protobuf(قالب_الرابط,{vectorTileLayerStyles:{data:{...}},interactive:true,maxNativeZoom:20}).addTo(map) وbindPopup من خصائص الميزة. ' : '')
+        + (hasRaster ? 'لصور GeoTIFF: ضمّن <script src="https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script> ثمّ <script src="https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script> بعد leaflet.js، و(للإسناد غير 4326) proj4 من cdnjs. ' : '')
         + 'اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة وزرّ إعادة.]';
 }
 
@@ -745,7 +775,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
         if (dsSlugs.length) {
             try {
-                const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
+                const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta, url FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
                 if (r.rows.length) {
                     const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
                     prompt += buildDatasetInjection(r.rows, origin);
@@ -796,7 +826,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
     if (dsSlugs.length) {
         try {
-            const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
+            const r = await pool.query(`SELECT slug, name, kind, content, feature_count, meta, url FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
             if (r.rows.length) {
                 const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
                 prompt += buildDatasetInjection(r.rows, origin);
@@ -1161,15 +1191,16 @@ router.post('/datasets/presign', optionalAuth, async (req, res) => {
     try {
         if (!R2_ON || !r2Base) return res.json({ ok: false, reason: 'الرفع الكبير يتطلّب تفعيل التخزين السحابيّ (R2).' });
         const b = req.body || {};
-        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv'].includes(kind)) kind = 'geojson';
+        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv', 'geotiff'].includes(kind)) kind = 'geojson';
         const bytes = parseInt(b.bytes, 10) || 0;
         if (bytes <= 0) return res.status(400).json({ ok: false, reason: 'حجمٌ غير صالح' });
-        if (bytes > MAX_GEOJSON_BYTES) return res.status(413).json({ ok: false, reason: `الملفّ كبيرٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB).` });
+        const cap = kind === 'geotiff' ? MAX_GEOTIFF_BYTES : MAX_GEOJSON_BYTES;
+        if (bytes > cap) return res.status(413).json({ ok: false, reason: `الملفّ كبيرٌ جداً (الحدّ ${Math.floor(cap / 1048576)}MB).` });
         await ensureR2Cors();
         const slug = makeSlug();
-        const ext = kind === 'geojson' ? 'geojson' : 'csv';
+        const ext = kind === 'geojson' ? 'geojson' : (kind === 'csv' ? 'csv' : 'tif');
         const key = `data/${slug}.${ext}`;
-        const contentType = kind === 'geojson' ? 'application/geo+json' : 'text/csv';
+        const contentType = kind === 'geojson' ? 'application/geo+json' : (kind === 'csv' ? 'text/csv' : 'image/tiff');
         const uploadUrl = await getSignedUrl(r2Client, new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: contentType }), { expiresIn: 900 });
         return res.json({ ok: true, slug, key, kind, uploadUrl, contentType, publicUrl: `${r2Base}/${key}` });
     } catch (err) {
@@ -1186,11 +1217,28 @@ router.post('/datasets/finalize', optionalAuth, async (req, res) => {
         const slug = (b.slug || '').toString();
         if (!/^[a-z0-9]{5,12}$/i.test(slug)) return res.status(400).json({ ok: false, reason: 'معرّف غير صالح' });
         const name = (b.name || 'بيانات').toString().slice(0, 160);
-        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv'].includes(kind)) kind = 'geojson';
-        const ext = kind === 'geojson' ? 'geojson' : 'csv';
+        let kind = (b.kind || '').toString().toLowerCase(); if (!['geojson', 'csv', 'geotiff'].includes(kind)) kind = 'geojson';
+        const ext = kind === 'geojson' ? 'geojson' : (kind === 'csv' ? 'csv' : 'tif');
         const publicUrl = `${r2Base}/data/${slug}.${ext}`;
         const r2Host = (() => { try { return new URL(r2Base).hostname; } catch { return ''; } })();
         if (new URL(publicUrl).hostname !== r2Host) return res.status(400).json({ ok: false, reason: 'مصدرٌ غير متوقّع' });
+
+        // GeoTIFF: ملفٌّ ثنائيّ يبقى في R2، نقرأ ترويسته فقط ونخزّن البيانات الوصفيّة
+        if (kind === 'geotiff') {
+            let meta;
+            try { meta = await analyzeGeoTIFF(publicUrl, parseInt(b.bytes, 10) || null); }
+            catch (e) { return res.status(400).json({ ok: false, reason: 'تعذّر قراءة GeoTIFF (تأكّد من صحّة الملفّ): ' + String(e.message || '').slice(0, 50) }); }
+            const ownerId = ownerOf(req);
+            try {
+                const r = await pool.query(
+                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id, meta, url)
+                     VALUES ($1,$2,'geotiff',NULL,0,$3,$4::jsonb,$5) RETURNING id, slug, name, kind, feature_count, meta, url, created_at`,
+                    [slug, name, ownerId, JSON.stringify(meta), publicUrl]
+                );
+                return res.json({ ok: true, dataset: r.rows[0] });
+            } catch (e) { return res.status(500).json({ ok: false, reason: String(e.message || 'db error') }); }
+        }
+
         const { status, body } = await httpGetFollow(publicUrl, { maxRedirects: 3, timeoutMs: 45000, maxBytes: MAX_GEOJSON_BYTES + 1024 });
         if (status !== 200 || !body) return res.status(502).json({ ok: false, reason: 'تعذّر قراءة الملفّ المرفوع — أعِد المحاولة.' });
         try {

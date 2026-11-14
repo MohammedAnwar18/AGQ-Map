@@ -23,6 +23,7 @@
     "express-rate-limit": "^8.3.1",
     "express-validator": "^7.0.1",
     "geojson-vt": "^3.2.1",
+    "geotiff": "^3.0.5",
     "google-auth-library": "^11.0.2",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
