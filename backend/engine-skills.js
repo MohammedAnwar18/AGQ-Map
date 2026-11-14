@@ -21,6 +21,7 @@ const CDN = {
   flatpickrCSS:  'https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css',
   animateCSS:    'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css',
   confetti:      'https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js',
+  esriLeaflet:   'https://cdnjs.cloudflare.com/ajax/libs/esri-leaflet/3.0.12/esri-leaflet.js',
 };
 
 const SKILLS = {
@@ -163,6 +164,21 @@ const SKILLS = {
       'ارتفاع Open-Elevation: fetch(`https://api.open-elevation.com/api/v1/lookup?locations=31.95,35.23|32.22,35.26`)',
       'ترميز جغرافيّ Nominatim: fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&accept-language=ar`). حدّ: طلب/ثانية.',
       'معالجة الفشل: try/catch حول كلّ fetch. رسالة "⚠ تعذّر تحميل البيانات" مع زرّ "إعادة المحاولة". بيانات بديلة محلّيّة.',
+    ].join('\n'),
+  },
+
+  arcgis: {
+    name: 'موصّل ArcGIS REST',
+    keywords: ['arcgis','esri','mapserver','featureserver','imageserver','rest services','rest/services','geomolg','orthophoto','أورثوفوتو','أورثو','خدمة طبقات','خادم طبقات','قسائم','قطع أراضي','مخطط هيكلي','طبقات حكومية'],
+    instructions: [
+      '— مهارة: موصّل ArcGIS REST (طبقات جغرافيّة حيّة) —',
+      `ضمّن Leaflet أوّلاً ثمّ: <script src="${CDN.esriLeaflet}"></script> (بعد leaflet.js مباشرةً).`,
+      'طبقة خريطة ديناميكيّة (MapServer — قسائم، مبانٍ، طرق، أورثوفوتو، مخطّطات): const lyr=L.esri.dynamicMapLayer({url:"<serviceUrl>/MapServer", opacity:0.85, useCors:true}).addTo(map); وللطبقات الفرعيّة حدّد layers:[0,1].',
+      'طبقة متّجهة تفاعليّة (FeatureServer): const fl=L.esri.featureLayer({url:"<serviceUrl>/FeatureServer/<layerId>", style:()=>({color:"#E07B39",weight:1.5,fillOpacity:0.25})}).addTo(map); fl.bindPopup(l=>L.Util.template("<b>{name}</b>", l.feature.properties)); عالِج الحقول الفعليّة.',
+      'استعلام مباشر لجلب GeoJSON: fetch("<serviceUrl>/FeatureServer/<id>/query?where=1%3D1&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000").then(r=>r.json()). الخادم يعيد الإسقاط إلى 4326.',
+      'الإسناد: خوادم فلسطين (GeoMOLG) بإسقاط PG1923 (wkid 28191)؛ dynamicMapLayer و featureLayer يُعيدان الإسقاط تلقائياً إلى Web Mercator — لا تحوّل يدويّاً.',
+      'التحكّم بالطبقات: L.control.layers(baseLayers,{ "الطبقة": lyr }).addTo(map). مؤشّر تحميل أثناء جلب البلاط (lyr.on("loading"/"load")). عالِج الفشل برسالةٍ واضحة.',
+      'للأورثوفوتو كخلفيّة أساس: أضِفها كطبقة سفليّة ثمّ الطبقات المتّجهة فوقها، واضبط setView على مركز fullExtent للخدمة.',
     ].join('\n'),
   },
 

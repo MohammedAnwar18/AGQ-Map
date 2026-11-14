@@ -1,5 +1,8 @@
 const express = require('express');
 const https = require('https');
+const http = require('http');
+const dns = require('dns').promises;
+const net = require('net');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
@@ -79,6 +82,51 @@ const postJSON = (url, bodyObj, headers = {}, timeoutMs = 60000) => new Promise(
     req.on('error', reject);
     req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
     req.write(body); req.end();
+});
+
+/* ---- حماية SSRF: منع العناوين الداخليّة ---- */
+function isPrivateIp(ip) {
+    if (net.isIPv4(ip)) {
+        const p = ip.split('.').map(Number);
+        if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+        if (p[0] === 169 && p[1] === 254) return true;                 // link-local
+        if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+        if (p[0] === 192 && p[1] === 168) return true;
+        if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true;    // CGNAT
+        return false;
+    }
+    const low = (ip || '').toLowerCase();
+    if (low === '::1' || low === '::') return true;
+    if (low.startsWith('fe80') || low.startsWith('fc') || low.startsWith('fd')) return true;
+    if (low.startsWith('::ffff:')) return isPrivateIp(low.slice(7));
+    return false;
+}
+async function assertPublicHttpUrl(raw) {
+    let u; try { u = new URL(raw); } catch { throw new Error('رابط غير صالح'); }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('يُسمح بـ http(s) فقط');
+    const host = u.hostname;
+    if (/^(localhost|.*\.local|.*\.internal)$/i.test(host)) throw new Error('مضيفٌ محليّ غير مسموح');
+    if (net.isIP(host) && isPrivateIp(host)) throw new Error('عنوانٌ داخليّ غير مسموح');
+    let addrs; try { addrs = await dns.lookup(host, { all: true }); } catch { throw new Error('تعذّر حلّ اسم المضيف'); }
+    for (const a of addrs) if (isPrivateIp(a.address)) throw new Error('عنوانٌ داخليّ غير مسموح');
+    return u;
+}
+/* ---- جلب GET نصّيّ (لا يتبع التحويلات لتفادي تجاوز SSRF) ---- */
+const httpGetText = (url, timeoutMs = 15000, maxBytes = 3_000_000) => new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const mod = u.protocol === 'http:' ? http : https;
+    const req = mod.request({
+        method: 'GET', hostname: u.hostname, port: u.port || undefined, path: u.pathname + u.search,
+        headers: { Accept: 'application/json', 'User-Agent': 'PalNovaa-Engine' }
+    }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400) { res.destroy(); return reject(new Error('تحويلٌ غير مسموح')); }
+        let data = ''; res.setEncoding('utf8');
+        res.on('data', (c) => { data += c; if (data.length > maxBytes) req.destroy(new Error('استجابةٌ كبيرةٌ جداً')); });
+        res.on('end', () => resolve({ status: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('مهلة الاتصال')));
+    req.end();
 });
 
 /* ---- ضمان وجود الجداول ---- */
@@ -233,6 +281,7 @@ const SYSTEM_INSTRUCTION = [
     '• Papa Parse 5.4.1 — تحليل/تصدير CSV',
     '• Flatpickr 4.6.13 — منتقي تاريخ (css+js)',
     '• SortableJS 1.15.0 — سحب وإفلات',
+    '• esri-leaflet 3.0.12 — استهلاك خدمات ArcGIS REST (MapServer/FeatureServer/ImageServer) على خريطة Leaflet',
     'استخدم فقط المكتبات التي يحتاجها التطبيق فعلاً. كلّها من cdnjs.cloudflare.com بإصدارٍ مثبّت.',
     '',
     '— الخرائط والتحليل المكانيّ (تخصّصك الأوّل) —',
@@ -245,6 +294,7 @@ const SYSTEM_INSTRUCTION = [
     '• إن زُوِّدت بروابط بياناتٍ حقيقيّة (datasets) فاجلبها فعليّاً عبر fetch واعرضها، وعالِج الفشل بلُطف (رسالة + زرّ إعادة).',
     '• إن لم تُزوَّد ببيانات: ولّد بياناتٍ تجريبيّة واقعيّة ومتنوّعة مناسبة للسياق بأسماءٍ عربيّة صحيحة.',
     '• موصّلات مجّانيّة بلا مفتاح: OpenStreetMap Overpass API (amenities, buildings, roads)، Open-Meteo (طقس)، Open-Elevation، Nominatim (ترميز جغرافيّ).',
+    '• خدمات ArcGIS REST (مثل GeoMOLG الفلسطينيّ): حمّل esri-leaflet بعد leaflet.js. لطبقة MapServer ديناميكيّة (قسائم/مبانٍ/أورثوفوتو): L.esri.dynamicMapLayer({url:"<svc>/MapServer",opacity:0.8}).addTo(map). لطبقة FeatureServer متّجهة: L.esri.featureLayer({url:"<svc>/FeatureServer/<layerId>"}).addTo(map) مع bindPopup. الخوادم تعيد الإسقاط تلقائياً (PG1923 wkid:28191 → Web Mercator). استخدم رابط الخدمة المُعطى حرفيّاً دون تعديل.',
     '• لوّن الطبقات المكانيّة ترميزاً متدرّجاً (choropleth) وأضِف popup لخصائص كلّ عنصر.',
     '',
     '— الواجهة والتصميم —',
@@ -312,6 +362,26 @@ function countFeatures(kind, content) {
         if (kind === 'csv') { return Math.max(0, content.split(/\r?\n/).filter((l) => l.trim()).length - 1); }
     } catch { /* */ }
     return 0;
+}
+
+/* ---- بناء نصّ حقن مصادر البيانات المرفقة في البرومبت ---- */
+function buildDatasetInjection(rows, origin) {
+    const lines = rows.map((d) => {
+        if (d.kind === 'arcgis') {
+            let meta = {}; try { meta = JSON.parse(d.content || '{}'); } catch { /* */ }
+            const u = meta.serviceUrl || '';
+            const t = meta.serviceType || 'MapServer';
+            const ls = (meta.layers || []).map((l) => `${l.id}:${l.name}${l.geometryType ? ` (${l.geometryType})` : ''}`).join('، ') || '—';
+            return `• خادم ArcGIS REST «${d.name}» — النوع ${t} — رابط الخدمة: ${u} — الطبقات [${ls}] — استهلكها حيّةً مباشرةً عبر esri-leaflet (dynamicMapLayer للـMapServer، featureLayer لكلّ طبقة FeatureServer). لا تحوّلها إلى GeoJSON ثابت واستخدم الرابط حرفيّاً.`;
+        }
+        return `• «${d.name}» — ${String(d.kind).toUpperCase()} — ${d.feature_count || countFeatures(d.kind, d.content || '')} عنصراً — اجلبها بـ fetch("${origin}/api/engine/datasets/${d.slug}/data") — ${datasetSchema(d.kind, d.content || '')}`;
+    });
+    const hasArc = rows.some((d) => d.kind === 'arcgis');
+    return '\n\n[مصادر بياناتٍ حقيقيّة مرفقة — استخدمها فعليّاً وقت التشغيل بدل أيّ بياناتٍ تجريبيّة:\n'
+        + lines.join('\n')
+        + '\nملاحظة: روابط الرفع تدعم CORS. '
+        + (hasArc ? 'خوادم ArcGIS تُستهلَك مباشرةً من المتصفّح عبر esri-leaflet وتُعيد الإسقاط تلقائياً من PG1923 إلى Web Mercator، فلا حاجة لأيّ تحويل يدويّ. ' : '')
+        + 'اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة وزرّ إعادة.]';
 }
 
 /* ---- المزوّد ---- */
@@ -558,8 +628,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
                 const r = await pool.query(`SELECT slug, name, kind, content, feature_count FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
                 if (r.rows.length) {
                     const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
-                    const lines = r.rows.map((d) => `• «${d.name}» — ${String(d.kind).toUpperCase()} — ${d.feature_count || countFeatures(d.kind, d.content || '')} عنصراً — اجلبها بـ fetch("${origin}/api/engine/datasets/${d.slug}/data") — ${datasetSchema(d.kind, d.content || '')}`);
-                    prompt += '\n\n[بياناتٌ حقيقيّة مرفقة — استخدمها فعليّاً عبر fetch وقت التشغيل بدل أيّ بيانات تجريبيّة:\n' + lines.join('\n') + '\nملاحظة: الروابط تدعم CORS. اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة.]';
+                    prompt += buildDatasetInjection(r.rows, origin);
                 }
             } catch { /* */ }
         }
@@ -610,8 +679,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
             const r = await pool.query(`SELECT slug, name, kind, content, feature_count FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
             if (r.rows.length) {
                 const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
-                const lines = r.rows.map((d) => `• «${d.name}» — ${String(d.kind).toUpperCase()} — ${d.feature_count || countFeatures(d.kind, d.content || '')} عنصراً — اجلبها بـ fetch("${origin}/api/engine/datasets/${d.slug}/data") — ${datasetSchema(d.kind, d.content || '')}`);
-                prompt += '\n\n[بياناتٌ حقيقيّة مرفقة — استخدمها فعليّاً عبر fetch وقت التشغيل بدل أيّ بيانات تجريبيّة:\n' + lines.join('\n') + '\nملاحظة: الروابط تدعم CORS. اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة.]';
+                prompt += buildDatasetInjection(r.rows, origin);
             }
         } catch (e) { /* ignore dataset errors */ }
     }
@@ -809,6 +877,81 @@ router.post('/projects/:slug/fork', optionalAuth, async (req, res) => {
         const publicUrl = await publishToR2(saved.slug, s.html);
         if (publicUrl) { await pool.query(`UPDATE engine_projects SET public_url=$1 WHERE slug=$2`, [publicUrl, saved.slug]); saved.public_url = publicUrl; }
         return res.json({ ok: true, project: saved, url: `/pe/${saved.slug}` });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
+    }
+});
+
+/* ============================ موصّل ArcGIS REST ============================ */
+// GET /api/engine/arcgis/browse?url=...  — يتصفّح دليل خدمات أو خدمةً مفردة (بروكسي آمن)
+router.get('/arcgis/browse', optionalAuth, async (req, res) => {
+    try {
+        let raw = (req.query.url || '').toString().trim().slice(0, 1000);
+        if (!raw) return res.status(400).json({ ok: false, reason: 'الرابط مطلوب' });
+        if (!/\/rest\/services/i.test(raw)) return res.status(400).json({ ok: false, reason: 'يجب أن يكون رابط ArcGIS REST (يحوي ‎/rest/services‎).' });
+        raw = raw.replace(/[?#].*$/, '').replace(/\/+$/, '');
+        await assertPublicHttpUrl(raw);
+        const { status, body } = await httpGetText(raw + '?f=json');
+        if (status >= 400) return res.status(502).json({ ok: false, reason: `الخادم أعاد ${status}` });
+        let j; try { j = JSON.parse(body); } catch { return res.status(502).json({ ok: false, reason: 'الاستجابة ليست JSON — تأكّد من صحّة الرابط.' }); }
+        if (j.error) return res.status(400).json({ ok: false, reason: j.error.message || 'خطأ من الخادم' });
+
+        // خدمة مفردة (MapServer / FeatureServer / ImageServer)
+        if (Array.isArray(j.layers) || j.mapName || j.serviceDataType) {
+            const m = raw.match(/\/(MapServer|FeatureServer|ImageServer)$/i);
+            const serviceType = m ? m[1] : 'MapServer';
+            const layers = (j.layers || []).slice(0, 120).map((l) => ({ id: l.id, name: l.name, geometryType: l.geometryType || null, type: l.type || null }));
+            return res.json({
+                ok: true, kind: 'service', serviceType, url: raw,
+                name: j.mapName || raw.split('/services/').pop(),
+                layers, spatialReference: j.spatialReference || null,
+                singleFusedMapCache: !!j.singleFusedMapCache, fullExtent: j.fullExtent || null,
+                description: (j.serviceDescription || j.description || '').slice(0, 300)
+            });
+        }
+        // دليل (جذر أو مجلّد)
+        if (Array.isArray(j.services) || Array.isArray(j.folders)) {
+            const services = (j.services || []).map((s) => {
+                const short = String(s.name).split('/').pop();
+                return { name: short, type: s.type, url: `${raw}/${short}/${s.type}` };
+            });
+            const folders = (j.folders || []).map((f) => ({ name: f, url: `${raw}/${f}` }));
+            return res.json({ ok: true, kind: 'directory', version: j.currentVersion || null, folders, services });
+        }
+        return res.status(400).json({ ok: false, reason: 'نوع استجابةٍ غير معروف.' });
+    } catch (err) {
+        return res.status(400).json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
+// POST /api/engine/arcgis/save  { name, url, serviceType, layers:[{id,name,geometryType}] }
+router.post('/arcgis/save', optionalAuth, async (req, res) => {
+    try {
+        await ensureTable();
+        const b = req.body || {};
+        const name = (b.name || 'خادم ArcGIS').toString().slice(0, 160);
+        const serviceUrl = (b.url || '').toString().trim().replace(/[?#].*$/, '');
+        const serviceType = ['MapServer', 'FeatureServer', 'ImageServer'].includes(b.serviceType) ? b.serviceType : 'MapServer';
+        if (!/\/rest\/services/i.test(serviceUrl)) return res.status(400).json({ ok: false, reason: 'رابط خدمة ArcGIS غير صالح.' });
+        await assertPublicHttpUrl(serviceUrl);
+        const layers = Array.isArray(b.layers) ? b.layers.slice(0, 80).map((l) => ({
+            id: Number(l.id), name: (l.name || '').toString().slice(0, 220), geometryType: l.geometryType || null
+        })).filter((l) => Number.isFinite(l.id)) : [];
+        const content = JSON.stringify({ serviceUrl, serviceType, layers });
+        const ownerId = ownerOf(req);
+        let slug = makeSlug(), saved = null;
+        for (let i = 0; i < 5; i++) {
+            try {
+                const r = await pool.query(
+                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id)
+                     VALUES ($1,$2,'arcgis',$3,$4,$5) RETURNING id, slug, name, kind, feature_count, created_at`,
+                    [slug, name, content, layers.length, ownerId]
+                );
+                saved = r.rows[0]; break;
+            } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
+        }
+        if (!saved) throw new Error('slug conflict');
+        return res.json({ ok: true, dataset: saved });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
     }

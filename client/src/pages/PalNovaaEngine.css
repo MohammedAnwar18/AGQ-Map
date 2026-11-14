@@ -256,6 +256,41 @@
 .pne-root .modal-foot .note{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px}
 .pne-root .modal-foot .sp{margin-inline-start:auto}
 
+/* ===== ArcGIS modal ===== */
+.pne-root .arcgis-modal{width:min(620px,calc(100vw - 32px))}
+.pne-root .arcgis-modal .modal-body{gap:10px;max-height:60vh;overflow:hidden;display:flex;flex-direction:column}
+.pne-root .arc-urlbar{display:flex;gap:8px}
+.pne-root .arc-urlbar input{flex:1;height:40px;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:0 12px;outline:0;font-family:var(--mono);font-size:12px;direction:ltr;text-align:left}
+.pne-root .arc-urlbar input:focus{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.pne-root .arc-urlbar .btn{height:40px;flex:none}
+.pne-root .arc-crumbs{display:flex;align-items:center;gap:10px}
+.pne-root .arc-back{font-size:12.5px;color:var(--text-2);padding:4px 10px;border:1px solid var(--line-2);border-radius:7px}
+.pne-root .arc-back:hover:not(:disabled){background:var(--surface-2);color:var(--text)}
+.pne-root .arc-back:disabled{opacity:.4;cursor:not-allowed}
+.pne-root .arc-here{font-size:11px;color:var(--accent-2);border:1px solid var(--accent-line);border-radius:6px;padding:2px 8px}
+.pne-root .arc-loading{display:flex;align-items:center;gap:10px;padding:18px 4px;color:var(--muted);font-size:13px}
+.pne-root .arc-loading .ring{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:pneSpin .8s linear infinite}
+.pne-root .arc-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;margin:-2px -4px;padding:2px 4px}
+.pne-root .arc-search{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line-2);border-radius:8px;background:var(--panel);margin-bottom:4px;position:sticky;top:0;z-index:1}
+.pne-root .arc-search svg{flex:none;color:var(--faint)}
+.pne-root .arc-search input{flex:1;background:transparent;border:0;outline:0;font-size:12.5px;color:var(--text)}
+.pne-root .arc-row{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);text-align:start}
+.pne-root .arc-row:hover{border-color:var(--accent-line);background:var(--surface-2)}
+.pne-root .arc-row .arc-ic{font-size:15px;flex:none;width:20px;text-align:center}
+.pne-root .arc-row b{flex:1;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pne-root .arc-row.folder b{color:var(--text-2)}
+.pne-root .arc-type{font-size:10.5px;color:var(--faint);flex:none}
+.pne-root .arc-svc-name{font-weight:600;font-size:14px;padding:4px 2px 8px}
+.pne-root .arc-svc-name small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:3px}
+.pne-root .arc-layer{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer}
+.pne-root .arc-layer:hover{border-color:var(--line-2);background:var(--surface-2)}
+.pne-root .arc-layer input{width:16px;height:16px;flex:none;accent-color:var(--accent);cursor:pointer}
+.pne-root .arc-lname{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.pne-root .arc-lname b{font-weight:500;font-size:13px;line-height:1.4}
+.pne-root .arc-geom{font-size:10px;color:var(--accent-2);align-self:flex-start;border:1px solid var(--accent-line);border-radius:4px;padding:0 5px}
+.pne-root .arc-lid{font-size:11px;color:var(--faint);flex:none}
+.pne-root .arc-empty{padding:16px 4px;color:var(--faint);font-size:12.5px;text-align:center}
+
 /* toast */
 .pne-root .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface-2);border:1px solid var(--line-2);border-radius:9px;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:.25s;z-index:80;box-shadow:0 14px 40px -10px rgba(0,0,0,.7)}
 .pne-root .toast.show{opacity:1;transform:translateX(-50%)}

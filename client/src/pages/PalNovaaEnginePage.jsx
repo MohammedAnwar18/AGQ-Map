@@ -197,6 +197,16 @@ export default function PalNovaaEnginePage() {
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
 
+  /* ArcGIS REST connector */
+  const ARCGIS_DEFAULT = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
+  const [arcUrl, setArcUrl] = useState(ARCGIS_DEFAULT);
+  const [arcData, setArcData] = useState(null);     // نتيجة التصفّح { kind, ... }
+  const [arcSel, setArcSel] = useState([]);         // طبقات محدّدة لخدمة
+  const [arcStack, setArcStack] = useState([]);     // مسار التصفّح للرجوع
+  const [arcBusy, setArcBusy] = useState(false);
+  const [arcErr, setArcErr] = useState('');
+  const [arcFilter, setArcFilter] = useState('');
+
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
   const threadRef = useRef(null);
@@ -479,9 +489,40 @@ export default function PalNovaaEnginePage() {
 
   const saveKey = () => { const k = keyDraft.trim(); if (k) localStorage.setItem(KEY_LS, k); else localStorage.removeItem(KEY_LS); setModal(null); showToast(k ? 'تمّ حفظ المفتاح على جهازك' : 'أُزيل المفتاح'); };
 
+  /* ---- ArcGIS REST ---- */
+  const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
+  const browseArc = async (url, push = true) => {
+    const target = (url || arcUrl || '').trim(); if (!target) return;
+    setArcBusy(true); setArcErr(''); setArcFilter('');
+    try {
+      const d = await jget(`/engine/arcgis/browse?url=${encodeURIComponent(target)}`);
+      if (d?.ok) {
+        if (push && arcData) setArcStack((s) => [...s, arcData]);
+        setArcData(d); setArcUrl(target);
+        if (d.kind === 'service') setArcSel((d.layers || []).map((l) => l.id));
+      } else { setArcErr(d?.reason || 'تعذّر التصفّح'); }
+    } catch { setArcErr('تعذّر الاتصال بالخادم'); }
+    setArcBusy(false);
+  };
+  const arcBack = () => { setArcStack((s) => { const n = [...s]; const prev = n.pop(); if (prev) { setArcData(prev); setArcErr(''); setArcFilter(''); } return n; }); };
+  const toggleArcLayer = (id) => setArcSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const attachArcgis = async () => {
+    const d = arcData; if (!d || d.kind !== 'service') return;
+    const chosen = (d.layers || []).filter((l) => arcSel.includes(l.id));
+    const name = String(d.name || 'خادم ArcGIS').split('/').pop();
+    setArcBusy(true);
+    const res = await jpost('/engine/arcgis/save', { name, url: d.url, serviceType: d.serviceType, layers: chosen });
+    setArcBusy(false);
+    if (res?.ok) { setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset); setModal(null); showToast(`أُرفق «${name}» (${chosen.length || 'كلّ'} طبقة)`); }
+    else showToast(res?.reason || 'تعذّر الحفظ');
+  };
+
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
-  const allChips = [...attached.map((k) => ({ k, t: SRC[k].t, n: SRC[k].n, kind: 'src' })), ...datasets.map((d) => ({ k: d.slug, t: (d.kind || 'DATA').toUpperCase(), n: d.name, kind: 'ds' }))];
+  const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : (k || 'DATA').toUpperCase());
+  const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : (k || 'D').slice(0, 4).toUpperCase());
+  const dsMeta = (d) => (d.kind === 'arcgis' ? `ArcGIS · ${d.feature_count} طبقة` : `${(d.kind || '').toUpperCase()} · ${d.feature_count}`);
+  const allChips = [...attached.map((k) => ({ k, t: SRC[k].t, n: SRC[k].n, kind: 'src' })), ...datasets.map((d) => ({ k: d.slug, t: dsLabel(d.kind), n: d.name, kind: 'ds' }))];
 
   /* =========================================================================== */
   return (
@@ -552,7 +593,7 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                   <textarea value={prompt} maxLength={4000}
-                    placeholder="صِف التطبيق الذي تريده… مثلاً: لوحة بيانات سكّان فلسطين بخريطة ومخطّطات، أو نظام إدارة مرافق، أو نموذج مسح ميدانيّ…"
+                    placeholder=""
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
@@ -568,7 +609,7 @@ export default function PalNovaaEnginePage() {
                 <div className="sources">
                   <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson · csv</small></span></button>
                   {myDatasets.slice(0, 4).map((d) => (
-                    <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{(d.kind || '').toUpperCase()} · {d.feature_count}</small></span><span className="st" /></button>
+                    <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span><span className="st" /></button>
                   ))}
                   {myDatasets.length === 0 && <button className="source add" onClick={() => setModal('postgis')}>{Ico.plus}ربط PostGIS</button>}
                 </div>
@@ -719,10 +760,11 @@ export default function PalNovaaEnginePage() {
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع GeoJSON / CSV</b><small>تُخزَّن وتُستخدَم فعليّاً في التطبيق</small></span></button>
+            <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={() => { setMenu(null); setModal('postgis'); }}><span className="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>كمصدرٍ لبناء التطبيق</small></span></button>
             {myDatasets.length > 0 && <h6>بياناتي</h6>}
             {myDatasets.map((d) => (
-              <button className="menu-item" key={d.slug} onClick={() => attachDataset(d)}><span className="mi-ic">{(d.kind || 'D').slice(0, 4).toUpperCase()}</span><span><b>{d.name}</b><small>{(d.kind || '').toUpperCase()} · {d.feature_count} عنصر</small></span></button>
+              <button className="menu-item" key={d.slug} onClick={() => attachDataset(d)}><span className="mi-ic">{dsIcon(d.kind)}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span></button>
             ))}
             <h6>تلميحات مصادر</h6>
             {['geojson', 'shp', 'csv', 'tif', 'wms'].map((k) => (
@@ -732,9 +774,10 @@ export default function PalNovaaEnginePage() {
           {menu.name === 'data' && (<>
             <h6>بياناتي</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson · csv</small></span></button>
+            <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}
             {myDatasets.map((d) => (
-              <div className="menu-item" key={d.slug}><span className="mi-ic">{(d.kind || 'D').slice(0, 4).toUpperCase()}</span><span onClick={() => attachDataset(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{(d.kind || '').toUpperCase()} · {d.feature_count}</small></span>
+              <div className="menu-item" key={d.slug}><span className="mi-ic">{dsIcon(d.kind)}</span><span onClick={() => attachDataset(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
                 <button className="del" onClick={async (e) => { e.stopPropagation(); await jdel(`/engine/datasets/${d.slug}`); loadDatasets(); setDatasets((a) => a.filter((x) => x.slug !== d.slug)); }}>{Ico.trash}</button></div>
             ))}
           </>)}
@@ -777,6 +820,78 @@ export default function PalNovaaEnginePage() {
               <div className="field"><label>قاعدة البيانات</label><input value={pg.db} placeholder="gis" onChange={(e) => setPg({ ...pg, db: e.target.value })} /></div>
             </div>
             <div className="modal-foot"><span className="note">بيانات الاعتماد لا تُخزَّن ولا تُرسَل للموديل.</span><button className="btn accent sp" onClick={() => { addSrc('postgis', pg.db ? `PostGIS · ${pg.db}` : 'PostGIS'); setModal(null); setPg({ host: '', db: '' }); }}>ربط المصدر</button></div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ MODAL: ARCGIS REST ============ */}
+      {modal === 'arcgis' && (
+        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
+          <div className="modal arcgis-modal">
+            <div className="modal-head">
+              <span className="s-ic">{Ico.db}</span>
+              <div><b>ربط خادم ArcGIS REST</b><small>تصفّح الخدمات واختر الطبقات الحيّة لبناء تطبيقك عليها</small></div>
+              <button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button>
+            </div>
+            <div className="modal-body">
+              <div className="arc-urlbar">
+                <input value={arcUrl} placeholder="https://…/rest/services" spellCheck={false}
+                  onChange={(e) => setArcUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') browseArc(arcUrl, false); }} />
+                <button className="btn accent" disabled={arcBusy || !arcUrl.trim()} onClick={() => browseArc(arcUrl, false)}>{arcBusy ? '…' : 'تصفّح'}</button>
+              </div>
+
+              {(arcStack.length > 0 || (arcData && arcData.kind === 'service')) && (
+                <div className="arc-crumbs">
+                  <button className="arc-back" onClick={arcBack} disabled={!arcStack.length}>← رجوع</button>
+                  {arcData?.kind === 'service' && <span className="arc-here mono">{arcData.serviceType}</span>}
+                </div>
+              )}
+
+              {arcErr && <div className="msg-err" style={{ marginTop: 4 }}>⚠️ {arcErr}</div>}
+
+              {arcBusy && !arcData && <div className="arc-loading"><span className="ring" /> جارٍ التصفّح…</div>}
+
+              {/* دليل: مجلّدات + خدمات */}
+              {arcData && arcData.kind === 'directory' && (
+                <div className="arc-list">
+                  <div className="arc-search">{Ico.search}<input placeholder="تصفية بالاسم…" value={arcFilter} onChange={(e) => setArcFilter(e.target.value)} /></div>
+                  {arcData.folders?.filter((f) => f.name.toLowerCase().includes(arcFilter.toLowerCase())).map((f) => (
+                    <button className="arc-row folder" key={f.url} onClick={() => browseArc(f.url)}>
+                      <span className="arc-ic">📁</span><b>{f.name}</b><span className="arc-type">مجلّد</span>
+                    </button>
+                  ))}
+                  {arcData.services?.filter((s) => s.name.toLowerCase().includes(arcFilter.toLowerCase())).map((s) => (
+                    <button className="arc-row" key={s.url} onClick={() => browseArc(s.url)}>
+                      <span className="arc-ic">{s.type === 'FeatureServer' ? '▦' : s.type === 'ImageServer' ? '🛰' : '🗺'}</span>
+                      <b>{s.name}</b><span className="arc-type mono">{s.type}</span>
+                    </button>
+                  ))}
+                  {!arcData.folders?.length && !arcData.services?.length && <div className="arc-empty">لا خدمات في هذا المسار.</div>}
+                </div>
+              )}
+
+              {/* خدمة: اختيار الطبقات */}
+              {arcData && arcData.kind === 'service' && (
+                <div className="arc-list">
+                  <div className="arc-svc-name">{String(arcData.name).split('/').pop()}{arcData.description ? <small>{arcData.description}</small> : null}</div>
+                  {(arcData.layers || []).length === 0 && <div className="arc-empty">لا طبقات في هذه الخدمة.</div>}
+                  {(arcData.layers || []).map((l) => (
+                    <label className="arc-layer" key={l.id}>
+                      <input type="checkbox" checked={arcSel.includes(l.id)} onChange={() => toggleArcLayer(l.id)} />
+                      <span className="arc-lname"><b>{l.name}</b>{l.geometryType && <span className="arc-geom mono">{l.geometryType.replace('esriGeometry', '')}</span>}</span>
+                      <span className="arc-lid mono">#{l.id}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="modal-foot">
+              <span className="note">تُستهلَك الطبقات حيّةً عبر esri-leaflet — الخادم يعيد الإسقاط تلقائياً.</span>
+              {arcData?.kind === 'service'
+                ? <button className="btn accent sp" disabled={arcBusy || !arcSel.length} onClick={attachArcgis}>أرفق {arcSel.length || ''} طبقة</button>
+                : <button className="btn sp" onClick={() => setModal(null)}>إغلاق</button>}
+            </div>
           </div>
         </div>
       )}
