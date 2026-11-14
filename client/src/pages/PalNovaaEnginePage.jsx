@@ -68,6 +68,7 @@ const Ico = {
   history: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3v6h6M3 9a9 9 0 1 1 2.5 8" /><path d="M12 8v5l3 2" /></svg>,
   fork: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="20" r="2.5" /><path d="M6 8.5v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3v-3M12 14.5v3" /></svg>,
   up: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15V3M8 7l4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /></svg>,
+  down: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>,
   tpl: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /></svg>,
   search: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.35-4.35" /></svg>,
 };
@@ -211,6 +212,7 @@ export default function PalNovaaEnginePage() {
   const [arcBusy, setArcBusy] = useState(false);
   const [arcErr, setArcErr] = useState('');
   const [arcFilter, setArcFilter] = useState('');
+  const [arcDl, setArcDl] = useState(null);         // معرّف الطبقة قيد التنزيل
 
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
@@ -520,6 +522,35 @@ export default function PalNovaaEnginePage() {
     setArcBusy(false);
     if (res?.ok) { setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset); setModal(null); showToast(`أُرفق «${name}» (${chosen.length || 'كلّ'} طبقة)`); }
     else showToast(res?.reason || 'تعذّر الحفظ');
+  };
+  const downloadArcLayer = async (layer) => {
+    if (!arcData || arcDl !== null) return;
+    const base = `${arcData.url}/${layer.id}/query`;
+    setArcDl(layer.id); showToast(`جارٍ تنزيل «${layer.name}»…`);
+    try {
+      let offset = 0, all = [], guard = 0;
+      while (guard++ < 120) {
+        const u = `${base}?where=1%3D1&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
+        const r = await fetch(u);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
+        const feats = j.features || [];
+        all = all.concat(feats);
+        const more = j.exceededTransferLimit || j.properties?.exceededTransferLimit;
+        if (!more || feats.length === 0) break;
+        offset += feats.length;
+      }
+      if (!all.length) { showToast('لا عناصر في هذه الطبقة'); setArcDl(null); return; }
+      const fc = { type: 'FeatureCollection', features: all };
+      const safe = String(layer.name || 'layer').replace(/[^\w؀-ۿ-]+/g, '_').slice(0, 60);
+      const blob = new Blob([JSON.stringify(fc)], { type: 'application/geo+json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `${safe}.geojson`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+      showToast(`نُزّلت «${layer.name}» (${all.length} عنصر)`);
+    } catch (e) { showToast(`تعذّر التنزيل: ${String(e.message || e).slice(0, 60)}`); }
+    setArcDl(null);
   };
 
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
@@ -888,11 +919,16 @@ export default function PalNovaaEnginePage() {
                   <div className="arc-svc-name">{String(arcData.name).split('/').pop()}{arcData.description ? <small>{arcData.description}</small> : null}</div>
                   {(arcData.layers || []).length === 0 && <div className="arc-empty">لا طبقات في هذه الخدمة.</div>}
                   {(arcData.layers || []).map((l) => (
-                    <label className="arc-layer" key={l.id}>
-                      <input type="checkbox" checked={arcSel.includes(l.id)} onChange={() => toggleArcLayer(l.id)} />
-                      <span className="arc-lname"><b>{l.name}</b>{l.geometryType && <span className="arc-geom mono">{l.geometryType.replace('esriGeometry', '')}</span>}</span>
+                    <div className="arc-layer" key={l.id}>
+                      <label className="arc-lcheck">
+                        <input type="checkbox" checked={arcSel.includes(l.id)} onChange={() => toggleArcLayer(l.id)} />
+                        <span className="arc-lname"><b>{l.name}</b>{l.geometryType && <span className="arc-geom mono">{l.geometryType.replace('esriGeometry', '')}</span>}</span>
+                      </label>
                       <span className="arc-lid mono">#{l.id}</span>
-                    </label>
+                      <button className="arc-dl" title="تنزيل الطبقة GeoJSON" disabled={arcDl !== null} onClick={() => downloadArcLayer(l)}>
+                        {arcDl === l.id ? <span className="ring" /> : Ico.down}
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
