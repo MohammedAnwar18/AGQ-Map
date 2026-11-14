@@ -221,7 +221,6 @@ export default function PalNovaaEnginePage() {
   const [hdxPage, setHdxPage] = useState(1);
   const [hdxBusy, setHdxBusy] = useState(false);
   const [hdxErr, setHdxErr] = useState('');
-  const [hdxOpen, setHdxOpen] = useState(null);     // id المجموعة المفتوحة
   const [hdxAtt, setHdxAtt] = useState(null);       // رابط المورد قيد الإضافة
 
   const contoursRef = useRef(null);
@@ -564,9 +563,19 @@ export default function PalNovaaEnginePage() {
   };
 
   /* ---- HDX ---- */
+  const HDX_TOPICS = [
+    { label: 'حدود إداريّة', q: 'administrative boundaries' },
+    { label: 'صحّة', q: 'health facilities' },
+    { label: 'تعليم', q: 'education schools' },
+    { label: 'طرق', q: 'roads' },
+    { label: 'مياه', q: 'water' },
+    { label: 'نزوح', q: 'displacement' },
+    { label: 'سكّان', q: 'population' },
+    { label: 'أمن غذائي', q: 'food security' },
+  ];
   const hdxAttachable = (r) => /\.(geojson|json|csv)$/i.test(String(r.url || '').split('?')[0]);
   const searchHdx = async (q, page) => {
-    setHdxBusy(true); setHdxErr(''); setHdxOpen(null);
+    setHdxBusy(true); setHdxErr('');
     try {
       const d = await jget(`/engine/hdx/search?q=${encodeURIComponent(q ?? hdxQ)}&page=${page || 1}`);
       if (d?.ok) { setHdxRes(d.datasets || []); setHdxCount(d.count || 0); setHdxPage(d.page || 1); }
@@ -574,7 +583,7 @@ export default function PalNovaaEnginePage() {
     } catch { setHdxErr('تعذّر الاتصال بالخادم'); }
     setHdxBusy(false);
   };
-  const openHdx = () => { setMenu(null); setHdxQ(''); setHdxErr(''); setHdxOpen(null); setModal('hdx'); searchHdx('', 1); };
+  const openHdx = () => { setMenu(null); setHdxQ(''); setHdxErr(''); setModal('hdx'); searchHdx('', 1); };
   const downloadHdxResource = (r) => { try { window.open(r.url, '_blank', 'noopener'); showToast('يبدأ التنزيل في تبويب جديد…'); } catch { showToast('تعذّر فتح رابط التنزيل'); } };
   const attachHdxResource = async (ds, r) => {
     if (hdxAtt) return;
@@ -988,47 +997,58 @@ export default function PalNovaaEnginePage() {
               <button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button>
             </div>
             <div className="modal-body">
+              <div className="hdx-explain">
+                <b>كيف تستعمل البيانات؟</b> لكلّ ملفّ خياران: <b>«أضِف كمصدر»</b> (GeoJSON/CSV) فيصير مرفقاً، ثمّ اكتب طلبك مثل «اعرض هذه البيانات على خريطة» ليبنيه المحرّك تلقائياً؛ أو <b>«تنزيل»</b> ليحفظه على جهازك.
+              </div>
               <div className="arc-urlbar">
-                <input value={hdxQ} placeholder="ابحث: صحّة، تعليم، سكّان، طرق، نزوح…" spellCheck={false}
+                <input value={hdxQ} placeholder="ابحث: health, education, roads, population…" spellCheck={false}
                   onChange={(e) => setHdxQ(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') searchHdx(hdxQ, 1); }} />
                 <button className="btn accent" disabled={hdxBusy} onClick={() => searchHdx(hdxQ, 1)}>{hdxBusy ? '…' : 'بحث'}</button>
               </div>
+              <div className="arc-presets">
+                <span>مواضيع:</span>
+                {HDX_TOPICS.map((t) => (
+                  <button key={t.q} className={hdxQ === t.q ? 'on' : ''} onClick={() => { setHdxQ(t.q); searchHdx(t.q, 1); }}>{t.label}</button>
+                ))}
+              </div>
 
               {hdxErr && <div className="msg-err" style={{ marginTop: 4 }}>⚠️ {hdxErr}</div>}
               {hdxBusy && !hdxRes.length && <div className="arc-loading"><span className="ring" /> جارٍ البحث…</div>}
-
               {!hdxBusy && !hdxErr && !hdxRes.length && <div className="arc-empty">لا نتائج — جرّب كلمةً أخرى.</div>}
 
               <div className="arc-list">
-                {hdxRes.map((ds) => (
-                  <div className="hdx-card" key={ds.id}>
-                    <button className="hdx-head" onClick={() => setHdxOpen(hdxOpen === ds.id ? null : ds.id)}>
-                      <span className="hdx-chev" style={{ transform: hdxOpen === ds.id ? 'rotate(90deg)' : 'none' }}>▸</span>
-                      <span className="hdx-info"><b>{ds.title}</b><small>{ds.org}{ds.resources.length ? ` · ${ds.resources.length} ملفّ` : ''}</small></span>
-                      <span className="hdx-fmts">{[...new Set(ds.resources.map((r) => r.format).filter(Boolean))].slice(0, 4).map((f) => <span className="hdx-fmt mono" key={f}>{f}</span>)}</span>
-                    </button>
-                    {hdxOpen === ds.id && (
-                      <div className="hdx-body">
-                        {ds.notes && <p className="hdx-notes">{ds.notes}</p>}
-                        {ds.resources.length === 0 && <div className="arc-empty">لا ملفّات قابلة للتنزيل.</div>}
-                        {ds.resources.map((r, i) => (
+                {hdxRes.map((ds) => {
+                  const resources = ds.resources || [];
+                  const fmts = [...new Set(resources.map((r) => r.format).filter(Boolean))].slice(0, 5);
+                  return (
+                    <div className="hdx-card" key={ds.id}>
+                      <div className="hdx-title">{ds.title || ds.id}</div>
+                      <div className="hdx-meta">
+                        {ds.org && <span className="hdx-org">{ds.org}</span>}
+                        {fmts.map((f) => <span className="hdx-fmt mono" key={f}>{f}</span>)}
+                      </div>
+                      {ds.notes && <p className="hdx-notes">{ds.notes}</p>}
+                      <div className="hdx-reslist">
+                        {resources.length === 0 && <div className="hdx-nores">لا ملفّات في هذه المجموعة — افتح صفحة HDX.</div>}
+                        {resources.slice(0, 6).map((r, i) => (
                           <div className="hdx-res" key={i}>
                             <span className="hdx-fmt mono">{r.format || '?'}</span>
-                            <span className="hdx-rname">{r.name}</span>
+                            <span className="hdx-rname" title={r.name}>{r.name}</span>
                             {hdxAttachable(r) && (
-                              <button className="hdx-act" title="إضافة كمصدر بيانات للمحرّك" disabled={hdxAtt !== null} onClick={() => attachHdxResource(ds, r)}>
-                                {hdxAtt === r.url ? <span className="ring" /> : Ico.plus}
+                              <button className="hdx-btn add" disabled={hdxAtt !== null} onClick={() => attachHdxResource(ds, r)}>
+                                {hdxAtt === r.url ? <span className="ring" /> : Ico.plus}<span>أضِف كمصدر</span>
                               </button>
                             )}
-                            <button className="arc-dl" title="تنزيل على الجهاز" onClick={() => downloadHdxResource(r)}>{Ico.down}</button>
+                            <button className="hdx-btn" onClick={() => downloadHdxResource(r)}>{Ico.down}<span>تنزيل</span></button>
                           </div>
                         ))}
-                        <a className="hdx-src" href={ds.url} target="_blank" rel="noopener noreferrer">فتح الصفحة على HDX ↗</a>
+                        {resources.length > 6 && <div className="hdx-more">+{resources.length - 6} ملفّ آخر على HDX</div>}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <a className="hdx-src" href={ds.url} target="_blank" rel="noopener noreferrer">فتح الصفحة الكاملة على HDX ↗</a>
+                    </div>
+                  );
+                })}
               </div>
 
               {hdxRes.length > 0 && hdxPages > 1 && (
