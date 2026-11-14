@@ -410,6 +410,7 @@ export default function PalNovaaEnginePage() {
           <nav className="nav">
             <a className="active">{Ico.chat}<span>المحادثات</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
+            <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
             <a onClick={() => navigate('/map')}>{Ico.grid}<span>عودة إلى المنصّة</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
