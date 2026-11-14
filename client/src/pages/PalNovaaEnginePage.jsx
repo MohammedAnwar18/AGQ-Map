@@ -70,6 +70,71 @@ const Ico = {
   up: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 15V3M8 7l4-4 4 4M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" /></svg>,
 };
 
+const TICONS = {
+  'population-dashboard': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="13" width="4" height="8" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
+      <rect x="10" y="8" width="4" height="13" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
+      <rect x="17" y="3" width="4" height="18" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
+    </svg>
+  ),
+  'land-use': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7BC67E" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2 3 7l9 5 9-5-9-5Z" fill="#7BC67E" fillOpacity="0.12"/>
+      <path d="m3 12 9 5 9-5"/>
+      <path d="m3 17 9 5 9-5"/>
+    </svg>
+  ),
+  'field-survey': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E07B39" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" fill="#E07B39" fillOpacity="0.15"/>
+      <path d="m9 13 2 2 4-4" strokeWidth="1.6"/>
+    </svg>
+  ),
+  'weather-monitor': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 7a4 4 0 0 0-1.2.2A5.5 5.5 0 0 0 5.4 9.1 3.5 3.5 0 0 0 6.5 16h10a3.5 3.5 0 0 0 .5-6.96Z" stroke="#5B9BD5" strokeWidth="1.4" fill="#5B9BD5" fillOpacity="0.1"/>
+      <circle cx="19" cy="4" r="2.5" stroke="#F4B942" strokeWidth="1.3" fill="#F4B942" fillOpacity="0.2"/>
+      <path d="M19 0v1M23 4h-1M19 8v-1M15 4h1M21.8 1.2l-.7.7M21.8 6.8l-.7-.7M16.2 6.8l.7-.7M16.2 1.2l.7.7" stroke="#F4B942" strokeWidth="1"/>
+    </svg>
+  ),
+  'facility-manager': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9B8EC4" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" fill="#9B8EC4" fillOpacity="0.1"/>
+      <path d="M9 21V12h6v9"/>
+      <path d="M3 8h18"/>
+      <rect x="6" y="11" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
+      <rect x="6" y="15" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
+      <rect x="16" y="11" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
+      <rect x="16" y="15" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
+    </svg>
+  ),
+  'route-analyzer': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E8715A" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="5" r="2.5" fill="#E8715A" fillOpacity="0.18"/>
+      <circle cx="19" cy="19" r="2.5" fill="#E8715A" fillOpacity="0.18"/>
+      <path d="M7 6.5c3 1.5 3 5 7 7s5 4 5 5.5" strokeWidth="1.6" strokeDasharray="0"/>
+      <path d="M12 10l1.5-1.5M12 10l-1.5 1.5" strokeWidth="1.3"/>
+    </svg>
+  ),
+  'interactive-report': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D4A843" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" fill="#D4A843" fillOpacity="0.08"/>
+      <path d="M14 2v6h6"/>
+      <path d="M8 17l2.5-4 2 2.5 3.5-5.5" strokeWidth="1.6"/>
+      <circle cx="8" cy="17" r="1" fill="#D4A843"/>
+      <circle cx="16" cy="10" r="1" fill="#D4A843"/>
+    </svg>
+  ),
+  'city-guide': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#58A6C9" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z" fill="#58A6C9" fillOpacity="0.1"/>
+      <circle cx="12" cy="10" r="3" fill="#58A6C9" fillOpacity="0.15"/>
+    </svg>
+  ),
+};
+
 /* يحقن ملتقط أخطاء التشغيل في معاينة الـiframe (المعاينة فقط، لا النسخة المنشورة) */
 function injectCatcher(h) {
   const s = `<script>(function(){function p(m){try{parent.postMessage({__pne:'err',msg:String(m).slice(0,280)},'*')}catch(e){}}window.addEventListener('error',function(e){p((e.message||'خطأ')+(e.lineno?(' @'+e.lineno):''))});window.addEventListener('unhandledrejection',function(e){p('promise: '+((e.reason&&e.reason.message)||e.reason||''))});})();<\/script>`;
@@ -486,8 +551,7 @@ export default function PalNovaaEnginePage() {
                 <div className="templates">
                   {(templates.length ? templates : TPL).map((t, i) => (
                     <button className="tpl" key={t.id || i} onClick={() => { setPrompt(t.prompt || t.p); }}>
-                      {t.icon && <div className="tpl-icon">{t.icon}</div>}
-                      {!t.icon && <div className="thumb" />}
+                      <div className="tpl-icon">{TICONS[t.id] || <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E07B39" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5Z" fill="#E07B39" fillOpacity="0.12"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>}</div>
                       <div><b>{t.title || t.t}</b><p>{t.desc || t.d}</p>{t.tags && <div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div>}</div>
                     </button>
                   ))}
