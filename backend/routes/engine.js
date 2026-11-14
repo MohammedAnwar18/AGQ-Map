@@ -1,5 +1,6 @@
 const express = require('express');
 const https = require('https');
+const crypto = require('crypto');
 const pool = require('../config/database');
 const { optionalAuth } = require('../middleware/auth');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
@@ -32,8 +33,16 @@ const ANTHROPIC_MODEL = process.env.PALNOVAA_MODEL || 'claude-sonnet-5-5';
 const SERVER_KEY = process.env.PALNOVAA_MODEL_KEY || process.env.GEMINI_API_KEY || '';
 const MAXTOK = parseInt(process.env.PALNOVAA_MAX_TOKENS, 10) || 16000;
 
-const DAILY_ANON = parseInt(process.env.PALNOVAA_DAILY_ANON, 10) || 30;
-const DAILY_USER = parseInt(process.env.PALNOVAA_DAILY_USER, 10) || 200;
+/* التقنين بالكلفة الفعليّة (µ$ لكلّ توكِن) — افتراض Claude Sonnet 5.5، قابلٌ للضبط بالبيئة.
+   الفكرة: كلّ مستخدمٍ على المفتاح المشترك يستهلك حتى FREE_USD مجّاناً، ثمّ يُطلَب Pro
+   الذي يفتح PRO_USD. من يُحضر مفتاحه الخاصّ لا يُحسَب عليه (يستهلك من رصيده). */
+const P_IN = parseFloat(process.env.PALNOVAA_PRICE_IN_U || '2');            // $2 / 1M
+const P_OUT = parseFloat(process.env.PALNOVAA_PRICE_OUT_U || '10');         // $10 / 1M
+const P_CR = parseFloat(process.env.PALNOVAA_PRICE_CACHE_READ_U || '0.1');  // $0.10 / 1M
+const P_CW = parseFloat(process.env.PALNOVAA_PRICE_CACHE_WRITE_U || '2.5'); // $2.50 / 1M
+const FREE_MICRO = Math.round(parseFloat(process.env.PALNOVAA_FREE_USD || '1') * 1e6);
+const PRO_MICRO = Math.round(parseFloat(process.env.PALNOVAA_PRO_USD || '3') * 1e6);
+const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET || '';
 
 const MAX_VERSIONS = 20;
 const MAX_DATASET_BYTES = 6 * 1024 * 1024;
@@ -107,6 +116,13 @@ function ensureTable() {
                     tok_in BIGINT DEFAULT 0, tok_out BIGINT DEFAULT 0,
                     PRIMARY KEY (ident, day)
                 );`);
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS engine_accounts (
+                    ident TEXT PRIMARY KEY, plan TEXT DEFAULT 'free',
+                    allowance_micro BIGINT DEFAULT 1000000, used_micro BIGINT DEFAULT 0,
+                    period_end TIMESTAMPTZ, paddle_sub TEXT, email TEXT,
+                    updated_at TIMESTAMPTZ DEFAULT now()
+                );`);
         })().catch((e) => { tableReady = null; throw e; });
     }
     return tableReady;
@@ -159,24 +175,36 @@ async function snapshot(projectId, label) {
     } catch (e) { console.warn('engine: snapshot failed:', e.message); }
 }
 
-/* ---- الحدود اليوميّة وتتبّع التوكِنات ---- */
-async function checkQuota(req) {
-    const ident = identOf(req);
-    const limit = ownerOf(req) ? DAILY_USER : DAILY_ANON;
-    try {
-        const r = await pool.query(
-            `INSERT INTO engine_quota (ident, day, count) VALUES ($1, CURRENT_DATE, 0)
-             ON CONFLICT (ident, day) DO UPDATE SET ident = EXCLUDED.ident RETURNING count`, [ident]);
-        const used = r.rows[0]?.count || 0;
-        return { ident, used, limit, ok: used < limit };
-    } catch (e) { return { ident, used: 0, limit, ok: true }; } // fail-open
+/* ---- حساب الكلفة والحصص (مقنَّنٌ بالدولار الفعليّ للموديل) ---- */
+function costMicro(u) { return Math.round((u?.input || 0) * P_IN + (u?.output || 0) * P_OUT + (u?.cacheRead || 0) * P_CR + (u?.cacheWrite || 0) * P_CW); }
+const balanceOf = (a) => ({
+    plan: a.plan,
+    used_usd: +(((a.used_micro || 0) / 1e6).toFixed(4)),
+    allowance_usd: +(((a.allowance_micro || 0) / 1e6).toFixed(2)),
+    remaining_usd: +((Math.max(0, (a.allowance_micro || 0) - (a.used_micro || 0))) / 1e6).toFixed(4)
+});
+async function getAccount(ident) {
+    let r = await pool.query('SELECT plan, allowance_micro, used_micro, period_end FROM engine_accounts WHERE ident=$1', [ident]);
+    if (!r.rows.length) {
+        await pool.query(`INSERT INTO engine_accounts (ident, plan, allowance_micro, used_micro) VALUES ($1,'free',$2,0) ON CONFLICT (ident) DO NOTHING`, [ident, FREE_MICRO]);
+        r = await pool.query('SELECT plan, allowance_micro, used_micro, period_end FROM engine_accounts WHERE ident=$1', [ident]);
+    }
+    let a = r.rows[0] || { plan: 'free', allowance_micro: FREE_MICRO, used_micro: 0, period_end: null };
+    // انتهاء اشتراك Pro → رجوعٌ لحصّة الخطّة المجانيّة
+    if (a.plan === 'pro' && a.period_end && new Date(a.period_end).getTime() < Date.now()) {
+        await pool.query(`UPDATE engine_accounts SET plan='free', allowance_micro=$2 WHERE ident=$1`, [ident, FREE_MICRO]);
+        a = { ...a, plan: 'free', allowance_micro: FREE_MICRO };
+    }
+    return a;
 }
+async function addCost(ident, micro) { try { await pool.query('UPDATE engine_accounts SET used_micro = used_micro + $2, updated_at = now() WHERE ident=$1', [ident, micro]); } catch (e) { /* */ } }
 async function recordUsage(ident, usage) {
     try {
         const tin = (usage?.input || 0) + (usage?.cacheRead || 0) + (usage?.cacheWrite || 0);
         await pool.query(
-            `UPDATE engine_quota SET count = count + 1, tok_in = tok_in + $2, tok_out = tok_out + $3
-             WHERE ident = $1 AND day = CURRENT_DATE`, [ident, tin, usage?.output || 0]);
+            `INSERT INTO engine_quota (ident, day, count, tok_in, tok_out) VALUES ($1, CURRENT_DATE, 1, $2, $3)
+             ON CONFLICT (ident, day) DO UPDATE SET count = engine_quota.count + 1, tok_in = engine_quota.tok_in + $2, tok_out = engine_quota.tok_out + $3`,
+            [ident, tin, usage?.output || 0]);
     } catch (e) { /* ignore */ }
 }
 
@@ -481,8 +509,13 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
 
     try {
         await ensureTable().catch(() => {});
-        const q = await checkQuota(req);
-        if (!q.ok) { send({ type: 'error', reason: 'quota', message: `بلغتَ حدّ اليوم (${q.limit} توليدة). ${ownerOf(req) ? 'جرّب غداً.' : 'سجّل الدخول لحدٍّ أعلى.'}` }); return res.end(); }
+        const ident = identOf(req);
+        const metered = !reqKey;
+        const acct = metered ? await getAccount(ident).catch(() => null) : null;
+        if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
+            send({ type: 'error', reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct) });
+            return res.end();
+        }
 
         const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
         if (dsSlugs.length) {
@@ -499,8 +532,10 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }));
         const out = parseGenerated(text, prompt);
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
-        await recordUsage(q.ident, usage);
-        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, quota: { used: q.used + 1, limit: q.limit } });
+        let balance = null;
+        if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
+        await recordUsage(ident, usage);
+        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance });
         return res.end();
     } catch (err) {
         const m = String(err.message || 'error');
@@ -522,10 +557,14 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
     if (!KEY) return res.json({ ok: false, reason: 'missing_key', model: MODEL_NAME });
 
-    // حدّ الاستخدام اليوميّ
+    // التقنين بالكلفة: يُحسَب فقط على المفتاح المشترك (لا على مفتاح المستخدم الخاصّ)
     await ensureTable().catch(() => {});
-    const q = await checkQuota(req);
-    if (!q.ok) return res.json({ ok: false, reason: 'quota', message: `بلغتَ حدّ اليوم (${q.limit} توليدة). ${ownerOf(req) ? 'جرّب غداً.' : 'سجّل الدخول لحدٍّ أعلى.'}`, model: MODEL_NAME });
+    const ident = identOf(req);
+    const metered = !reqKey;
+    let acct = metered ? await getAccount(ident).catch(() => null) : null;
+    if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
+        return res.json({ ok: false, reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct), model: MODEL_NAME });
+    }
 
     // حقن البيانات الحقيقيّة المرفقة
     const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
@@ -549,8 +588,10 @@ router.post('/generate', optionalAuth, async (req, res) => {
             if (!text) { lastErr = 'empty'; continue; }
             const out = parseGenerated(text, prompt);
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
-            await recordUsage(q.ident, usage);
-            return res.json({ ok: true, model: MODEL_NAME, usage, quota: { used: q.used + 1, limit: q.limit }, ...out });
+            let balance = null;
+            if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
+            await recordUsage(ident, usage);
+            return res.json({ ok: true, model: MODEL_NAME, usage, balance, ...out });
         } catch (err) {
             lastErr = String(err.message || 'unavailable');
             if (!isTransient(lastErr)) break;
@@ -818,6 +859,63 @@ router.delete('/datasets/:slug', optionalAuth, async (req, res) => {
         return res.json({ ok: true });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
+    }
+});
+
+/* ============================ الرصيد (balance) ============================ */
+// GET /api/engine/balance — رصيد المستخدم الحاليّ على المفتاح المشترك
+router.get('/balance', optionalAuth, async (req, res) => {
+    try {
+        await ensureTable();
+        const acct = await getAccount(identOf(req));
+        return res.json({ ok: true, balance: balanceOf(acct) });
+    } catch (err) {
+        return res.json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
+/* ============================ Paddle Webhook ============================ */
+function verifyPaddle(sigHeader, raw, secret) {
+    try {
+        const parts = {};
+        String(sigHeader || '').split(';').forEach((kv) => { const i = kv.indexOf('='); if (i > 0) parts[kv.slice(0, i)] = kv.slice(i + 1); });
+        if (!parts.ts || !parts.h1) return false;
+        const digest = crypto.createHmac('sha256', secret).update(parts.ts + ':' + raw).digest('hex');
+        const a = Buffer.from(digest), b = Buffer.from(parts.h1);
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch { return false; }
+}
+
+// POST /api/engine/webhook  (Paddle Billing) — خامِلٌ حتى ضبط PADDLE_WEBHOOK_SECRET
+router.post('/webhook', async (req, res) => {
+    try {
+        if (!PADDLE_WEBHOOK_SECRET) return res.status(200).json({ ok: true, dormant: true });
+        const raw = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {});
+        if (!verifyPaddle(req.headers['paddle-signature'], raw, PADDLE_WEBHOOK_SECRET)) return res.status(401).json({ ok: false, reason: 'bad signature' });
+        await ensureTable();
+
+        const ev = req.body || {}; const type = ev.event_type || ''; const data = ev.data || {};
+        const email = data.customer?.email || data.billing_details?.email || data.customer_email || null;
+        let ident = data.custom_data?.ident || null;
+        if (!ident && email) { const u = await pool.query('SELECT id FROM users WHERE lower(email)=lower($1) LIMIT 1', [email]); if (u.rows.length) ident = 'u:' + u.rows[0].id; }
+
+        if (/^subscription\.(created|updated|activated)$/.test(type) || type === 'transaction.completed') {
+            if (ident) {
+                const periodEnd = data.current_billing_period?.ends_at || data.next_billed_at || null;
+                const sub = data.subscription_id || data.id || null;
+                await pool.query(
+                    `INSERT INTO engine_accounts (ident, plan, allowance_micro, used_micro, period_end, paddle_sub, email, updated_at)
+                     VALUES ($1,'pro',$2,0,$3,$4,$5,now())
+                     ON CONFLICT (ident) DO UPDATE SET plan='pro', allowance_micro=$2, used_micro=0, period_end=$3, paddle_sub=$4, email=COALESCE($5, engine_accounts.email), updated_at=now()`,
+                    [ident, PRO_MICRO, periodEnd, sub, email]);
+            }
+        } else if (type === 'subscription.canceled' || type === 'subscription.paused') {
+            const sub = data.id || data.subscription_id || null;
+            if (sub) await pool.query(`UPDATE engine_accounts SET plan='free', allowance_micro=$2 WHERE paddle_sub=$1`, [sub, FREE_MICRO]);
+        }
+        return res.json({ ok: true });
+    } catch (err) {
+        return res.status(200).json({ ok: false, reason: String(err.message || 'error') });
     }
 });
 

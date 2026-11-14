@@ -105,7 +105,7 @@ export default function PalNovaaEnginePage() {
 
   const [projects, setProjects] = useState([]);
   const [versions, setVersions] = useState([]);
-  const [quota, setQuota] = useState(null);
+  const [balance, setBalance] = useState(null);
   const [iframeErr, setIframeErr] = useState('');
   const [streamCode, setStreamCode] = useState('');
   const streamBufRef = useRef('');
@@ -135,7 +135,8 @@ export default function PalNovaaEnginePage() {
 
   const loadProjects = useCallback(() => { jget('/engine/projects').then((d) => { if (d?.ok) setProjects(d.projects || []); }).catch(() => {}); }, []);
   const loadDatasets = useCallback(() => { jget('/engine/datasets').then((d) => { if (d?.ok) setMyDatasets(d.datasets || []); }).catch(() => {}); }, []);
-  useEffect(() => { loadProjects(); loadDatasets(); }, [loadProjects, loadDatasets]);
+  const loadBalance = useCallback(() => { jget('/engine/balance').then((d) => { if (d?.ok) setBalance(d.balance); }).catch(() => {}); }, []);
+  useEffect(() => { loadProjects(); loadDatasets(); loadBalance(); }, [loadProjects, loadDatasets, loadBalance]);
 
   /* contour background */
   useEffect(() => {
@@ -227,7 +228,7 @@ export default function PalNovaaEnginePage() {
 
   const finishSuccess = (d, isEdit, bId) => {
     setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
-    setDirty(true); if (d.quota) setQuota(d.quota); setTab('app');
+    setDirty(true); if (d.balance) setBalance(d.balance); setTab('app');
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
     setMessages((m) => [...m, {
       id: `n${bId}`, role: 'ai', kind: 'note',
@@ -243,6 +244,11 @@ export default function PalNovaaEnginePage() {
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
     setMessages((m) => [...m, { id: `e${bId}${Math.random().toString(36).slice(2, 5)}`, role: 'err', text }]);
     if (reason === '__missing') setModal('key');
+  };
+  const finishLimit = (bId, bal, plan) => {
+    if (bal) setBalance(bal);
+    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
+    setMessages((m) => [...m, { id: `up${bId}`, role: 'ai', kind: 'upgrade', plan: plan || bal?.plan }]);
   };
 
   const scheduleStreamFlush = (txt) => {
@@ -277,7 +283,8 @@ export default function PalNovaaEnginePage() {
           else if (ev.type === 'done') { clearTimeout(timerRef.current); setStreamCode(acc); finishSuccess(ev, isEdit, bId); return true; }
           else if (ev.type === 'error') {
             clearTimeout(timerRef.current);
-            finishError(ev.reason === 'missing_key' ? '__missing' : (ev.message || ev.reason || 'تعذّر التوليد.'), isEdit, bId);
+            if (ev.reason === 'limit_reached') finishLimit(bId, ev.balance, ev.plan);
+            else finishError(ev.reason === 'missing_key' ? '__missing' : (ev.message || ev.reason || 'تعذّر التوليد.'), isEdit, bId);
             return true;
           }
         }
@@ -290,6 +297,7 @@ export default function PalNovaaEnginePage() {
     try {
       const d = await jpost('/engine/generate', body);
       if (d?.ok && d.html) finishSuccess(d, isEdit, bId);
+      else if (d?.reason === 'limit_reached') finishLimit(bId, d.balance, d.plan);
       else finishError(d?.reason === 'missing_key' ? '__missing' : (d?.message || d?.reason || 'تعذّر التوليد.'), isEdit, bId);
     } catch { finishError('خطأ في الاتصال بالخادم. جرّب مجدّداً.', isEdit, bId); }
   };
@@ -424,7 +432,7 @@ export default function PalNovaaEnginePage() {
           </div>
           <div className="side-foot">
             <div className="avatar">PN</div>
-            <div className="who"><b>PalNovaa 1.0</b><small>{quota ? `بقي اليوم ${Math.max(0, quota.limit - quota.used)}/${quota.limit}` : 'المحرّك الذكيّ'}</small></div>
+            <div className="who"><b>PalNovaa 1.0</b><small>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · بقي $${balance.remaining_usd}` : 'المحرّك الذكيّ'}</small></div>
           </div>
         </aside>
 
@@ -470,7 +478,7 @@ export default function PalNovaaEnginePage() {
                     <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>
                   </div>
                 </div>
-                <div className="composer-foot"><span>Enter للإرسال · Shift + Enter لسطر جديد</span><span>{quota ? `بقي اليوم: ${Math.max(0, quota.limit - quota.used)}/${quota.limit}` : 'Leaflet · Turf · Google Tiles'}</span></div>
+                <div className="composer-foot"><span>Enter للإرسال · Shift + Enter لسطر جديد</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Google Tiles'}</span></div>
 
                 <div className="block-title"><h3>قوالب للبدء السريع</h3><a onClick={() => navigate('/map')}>المنصّة</a></div>
                 <div className="templates">
@@ -521,6 +529,18 @@ export default function PalNovaaEnginePage() {
                   );
                   if (m.role === 'err') return (
                     <div className="msg-ai fade-in" key={m.id}><div className="ai-av">{Ico.cube}</div><div className="body"><div className="msg-err">⚠️ {m.text}</div></div></div>
+                  );
+                  if (m.kind === 'upgrade') return (
+                    <div className="msg-ai fade-in" key={m.id}>
+                      <div className="ai-av">{Ico.cube}</div>
+                      <div className="body">
+                        <p>استنفدتَ رصيدك المجّانيّ {balance ? `($${balance.allowance_usd})` : ''}. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح رصيداً أكبر، أو أضِف مفتاحك الخاصّ.</p>
+                        <div className="suggests">
+                          <button className="suggest" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent-2)' }} onClick={() => navigate('/palnovaa-engine/pricing')}>اشترك في Pro — $5</button>
+                          <button className="suggest" onClick={() => { setKeyDraft(localStorage.getItem(KEY_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
+                        </div>
+                      </div>
+                    </div>
                   );
                   if (m.kind === 'build') return (
                     <div className="msg-ai fade-in" key={m.id}>

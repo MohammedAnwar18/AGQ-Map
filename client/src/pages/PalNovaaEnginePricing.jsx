@@ -101,8 +101,13 @@ export default function PalNovaaEnginePricing() {
     // Pro
     if (window.Paddle && PADDLE_PRO_PRICE) {
       try {
-        const email = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}')?.email; } catch { return undefined; } })();
-        window.Paddle.Checkout.open({ items: [{ priceId: PADDLE_PRO_PRICE, quantity: 1 }], ...(email ? { customer: { email } } : {}) });
+        const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+        const uid = u?.id || u?.userId;
+        window.Paddle.Checkout.open({
+          items: [{ priceId: PADDLE_PRO_PRICE, quantity: 1 }],
+          ...(u?.email ? { customer: { email: u.email } } : {}),
+          ...(uid ? { customData: { ident: `u:${uid}` } } : {}),
+        });
       } catch { showToast('تعذّر فتح الدفع، جرّب لاحقاً'); }
       return;
     }
