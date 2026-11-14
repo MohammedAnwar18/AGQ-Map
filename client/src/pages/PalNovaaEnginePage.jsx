@@ -72,65 +72,77 @@ const Ico = {
 
 const TICONS = {
   'population-dashboard': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="13" width="4" height="8" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
-      <rect x="10" y="8" width="4" height="13" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
-      <rect x="17" y="3" width="4" height="18" rx="1" stroke="#4ECDC4" strokeWidth="1.4" fill="#4ECDC4" fillOpacity="0.15"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <rect x="3" y="18" width="5" height="11" rx="1.5" fill="#4ECDC4" fillOpacity="0.2" stroke="#4ECDC4" strokeWidth="1.3"/>
+      <rect x="10.5" y="12" width="5" height="17" rx="1.5" fill="#4ECDC4" fillOpacity="0.2" stroke="#4ECDC4" strokeWidth="1.3"/>
+      <rect x="18" y="6" width="5" height="23" rx="1.5" fill="#4ECDC4" fillOpacity="0.2" stroke="#4ECDC4" strokeWidth="1.3"/>
+      <rect x="25.5" y="3" width="5" height="26" rx="1.5" fill="#4ECDC4" fillOpacity="0.25" stroke="#4ECDC4" strokeWidth="1.3"/>
+      <path d="M5.5 16 13 10l5.5 4L28 4" stroke="#4ECDC4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="28" cy="4" r="1.5" fill="#4ECDC4"/>
     </svg>
   ),
   'land-use': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7BC67E" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2 3 7l9 5 9-5-9-5Z" fill="#7BC67E" fillOpacity="0.12"/>
-      <path d="m3 12 9 5 9-5"/>
-      <path d="m3 17 9 5 9-5"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <path d="M16 4 4 11l12 7 12-7L16 4Z" fill="#7BC67E" fillOpacity="0.18" stroke="#7BC67E" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="m4 16 12 7 12-7" stroke="#7BC67E" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="m4 21 12 7 12-7" stroke="#7BC67E" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.6"/>
+      <circle cx="16" cy="11" r="2.5" fill="#7BC67E" fillOpacity="0.3" stroke="#7BC67E" strokeWidth="1"/>
     </svg>
   ),
   'field-survey': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E07B39" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-      <rect x="8" y="2" width="8" height="4" rx="1" fill="#E07B39" fillOpacity="0.15"/>
-      <path d="m9 13 2 2 4-4" strokeWidth="1.6"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <rect x="6" y="4" width="20" height="25" rx="3" fill="#E07B39" fillOpacity="0.08" stroke="#E07B39" strokeWidth="1.3"/>
+      <rect x="11" y="2" width="10" height="5" rx="2" fill="#E07B39" fillOpacity="0.2" stroke="#E07B39" strokeWidth="1.2"/>
+      <path d="m11 16 3 3 7-7" stroke="#E07B39" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M11 24h10" stroke="#E07B39" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.4"/>
     </svg>
   ),
   'weather-monitor': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 7a4 4 0 0 0-1.2.2A5.5 5.5 0 0 0 5.4 9.1 3.5 3.5 0 0 0 6.5 16h10a3.5 3.5 0 0 0 .5-6.96Z" stroke="#5B9BD5" strokeWidth="1.4" fill="#5B9BD5" fillOpacity="0.1"/>
-      <circle cx="19" cy="4" r="2.5" stroke="#F4B942" strokeWidth="1.3" fill="#F4B942" fillOpacity="0.2"/>
-      <path d="M19 0v1M23 4h-1M19 8v-1M15 4h1M21.8 1.2l-.7.7M21.8 6.8l-.7-.7M16.2 6.8l.7-.7M16.2 1.2l.7.7" stroke="#F4B942" strokeWidth="1"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <circle cx="24" cy="7" r="4" fill="#F4B942" fillOpacity="0.2" stroke="#F4B942" strokeWidth="1.2"/>
+      <path d="M24 1.5v1M24 12.5v-1M29.5 7h-1M18.5 7h1M27.9 3.1l-.7.7M27.9 10.9l-.7-.7M20.1 10.9l.7-.7M20.1 3.1l.7.7" stroke="#F4B942" strokeWidth="1" strokeLinecap="round"/>
+      <path d="M22.5 12a5.5 5.5 0 0 0-10.8-1.5A4.5 4.5 0 0 0 7.5 19h14a4 4 0 0 0 1-7.9Z" fill="#5B9BD5" fillOpacity="0.12" stroke="#5B9BD5" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M10 24v3M16 23v4M22 24v3" stroke="#5B9BD5" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.5"/>
     </svg>
   ),
   'facility-manager': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9B8EC4" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" fill="#9B8EC4" fillOpacity="0.1"/>
-      <path d="M9 21V12h6v9"/>
-      <path d="M3 8h18"/>
-      <rect x="6" y="11" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
-      <rect x="6" y="15" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
-      <rect x="16" y="11" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
-      <rect x="16" y="15" width="2" height="2" rx=".4" fill="#9B8EC4" fillOpacity="0.4"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <rect x="4" y="8" width="24" height="20" rx="2.5" fill="#9B8EC4" fillOpacity="0.1" stroke="#9B8EC4" strokeWidth="1.3"/>
+      <path d="M12 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3" stroke="#9B8EC4" strokeWidth="1.3"/>
+      <path d="M4 14h24" stroke="#9B8EC4" strokeWidth="1.2" strokeOpacity="0.4"/>
+      <rect x="8" y="11" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.35"/>
+      <rect x="14.2" y="11" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.35"/>
+      <rect x="20.5" y="11" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.35"/>
+      <rect x="8" y="17" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.25"/>
+      <rect x="14.2" y="17" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.25"/>
+      <rect x="20.5" y="17" width="3.5" height="3" rx=".8" fill="#9B8EC4" fillOpacity="0.25"/>
+      <rect x="13" y="22" width="6" height="6" rx="1" fill="#9B8EC4" fillOpacity="0.15" stroke="#9B8EC4" strokeWidth="1"/>
     </svg>
   ),
   'route-analyzer': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E8715A" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5" cy="5" r="2.5" fill="#E8715A" fillOpacity="0.18"/>
-      <circle cx="19" cy="19" r="2.5" fill="#E8715A" fillOpacity="0.18"/>
-      <path d="M7 6.5c3 1.5 3 5 7 7s5 4 5 5.5" strokeWidth="1.6" strokeDasharray="0"/>
-      <path d="M12 10l1.5-1.5M12 10l-1.5 1.5" strokeWidth="1.3"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <circle cx="6" cy="6" r="3.5" fill="#E8715A" fillOpacity="0.2" stroke="#E8715A" strokeWidth="1.3"/>
+      <circle cx="26" cy="26" r="3.5" fill="#E8715A" fillOpacity="0.2" stroke="#E8715A" strokeWidth="1.3"/>
+      <circle cx="6" cy="6" r="1.2" fill="#E8715A"/>
+      <circle cx="26" cy="26" r="1.2" fill="#E8715A"/>
+      <path d="M9 8c4 2 5 7 8 10s6 5 8 7" stroke="#E8715A" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="4 3"/>
+      <path d="M17 14l2-1.5M17 14l-1.5 2" stroke="#E8715A" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   ),
   'interactive-report': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D4A843" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" fill="#D4A843" fillOpacity="0.08"/>
-      <path d="M14 2v6h6"/>
-      <path d="M8 17l2.5-4 2 2.5 3.5-5.5" strokeWidth="1.6"/>
-      <circle cx="8" cy="17" r="1" fill="#D4A843"/>
-      <circle cx="16" cy="10" r="1" fill="#D4A843"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <path d="M19 3H8a3 3 0 0 0-3 3v20a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V11Z" fill="#D4A843" fillOpacity="0.08" stroke="#D4A843" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M19 3v8h8" stroke="#D4A843" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M10 22l3-5 2.5 3 4-6.5 3.5 5.5" stroke="#D4A843" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="10" cy="22" r="1.3" fill="#D4A843"/>
+      <circle cx="23" cy="19" r="1.3" fill="#D4A843"/>
     </svg>
   ),
   'city-guide': (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#58A6C9" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 1 1 18 0Z" fill="#58A6C9" fillOpacity="0.1"/>
-      <circle cx="12" cy="10" r="3" fill="#58A6C9" fillOpacity="0.15"/>
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+      <path d="M27 13c0 8.5-11 16-11 16S5 21.5 5 13a11 11 0 1 1 22 0Z" fill="#58A6C9" fillOpacity="0.12" stroke="#58A6C9" strokeWidth="1.3"/>
+      <circle cx="16" cy="13" r="4" fill="#58A6C9" fillOpacity="0.2" stroke="#58A6C9" strokeWidth="1.2"/>
+      <circle cx="16" cy="13" r="1.5" fill="#58A6C9"/>
     </svg>
   ),
 };
@@ -475,7 +487,6 @@ export default function PalNovaaEnginePage() {
         {/* ============ SIDEBAR ============ */}
         <aside className="sidebar">
           <div className="brand" onClick={() => collapsed && setCollapsed(false)}>
-            <div className="brand-mark">{Ico.cube}</div>
             <div className="brand-name">PalNovaa <span>Engine</span></div>
             <button className="collapse-btn" title="طيّ القائمة" onClick={(e) => { e.stopPropagation(); setCollapsed(true); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
@@ -486,7 +497,6 @@ export default function PalNovaaEnginePage() {
             <a className="active">{Ico.chat}<span>المحادثات</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
-            <a onClick={() => navigate('/map')}>{Ico.grid}<span>عودة إلى المنصّة</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
           <div className="history">
