@@ -214,6 +214,16 @@ export default function PalNovaaEnginePage() {
   const [arcFilter, setArcFilter] = useState('');
   const [arcDl, setArcDl] = useState(null);         // معرّف الطبقة قيد التنزيل
 
+  /* HDX (Humanitarian Data Exchange) connector */
+  const [hdxQ, setHdxQ] = useState('');
+  const [hdxRes, setHdxRes] = useState([]);
+  const [hdxCount, setHdxCount] = useState(0);
+  const [hdxPage, setHdxPage] = useState(1);
+  const [hdxBusy, setHdxBusy] = useState(false);
+  const [hdxErr, setHdxErr] = useState('');
+  const [hdxOpen, setHdxOpen] = useState(null);     // id المجموعة المفتوحة
+  const [hdxAtt, setHdxAtt] = useState(null);       // رابط المورد قيد الإضافة
+
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
   const threadRef = useRef(null);
@@ -553,6 +563,29 @@ export default function PalNovaaEnginePage() {
     setArcDl(null);
   };
 
+  /* ---- HDX ---- */
+  const hdxAttachable = (r) => /\.(geojson|json|csv)$/i.test(String(r.url || '').split('?')[0]);
+  const searchHdx = async (q, page) => {
+    setHdxBusy(true); setHdxErr(''); setHdxOpen(null);
+    try {
+      const d = await jget(`/engine/hdx/search?q=${encodeURIComponent(q ?? hdxQ)}&page=${page || 1}`);
+      if (d?.ok) { setHdxRes(d.datasets || []); setHdxCount(d.count || 0); setHdxPage(d.page || 1); }
+      else setHdxErr(d?.reason || 'تعذّر البحث');
+    } catch { setHdxErr('تعذّر الاتصال بالخادم'); }
+    setHdxBusy(false);
+  };
+  const openHdx = () => { setMenu(null); setHdxQ(''); setHdxErr(''); setHdxOpen(null); setModal('hdx'); searchHdx('', 1); };
+  const downloadHdxResource = (r) => { try { window.open(r.url, '_blank', 'noopener'); showToast('يبدأ التنزيل في تبويب جديد…'); } catch { showToast('تعذّر فتح رابط التنزيل'); } };
+  const attachHdxResource = async (ds, r) => {
+    if (hdxAtt) return;
+    setHdxAtt(r.url); showToast('جارٍ إضافة المورد كمصدر…');
+    const res = await jpost('/engine/hdx/attach', { url: r.url, name: `${ds.title} — ${r.name}`.slice(0, 150), format: r.format });
+    setHdxAtt(null);
+    if (res?.ok) { setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset); setModal(null); showToast(`أُضيفت كمصدر بيانات (${res.dataset.feature_count} عنصر)`); }
+    else showToast(res?.reason || 'تعذّر الإضافة');
+  };
+  const hdxPages = Math.max(1, Math.ceil(hdxCount / 20));
+
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : (k || 'DATA').toUpperCase());
@@ -797,6 +830,7 @@ export default function PalNovaaEnginePage() {
             <h6>رفع بياناتك</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع GeoJSON / CSV</b><small>تُخزَّن وتُستخدَم فعليّاً في التطبيق</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
+            <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>256 مجموعة فلسطينيّة — بحث وتنزيل وإضافة</small></span></button>
             <button className="menu-item" onClick={() => { setMenu(null); setModal('postgis'); }}><span className="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>كمصدرٍ لبناء التطبيق</small></span></button>
             {myDatasets.length > 0 && <h6>بياناتي</h6>}
             {myDatasets.map((d) => (
@@ -811,6 +845,7 @@ export default function PalNovaaEnginePage() {
             <h6>بياناتي</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson · csv</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
+            <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}
             {myDatasets.map((d) => (
               <div className="menu-item" key={d.slug}><span className="mi-ic">{dsIcon(d.kind)}</span><span onClick={() => attachDataset(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
@@ -938,6 +973,75 @@ export default function PalNovaaEnginePage() {
               {arcData?.kind === 'service'
                 ? <button className="btn accent sp" disabled={arcBusy || !arcSel.length} onClick={attachArcgis}>أرفق {arcSel.length || ''} طبقة</button>
                 : <button className="btn sp" onClick={() => setModal(null)}>إغلاق</button>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ MODAL: HDX ============ */}
+      {modal === 'hdx' && (
+        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
+          <div className="modal arcgis-modal hdx-modal">
+            <div className="modal-head">
+              <span className="s-ic">{Ico.db}</span>
+              <div><b>بيانات HDX الإنسانيّة</b><small>بورصة البيانات الإنسانيّة — مجموعات فلسطين ({hdxCount || '…'})</small></div>
+              <button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button>
+            </div>
+            <div className="modal-body">
+              <div className="arc-urlbar">
+                <input value={hdxQ} placeholder="ابحث: صحّة، تعليم، سكّان، طرق، نزوح…" spellCheck={false}
+                  onChange={(e) => setHdxQ(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') searchHdx(hdxQ, 1); }} />
+                <button className="btn accent" disabled={hdxBusy} onClick={() => searchHdx(hdxQ, 1)}>{hdxBusy ? '…' : 'بحث'}</button>
+              </div>
+
+              {hdxErr && <div className="msg-err" style={{ marginTop: 4 }}>⚠️ {hdxErr}</div>}
+              {hdxBusy && !hdxRes.length && <div className="arc-loading"><span className="ring" /> جارٍ البحث…</div>}
+
+              {!hdxBusy && !hdxErr && !hdxRes.length && <div className="arc-empty">لا نتائج — جرّب كلمةً أخرى.</div>}
+
+              <div className="arc-list">
+                {hdxRes.map((ds) => (
+                  <div className="hdx-card" key={ds.id}>
+                    <button className="hdx-head" onClick={() => setHdxOpen(hdxOpen === ds.id ? null : ds.id)}>
+                      <span className="hdx-chev" style={{ transform: hdxOpen === ds.id ? 'rotate(90deg)' : 'none' }}>▸</span>
+                      <span className="hdx-info"><b>{ds.title}</b><small>{ds.org}{ds.resources.length ? ` · ${ds.resources.length} ملفّ` : ''}</small></span>
+                      <span className="hdx-fmts">{[...new Set(ds.resources.map((r) => r.format).filter(Boolean))].slice(0, 4).map((f) => <span className="hdx-fmt mono" key={f}>{f}</span>)}</span>
+                    </button>
+                    {hdxOpen === ds.id && (
+                      <div className="hdx-body">
+                        {ds.notes && <p className="hdx-notes">{ds.notes}</p>}
+                        {ds.resources.length === 0 && <div className="arc-empty">لا ملفّات قابلة للتنزيل.</div>}
+                        {ds.resources.map((r, i) => (
+                          <div className="hdx-res" key={i}>
+                            <span className="hdx-fmt mono">{r.format || '?'}</span>
+                            <span className="hdx-rname">{r.name}</span>
+                            {hdxAttachable(r) && (
+                              <button className="hdx-act" title="إضافة كمصدر بيانات للمحرّك" disabled={hdxAtt !== null} onClick={() => attachHdxResource(ds, r)}>
+                                {hdxAtt === r.url ? <span className="ring" /> : Ico.plus}
+                              </button>
+                            )}
+                            <button className="arc-dl" title="تنزيل على الجهاز" onClick={() => downloadHdxResource(r)}>{Ico.down}</button>
+                          </div>
+                        ))}
+                        <a className="hdx-src" href={ds.url} target="_blank" rel="noopener noreferrer">فتح الصفحة على HDX ↗</a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {hdxRes.length > 0 && hdxPages > 1 && (
+                <div className="hdx-pager">
+                  <button className="btn" disabled={hdxBusy || hdxPage <= 1} onClick={() => searchHdx(hdxQ, hdxPage - 1)}>السابق</button>
+                  <span className="mono">{hdxPage} / {hdxPages}</span>
+                  <button className="btn" disabled={hdxBusy || hdxPage >= hdxPages} onClick={() => searchHdx(hdxQ, hdxPage + 1)}>التالي</button>
+                </div>
+              )}
+            </div>
+            <div className="modal-foot">
+              <span className="note">GeoJSON و CSV تُضاف كمصدر يبني عليه المحرّك؛ بقيّة الصيغ تُنزَّل على جهازك.</span>
+              <button className="btn sp" onClick={() => setModal(null)}>إغلاق</button>
             </div>
           </div>
         </div>

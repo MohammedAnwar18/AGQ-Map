@@ -111,23 +111,39 @@ async function assertPublicHttpUrl(raw) {
     for (const a of addrs) if (isPrivateIp(a.address)) throw new Error('عنوانٌ داخليّ غير مسموح');
     return u;
 }
-/* ---- جلب GET نصّيّ (لا يتبع التحويلات لتفادي تجاوز SSRF) ---- */
-const httpGetText = (url, timeoutMs = 15000, maxBytes = 3_000_000) => new Promise((resolve, reject) => {
+/* ---- جلب GET خام (يعيد الحالة والترويسة والجسم، لا يتبع التحويلات) ---- */
+const httpGetRaw = (url, timeoutMs = 15000, maxBytes = 3_000_000) => new Promise((resolve, reject) => {
     const u = new URL(url);
     const mod = u.protocol === 'http:' ? http : https;
     const req = mod.request({
         method: 'GET', hostname: u.hostname, port: u.port || undefined, path: u.pathname + u.search,
-        headers: { Accept: 'application/json', 'User-Agent': 'PalNovaa-Engine' }
+        headers: { Accept: 'application/json, */*', 'User-Agent': 'PalNovaa-Engine' }
     }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400) { res.destroy(); return reject(new Error('تحويلٌ غير مسموح')); }
         let data = ''; res.setEncoding('utf8');
         res.on('data', (c) => { data += c; if (data.length > maxBytes) req.destroy(new Error('استجابةٌ كبيرةٌ جداً')); });
-        res.on('end', () => resolve({ status: res.statusCode, body: data }));
+        res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
     });
     req.on('error', reject);
     req.setTimeout(timeoutMs, () => req.destroy(new Error('مهلة الاتصال')));
     req.end();
 });
+/* ---- جلب لا يتبع التحويلات (لمنع تجاوز SSRF في البروكسي) ---- */
+const httpGetText = async (url, timeoutMs = 15000, maxBytes = 3_000_000) => {
+    const r = await httpGetRaw(url, timeoutMs, maxBytes);
+    if (r.status >= 300 && r.status < 400) throw new Error('تحويلٌ غير مسموح');
+    return { status: r.status, body: r.body };
+};
+/* ---- جلب يتبع التحويلات مع إعادة التحقّق من كلّ قفزة (آمن ضدّ SSRF) ---- */
+async function httpGetFollow(startUrl, { maxRedirects = 4, timeoutMs = 30000, maxBytes = 3_000_000 } = {}) {
+    let url = startUrl;
+    for (let i = 0; i <= maxRedirects; i++) {
+        await assertPublicHttpUrl(url);
+        const r = await httpGetRaw(url, timeoutMs, maxBytes);
+        if (r.status >= 300 && r.status < 400 && r.headers.location) { url = new URL(r.headers.location, url).toString(); continue; }
+        return { status: r.status, body: r.body, finalUrl: url };
+    }
+    throw new Error('تحويلاتٌ كثيرة');
+}
 
 /* ---- ضمان وجود الجداول ---- */
 let tableReady = null;
@@ -951,6 +967,89 @@ router.post('/arcgis/save', optionalAuth, async (req, res) => {
             } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
         }
         if (!saved) throw new Error('slug conflict');
+        return res.json({ ok: true, dataset: saved });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
+    }
+});
+
+/* ============================ موصّل HDX (Humanitarian Data Exchange) ============================ */
+// GET /api/engine/hdx/search?q=&page=  — بحث CKAN مُصفّى على فلسطين (groups:pse)
+router.get('/hdx/search', optionalAuth, async (req, res) => {
+    try {
+        const q = (req.query.q || '').toString().trim().slice(0, 160);
+        const page = Math.max(1, Math.min(50, parseInt(req.query.page, 10) || 1));
+        const rows = 20, start = (page - 1) * rows;
+        const params = new URLSearchParams();
+        params.set('fq', 'groups:pse');
+        if (q) params.set('q', q);
+        params.set('rows', String(rows));
+        params.set('start', String(start));
+        const { status, body } = await httpGetText('https://data.humdata.org/api/3/action/package_search?' + params.toString(), 20000, 8_000_000);
+        if (status >= 400) return res.status(502).json({ ok: false, reason: `HDX ${status}` });
+        const j = JSON.parse(body);
+        if (!j.success) return res.status(502).json({ ok: false, reason: 'فشل بحث HDX' });
+        const datasets = (j.result.results || []).map((d) => ({
+            id: d.name, title: d.title || d.name,
+            org: d.organization?.title || '',
+            notes: (d.notes || '').replace(/\s+/g, ' ').slice(0, 240),
+            updated: d.metadata_modified || null,
+            url: 'https://data.humdata.org/dataset/' + d.name,
+            resources: (d.resources || []).map((r) => ({
+                name: r.name || r.format || 'مورد', format: (r.format || '').toUpperCase(),
+                url: r.url, size: r.size || null
+            })).filter((r) => r.url && /^https?:\/\//i.test(r.url)).slice(0, 30)
+        }));
+        return res.json({ ok: true, count: j.result.count || 0, page, datasets });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
+// POST /api/engine/hdx/attach  { url, name, format }  — ينزّل مورد GeoJSON/CSV ويحفظه كمصدر بيانات
+router.post('/hdx/attach', optionalAuth, async (req, res) => {
+    try {
+        await ensureTable();
+        const b = req.body || {};
+        const url = (b.url || '').toString().trim();
+        const name = (b.name || 'HDX').toString().slice(0, 160);
+        const fmt = (b.format || '').toString().toLowerCase();
+        let host; try { host = new URL(url).hostname; } catch { return res.status(400).json({ ok: false, reason: 'رابط غير صالح' }); }
+        if (!/(^|\.)humdata\.org$/i.test(host)) return res.status(400).json({ ok: false, reason: 'يُسمح بإضافة موارد HDX فقط' });
+        const urlPath = (() => { try { return new URL(url).pathname.toLowerCase().split('?')[0]; } catch { return ''; } })();
+        if (/\.zip$/.test(urlPath)) return res.status(400).json({ ok: false, reason: 'الملفّ مضغوط (zip) — استخدم التنزيل على الجهاز.' });
+        if (!/\.(geojson|json|csv)$/.test(urlPath) && !/geojson|^json$|csv/i.test(fmt)) return res.status(400).json({ ok: false, reason: 'الإضافة التلقائيّة تدعم GeoJSON و CSV فقط — استخدم التنزيل للصيغ الأخرى.' });
+
+        const { status, body } = await httpGetFollow(url, { maxRedirects: 5, timeoutMs: 30000, maxBytes: MAX_DATASET_BYTES + 1024 });
+        if (status >= 400) return res.status(502).json({ ok: false, reason: `تعذّر جلب المورد (HDX ${status})` });
+        if (status !== 200 || !body.trim()) return res.status(502).json({ ok: false, reason: 'المورد غير متاح للجلب المباشر — استخدم التنزيل على الجهاز.' });
+        if (body.charCodeAt(0) === 0x50 && body.charCodeAt(1) === 0x4b) return res.status(400).json({ ok: false, reason: 'المورد مضغوط (zip) — استخدم التنزيل على الجهاز.' });
+        if (Buffer.byteLength(body, 'utf8') > MAX_DATASET_BYTES) return res.status(413).json({ ok: false, reason: 'الملفّ كبيرٌ جداً (الحدّ 6MB) — استخدم التنزيل بدلاً من الإضافة.' });
+
+        let kind = /geojson/i.test(fmt) ? 'geojson' : (fmt === 'csv' ? 'csv' : (/^\s*[{[]/.test(body) ? 'geojson' : 'csv'));
+        if (kind === 'geojson') { try { const j = JSON.parse(body); if (!(j.type === 'FeatureCollection' || j.type === 'Feature' || Array.isArray(j.features))) kind = /^\s*[{[]/.test(body) ? 'geojson' : 'csv'; } catch { return res.status(400).json({ ok: false, reason: 'المحتوى ليس GeoJSON صالحاً' }); } }
+        const count = countFeatures(kind, body);
+        const ownerId = ownerOf(req);
+
+        let slug = makeSlug(), saved = null;
+        for (let i = 0; i < 5; i++) {
+            try {
+                const r = await pool.query(
+                    `INSERT INTO engine_datasets (slug, name, kind, content, feature_count, owner_id)
+                     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, slug, name, kind, feature_count, created_at`,
+                    [slug, name, kind, body, count, ownerId]
+                );
+                saved = r.rows[0]; break;
+            } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
+        }
+        if (!saved) throw new Error('slug conflict');
+        if (R2_ON) {
+            try {
+                const ext = kind === 'geojson' ? 'geojson' : 'csv';
+                await r2Client.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: `data/${slug}.${ext}`, Body: body, ContentType: kind === 'geojson' ? 'application/geo+json' : 'text/csv' }));
+                if (r2Base) { const u = `${r2Base}/data/${slug}.${ext}`; await pool.query(`UPDATE engine_datasets SET url=$1 WHERE slug=$2`, [u, slug]); saved.url = u; }
+            } catch { /* */ }
+        }
         return res.json({ ok: true, dataset: saved });
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
