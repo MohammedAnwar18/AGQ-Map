@@ -263,6 +263,11 @@
 .pne-root .arc-urlbar input{flex:1;height:40px;background:var(--panel);border:1px solid var(--line-2);border-radius:8px;padding:0 12px;outline:0;font-family:var(--mono);font-size:12px;direction:ltr;text-align:left}
 .pne-root .arc-urlbar input:focus{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
 .pne-root .arc-urlbar .btn{height:40px;flex:none}
+.pne-root .arc-presets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pne-root .arc-presets>span{font-size:11.5px;color:var(--faint)}
+.pne-root .arc-presets button{font-size:12px;color:var(--text-2);border:1px solid var(--line-2);border-radius:999px;padding:4px 11px;white-space:nowrap}
+.pne-root .arc-presets button:hover{border-color:var(--accent-line);color:var(--text);background:var(--surface-2)}
+.pne-root .arc-presets button.on{border-color:var(--accent-line);color:var(--accent-2);background:var(--accent-soft)}
 .pne-root .arc-crumbs{display:flex;align-items:center;gap:10px}
 .pne-root .arc-back{font-size:12.5px;color:var(--text-2);padding:4px 10px;border:1px solid var(--line-2);border-radius:7px}
 .pne-root .arc-back:hover:not(:disabled){background:var(--surface-2);color:var(--text)}

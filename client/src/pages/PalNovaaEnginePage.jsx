@@ -199,6 +199,11 @@ export default function PalNovaaEnginePage() {
 
   /* ArcGIS REST connector */
   const ARCGIS_DEFAULT = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
+  const ARCGIS_PRESETS = [
+    { label: 'GeoMOLG فلسطين', url: 'https://orthophotos.geomolg.ps/adaptor/rest/services' },
+    { label: 'OCHA — طبقات فلسطين', url: 'https://gis.unocha.org/server/rest/services/Hosted' },
+    { label: 'OCHA الأمم المتّحدة', url: 'https://gis.unocha.org/server/rest/services' },
+  ];
   const [arcUrl, setArcUrl] = useState(ARCGIS_DEFAULT);
   const [arcData, setArcData] = useState(null);     // نتيجة التصفّح { kind, ... }
   const [arcSel, setArcSel] = useState([]);         // طبقات محدّدة لخدمة
@@ -837,8 +842,14 @@ export default function PalNovaaEnginePage() {
               <div className="arc-urlbar">
                 <input value={arcUrl} placeholder="https://…/rest/services" spellCheck={false}
                   onChange={(e) => setArcUrl(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') browseArc(arcUrl, false); }} />
-                <button className="btn accent" disabled={arcBusy || !arcUrl.trim()} onClick={() => browseArc(arcUrl, false)}>{arcBusy ? '…' : 'تصفّح'}</button>
+                  onKeyDown={(e) => { if (e.key === 'Enter') { setArcStack([]); browseArc(arcUrl, false); } }} />
+                <button className="btn accent" disabled={arcBusy || !arcUrl.trim()} onClick={() => { setArcStack([]); browseArc(arcUrl, false); }}>{arcBusy ? '…' : 'تصفّح'}</button>
+              </div>
+              <div className="arc-presets">
+                <span>خوادم جاهزة:</span>
+                {ARCGIS_PRESETS.map((p) => (
+                  <button key={p.url} className={arcUrl === p.url ? 'on' : ''} onClick={() => { setArcStack([]); setArcUrl(p.url); browseArc(p.url, false); }}>{p.label}</button>
+                ))}
               </div>
 
               {(arcStack.length > 0 || (arcData && arcData.kind === 'service')) && (
