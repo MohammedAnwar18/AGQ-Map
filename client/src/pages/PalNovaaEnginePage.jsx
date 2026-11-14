@@ -107,6 +107,9 @@ export default function PalNovaaEnginePage() {
   const [versions, setVersions] = useState([]);
   const [quota, setQuota] = useState(null);
   const [iframeErr, setIframeErr] = useState('');
+  const [streamCode, setStreamCode] = useState('');
+  const streamBufRef = useRef('');
+  const flushSched = useRef(false);
 
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
@@ -222,6 +225,75 @@ export default function PalNovaaEnginePage() {
     return p;
   };
 
+  const finishSuccess = (d, isEdit, bId) => {
+    setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
+    setDirty(true); if (d.quota) setQuota(d.quota); setTab('app');
+    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
+    setMessages((m) => [...m, {
+      id: `n${bId}`, role: 'ai', kind: 'note',
+      text: isEdit ? 'طبّقتُ التعديل وحدّثت المعاينة.' : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
+      suggests: isEdit ? [] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'أضِف بحثاً عن موقع'],
+    }]);
+    showToast('المعاينة جاهزة');
+  };
+  const finishError = (reason, isEdit, bId) => {
+    const text = reason === '__missing'
+      ? 'لا يوجد مفتاح موديل. أضِف مفتاح PalNovaa من زرّ المفتاح، أو اضبط PALNOVAA_MODEL_KEY في الخادم.'
+      : (reason || 'تعذّر التوليد.');
+    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
+    setMessages((m) => [...m, { id: `e${bId}${Math.random().toString(36).slice(2, 5)}`, role: 'err', text }]);
+    if (reason === '__missing') setModal('key');
+  };
+
+  const scheduleStreamFlush = (txt) => {
+    streamBufRef.current = txt;
+    if (flushSched.current) return;
+    flushSched.current = true;
+    requestAnimationFrame(() => { flushSched.current = false; setStreamCode(streamBufRef.current); });
+  };
+
+  // البثّ الحيّ: يعيد true إن أنهى (نجاح/خطأ مُعالَج)، و false ليُستكمَل بالنداء العاديّ
+  const tryStream = async (body, bId, isEdit) => {
+    let resp;
+    try { resp = await fetch(`${API}/engine/generate-stream`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) }); }
+    catch { return false; }
+    if (!resp.ok || !resp.body) return false;
+    setTab('code'); setStreamCode('');
+    const reader = resp.body.getReader(); const dec = new TextDecoder();
+    let buf = '', acc = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const raw = buf.slice(0, i); buf = buf.slice(i + 2);
+          const dl = raw.split('\n').find((l) => l.startsWith('data:'));
+          if (!dl) continue;
+          const pl = dl.slice(5).trim(); if (!pl) continue;
+          let ev; try { ev = JSON.parse(pl); } catch { continue; }
+          if (ev.type === 'delta') { acc += ev.text || ''; scheduleStreamFlush(acc); }
+          else if (ev.type === 'done') { clearTimeout(timerRef.current); setStreamCode(acc); finishSuccess(ev, isEdit, bId); return true; }
+          else if (ev.type === 'error') {
+            clearTimeout(timerRef.current);
+            finishError(ev.reason === 'missing_key' ? '__missing' : (ev.message || ev.reason || 'تعذّر التوليد.'), isEdit, bId);
+            return true;
+          }
+        }
+      }
+    } catch { /* انقطع البثّ */ }
+    return false; // لم يصل done → fallback
+  };
+
+  const nonStream = async (body, bId, isEdit) => {
+    try {
+      const d = await jpost('/engine/generate', body);
+      if (d?.ok && d.html) finishSuccess(d, isEdit, bId);
+      else finishError(d?.reason === 'missing_key' ? '__missing' : (d?.message || d?.reason || 'تعذّر التوليد.'), isEdit, bId);
+    } catch { finishError('خطأ في الاتصال بالخادم. جرّب مجدّداً.', isEdit, bId); }
+  };
+
   const runBuild = async (rawText, isEdit) => {
     if (busy || !rawText.trim()) return;
     const key = localStorage.getItem(KEY_LS) || '';
@@ -243,39 +315,14 @@ export default function PalNovaaEnginePage() {
     };
     timerRef.current = setTimeout(tick, 1100);
 
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin };
     try {
-      const d = await jpost('/engine/generate', {
-        prompt: withContext(rawText),
-        currentHtml: isEdit ? html : '',
-        key,
-        datasets: datasets.map((x) => x.slug),
-        origin: window.location.origin,
-      });
+      const handled = await tryStream(body, bId, isEdit);
+      if (!handled) await nonStream(body, bId, isEdit);
+    } finally {
       clearTimeout(timerRef.current);
-
-      if (d?.ok && d.html) {
-        setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
-        setDirty(true); if (d.quota) setQuota(d.quota);
-        setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
-        setMessages((m) => [...m, {
-          id: `n${bId}`, role: 'ai', kind: 'note',
-          text: isEdit ? 'طبّقتُ التعديل وحدّثت المعاينة.' : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
-          suggests: isEdit ? [] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'أضِف بحثاً عن موقع'],
-        }]);
-        showToast('المعاينة جاهزة');
-      } else {
-        const reason = d?.reason === 'missing_key'
-          ? 'لا يوجد مفتاح موديل. أضِف مفتاح PalNovaa من زرّ المفتاح، أو اضبط PALNOVAA_MODEL_KEY في الخادم.'
-          : (d?.message || d?.reason || 'تعذّر التوليد.');
-        setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
-        setMessages((m) => [...m, { id: `e${bId}`, role: 'err', text: reason }]);
-        if (d?.reason === 'missing_key') setModal('key');
-      }
-    } catch {
-      clearTimeout(timerRef.current);
-      setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
-      setMessages((m) => [...m, { id: `e${bId}`, role: 'err', text: 'خطأ في الاتصال بالخادم. جرّب مجدّداً.' }]);
-    } finally { setBusy(false); }
+      setBusy(false); setStreamCode(''); streamBufRef.current = '';
+    }
   };
 
   const sendHome = () => { if (prompt.trim()) { runBuild(prompt, false); setPrompt(''); } };
@@ -521,7 +568,7 @@ export default function PalNovaaEnginePage() {
               </div>
               <div className="pv-body">
                 <div className={`pane ${tab === 'app' ? 'on' : ''}`}>
-                  {!html && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يبني PalNovaa 1.0 تطبيقك…</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
+                  {!html && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يكتب PalNovaa 1.0 تطبيقك مباشرةً… (شاهد الكود في تبويب «الكود»)</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
                   {html && <iframe className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" />}
                   {html && iframeErr && !busy && (
                     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14, background: 'rgba(227,100,80,.14)', border: '1px solid rgba(227,100,80,.45)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 3, backdropFilter: 'blur(4px)' }}>
@@ -531,7 +578,7 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                 </div>
-                <div className={`pane ${tab === 'code' ? 'on' : ''}`}><div className="code"><pre>{html || '— لا كود بعد —'}</pre></div></div>
+                <div className={`pane ${tab === 'code' ? 'on' : ''}`}><div className="code"><pre>{busy && streamCode ? streamCode + '▋' : (html || '— لا كود بعد —')}</pre></div></div>
               </div>
             </div>
           </section>

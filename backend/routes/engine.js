@@ -352,6 +352,164 @@ async function callModel(KEY, prompt, currentHtml) {
     return { text: full.trim(), usage };
 }
 
+/* ---- قراءة بثّ SSE من المزوّد وتمرير كلّ حدثٍ لدالّة ---- */
+function streamHTTPS(url, body, headers, onEvent, timeoutMs = 290000) {
+    return new Promise((resolve, reject) => {
+        const payload = Buffer.from(JSON.stringify(body), 'utf8');
+        const u = new URL(url);
+        const req = https.request({
+            method: 'POST', hostname: u.hostname, path: u.pathname + u.search,
+            headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length, Accept: 'text/event-stream', ...headers }
+        }, (res) => {
+            if (res.statusCode && res.statusCode >= 400) {
+                let e = ''; res.setEncoding('utf8'); res.on('data', (c) => { e += c; });
+                res.on('end', () => { try { const j = JSON.parse(e); reject(new Error(j?.error?.message || `upstream ${res.statusCode}`)); } catch { reject(new Error(`upstream ${res.statusCode}`)); } });
+                return;
+            }
+            let buf = '';
+            res.setEncoding('utf8');
+            res.on('data', (chunk) => {
+                buf += chunk; let idx;
+                while ((idx = buf.indexOf('\n\n')) >= 0) {
+                    const raw = buf.slice(0, idx); buf = buf.slice(idx + 2);
+                    let ev = '', data = '';
+                    raw.split('\n').forEach((ln) => {
+                        if (ln.startsWith('data:')) data += ln.slice(5).trim();
+                        else if (ln.startsWith('event:')) ev = ln.slice(6).trim();
+                    });
+                    if (data) onEvent(ev, data);
+                }
+            });
+            res.on('end', resolve);
+            res.on('error', reject);
+        });
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
+        req.write(payload); req.end();
+    });
+}
+
+/* ---- بثّ الموديل: يستدعي onDelta لكلّ قطعة نصّ، ويعيد {text, usage} ---- */
+async function streamModel(KEY, prompt, currentHtml, onDelta) {
+    const prov = pickProvider(KEY);
+    const usage = blankUsage();
+    let full = '';
+
+    if (prov.kind === 'anthropic') {
+        const system = [{ type: 'text', text: SYSTEM_INSTRUCTION, cache_control: { type: 'ephemeral' } }];
+        const messages = [];
+        if (currentHtml) {
+            messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
+            messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
+        }
+        messages.push({ role: 'user', content: prompt });
+        const headers = { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' };
+        for (let round = 0; round < 5; round++) {
+            let piece = '', stop = '', errMsg = '';
+            await streamHTTPS(prov.url, { model: prov.model, max_tokens: MAXTOK, system, messages, stream: true }, headers, (ev, data) => {
+                if (data === '[DONE]') return;
+                let j; try { j = JSON.parse(data); } catch { return; }
+                const type = j.type || ev;
+                if (type === 'content_block_delta' && j.delta?.type === 'text_delta') { piece += j.delta.text; onDelta(j.delta.text); }
+                else if (type === 'message_start') { const u = j.message?.usage || {}; usage.input += u.input_tokens || 0; usage.cacheRead += u.cache_read_input_tokens || 0; usage.cacheWrite += u.cache_creation_input_tokens || 0; }
+                else if (type === 'message_delta') { if (j.usage?.output_tokens) usage.output += j.usage.output_tokens; stop = j.delta?.stop_reason || stop; }
+                else if (type === 'error') { errMsg = j.error?.message || 'stream error'; }
+            });
+            if (errMsg) throw new Error(errMsg);
+            full += piece;
+            if (stop !== 'max_tokens' || looksComplete(full)) break;
+            messages.push({ role: 'assistant', content: piece });
+            messages.push({ role: 'user', content: CONTINUE_MSG });
+        }
+        return { text: full.trim(), usage };
+    }
+
+    if (prov.kind === 'oai') {
+        const messages = [{ role: 'system', content: SYSTEM_INSTRUCTION }];
+        if (currentHtml) {
+            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
+            messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
+        }
+        messages.push({ role: 'user', content: prompt });
+        const headers = { Authorization: `Bearer ${KEY}` };
+        if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
+        for (let round = 0; round < 5; round++) {
+            let piece = '', finish = '';
+            await streamHTTPS(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK, stream: true, stream_options: { include_usage: true } }, headers, (ev, data) => {
+                if (data === '[DONE]') return;
+                let j; try { j = JSON.parse(data); } catch { return; }
+                const ch = j.choices?.[0];
+                const txt = ch?.delta?.content;
+                if (txt) { piece += txt; onDelta(txt); }
+                if (ch?.finish_reason) finish = ch.finish_reason;
+                if (j.usage) { usage.input += j.usage.prompt_tokens || 0; usage.output += j.usage.completion_tokens || 0; usage.cacheRead += j.usage.prompt_tokens_details?.cached_tokens || 0; }
+            });
+            full += piece;
+            if (finish !== 'length' || looksComplete(full)) break;
+            messages.push({ role: 'assistant', content: piece });
+            messages.push({ role: 'user', content: CONTINUE_MSG });
+        }
+        return { text: full.trim(), usage };
+    }
+
+    // Gemini: لا بثّ تدريجيّ هنا — نستدعي النسخة المخزّنة ونرسلها دفعةً كـِدلتا واحدة
+    const r = await callModel(KEY, prompt, currentHtml);
+    if (r.text) onDelta(r.text);
+    return r;
+}
+
+/* ============================ التوليد (بثّ حيّ) ============================ */
+// POST /api/engine/generate-stream  (SSE) — نفس مدخلات /generate
+router.post('/generate-stream', optionalAuth, async (req, res) => {
+    const b = req.body || {};
+    let prompt = (b.prompt || '').toString().trim().slice(0, 4000);
+    const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
+    const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
+    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+    const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch { /* */ } };
+    send({ type: 'start' });
+
+    if (!prompt) { send({ type: 'error', reason: 'empty prompt' }); return res.end(); }
+    if (!KEY) { send({ type: 'error', reason: 'missing_key' }); return res.end(); }
+
+    try {
+        await ensureTable().catch(() => {});
+        const q = await checkQuota(req);
+        if (!q.ok) { send({ type: 'error', reason: 'quota', message: `بلغتَ حدّ اليوم (${q.limit} توليدة). ${ownerOf(req) ? 'جرّب غداً.' : 'سجّل الدخول لحدٍّ أعلى.'}` }); return res.end(); }
+
+        const dsSlugs = Array.isArray(b.datasets) ? b.datasets.slice(0, 8).filter((s) => typeof s === 'string') : [];
+        if (dsSlugs.length) {
+            try {
+                const r = await pool.query(`SELECT slug, name, kind, content, feature_count FROM engine_datasets WHERE slug = ANY($1)`, [dsSlugs]);
+                if (r.rows.length) {
+                    const origin = (typeof b.origin === 'string' && /^https?:\/\//.test(b.origin)) ? b.origin.replace(/\/+$/, '') : 'https://palnovaa.com';
+                    const lines = r.rows.map((d) => `• «${d.name}» — ${String(d.kind).toUpperCase()} — ${d.feature_count || countFeatures(d.kind, d.content || '')} عنصراً — اجلبها بـ fetch("${origin}/api/engine/datasets/${d.slug}/data") — ${datasetSchema(d.kind, d.content || '')}`);
+                    prompt += '\n\n[بياناتٌ حقيقيّة مرفقة — استخدمها فعليّاً عبر fetch وقت التشغيل بدل أيّ بيانات تجريبيّة:\n' + lines.join('\n') + '\nملاحظة: الروابط تدعم CORS. اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة.]';
+                }
+            } catch { /* */ }
+        }
+
+        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }));
+        const out = parseGenerated(text, prompt);
+        if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
+        await recordUsage(q.ident, usage);
+        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, quota: { used: q.used + 1, limit: q.limit } });
+        return res.end();
+    } catch (err) {
+        const m = String(err.message || 'error');
+        const transient = /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m);
+        send({ type: 'error', reason: transient ? 'الموديل مزدحمٌ الآن. جرّب بعد لحظات.' : m });
+        return res.end();
+    }
+});
+
 /* ============================ التوليد ============================ */
 // POST /api/engine/generate  { prompt, currentHtml?, key?, datasets?, origin? }
 router.post('/generate', optionalAuth, async (req, res) => {
