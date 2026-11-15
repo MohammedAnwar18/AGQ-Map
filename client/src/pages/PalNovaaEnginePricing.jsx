@@ -42,16 +42,6 @@ const PLANS = [
       { ok: true, t: 'بلا علامة ترويجيّة' },
     ],
   },
-  {
-    id: 'team', name: 'Team', tag: 'للفرق والمؤسّسات', price: 'حسب الطلب', unit: '',
-    cta: 'تواصل معنا', feat: false,
-    items: [
-      { ok: true, t: 'كلّ مزايا Pro' },
-      { ok: true, t: 'دومين مخصّص للتطبيقات' },
-      { ok: true, t: 'أعضاء فريق ومشاريع مشتركة' },
-      { ok: true, t: 'حدود أعلى ودعم مخصّص' },
-    ],
-  },
 ];
 
 export default function PalNovaaEnginePricing() {
@@ -111,22 +101,22 @@ export default function PalNovaaEnginePricing() {
     document.body.appendChild(s);
   }, [cfg.token, cfg.env]);
 
-  const subscribe = (plan) => {
-    if (plan === 'free') { navigate('/palnovaa-engine'); return; }
-    if (plan === 'team') { window.location.href = 'mailto:support@palnovaa.com?subject=PalNovaa%20Engine%20Team'; return; }
-    // Pro
+  /* رابط Gumroad overlay (نفس الصفحة) مع تمرير هويّة المستخدم */
+  const gumroadHref = (() => {
+    if (!cfg.gumroadUrl) return '';
     const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
     const uid = u?.id || u?.userId;
-    // Gumroad (المزوّد الحاليّ)
-    if (cfg.gumroadUrl) {
-      const params = new URLSearchParams({ wanted: 'true' });
-      if (uid) params.set('ident', `u:${uid}`);
-      if (u?.email) params.set('email', u.email);
-      const url = cfg.gumroadUrl + (cfg.gumroadUrl.includes('?') ? '&' : '?') + params.toString();
-      const a = document.createElement('a'); a.className = 'gumroad-button'; a.href = url; a.target = '_blank'; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 200);
-      return;
-    }
+    const params = new URLSearchParams({ wanted: 'true' });
+    if (uid) params.set('ident', `u:${uid}`);
+    if (u?.email) params.set('email', u.email);
+    return cfg.gumroadUrl + (cfg.gumroadUrl.includes('?') ? '&' : '?') + params.toString();
+  })();
+
+  const subscribe = (plan) => {
+    if (plan === 'free') { navigate('/palnovaa-engine'); return; }
+    // Pro عبر Paddle (احتياطيّ إن لم يُفعّل Gumroad) — Gumroad يُفتح مباشرةً من زرّ الرابط
+    const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const uid = u?.id || u?.userId;
     if (window.Paddle && cfg.priceId) {
       try {
         window.Paddle.Checkout.open({
@@ -168,14 +158,16 @@ export default function PalNovaaEnginePricing() {
                     <h3>{p.name}</h3>
                     <div className="ptag">{p.tag}</div>
                     <div className="price">
-                      {p.id === 'team' ? <b style={{ fontSize: 22 }}>{p.price}</b> : <><b>${p.price}</b><small>{p.unit}</small></>}
+                      <b>${p.price}</b><small>{p.unit}</small>
                     </div>
                     <div className="pline" />
                     <ul>
                       {p.items.map((it, i) => (<li key={i}>{it.ok ? Check : Dash}<span style={{ color: it.ok ? 'var(--text-2)' : 'var(--faint)' }}>{it.t}</span></li>))}
                     </ul>
                     <div className="cta">
-                      <button className={`btn ${p.feat ? 'accent' : ''}`} onClick={() => subscribe(p.id)}>{p.cta}</button>
+                      {p.id === 'pro' && gumroadHref
+                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true">{p.cta}</a>
+                        : <button className={`btn ${p.feat ? 'accent' : ''}`} onClick={() => subscribe(p.id)}>{p.cta}</button>}
                     </div>
                   </div>
                 ))}

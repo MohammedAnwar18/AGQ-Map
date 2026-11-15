@@ -5,7 +5,7 @@ const dns = require('dns').promises;
 const net = require('net');
 const crypto = require('crypto');
 const pool = require('../config/database');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, authenticateToken, isAdmin } = require('../middleware/auth');
 const { PutObjectCommand, DeleteObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');
@@ -212,6 +212,11 @@ function ensureTable() {
                     period_end TIMESTAMPTZ, paddle_sub TEXT, email TEXT,
                     updated_at TIMESTAMPTZ DEFAULT now()
                 );`);
+            // أعمدة تفاصيل الدفع (لصفحة إدارة الدفع)
+            await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS provider TEXT;`);
+            await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS price_cents INTEGER;`);
+            await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS currency TEXT;`);
+            await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS last_sale_at TIMESTAMPTZ;`);
         })().catch((e) => { tableReady = null; throw e; });
     }
     return tableReady;
@@ -1423,13 +1428,17 @@ router.post('/gumroad/webhook', async (req, res) => {
             return res.json({ ok: true, downgraded: true });
         }
 
+        // تفاصيل البيع (المبلغ بالسنت + العملة) — لصفحة إدارة الدفع
+        const priceCents = Number.isFinite(+b.price) ? Math.round(+b.price) : null;
+        const currency = (b.currency || 'usd').toString().toUpperCase();
+
         // تفعيل Pro ~33 يوماً (يتجدّد مع كلّ دفعة شهريّة؛ وينتهي تلقائياً إن توقّف الدفع)
         const periodEnd = new Date(Date.now() + 33 * 24 * 60 * 60 * 1000).toISOString();
         await pool.query(
-            `INSERT INTO engine_accounts (ident, plan, allowance_micro, used_micro, period_end, paddle_sub, email, updated_at)
-             VALUES ($1,'pro',$2,0,$3,$4,$5,now())
-             ON CONFLICT (ident) DO UPDATE SET plan='pro', allowance_micro=$2, used_micro=0, period_end=$3, paddle_sub=COALESCE($4, engine_accounts.paddle_sub), email=COALESCE($5, engine_accounts.email), updated_at=now()`,
-            [ident, PRO_MICRO, periodEnd, b.subscription_id || b.sale_id || null, email]);
+            `INSERT INTO engine_accounts (ident, plan, allowance_micro, used_micro, period_end, paddle_sub, email, provider, price_cents, currency, last_sale_at, updated_at)
+             VALUES ($1,'pro',$2,0,$3,$4,$5,'gumroad',$6,$7,now(),now())
+             ON CONFLICT (ident) DO UPDATE SET plan='pro', allowance_micro=$2, used_micro=0, period_end=$3, paddle_sub=COALESCE($4, engine_accounts.paddle_sub), email=COALESCE($5, engine_accounts.email), provider='gumroad', price_cents=COALESCE($6, engine_accounts.price_cents), currency=COALESCE($7, engine_accounts.currency), last_sale_at=now(), updated_at=now()`,
+            [ident, PRO_MICRO, periodEnd, b.subscription_id || b.sale_id || null, email, priceCents, currency]);
         return res.json({ ok: true });
     } catch (err) {
         return res.status(200).json({ ok: false, reason: String(err.message || 'error') });
@@ -1490,6 +1499,49 @@ router.post('/webhook', async (req, res) => {
         return res.json({ ok: true });
     } catch (err) {
         return res.status(200).json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
+/* ============================ إدارة الدفع (للأدمن) ============================ */
+// GET /api/engine/admin/payments — قائمة المشتركين ومن دفع + تفاصيله والمبالغ
+router.get('/admin/payments', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await ensureTable();
+        const r = await pool.query(
+            `SELECT a.ident, a.plan, a.email AS billing_email, a.provider, a.price_cents, a.currency,
+                    a.period_end, a.last_sale_at, a.paddle_sub, a.updated_at,
+                    u.id AS user_id, u.username, u.full_name, u.email AS user_email
+             FROM engine_accounts a
+             LEFT JOIN users u ON a.ident = ('u:' || u.id::text)
+             WHERE a.plan = 'pro' OR a.last_sale_at IS NOT NULL OR a.paddle_sub IS NOT NULL
+             ORDER BY a.last_sale_at DESC NULLS LAST, a.updated_at DESC
+             LIMIT 500`
+        );
+        const now = Date.now();
+        const rows = r.rows.map((x) => {
+            const active = x.plan === 'pro' && (!x.period_end || new Date(x.period_end).getTime() > now);
+            return {
+                ident: x.ident,
+                userId: x.user_id || null,
+                name: x.full_name || x.username || null,
+                email: x.user_email || x.billing_email || null,
+                plan: x.plan,
+                active,
+                provider: x.provider || (x.paddle_sub ? 'paddle' : null),
+                amount: x.price_cents != null ? +(x.price_cents / 100).toFixed(2) : null,
+                currency: x.currency || (x.price_cents != null ? 'USD' : null),
+                subscriptionId: x.paddle_sub || null,
+                lastSaleAt: x.last_sale_at || null,
+                periodEnd: x.period_end || null,
+                updatedAt: x.updated_at || null
+            };
+        });
+        // ملخّصٌ سريع
+        const activeCount = rows.filter((x) => x.active).length;
+        const revenueUsd = +rows.reduce((s, x) => s + (x.currency === 'USD' || !x.currency ? (x.amount || 0) : 0), 0).toFixed(2);
+        return res.json({ ok: true, count: rows.length, activeCount, revenueUsd, rows });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'error') });
     }
 });
 
