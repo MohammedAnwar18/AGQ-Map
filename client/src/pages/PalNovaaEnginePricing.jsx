@@ -50,10 +50,34 @@ export default function PalNovaaEnginePricing() {
   const [cfg, setCfg] = useState({ token: DEF_TOKEN, priceId: DEF_PRICE, env: DEF_ENV, gumroadUrl: '', provider: '' });
   const contoursRef = useRef(null);
   const toastTimer = useRef(null);
+  const pollRef = useRef(null);
 
   const showToast = (m) => { setToast(m); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 2600); };
 
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  useEffect(() => () => { clearTimeout(toastTimer.current); if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  /* مراقبة تفعيل Pro بعد فتح الدفع → تحويلٌ تلقائيّ للمحرّك (مستقلّ عن Gumroad) */
+  const startProWatch = () => {
+    if (pollRef.current) return;
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const t0 = Date.now();
+    const check = async () => {
+      try {
+        const r = await fetch(`${API}/engine/balance`, { headers });
+        const d = await r.json();
+        if (d?.ok && d.balance?.plan === 'pro') {
+          clearInterval(pollRef.current); pollRef.current = null;
+          showToast('تم تفعيل Pro! يتم تحويلك للمحرّك…');
+          setTimeout(() => navigate('/palnovaa-engine'), 1200);
+          return;
+        }
+      } catch { /* */ }
+      if (Date.now() - t0 > 8 * 60 * 1000) { clearInterval(pollRef.current); pollRef.current = null; }  // توقّف بعد 8 دقائق
+    };
+    pollRef.current = setInterval(check, 4000);
+    setTimeout(check, 1500);  // فحصٌ مبكّر
+  };
 
   /* خلفيّة الكونتور */
   useEffect(() => {
@@ -166,7 +190,7 @@ export default function PalNovaaEnginePricing() {
                     </ul>
                     <div className="cta">
                       {p.id === 'pro' && gumroadHref
-                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true"><span className="gr-label">{p.cta}</span></a>
+                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true" onClick={startProWatch}><span className="gr-label">{p.cta}</span></a>
                         : <button className={`btn ${p.feat ? 'accent' : ''}`} onClick={() => subscribe(p.id)}>{p.cta}</button>}
                     </div>
                   </div>
