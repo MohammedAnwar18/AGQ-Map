@@ -704,11 +704,12 @@ export default function PalNovaaEnginePage() {
       if (!svc) throw new Error('هذا المصدر محفوظٌ قديماً — أعِد إضافته');
       const grp = L.layerGroup();
       if (type === 'FeatureServer') {
-        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: col, weight: 1.5, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
+        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: col, weight: 1.6, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
       } else if (type === 'ImageServer') {
-        L.esri.imageMapLayer({ url: `${svc}/ImageServer`, opacity: 0.85 }).addTo(grp);
+        // f:'image' + useCors:false: الخادم قد لا يدعم CORS على export، فنحمّلها كصورة مباشرة
+        L.esri.imageMapLayer({ url: `${svc}/ImageServer`, opacity: 0.85, f: 'image', useCors: false }).addTo(grp);
       } else {
-        L.esri.dynamicMapLayer({ url: `${svc}/MapServer`, opacity: 0.85, ...(m.layers && m.layers.length ? { layers: m.layers.map((l) => l.id) } : {}) }).addTo(grp);
+        L.esri.dynamicMapLayer({ url: `${svc}/MapServer`, opacity: 0.85, f: 'image', useCors: false, ...(m.layers && m.layers.length ? { layers: m.layers.map((l) => l.id) } : {}) }).addTo(grp);
       }
       return grp;
     }
