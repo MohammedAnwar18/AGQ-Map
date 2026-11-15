@@ -64,6 +64,51 @@ const ensureGeoraster = async () => {
   if (!window.GeoRasterLayer) await loadScript(MAPLIBS.georasterLayer);
 };
 
+/* ====== محوّلات صيغ خفيفة إلى GeoJSON (بالمتصفّح) ====== */
+const SHP_URL = 'https://unpkg.com/shpjs@6.1.0/dist/shp.min.js';
+const SQLJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/';
+const ensureShp = async () => { if (!window.shp && !window.shpjs) await loadScript(SHP_URL); return window.shp || window.shpjs; };
+let _sqlPromise = null;
+const ensureSqlJs = async () => {
+  if (window.__PNE_SQL) return window.__PNE_SQL;
+  if (!_sqlPromise) _sqlPromise = (async () => {
+    if (!window.initSqlJs) await loadScript(SQLJS_BASE + 'sql-wasm.js');
+    const SQL = await window.initSqlJs({ locateFile: (f) => SQLJS_BASE + f });
+    window.__PNE_SQL = SQL; return SQL;
+  })();
+  return _sqlPromise;
+};
+/* محلّل WKB → هندسة GeoJSON (يدعم 2D/3D وكلّ الأنواع) */
+function wkbToGeoJSON(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); let p = 0;
+  const read = () => {
+    const little = dv.getUint8(p) === 1; p += 1;
+    const t = dv.getUint32(p, little); p += 4;
+    let base, dims = 2;
+    if (t & 0xE0000000) { // EWKB
+      if (t & 0x80000000) dims = 3;
+      if (t & 0x20000000) p += 4; // SRID
+      base = t & 0xff;
+    } else { base = t % 1000; const q = Math.floor(t / 1000); if (q === 1 || q === 3) dims = 3; }
+    const pt = () => { const c = [dv.getFloat64(p, little), dv.getFloat64(p + 8, little)]; p += 8 * dims; return c; };
+    const ring = () => { const n = dv.getUint32(p, little); p += 4; const r = []; for (let i = 0; i < n; i++) r.push(pt()); return r; };
+    if (base === 1) return { type: 'Point', coordinates: pt() };
+    if (base === 2) { const n = dv.getUint32(p, little); p += 4; const c = []; for (let i = 0; i < n; i++) c.push(pt()); return { type: 'LineString', coordinates: c }; }
+    if (base === 3) { const n = dv.getUint32(p, little); p += 4; const r = []; for (let i = 0; i < n; i++) r.push(ring()); return { type: 'Polygon', coordinates: r }; }
+    if (base === 4 || base === 5 || base === 6) { const n = dv.getUint32(p, little); p += 4; const c = []; for (let i = 0; i < n; i++) c.push(read().coordinates); return { type: base === 4 ? 'MultiPoint' : base === 5 ? 'MultiLineString' : 'MultiPolygon', coordinates: c }; }
+    if (base === 7) { const n = dv.getUint32(p, little); p += 4; const g = []; for (let i = 0; i < n; i++) g.push(read()); return { type: 'GeometryCollection', geometries: g }; }
+    return null;
+  };
+  return read();
+}
+/* GeoPackage Binary → GeoJSON (يتخطّى ترويسة GPB) */
+function gpkgGeom(u8) {
+  if (!u8 || u8.length < 8 || u8[0] !== 0x47 || u8[1] !== 0x50) return null;  // 'GP'
+  const envType = (u8[3] >> 1) & 0x07;
+  const envBytes = [0, 32, 48, 48, 64][envType] || 0;
+  return wkbToGeoJSON(u8.subarray(8 + envBytes));
+}
+
 /* طبقة صورة ArcGIS ديناميكيّة موثوقة: export كصورة مباشرة (لا تحتاج CORS)،
    مع إعادة الإسقاط من إسناد الخدمة إلى Web Mercator عبر الخادم. تتحدّث مع الحركة. */
 const makeArcgisImageLayer = (L, exportBase, layerIds, opacity = 0.85) => {
@@ -439,27 +484,100 @@ export default function PalNovaaEnginePage() {
     if (!put.ok) return { ok: false, reason: `فشل الرفع إلى التخزين (${put.status})` };
     return jpost('/engine/datasets/finalize', { slug: pre.slug, name, kind });
   };
+  // رفع محتوى نصّيّ (GeoJSON/CSV): مباشر إن كبُر وإلّا JSON
+  const uploadText = async (name, kind, content) => {
+    const bytes = new Blob([content]).size;
+    if (bytes > SAFE_INLINE_BYTES) {
+      const file = new File([content], `${name}.${kind === 'csv' ? 'csv' : 'geojson'}`, { type: kind === 'csv' ? 'text/csv' : 'application/geo+json' });
+      return uploadLargeFile(file, name, kind);
+    }
+    return jpost('/engine/datasets', { name, kind, content });
+  };
+  const addDatasetResult = (d) => {
+    if (!d?.ok) throw new Error(d?.reason || 'فشل الحفظ');
+    setMyDatasets((a) => [d.dataset, ...a]); attachDataset(d.dataset); return d.dataset;
+  };
+  // Shapefile (.zip/.shp) → GeoJSON عبر shpjs (قد يحوي عدّة طبقات)
+  const handleShapefile = async (f, name) => {
+    showToast('جارٍ قراءة Shapefile…');
+    const shp = await ensureShp();
+    const out = await shp(await f.arrayBuffer());
+    const list = Array.isArray(out) ? out : [out];
+    let n = 0, last = null;
+    for (const fc of list) {
+      if (!fc || !Array.isArray(fc.features) || !fc.features.length) continue;
+      const lname = String(fc.fileName || name).replace(/\.[^.]+$/, '');
+      last = addDatasetResult(await uploadText(lname, 'geojson', JSON.stringify(fc))); n++;
+    }
+    if (!n) throw new Error('لا طبقات صالحة في الملفّ');
+    showToast(n === 1 ? `أُضيفت «${last.name}» (${last.feature_count} عنصر)` : `أُضيفت ${n} طبقات من Shapefile`);
+  };
+  // GeoPackage (.gpkg) → GeoJSON عبر sql.js
+  const handleGeopackage = async (f, name) => {
+    showToast('جارٍ قراءة GeoPackage…');
+    const SQL = await ensureSqlJs();
+    const db = new SQL.Database(new Uint8Array(await f.arrayBuffer()));
+    try {
+      const tables = db.exec("SELECT table_name, srs_id FROM gpkg_contents WHERE data_type='features'");
+      if (!tables.length) throw new Error('لا طبقات معالم');
+      let n = 0, last = null;
+      for (const [table, srsId] of tables[0].values) {
+        let geomCol = 'geom';
+        try { const gc = db.exec(`SELECT column_name FROM gpkg_geometry_columns WHERE table_name='${table}'`); if (gc.length) geomCol = gc[0].values[0][0]; } catch { /* */ }
+        const q = db.exec(`SELECT * FROM "${table}"`);
+        if (!q.length) continue;
+        const cols = q[0].columns; const gi = cols.indexOf(geomCol);
+        const features = [];
+        for (const row of q[0].values) {
+          let geometry = null; try { if (gi >= 0 && row[gi]) geometry = gpkgGeom(row[gi]); } catch { /* */ }
+          if (!geometry) continue;
+          const props = {}; cols.forEach((c, i) => { if (i !== gi) props[c] = row[i]; });
+          features.push({ type: 'Feature', geometry, properties: props });
+        }
+        if (!features.length) continue;
+        let fc = { type: 'FeatureCollection', features };
+        if (srsId && srsId !== 4326 && srsId !== 0 && srsId !== -1) fc = await reprojectFC(fc, srsId);
+        last = addDatasetResult(await uploadText(String(table), 'geojson', JSON.stringify(fc))); n++;
+      }
+      if (!n) throw new Error('لا طبقات صالحة');
+      showToast(n === 1 ? `أُضيفت «${last.name}» (${last.feature_count} عنصر)` : `أُضيفت ${n} طبقات من GeoPackage`);
+    } finally { db.close(); }
+  };
+  const reprojectFC = async (fc, srsId) => {
+    await ensureProj4();
+    const code = `EPSG:${srsId}`;
+    if (!window.proj4 || (srsId !== 3857 && !window.proj4.defs(code))) { showToast(`إسناد ${code} غير مدعوم — عُرضت كما هي`); return fc; }
+    const from = srsId === 3857 ? 'EPSG:3857' : code;
+    const tx = (c) => { try { const p = window.proj4(from, 'EPSG:4326', [c[0], c[1]]); return [p[0], p[1], ...c.slice(2)]; } catch { return c; } };
+    const walk = (co) => (typeof co[0] === 'number' ? tx(co) : co.map(walk));
+    fc.features.forEach((ft) => { if (ft.geometry && ft.geometry.coordinates) ft.geometry.coordinates = walk(ft.geometry.coordinates); });
+    return fc;
+  };
   const onFile = async (e) => {
     const f = e.target.files?.[0]; if (e.target) e.target.value = '';
     if (!f) return;
-    const isTiff = /\.(tif|tiff|geotiff)$/i.test(f.name);
-    const maxBytes = isTiff ? 500 * 1024 * 1024 : 40 * 1024 * 1024;
-    if (f.size > maxBytes) { showToast(`الملفّ كبيرٌ جداً (الحدّ ${isTiff ? 500 : 40}MB)`); return; }
-    const kind = isTiff ? 'geotiff' : (/\.csv$/i.test(f.name) ? 'csv' : 'geojson');
+    const ext = (f.name.toLowerCase().match(/\.([a-z0-9]+)$/) || [, ''])[1];
     const name = f.name.replace(/\.[^.]+$/, '');
-    showToast(isTiff ? 'جارٍ رفع صورة GeoTIFF…' : (f.size > SAFE_INLINE_BYTES ? 'جارٍ رفع الملفّ الكبير…' : 'جارٍ رفع البيانات…'));
     try {
-      // GeoTIFF دائماً عبر الرفع المباشر (ثنائيّ)؛ GeoJSON/CSV: مباشر إن كبُر وإلّا JSON
-      const d = (isTiff || f.size > SAFE_INLINE_BYTES)
-        ? await uploadLargeFile(f, name, kind)
-        : await jpost('/engine/datasets', { name, kind, content: await f.text() });
-      if (d?.ok) {
-        setMyDatasets((a) => [d.dataset, ...a]); attachDataset(d.dataset);
-        const m = d.dataset.meta || {};
-        const note = m.raster ? `${m.width}×${m.height}، ${m.bands} نطاق` : `${d.dataset.feature_count} عنصر${m.tiled ? '، مُقسَّمة إلى تايلز' : ''}`;
-        showToast(`أُرفقت «${d.dataset.name}» (${note})`);
-      } else showToast(d?.reason || 'تعذّر الرفع');
-    } catch (err) { showToast('تعذّر الرفع: ' + String(err.message || err).slice(0, 50)); }
+      if (/^(tif|tiff|geotiff)$/.test(ext)) {
+        if (f.size > 500 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 500MB)'); return; }
+        showToast('جارٍ رفع صورة GeoTIFF…');
+        const d = await uploadLargeFile(f, name, 'geotiff');
+        const ds = addDatasetResult(d); const m = ds.meta || {};
+        showToast(`أُرفقت «${ds.name}» (${m.width}×${m.height}، ${m.bands} نطاق)`);
+      } else if (ext === 'zip' || ext === 'shp') {
+        await handleShapefile(f, name);
+      } else if (ext === 'gpkg') {
+        await handleGeopackage(f, name);
+      } else {
+        if (f.size > 40 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 40MB)'); return; }
+        const kind = ext === 'csv' ? 'csv' : 'geojson';
+        showToast(f.size > SAFE_INLINE_BYTES ? 'جارٍ رفع الملفّ الكبير…' : 'جارٍ رفع البيانات…');
+        const d = f.size > SAFE_INLINE_BYTES ? await uploadLargeFile(f, name, kind) : await jpost('/engine/datasets', { name, kind, content: await f.text() });
+        const ds = addDatasetResult(d); const m = ds.meta || {};
+        showToast(`أُرفقت «${ds.name}» (${ds.feature_count} عنصر${m.tiled ? '، مُقسَّمة إلى تايلز' : ''})`);
+      }
+    } catch (err) { showToast('تعذّر: ' + String(err.message || err).slice(0, 55)); }
   };
 
   const openMenu = (name, e) => {
@@ -950,7 +1068,7 @@ export default function PalNovaaEnginePage() {
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl">
-      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff" hidden onChange={onFile} />
+      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg" hidden onChange={onFile} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
@@ -1030,9 +1148,9 @@ export default function PalNovaaEnginePage() {
                 </div>
                 <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
-                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON · CSV · GeoTIFF</a></div>
+                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON · CSV · Shapefile · GeoPackage · GeoTIFF</a></div>
                 <div className="sources">
-                  <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson · csv · tiff</small></span></button>
+                  <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson·csv·shp·gpkg·tiff</small></span></button>
                   {myDatasets.slice(0, 4).map((d) => (
                     <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span><span className="st" /></button>
                   ))}
@@ -1303,7 +1421,7 @@ export default function PalNovaaEnginePage() {
         <div className="menu" style={{ top: menu.top, bottom: menu.bottom, left: menu.left, maxHeight: menu.maxH }}>
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON · CSV · GeoTIFF — كبيرها يُقسَّم تلقائياً</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON·CSV·Shapefile(.zip)·GeoPackage·GeoTIFF</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>256 مجموعة فلسطينيّة — بحث وتنزيل وإضافة</small></span></button>
             <button className="menu-item" onClick={() => { setMenu(null); setModal('postgis'); }}><span className="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>كمصدرٍ لبناء التطبيق</small></span></button>
@@ -1318,7 +1436,7 @@ export default function PalNovaaEnginePage() {
           </>)}
           {menu.name === 'data' && (<>
             <h6>بياناتي</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson · csv · tiff</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson·csv·shp·gpkg·tiff</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}
