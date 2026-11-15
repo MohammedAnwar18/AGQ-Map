@@ -259,7 +259,8 @@ export default function PalNovaaEnginePage() {
   const [hdxErr, setHdxErr] = useState('');
   const [hdxAtt, setHdxAtt] = useState(null);       // رابط المورد قيد الإضافة
 
-  /* عارض البيانات (explorer): خريطة جوجل + طبقات */
+  /* عارض البيانات (explorer): نافذة مستقلّة — خريطة جوجل + طبقات */
+  const [explorerOpen, setExplorerOpen] = useState(false);
   const [explorerErr, setExplorerErr] = useState('');
   const [mapReady, setMapReady] = useState(false);
   const [activeLayers, setActiveLayers] = useState({}); // slug → true
@@ -269,6 +270,7 @@ export default function PalNovaaEnginePage() {
   const mapElRef = useRef(null);
   const layerObjs = useRef({});                         // slug → طبقة Leaflet
   const pendingFocus = useRef(null);
+  const expLatRef = useRef(null); const expLonRef = useRef(null); const expZoomRef = useRef(null);
 
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
@@ -670,7 +672,7 @@ export default function PalNovaaEnginePage() {
       .map(([k, v]) => `<div style="display:flex;gap:8px;margin:2px 0;font-size:12px"><b style="color:#8a9;min-width:70px">${k}</b><span style="color:#ddd">${v == null ? '—' : String(v).slice(0, 90)}</span></div>`).join('');
     return `<div style="min-width:170px;max-height:230px;overflow:auto;direction:rtl">${rows || 'لا خصائص'}</div>`;
   };
-  const csvToLayer = (text, L) => {
+  const csvToLayer = (text, L, col = '#E07B39') => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) throw new Error('CSV فارغ');
     const delim = lines[0].includes('\t') ? '\t' : (lines[0].split(';').length > lines[0].split(',').length ? ';' : ',');
@@ -684,12 +686,13 @@ export default function PalNovaaEnginePage() {
       const lat = parseFloat(cells[latI]), lon = parseFloat(cells[lonI]);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const props = {}; header.forEach((h, j) => { props[h] = (cells[j] || '').replace(/^"|"$/g, ''); });
-      L.circleMarker([lat, lon], { radius: 5, color: '#E07B39', fillColor: '#F0954F', fillOpacity: 0.85, weight: 1 }).bindPopup(popupHtml(props)).addTo(grp);
+      L.circleMarker([lat, lon], { radius: 5, color: col, fillColor: col, fillOpacity: 0.85, weight: 1 }).bindPopup(popupHtml(props)).addTo(grp);
     }
     return grp;
   };
   const buildLayer = async (d) => {
     const origin = window.location.origin;
+    const col = LAYER_COLOR(d);
     if (d.kind === 'geotiff') {
       await ensureGeoraster();
       const georaster = await window.parseGeoraster(d.url);
@@ -701,7 +704,7 @@ export default function PalNovaaEnginePage() {
       if (!svc) throw new Error('هذا المصدر محفوظٌ قديماً — أعِد إضافته');
       const grp = L.layerGroup();
       if (type === 'FeatureServer') {
-        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: '#E07B39', weight: 1.5, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
+        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: col, weight: 1.5, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
       } else if (type === 'ImageServer') {
         L.esri.imageMapLayer({ url: `${svc}/ImageServer`, opacity: 0.85 }).addTo(grp);
       } else {
@@ -714,7 +717,7 @@ export default function PalNovaaEnginePage() {
       const L = window.L;
       const url = `${origin}/api/engine/datasets/${d.slug}/tiles/{z}/{x}/{y}.pbf`;
       const vg = L.vectorGrid.protobuf(url, {
-        vectorTileLayerStyles: { data: { color: '#E07B39', weight: 1.2, fill: true, fillColor: '#E07B39', fillOpacity: 0.25, radius: 4 } },
+        vectorTileLayerStyles: { data: { color: col, weight: 1.2, fill: true, fillColor: col, fillOpacity: 0.25, radius: 4 } },
         interactive: true, maxNativeZoom: 20,
       });
       vg.on('click', (e) => { window.L.popup().setLatLng(e.latlng).setContent(popupHtml(e.layer && e.layer.properties)).openOn(mapRef.current); });
@@ -723,11 +726,11 @@ export default function PalNovaaEnginePage() {
     await ensureLeaflet();
     const L = window.L;
     const res = await fetch(`${origin}/api/engine/datasets/${d.slug}/data`);
-    if (d.kind === 'csv') return csvToLayer(await res.text(), L);
+    if (d.kind === 'csv') return csvToLayer(await res.text(), L, col);
     const gj = await res.json();
     return L.geoJSON(gj, {
-      style: { color: '#E07B39', weight: 1.5, fillColor: '#E07B39', fillOpacity: 0.2 },
-      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 5, color: '#E07B39', fillColor: '#F0954F', fillOpacity: 0.85, weight: 1 }),
+      style: { color: col, weight: 1.5, fillColor: col, fillOpacity: 0.2 },
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 5, color: col, fillColor: col, fillOpacity: 0.85, weight: 1 }),
       onEachFeature: (f, lyr) => { if (f.properties) lyr.bindPopup(popupHtml(f.properties)); },
     });
   };
@@ -759,11 +762,12 @@ export default function PalNovaaEnginePage() {
     setLayerBusy(null);
   };
   const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
-  const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; setView('explorer'); };
+  const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; setExplorerOpen(true); };
+  const closeExplorer = () => setExplorerOpen(false);
 
-  // تهيئة خريطة العارض عند الدخول إليه (مرّةً واحدة)
+  // تهيئة خريطة العارض عند فتح النافذة (مرّةً واحدة)
   useEffect(() => {
-    if (view !== 'explorer') return;
+    if (!explorerOpen) return;
     let cancelled = false;
     (async () => {
       try {
@@ -772,26 +776,43 @@ export default function PalNovaaEnginePage() {
         if (mapRef.current) { setTimeout(() => mapRef.current.invalidateSize(), 60); setMapReady(true); return; }
         if (!mapElRef.current) return;
         const map = L.map(mapElRef.current, { center: [31.95, 35.23], zoom: 9, zoomControl: true, attributionControl: false });
+        map.zoomControl.setPosition('topleft');
         map.__base = L.tileLayer(STREETS_URL, { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], maxZoom: 20 }).addTo(map);
+        L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 140 }).addTo(map);
+        const setZoom = () => { if (expZoomRef.current) expZoomRef.current.textContent = 'z' + map.getZoom(); };
+        map.on('mousemove', (e) => {
+          if (expLatRef.current) expLatRef.current.textContent = e.latlng.lat.toFixed(5) + '° N';
+          if (expLonRef.current) expLonRef.current.textContent = e.latlng.lng.toFixed(5) + '° E';
+        });
+        map.on('zoomend', setZoom); setZoom();
         mapRef.current = map; setMapReady(true);
         setTimeout(() => map.invalidateSize(), 90);
       } catch { if (!cancelled) setExplorerErr('تعذّر تحميل الخريطة — تحقّق من الاتصال.'); }
     })();
     return () => { cancelled = true; };
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [explorerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escape يغلق النافذة
+  useEffect(() => {
+    if (!explorerOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setExplorerOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [explorerOpen]);
 
   // عرض الطبقة المطلوبة تلقائياً بعد جهوزيّة الخريطة
   useEffect(() => {
-    if (view === 'explorer' && mapReady && pendingFocus.current) {
+    if (explorerOpen && mapReady && pendingFocus.current) {
       const d = pendingFocus.current; pendingFocus.current = null;
       if (!layerObjs.current[d.slug]) toggleLayer(d);
     }
-  }, [view, mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [explorerOpen, mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
   const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : k === 'geotiff' ? 'TIF' : (k || 'D').slice(0, 4).toUpperCase());
+  const LAYER_COLOR = (d) => ({ geojson: '#E07B39', csv: '#F0954F', arcgis: '#5B9BD5', geotiff: '#7BC67E' }[d.kind] || '#E07B39');
   const dsMeta = (d) => {
     if (d.kind === 'arcgis') return `ArcGIS · ${d.feature_count} طبقة`;
     if (d.kind === 'geotiff') { const m = d.meta || {}; return `GeoTIFF · ${m.width || '?'}×${m.height || '?'} · ${m.bands || '?'} نطاق`; }
@@ -820,7 +841,7 @@ export default function PalNovaaEnginePage() {
             <a className={view === 'home' ? 'active' : ''} onClick={() => { if (view === 'templates') setView('home'); }}>{Ico.chat}<span>المحادثات</span></a>
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
-            <a className={view === 'explorer' ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
+            <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
@@ -1030,33 +1051,78 @@ export default function PalNovaaEnginePage() {
             </div>
           </section>
 
-          {/* ===== EXPLORER (معاينة البيانات) ===== */}
-          <section className={`explorer ${view === 'explorer' ? 'on' : ''}`}>
-            <aside className="exp-side">
-              <div className="exp-side-head"><b>طبقات بياناتي</b><span className="count mono">{myDatasets.length}</span></div>
-              <div className="exp-list">
-                {myDatasets.length === 0 && <div className="exp-empty">لا بيانات بعد — أضِفها من «البيانات» (رفع، ArcGIS، HDX).</div>}
-                {myDatasets.map((d) => (
-                  <button className={`exp-item ${activeLayers[d.slug] ? 'on' : ''}`} key={d.slug} onClick={() => toggleLayer(d)}>
-                    <span className="exp-eye">{layerBusy === d.slug ? <span className="ring" /> : (activeLayers[d.slug] ? Ico.eye : Ico.eyeOff)}</span>
-                    <span className="exp-info"><b>{d.name}</b><small>{dsMeta(d)}</small></span>
-                    <span className="exp-badge mono">{dsLabel(d.kind)}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="exp-side-foot">اضغط أيّ طبقة لعرضها / إخفائها على الخريطة</div>
-            </aside>
-            <div className="exp-map-wrap">
-              <div className="exp-mapbar">
+        </main>
+      </div>
+
+      {/* ============ EXPLORER OVERLAY (معاينة البيانات — نافذة مستقلّة) ============ */}
+      <div className={`exp-overlay ${explorerOpen ? 'open' : ''}`}>
+        <header className="exp-top">
+          <div className="exp-title">{Ico.mapIco}<b>معاينة البيانات</b><span>عرض طبقاتك على الخريطة</span></div>
+          <button className="exp-close" onClick={closeExplorer} title="إغلاق (Esc)">{Ico.close}<span>إغلاق</span></button>
+        </header>
+        <div className="exp-body">
+          <aside className="exp-side">
+            <div className="exp-side-head"><b>طبقات بياناتي</b><span className="count mono">{myDatasets.length}</span></div>
+            <div className="exp-list">
+              {myDatasets.length === 0 && <div className="exp-empty">لا بيانات بعد — أضِفها من «البيانات» (رفع، ArcGIS، HDX).</div>}
+              {myDatasets.map((d) => (
+                <button className={`exp-item ${activeLayers[d.slug] ? 'on' : ''}`} key={d.slug} onClick={() => toggleLayer(d)}>
+                  <span className="exp-eye">{layerBusy === d.slug ? <span className="ring" /> : (activeLayers[d.slug] ? Ico.eye : Ico.eyeOff)}</span>
+                  <span className="exp-sw" style={{ background: activeLayers[d.slug] ? LAYER_COLOR(d) : 'transparent', borderColor: LAYER_COLOR(d) }} />
+                  <span className="exp-info"><b>{d.name}</b><small>{dsMeta(d)}</small></span>
+                  <span className="exp-badge mono">{dsLabel(d.kind)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="exp-side-foot">اضغط أيّ طبقة لعرضها / إخفائها</div>
+          </aside>
+
+          <div className="exp-map-wrap">
+            <div className="exp-mapbar">
+              <div className="exp-base">
                 <button className={baseMap === 'streets' ? 'on' : ''} onClick={() => switchBase('streets')}>خريطة</button>
                 <button className={baseMap === 'sat' ? 'on' : ''} onClick={() => switchBase('sat')}>أقمار صناعيّة</button>
-                <span className="exp-shown">{Object.keys(activeLayers).length ? `${Object.keys(activeLayers).length} طبقة معروضة` : 'اختر طبقة من اليمين'}</span>
               </div>
+              <span className="exp-shown">{Object.keys(activeLayers).length ? `${Object.keys(activeLayers).length} طبقة معروضة` : 'اختر طبقة من البار الجانبيّ'}</span>
+            </div>
+
+            <div className="exp-map-area">
               <div ref={mapElRef} className="exp-map" />
+
+              {/* سهم الشمال */}
+              <div className="exp-north" title="الشمال">
+                <svg width="30" height="38" viewBox="0 0 30 38"><path d="M15 2 24 32 15 26 6 32Z" fill="none" stroke="#C8CDD4" strokeWidth="1.4" strokeLinejoin="round" /><path d="M15 2 15 26 6 32Z" fill="#E07B39" opacity=".9" /><text x="15" y="37" textAnchor="middle" fontSize="9" fill="#C8CDD4" fontFamily="sans-serif">N</text></svg>
+              </div>
+
+              {/* الليجند */}
+              {Object.keys(activeLayers).length > 0 && (
+                <div className="exp-legend">
+                  <div className="exp-legend-head">مفتاح الخريطة</div>
+                  {myDatasets.filter((d) => activeLayers[d.slug]).map((d) => (
+                    <div className="exp-legend-row" key={d.slug}>
+                      <span className="exp-legend-sw" style={{ background: LAYER_COLOR(d), borderColor: LAYER_COLOR(d) }} />
+                      <span className="exp-legend-name">{d.name}</span>
+                      <span className="exp-legend-type mono">{dsLabel(d.kind)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {explorerErr && <div className="exp-err">⚠️ {explorerErr}</div>}
             </div>
-          </section>
-        </main>
+
+            {/* الشريط السفليّ: نظام الإحداثيّات + خطّ الطول ودائرة العرض حيّاً */}
+            <div className="exp-status">
+              <span className="exp-crs mono">WGS 84 · EPSG:4326</span>
+              <span className="exp-sep" />
+              <span className="exp-coord">دائرة العرض <b ref={expLatRef} className="mono">—</b></span>
+              <span className="exp-coord">خطّ الطول <b ref={expLonRef} className="mono">—</b></span>
+              <span className="exp-sep" />
+              <span className="exp-zoom mono" ref={expZoomRef}>z9</span>
+              <span className="exp-proj">إسقاط الويب (Web Mercator)</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ============ MENUS ============ */}
