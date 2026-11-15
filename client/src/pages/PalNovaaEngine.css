@@ -466,6 +466,24 @@
 .pne-root .plan .cta .btn{width:100%;justify-content:center;height:42px;font-size:14px;box-sizing:border-box;text-decoration:none;cursor:pointer}
 .pne-root .plan .cta a.btn{color:inherit}
 .pne-root .plan .cta a.btn.accent{color:#170C04}
+/* زرّ Gumroad: أبيض افتراضاً، واللون المميّز يظهر عند المرور/الضغط — نتغلّب على تنسيق gumroad.js */
+.pne-root .plan .cta a.gumroad-button,
+.pne-root .plan .cta a.gumroad-button:link,
+.pne-root .plan .cta a.gumroad-button:visited{
+  background:#ffffff !important;background-image:none !important;
+  color:#15100A !important;border:1px solid var(--line-2) !important;
+  box-shadow:none !important;text-indent:0 !important;font-weight:600 !important;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.pne-root .plan .cta a.gumroad-button::before,
+.pne-root .plan .cta a.gumroad-button::after{content:none !important;background:none !important;display:none !important}
+.pne-root .plan .cta a.gumroad-button > *{display:none !important}
+.pne-root .plan .cta a.gumroad-button > .gr-label{display:inline !important}
+.pne-root .plan .cta a.gumroad-button:hover,
+.pne-root .plan .cta a.gumroad-button:focus,
+.pne-root .plan .cta a.gumroad-button:active{
+  background:var(--accent) !important;border-color:var(--accent) !important;color:#170C04 !important;
+}
 .pne-root .pricing .pfoot{text-align:center;color:var(--faint);font-size:12.5px;margin-top:26px}
 .pne-root .pricing .pfoot b{color:var(--text-2);font-weight:500}
 @media (max-width:860px){.pne-root .plans{grid-template-columns:1fr}.pne-root .pricing h1{font-size:26px}}

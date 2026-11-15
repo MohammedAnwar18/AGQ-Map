@@ -166,7 +166,7 @@ export default function PalNovaaEnginePricing() {
                     </ul>
                     <div className="cta">
                       {p.id === 'pro' && gumroadHref
-                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true">{p.cta}</a>
+                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true"><span className="gr-label">{p.cta}</span></a>
                         : <button className={`btn ${p.feat ? 'accent' : ''}`} onClick={() => subscribe(p.id)}>{p.cta}</button>}
                     </div>
                   </div>
