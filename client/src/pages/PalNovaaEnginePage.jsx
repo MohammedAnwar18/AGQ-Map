@@ -792,13 +792,13 @@ export default function PalNovaaEnginePage() {
     return () => { cancelled = true; };
   }, [explorerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape يغلق النافذة
+  // Escape يغلق النافذة (إلّا إن كانت نافذةٌ منبثقة مفتوحة فوقها)
   useEffect(() => {
     if (!explorerOpen) return;
-    const onKey = (e) => { if (e.key === 'Escape') setExplorerOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape' && !modal) setExplorerOpen(false); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [explorerOpen]);
+  }, [explorerOpen, modal]);
 
   // عرض الطبقة المطلوبة تلقائياً بعد جهوزيّة الخريطة
   useEffect(() => {
@@ -1062,9 +1062,14 @@ export default function PalNovaaEnginePage() {
         </header>
         <div className="exp-body">
           <aside className="exp-side">
-            <div className="exp-side-head"><b>طبقات بياناتي</b><span className="count mono">{myDatasets.length}</span></div>
+            <div className="exp-side-head"><b>بياناتي</b><span className="count mono">{myDatasets.length}</span></div>
+            <div className="exp-actions">
+              <button onClick={() => fileRef.current?.click()}>{Ico.up}<span>رفع ملفّ</span></button>
+              <button onClick={openArcgis}>{Ico.mapIco}<span>ArcGIS</span></button>
+              <button onClick={openHdx}>{Ico.db}<span>HDX</span></button>
+            </div>
             <div className="exp-list">
-              {myDatasets.length === 0 && <div className="exp-empty">لا بيانات بعد — أضِفها من «البيانات» (رفع، ArcGIS، HDX).</div>}
+              {myDatasets.length === 0 && <div className="exp-empty">لا بيانات محفوظة بعد — أضِفها من الأزرار فوق (رفع · ArcGIS · HDX) وتظهر هنا مباشرةً.</div>}
               {myDatasets.map((d) => (
                 <button className={`exp-item ${activeLayers[d.slug] ? 'on' : ''}`} key={d.slug} onClick={() => toggleLayer(d)}>
                   <span className="exp-eye">{layerBusy === d.slug ? <span className="ring" /> : (activeLayers[d.slug] ? Ico.eye : Ico.eyeOff)}</span>
