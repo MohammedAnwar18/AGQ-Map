@@ -89,9 +89,12 @@ const postJSON = (url, bodyObj, headers = {}, timeoutMs = 60000) => new Promise(
         res.on('end', () => {
             try {
                 const json = JSON.parse(data);
-                if (res.statusCode && res.statusCode >= 400) return reject(new Error(json?.error?.message || `upstream ${res.statusCode}`));
+                if (res.statusCode && res.statusCode >= 400) {
+                    const msg = json?.error?.message || (typeof json?.error === 'string' ? json.error : '') || `upstream ${res.statusCode}`;
+                    return reject(new Error(msg));
+                }
                 resolve(json);
-            } catch { reject(new Error(`bad json (${res.statusCode})`)); }
+            } catch { reject(new Error(`upstream ${res.statusCode}: ${String(data).replace(/\s+/g, ' ').slice(0, 200)}`)); }
         });
     });
     req.on('error', reject);
@@ -654,7 +657,7 @@ function streamHTTPS(url, body, headers, onEvent, timeoutMs = 290000) {
         }, (res) => {
             if (res.statusCode && res.statusCode >= 400) {
                 let e = ''; res.setEncoding('utf8'); res.on('data', (c) => { e += c; });
-                res.on('end', () => { try { const j = JSON.parse(e); reject(new Error(j?.error?.message || `upstream ${res.statusCode}`)); } catch { reject(new Error(`upstream ${res.statusCode}`)); } });
+                res.on('end', () => { try { const j = JSON.parse(e); reject(new Error(j?.error?.message || (typeof j?.error === 'string' ? j.error : '') || `upstream ${res.statusCode}: ${String(e).replace(/\s+/g, ' ').slice(0, 200)}`)); } catch { reject(new Error(`upstream ${res.statusCode}: ${String(e).replace(/\s+/g, ' ').slice(0, 200)}`)); } });
                 return;
             }
             let buf = '';
@@ -806,8 +809,9 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance });
         return res.end();
     } catch (err) {
-        const m = String(err.message || 'error');
+        let m = String(err.message || 'error');
         const transient = /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m);
+        if (/404|not found|does not exist|is not found/i.test(m)) m = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). جرّب مفتاحاً آخر أو أخبِرني بالمزوّد. التفصيل: ${m}`;
         send({ type: 'error', reason: transient ? 'الموديل مزدحمٌ الآن. جرّب بعد لحظات.' : m });
         return res.end();
     }
@@ -866,7 +870,8 @@ router.post('/generate', optionalAuth, async (req, res) => {
             if (!isTransient(lastErr)) break;
         }
     }
-    const reason = isTransient(lastErr) ? 'الموديل مزدحمٌ الآن (ضغطٌ مؤقّت). جرّب بعد لحظات.' : lastErr;
+    let reason = isTransient(lastErr) ? 'الموديل مزدحمٌ الآن (ضغطٌ مؤقّت). جرّب بعد لحظات.' : lastErr;
+    if (/404|not found|does not exist|is not found/i.test(lastErr)) reason = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). التفصيل: ${lastErr}`;
     return res.json({ ok: false, reason, model: MODEL_NAME });
 });
 
