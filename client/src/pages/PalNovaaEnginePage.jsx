@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './PalNovaaEngine.css';
 
 /* ============================================================================
@@ -249,6 +250,15 @@ const serializeThread = (msgs) => msgs.map((m) => (m.kind === 'build' ? { ...m, 
 
 export default function PalNovaaEnginePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return 'صباح الخير';
+    if (h >= 12 && h < 17) return 'نهارٌ سعيد';
+    if (h >= 17 && h < 22) return 'مساء الخير';
+    return 'سهرةٌ ممتعة';
+  })();
+  const userName = (user && (user.full_name || user.username)) || '';
 
   const [collapsed, setCollapsed] = useState(false);
   const [view, setView] = useState('home');  // home | workspace | templates
@@ -994,6 +1004,7 @@ export default function PalNovaaEnginePage() {
             <section className="home" onMouseMove={onHomeMove}>
               <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
               <div className="home-inner">
+                <div className="hero-greet">{greeting}{userName ? <> · <b>{userName}</b></> : ''} <span className="hero-wave">👋</span></div>
                 <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
 
                 <div className="composer">
