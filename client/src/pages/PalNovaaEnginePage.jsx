@@ -127,6 +127,8 @@ const Ico = {
   eye: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" /><circle cx="12" cy="12" r="3" /></svg>,
   eyeOff: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.16 3.19M6.6 6.6A18 18 0 0 0 1 12s4 8 11 8a9 9 0 0 0 5.4-1.6M1 1l22 22M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>,
   mapIco: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z" /><path d="M9 4v16M15 6v16" /></svg>,
+  folder: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>,
+  chevD: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>,
   code: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6" /></svg>,
   ext: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>,
   close: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>,
@@ -218,6 +220,24 @@ const TICONS = {
   ),
 };
 
+/* ====== عرض الكود كمشروع متعدّد الملفّات (شبيه VS Code) ====== */
+const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function splitProjectFiles(html) {
+  if (!html) return [{ name: 'index.html', lang: 'xml', code: '' }];
+  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n\n').trim();
+  const scripts = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join('\n\n').trim();
+  let index = html; let sDone = false, jDone = false;
+  index = index.replace(/[ \t]*<style[^>]*>[\s\S]*?<\/style>\s*/gi, () => (sDone ? '' : (sDone = true, '    <link rel="stylesheet" href="styles.css">\n')));
+  index = index.replace(/[ \t]*<script(?![^>]*\ssrc=)[^>]*>[\s\S]*?<\/script>\s*/gi, () => (jDone ? '' : (jDone = true, '    <script src="app.js"></script>\n')));
+  const files = [{ name: 'index.html', lang: 'xml', code: index.trim() }];
+  if (styles) files.push({ name: 'styles.css', lang: 'css', code: styles });
+  if (scripts) files.push({ name: 'app.js', lang: 'javascript', code: scripts });
+  return files;
+}
+const HLJS_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
+const HLJS_JS = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+const ensureHljs = async () => { if (window.hljs) return; loadCss(HLJS_CSS); await loadScript(HLJS_JS); };
+
 /* يحقن ملتقط أخطاء التشغيل في معاينة الـiframe (المعاينة فقط، لا النسخة المنشورة) */
 function injectCatcher(h) {
   const s = `<script>(function(){function p(m){try{parent.postMessage({__pne:'err',msg:String(m).slice(0,280)},'*')}catch(e){}}window.addEventListener('error',function(e){p((e.message||'خطأ')+(e.lineno?(' @'+e.lineno):''))});window.addEventListener('unhandledrejection',function(e){p('promise: '+((e.reason&&e.reason.message)||e.reason||''))});})();<\/script>`;
@@ -260,6 +280,8 @@ export default function PalNovaaEnginePage() {
   const flushSched = useRef(false);
 
   const [tplSearch, setTplSearch] = useState('');
+  const [activeFile, setActiveFile] = useState('index.html');
+  const [hljsReady, setHljsReady] = useState(false);
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
   const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
@@ -317,6 +339,11 @@ export default function PalNovaaEnginePage() {
   const messagesRef = useRef([]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // تحميل مُلوّن الكود (highlight.js) عند عرض تبويب الكود
+  useEffect(() => {
+    if (tab === 'code' && html && !hljsReady) { ensureHljs().then(() => setHljsReady(true)).catch(() => {}); }
+  }, [tab, html, hljsReady]);
 
   const showToast = useCallback((m) => {
     setToast(m); clearTimeout(toastTimer.current);
@@ -1127,7 +1154,43 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                 </div>
-                <div className={`pane ${tab === 'code' ? 'on' : ''}`}><div className="code"><pre>{busy && streamCode ? streamCode + '▋' : (html || '— لا كود بعد —')}</pre></div></div>
+                <div className={`pane ${tab === 'code' ? 'on' : ''}`}>
+                  {busy && streamCode ? (
+                    <div className="code"><pre>{streamCode + '▋'}</pre></div>
+                  ) : html ? (() => {
+                    const files = splitProjectFiles(html);
+                    const active = files.find((f) => f.name === activeFile) || files[0];
+                    let hi; try { hi = (hljsReady && window.hljs) ? window.hljs.highlight(active.code, { language: active.lang, ignoreIllegal: true }).value : escapeHtml(active.code); } catch { hi = escapeHtml(active.code); }
+                    const lines = active.code.split('\n').length;
+                    return (
+                      <div className="vscode">
+                        <div className="vs-tree">
+                          <div className="vs-root">{Ico.chevD}{Ico.folder}<b>{(title && title !== 'محادثة جديدة') ? title.slice(0, 22) : 'المشروع'}</b></div>
+                          {files.map((f) => (
+                            <button key={f.name} className={`vs-file ${active.name === f.name ? 'on' : ''}`} onClick={() => setActiveFile(f.name)}>
+                              <span className={`vs-ic ${f.lang}`}>{f.name.endsWith('.html') ? '◆' : f.name.endsWith('.css') ? '#' : '{}'}</span>{f.name}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="vs-main">
+                          <div className="vs-tabs">
+                            {files.map((f) => (
+                              <button key={f.name} className={`vs-tab ${active.name === f.name ? 'on' : ''}`} onClick={() => setActiveFile(f.name)}>
+                                <span className={`vs-ic ${f.lang}`}>{f.name.endsWith('.html') ? '◆' : f.name.endsWith('.css') ? '#' : '{}'}</span>{f.name}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="vs-code">
+                            <div className="vs-gutter">{Array.from({ length: lines }, (_, i) => <span key={i}>{i + 1}</span>)}</div>
+                            <pre className="vs-pre"><code className="hljs" dangerouslySetInnerHTML={{ __html: hi }} /></pre>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })() : (
+                    <div className="code"><pre>— لا كود بعد —</pre></div>
+                  )}
+                </div>
               </div>
             </div>
           </section>
