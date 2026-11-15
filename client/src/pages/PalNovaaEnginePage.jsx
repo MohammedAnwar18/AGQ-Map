@@ -1004,7 +1004,7 @@ export default function PalNovaaEnginePage() {
             <section className="home" onMouseMove={onHomeMove}>
               <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
               <div className="home-inner">
-                <div className="hero-greet">{greeting}{userName ? <> · <b>{userName}</b></> : ''} <span className="hero-wave">👋</span></div>
+                {userName && <h2 className="hero-greet">{greeting} {userName}</h2>}
                 <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
 
                 <div className="composer">
