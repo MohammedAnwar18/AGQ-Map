@@ -456,9 +456,12 @@ export default function PalNovaaEnginePage() {
     e.stopPropagation();
     if (name === 'versions') loadVersions();
     const r = e.currentTarget.getBoundingClientRect();
-    const left = Math.max(12, Math.min(r.left, window.innerWidth - 302));
-    const top = Math.min(r.bottom + 6, window.innerHeight - 60);
-    setMenu({ name, top, left });
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.max(12, Math.min(r.left, vw - 312));
+    const spaceBelow = vh - r.bottom;
+    // لو ما في مساحة كافية تحت الزرّ، افتح القائمة للأعلى فتبقى ظاهرة بالكامل
+    if (spaceBelow < 320 && r.top > spaceBelow) setMenu({ name, left, bottom: vh - r.top + 6, maxH: Math.max(180, r.top - 16) });
+    else setMenu({ name, left, top: r.bottom + 6, maxH: Math.max(180, spaceBelow - 16) });
   };
 
   const withContext = (text) => {
@@ -1286,7 +1289,7 @@ export default function PalNovaaEnginePage() {
 
       {/* ============ MENUS ============ */}
       {menu && (
-        <div className="menu" style={{ top: menu.top, left: menu.left }}>
+        <div className="menu" style={{ top: menu.top, bottom: menu.bottom, left: menu.left, maxHeight: menu.maxH }}>
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON · CSV · GeoTIFF — كبيرها يُقسَّم تلقائياً</small></span></button>
