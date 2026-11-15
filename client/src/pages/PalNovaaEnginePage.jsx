@@ -1074,6 +1074,7 @@ export default function PalNovaaEnginePage() {
         {/* ============ SIDEBAR ============ */}
         <aside className="sidebar">
           <div className="brand" onClick={() => collapsed && setCollapsed(false)}>
+            <span className="brand-mark"><svg viewBox="0 0 512 512" width="26" height="26"><rect width="512" height="512" rx="112" fill="#E07B39" /><g transform="translate(79.2 89.6) scale(5.2)" fill="none" strokeWidth="5" strokeLinecap="round"><path d="M14 58V6h19a20 20 0 0 1 0 40H14" stroke="#1A0D04" strokeLinejoin="round" /><path d="M23 15.5h10a10.5 10.5 0 0 1 0 21H23" stroke="#1A0D04" /><circle cx="33" cy="26" r="2.8" fill="#1A0D04" stroke="none" /></g></svg></span>
             <div className="brand-name">PalNovaa <span>Engine</span></div>
             <button className="collapse-btn" title="طيّ القائمة" onClick={(e) => { e.stopPropagation(); setCollapsed(true); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
@@ -1099,7 +1100,10 @@ export default function PalNovaaEnginePage() {
           </div>
           <div className="side-foot">
             <div className="avatar">PN</div>
-            <div className="who"><b>PalNovaa 1.0</b><small>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · بقي $${balance.remaining_usd}` : 'المحرّك الذكيّ'}</small></div>
+            <div className="who">
+              <b>{userName || 'PalNovaa 1.0'}{balance && <span className={`plan-badge ${balance.plan === 'pro' ? 'pro' : ''}`}>{balance.plan === 'pro' ? 'Pro' : 'مجّاني'}</span>}</b>
+              <small>{balance ? `بقي $${balance.remaining_usd} من $${balance.allowance_usd}` : 'المحرّك الذكيّ'}</small>
+            </div>
           </div>
         </aside>
 
