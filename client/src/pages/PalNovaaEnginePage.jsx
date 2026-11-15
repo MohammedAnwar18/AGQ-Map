@@ -709,18 +709,33 @@ export default function PalNovaaEnginePage() {
       return new window.GeoRasterLayer({ georaster, opacity: 0.85, resolution: 256 });
     }
     if (d.kind === 'arcgis') {
-      await ensureEsri();
+      await ensureLeaflet();
       const L = window.L; const m = d.meta || {}; const svc = m.serviceUrl; const type = m.serviceType || 'MapServer';
       if (!svc) throw new Error('هذا المصدر محفوظٌ قديماً — أعِد إضافته');
-      const grp = L.layerGroup();
-      if (type === 'FeatureServer') {
-        (m.layers || []).forEach((l) => L.esri.featureLayer({ url: `${svc}/FeatureServer/${l.id}`, style: () => ({ color: col, weight: 1.6, fillOpacity: 0.25 }) }).bindPopup((lyr) => popupHtml(lyr.feature && lyr.feature.properties)).addTo(grp));
-      } else if (type === 'ImageServer') {
-        // f:'image' + useCors:false: الخادم قد لا يدعم CORS على export، فنحمّلها كصورة مباشرة
-        L.esri.imageMapLayer({ url: `${svc}/ImageServer`, opacity: 0.85, f: 'image', useCors: false }).addTo(grp);
-      } else {
-        L.esri.dynamicMapLayer({ url: `${svc}/MapServer`, opacity: 0.85, f: 'image', useCors: false, ...(m.layers && m.layers.length ? { layers: m.layers.map((l) => l.id) } : {}) }).addTo(grp);
+      const grp = L.featureGroup();
+      let rendered = 0;
+      // الأضمن: اجلب المعالم كـ GeoJSON (الاستعلام يدعم CORS) وارسمها متّجهة تفاعليّة
+      for (const l of (m.layers || [])) {
+        const qUrl = `${svc}/${type}/${l.id}/query?where=1%3D1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000`;
+        try {
+          const gj = await fetch(qUrl).then((r) => r.json());
+          if (gj && Array.isArray(gj.features) && gj.features.length) {
+            L.geoJSON(gj, {
+              style: { color: col, weight: 1.6, fillColor: col, fillOpacity: 0.2 },
+              pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: col, fillColor: col, fillOpacity: 0.85, weight: 1 }),
+              onEachFeature: (f, ly) => { if (f.properties) ly.bindPopup(popupHtml(f.properties)); },
+            }).addTo(grp);
+            rendered += gj.features.length;
+            continue;
+          }
+        } catch { /* الاستعلام غير مدعوم → صورة */ }
+        // احتياطيّ (طبقات نقطيّة/مُبلّطة بلا استعلام): صورة export مباشرة
+        try {
+          await ensureEsri();
+          L.esri.dynamicMapLayer({ url: `${svc}/${type === 'FeatureServer' ? 'FeatureServer' : 'MapServer'}`, opacity: 0.85, f: 'image', useCors: false, layers: [l.id] }).addTo(grp);
+        } catch { /* */ }
       }
+      grp.__hasVector = rendered > 0;
       return grp;
     }
     if (d.kind === 'geojson' && d.meta && d.meta.tiled) {
