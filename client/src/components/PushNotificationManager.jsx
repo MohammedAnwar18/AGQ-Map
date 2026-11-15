@@ -8,13 +8,9 @@ const PushNotificationManager = () => {
 
     useEffect(() => {
         if (isAuthenticated && user) {
-            // iOS and modern browsers block automatic prompts.
-            // Check if push is supported and permission is not set
-            if ('Notification' in window && Notification.permission === 'default') {
-                const timer = setTimeout(() => setShowBanner(true), 2500);
-                return () => clearTimeout(timer);
-            } else if ('Notification' in window && Notification.permission === 'granted') {
-                // If already granted, silent resubscribe ensures we have the latest token in DB
+            // لا نعرض نافذة طلب الإشعارات تلقائياً (مزعجة للمستخدمين الجدد).
+            // نكتفي بإعادة الاشتراك الصامتة لمن فعّل الإشعارات مسبقاً فقط.
+            if ('Notification' in window && Notification.permission === 'granted') {
                 subscribeToPushNotifications();
             }
         }
