@@ -546,12 +546,15 @@ function buildDatasetInjection(rows, origin) {
 /* ---- المزوّد ---- */
 function pickProvider(KEY) {
     const k = (KEY || '').trim();
-    if (k.startsWith('sk-ant-')) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: ANTHROPIC_MODEL };
+    const envM = (process.env.PALNOVAA_MODEL || '').trim();
+    // يُستخدَم موديل البيئة فقط إن ناسب المزوّد، وإلّا موديلٌ افتراضيٌّ صالح — فيعمل أيّ مفتاحٍ مجّانيّ بمجرّد لصقه
+    const pick = (re, def) => (envM && re.test(envM) ? envM : def);
+    if (k.startsWith('sk-ant-')) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-4-5-20250929') };
     if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
-    if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'deepseek/deepseek-chat-v3:free' };
-    if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'llama-3.3-70b-versatile' };
-    if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: process.env.PALNOVAA_MODEL || 'deepseek-ai/deepseek-v3' };
-    return { kind: 'gemini', url: '', model: GEMINI_MODEL };
+    if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
+    if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'llama-3.3-70b-versatile') };
+    if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v3') };
+    return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-2.0-flash') };
 }
 
 const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت بالضبط (حرفٌ بحرف)، بلا إعادة أيّ جزءٍ سابق وبلا أيّ شرح. إن كان المستند قد اكتمل بـ</html> فاكتب "تمّ".';
@@ -617,7 +620,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
         return { text: full.trim(), usage };
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:generateContent`;
     const contents = [];
     if (currentHtml) {
         contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
