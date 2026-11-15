@@ -48,6 +48,8 @@ const OAI_MODEL = process.env.PALNOVAA_MODEL || 'deepseek/deepseek-chat-v3:free'
 const ANTHROPIC_MODEL = process.env.PALNOVAA_MODEL || 'claude-sonnet-5-5';
 const SERVER_KEY = process.env.PALNOVAA_MODEL_KEY || process.env.GEMINI_API_KEY || '';
 const MAXTOK = parseInt(process.env.PALNOVAA_MAX_TOKENS, 10) || 16000;
+// مهلة الاتّصال بالمزوّد (ms). السقف الصلب هو maxDuration في vercel.json (300s)، فنبقى تحته.
+const UPSTREAM_TIMEOUT = Math.min(parseInt(process.env.PALNOVAA_TIMEOUT_MS, 10) || 280000, 295000);
 
 /* التقنين بالكلفة الفعليّة (µ$ لكلّ توكِن) — افتراض Claude Sonnet 5.5، قابلٌ للضبط بالبيئة.
    الفكرة: كلّ مستخدمٍ على المفتاح المشترك يستهلك حتى FREE_USD مجّاناً، ثمّ يُطلَب Pro
@@ -583,7 +585,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
         const headers = { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' };
         let full = '';
         for (let i = 0; i < 5; i++) {
-            const data = await postJSON(prov.url, { model: prov.model, max_tokens: MAXTOK, system, messages }, headers, 290000);
+            const data = await postJSON(prov.url, { model: prov.model, max_tokens: MAXTOK, system, messages }, headers, UPSTREAM_TIMEOUT);
             const blocks = Array.isArray(data?.content) ? data.content : [];
             const piece = blocks.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('');
             full += piece;
@@ -608,7 +610,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         let full = '';
         for (let i = 0; i < 5; i++) {
-            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK }, headers, 290000);
+            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK }, headers, UPSTREAM_TIMEOUT);
             const choice = data?.choices?.[0]; const msg = choice?.message;
             const piece = ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '');
             full += piece;
@@ -633,7 +635,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
     let full = '';
     for (let i = 0; i < 5; i++) {
         const payload = { systemInstruction: { role: 'system', parts: [{ text: fullSys }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 } };
-        const data = await postJSON(url, payload, { 'x-goog-api-key': KEY }, 290000);
+        const data = await postJSON(url, payload, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
         const cand = data?.candidates?.[0];
         const piece = (cand?.content?.parts || []).map((p) => p?.text || '').join('');
         full += piece;
@@ -647,7 +649,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
 }
 
 /* ---- قراءة بثّ SSE من المزوّد وتمرير كلّ حدثٍ لدالّة ---- */
-function streamHTTPS(url, body, headers, onEvent, timeoutMs = 290000) {
+function streamHTTPS(url, body, headers, onEvent, timeoutMs = UPSTREAM_TIMEOUT) {
     return new Promise((resolve, reject) => {
         const payload = Buffer.from(JSON.stringify(body), 'utf8');
         const u = new URL(url);
@@ -811,7 +813,8 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     } catch (err) {
         let m = String(err.message || 'error');
         const transient = /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m);
-        if (/404|not found|does not exist|is not found/i.test(m)) m = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). جرّب مفتاحاً آخر أو أخبِرني بالمزوّد. التفصيل: ${m}`;
+        if (/ETIMEDOUT|timeout|socket hang|ECONNRESET|ENETUNREACH/i.test(m)) m = 'المزوّد لم يستجب في الوقت المحدّد (بطء/ازدحام في المزوّد المجّاني). جرّب مزوّداً أسرع مثل Groq (gsk_) أو Gemini، أو أعِد المحاولة.';
+        else if (/404|not found|does not exist|is not found/i.test(m)) m = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). جرّب مفتاحاً آخر أو أخبِرني بالمزوّد. التفصيل: ${m}`;
         send({ type: 'error', reason: transient ? 'الموديل مزدحمٌ الآن. جرّب بعد لحظات.' : m });
         return res.end();
     }
@@ -871,7 +874,8 @@ router.post('/generate', optionalAuth, async (req, res) => {
         }
     }
     let reason = isTransient(lastErr) ? 'الموديل مزدحمٌ الآن (ضغطٌ مؤقّت). جرّب بعد لحظات.' : lastErr;
-    if (/404|not found|does not exist|is not found/i.test(lastErr)) reason = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). التفصيل: ${lastErr}`;
+    if (/ETIMEDOUT|timeout|socket hang|ECONNRESET|ENETUNREACH/i.test(lastErr)) reason = 'المزوّد لم يستجب في الوقت المحدّد (بطء/ازدحام في المزوّد المجّاني). جرّب مزوّداً أسرع مثل Groq (gsk_) أو Gemini، أو أعِد المحاولة.';
+    else if (/404|not found|does not exist|is not found/i.test(lastErr)) reason = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). التفصيل: ${lastErr}`;
     return res.json({ ok: false, reason, model: MODEL_NAME });
 });
 
