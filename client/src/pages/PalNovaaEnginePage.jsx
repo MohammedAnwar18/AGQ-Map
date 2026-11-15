@@ -282,6 +282,7 @@ export default function PalNovaaEnginePage() {
   const [tplSearch, setTplSearch] = useState('');
   const [activeFile, setActiveFile] = useState('index.html');
   const [hljsReady, setHljsReady] = useState(false);
+  const [pvKey, setPvKey] = useState(0);   // يُجبر المعاينة على التجدّد الفوري مع كلّ تغيير كود
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
   const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
@@ -339,6 +340,9 @@ export default function PalNovaaEnginePage() {
   const messagesRef = useRef([]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // تجديد المعاينة فوراً عند أيّ تغيير في الكود، والانتقال لتبويب المعاينة
+  useEffect(() => { if (html) { setPvKey((k) => k + 1); setTab('app'); } }, [html]);
 
   // تحميل مُلوّن الكود (highlight.js) عند عرض تبويب الكود
   useEffect(() => {
@@ -1145,7 +1149,7 @@ export default function PalNovaaEnginePage() {
               <div className="pv-body">
                 <div className={`pane ${tab === 'app' ? 'on' : ''}`}>
                   {!html && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يكتب PalNovaa 1.0 تطبيقك مباشرةً… (شاهد الكود في تبويب «الكود»)</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
-                  {html && <iframe className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" />}
+                  {html && <iframe key={pvKey} className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" />}
                   {html && iframeErr && !busy && (
                     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14, background: 'rgba(227,100,80,.14)', border: '1px solid rgba(227,100,80,.45)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 3, backdropFilter: 'blur(4px)' }}>
                       <span style={{ fontSize: 12.5, color: '#f0b3a8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>⚠ خطأ تشغيل: {iframeErr}</span>
