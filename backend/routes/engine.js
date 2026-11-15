@@ -556,7 +556,7 @@ function pickProvider(KEY) {
     if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'llama-3.3-70b-versatile') };
-    if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v3') };
+    if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v4.1-flash') };
     return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-2.0-flash') };
 }
 
