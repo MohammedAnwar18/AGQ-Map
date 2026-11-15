@@ -554,7 +554,7 @@ function pickProvider(KEY) {
     const envM = (process.env.PALNOVAA_MODEL || '').trim();
     // يُستخدَم موديل البيئة فقط إن ناسب المزوّد، وإلّا موديلٌ افتراضيٌّ صالح — فيعمل أيّ مفتاحٍ مجّانيّ بمجرّد لصقه
     const pick = (re, def) => (envM && re.test(envM) ? envM : def);
-    if (k.startsWith('sk-ant-')) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-4-5-20250929') };
+    if (k.startsWith('sk-ant-')) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-5-5') };
     if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'llama-3.3-70b-versatile') };
