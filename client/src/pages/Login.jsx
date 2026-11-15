@@ -10,6 +10,7 @@ const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
+    const redirectTo = location.state?.from || '/map';   // الرجوع للصفحة المقصودة بعد الدخول (مثل المحرّك)
     const [isLogin, setIsLogin] = useState(location.state?.mode === 'register' ? false : true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -45,7 +46,7 @@ const Login = () => {
             if (response.token && response.user) {
                 markReturningVisitor();
                 login(response.user, response.token);
-                navigate('/map');
+                navigate(redirectTo, { replace: true });
             } else {
                 setError(response.error || 'فشل في تسجيل الدخول من جوجل');
             }
@@ -158,7 +159,7 @@ const Login = () => {
                     markReturningVisitor();
 
                     login(response.user, response.token);
-                    navigate('/map');
+                    navigate(redirectTo, { replace: true });
                 } else {
                     // تسجيل الدخول الأولي
                     response = await authService.login({
@@ -175,7 +176,7 @@ const Login = () => {
                     } else {
                         markReturningVisitor();
                         login(response.user, response.token);
-                        navigate('/map');
+                        navigate(redirectTo, { replace: true });
                     }
                 }
             } else {
@@ -223,7 +224,7 @@ const Login = () => {
                 } else {
                     markReturningVisitor();
                     login(response.user, response.token);
-                    navigate('/map');
+                    navigate(redirectTo, { replace: true });
                 }
             }
         } catch (error) {

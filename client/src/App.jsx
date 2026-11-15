@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 const Login = React.lazy(() => import('./pages/Login'));
 const Map = React.lazy(() => import('./pages/Map'));
@@ -55,6 +55,7 @@ const OnboardingManager = () => {
 
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
+    const location = useLocation();
 
     const searchParams = new URLSearchParams(window.location.search);
     const hasSharedItem = searchParams.has('shopId') || searchParams.has('facilityId');
@@ -65,7 +66,7 @@ const ProtectedRoute = ({ children }) => {
 
     if (loading) return <SplashLoading />;
 
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    return isAuthenticated ? children : <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
 };
 
 // الخريطة مفتوحة للجميع: نحن ننتظر انتهاء التحقق من الجلسة فقط،
@@ -199,7 +200,7 @@ function App() {
                                 <Route path="/palnovaa-foresight" element={<PalNovaaForesightPage />} />
                                 <Route path="/foresight" element={<Navigate to="/palnovaa-foresight" replace />} />
                                 {/* محرّك بالنوفا — يبني تطبيقات GIS من وصفٍ نصّيّ بموديل PalNovaa 1.0 */}
-                                <Route path="/palnovaa-engine" element={<PalNovaaEnginePage />} />
+                                <Route path="/palnovaa-engine" element={<ProtectedRoute><PalNovaaEnginePage /></ProtectedRoute>} />
                                 <Route path="/palnovaa-engine/pricing" element={<PalNovaaEnginePricing />} />
                                 <Route path="/pricing" element={<Navigate to="/palnovaa-engine/pricing" replace />} />
                                 <Route path="/engine" element={<Navigate to="/palnovaa-engine" replace />} />
