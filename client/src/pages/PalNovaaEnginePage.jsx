@@ -43,14 +43,21 @@ const loadScript = (url) => {
   return _libCache[url];
 };
 const loadCss = (url) => { if (_libCache['css:' + url]) return; _libCache['css:' + url] = true; const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = url; document.head.appendChild(l); };
+/* أنظمة إحداثيّات فلسطين (تعريفات proj4) */
+const PROJ_DEFS = {
+  'EPSG:28191': '+proj=cass +lat_0=31.73409694444445 +lon_0=35.21208055555556 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +towgs84=-275.722,94.7824,340.894,-8.001,-4.42,-11.821,1 +units=m +no_defs',
+  'EPSG:28192': '+proj=cass +lat_0=31.73409694444445 +lon_0=35.21208055555556 +x_0=170251.555 +y_0=1126867.909 +ellps=clrk80 +towgs84=-275.722,94.7824,340.894,-8.001,-4.42,-11.821,1 +units=m +no_defs',
+  'EPSG:2039': '+proj=tmerc +lat_0=31.73439361111111 +lon_0=35.20451694444445 +k=1.0000067 +x_0=219529.584 +y_0=626907.39 +ellps=GRS80 +towgs84=-24.0024,-17.1032,-17.8444,-0.33077,-1.85269,1.66969,5.4262 +units=m +no_defs',
+};
+const ensureProj4 = async () => {
+  if (!window.proj4) await loadScript(MAPLIBS.proj4);
+  if (window.proj4) for (const [k, def] of Object.entries(PROJ_DEFS)) { try { if (!window.proj4.defs(k)) window.proj4.defs(k, def); } catch { /* */ } }
+};
 const ensureLeaflet = async () => { loadCss(MAPLIBS.leafletCss); if (!window.L) await loadScript(MAPLIBS.leaflet); return window.L; };
 const ensureEsri = async () => { await ensureLeaflet(); if (!window.L.esri) await loadScript(MAPLIBS.esri); };
 const ensureVectorGrid = async () => { await ensureLeaflet(); if (!window.L.vectorGrid) await loadScript(MAPLIBS.vectorgrid); };
 const ensureGeoraster = async () => {
-  if (!window.proj4) await loadScript(MAPLIBS.proj4);
-  if (window.proj4 && !window.proj4.defs('EPSG:28191')) {
-    try { window.proj4.defs('EPSG:28191', '+proj=tmerc +lat_0=31.73409694444445 +lon_0=35.21208055555556 +k=1 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +towgs84=-235,-85,264,0,0,0,0 +units=m +no_defs'); } catch { /* */ }
-  }
+  await ensureProj4();
   if (!window.parseGeoraster) await loadScript(MAPLIBS.georaster);
   await ensureLeaflet();
   if (!window.GeoRasterLayer) await loadScript(MAPLIBS.georasterLayer);
@@ -271,6 +278,9 @@ export default function PalNovaaEnginePage() {
   const layerObjs = useRef({});                         // slug → طبقة Leaflet
   const pendingFocus = useRef(null);
   const expLatRef = useRef(null); const expLonRef = useRef(null); const expZoomRef = useRef(null);
+  const [expCrs, setExpCrs] = useState('EPSG:4326');
+  const expCrsRef = useRef('EPSG:4326');
+  useEffect(() => { expCrsRef.current = expCrs; }, [expCrs]);
 
   const contoursRef = useRef(null);
   const latRef = useRef(null); const lonRef = useRef(null); const arrowRef = useRef(null);
@@ -773,6 +783,7 @@ export default function PalNovaaEnginePage() {
     (async () => {
       try {
         const L = await ensureLeaflet();
+        ensureProj4();
         if (cancelled) return;
         if (mapRef.current) { setTimeout(() => mapRef.current.invalidateSize(), 60); setMapReady(true); return; }
         if (!mapElRef.current) return;
@@ -782,8 +793,18 @@ export default function PalNovaaEnginePage() {
         L.control.scale({ imperial: false, position: 'bottomleft', maxWidth: 140 }).addTo(map);
         const setZoom = () => { if (expZoomRef.current) expZoomRef.current.textContent = 'z' + map.getZoom(); };
         map.on('mousemove', (e) => {
-          if (expLatRef.current) expLatRef.current.textContent = e.latlng.lat.toFixed(5) + '° N';
-          if (expLonRef.current) expLonRef.current.textContent = e.latlng.lng.toFixed(5) + '° E';
+          const yEl = expLatRef.current, xEl = expLonRef.current; if (!yEl || !xEl) return;
+          const c = expCrsRef.current;
+          if (c === 'EPSG:4326' || !window.proj4) {
+            yEl.textContent = e.latlng.lat.toFixed(5) + '° N';
+            xEl.textContent = e.latlng.lng.toFixed(5) + '° E';
+          } else {
+            try {
+              const p = window.proj4('EPSG:4326', c, [e.latlng.lng, e.latlng.lat]);
+              xEl.textContent = p[0].toFixed(2);
+              yEl.textContent = p[1].toFixed(2);
+            } catch { yEl.textContent = '—'; xEl.textContent = '—'; }
+          }
         });
         map.on('zoomend', setZoom); setZoom();
         mapRef.current = map; setMapReady(true);
@@ -814,6 +835,12 @@ export default function PalNovaaEnginePage() {
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
   const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : k === 'geotiff' ? 'TIF' : (k || 'D').slice(0, 4).toUpperCase());
   const LAYER_COLOR = (d) => ({ geojson: '#E07B39', csv: '#F0954F', arcgis: '#5B9BD5', geotiff: '#7BC67E' }[d.kind] || '#E07B39');
+  const EXP_CRS_OPTS = [
+    { v: 'EPSG:4326', n: 'WGS 84 — طول/عرض (°)' },
+    { v: 'EPSG:28191', n: 'شبكة فلسطين 1923 · Grid (م)' },
+    { v: 'EPSG:28192', n: 'حزام فلسطين 1923 · Belt (م)' },
+    { v: 'EPSG:2039', n: 'ITM — إسرائيلي TM (م)' },
+  ];
   const dsMeta = (d) => {
     if (d.kind === 'arcgis') return `ArcGIS · ${d.feature_count} طبقة`;
     if (d.kind === 'geotiff') { const m = d.meta || {}; return `GeoTIFF · ${m.width || '?'}×${m.height || '?'} · ${m.bands || '?'} نطاق`; }
@@ -1117,15 +1144,21 @@ export default function PalNovaaEnginePage() {
               {explorerErr && <div className="exp-err">⚠️ {explorerErr}</div>}
             </div>
 
-            {/* الشريط السفليّ: نظام الإحداثيّات + خطّ الطول ودائرة العرض حيّاً */}
+            {/* الشريط السفليّ: مُبدّل نظام الإحداثيّات + العدّادات الحيّة */}
             <div className="exp-status">
-              <span className="exp-crs mono">WGS 84 · EPSG:4326</span>
+              <label className="exp-crs-pick" title="غيّر نظام الإحداثيّات للعدّادات">
+                {Ico.mapIco}
+                <select value={expCrs} onChange={(e) => setExpCrs(e.target.value)}>
+                  {EXP_CRS_OPTS.map((o) => <option key={o.v} value={o.v}>{o.n}</option>)}
+                </select>
+              </label>
               <span className="exp-sep" />
-              <span className="exp-coord">دائرة العرض <b ref={expLatRef} className="mono">—</b></span>
-              <span className="exp-coord">خطّ الطول <b ref={expLonRef} className="mono">—</b></span>
+              <span className="exp-coord"><i>{expCrs === 'EPSG:4326' ? 'دائرة العرض' : 'شمال Y'}</i> <b ref={expLatRef} className="mono">—</b></span>
+              <span className="exp-coord"><i>{expCrs === 'EPSG:4326' ? 'خطّ الطول' : 'شرق X'}</i> <b ref={expLonRef} className="mono">—</b></span>
+              <span className="exp-unit mono">{expCrs === 'EPSG:4326' ? '°' : 'م'}</span>
               <span className="exp-sep" />
               <span className="exp-zoom mono" ref={expZoomRef}>z9</span>
-              <span className="exp-proj">إسقاط الويب (Web Mercator)</span>
+              <span className="exp-proj mono">{expCrs}</span>
             </div>
           </div>
         </div>
