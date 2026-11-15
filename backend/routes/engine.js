@@ -583,7 +583,43 @@ const looksComplete = (s) => /<\/html>\s*$/i.test((s || '').trim());
 const looksLooped = (s) => /\S{2800,}/.test(s || '');
 const blankUsage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 
-async function callModel(KEY, prompt, currentHtml, skillsCtx) {
+/* ---- تصميم مرجعيّ (design-to-code): صورة شاشة أو SVG مُصدَّر من Penpot ---- */
+const DESIGN_IMG_NOTE = 'مرفقٌ تصميمٌ مرجعيّ (صورة). طابِق الناتج لهذا التصميم بأمانة: التخطيط العامّ، التسلسل البصريّ، لوحة الألوان، المسافات والحواف، الأزرار والحقول، أحجام الخطوط، والمكوّنات ومواضعها. اجعل الواجهة responsive ونظيفة وحديثة؛ وإن تعذّر عنصرٌ فأقرب بديلٍ ممكن.';
+const DESIGN_SVG_NOTE = 'مرفقٌ تصميمٌ مرجعيّ بصيغة SVG (تصدير Penpot أو أداة تصميم). حلّل بنيته: الإطارات والنصوص والألوان (fill/stroke) والإحداثيّات والأحجام، واستخرج منه التخطيط والهويّة البصريّة وطابِقها بدقّة في تطبيق HTML/CSS حديث responsive.';
+function validDesign(d) {
+    if (!d || typeof d !== 'object') return null;
+    if (d.kind === 'svg' && typeof d.svg === 'string' && d.svg.includes('<svg')) return { kind: 'svg', svg: d.svg.slice(0, 1600000) };
+    if (d.kind === 'image' && typeof d.data === 'string') {
+        const raw = (d.mediaType || '').toLowerCase();
+        const mt = /^image\/(png|jpeg|jpg|webp|gif)$/.test(raw) ? (raw === 'image/jpg' ? 'image/jpeg' : raw) : 'image/png';
+        const base64 = d.data.replace(/^data:[^,]+,/, '').slice(0, 7000000);
+        if (base64.length < 32) return null;
+        return { kind: 'image', mediaType: mt, base64 };
+    }
+    return null;
+}
+const svgBlock = (note, svg, prompt) => `${note}\n\nالتصميم (SVG):\n\`\`\`svg\n${svg}\n\`\`\`\n\nالمطلوب:\n${prompt}`;
+function anthroUser(prompt, design) {
+    if (!design) return prompt;
+    if (design.kind === 'svg') return svgBlock(DESIGN_SVG_NOTE, design.svg, prompt);
+    return [
+        { type: 'image', source: { type: 'base64', media_type: design.mediaType, data: design.base64 } },
+        { type: 'text', text: `${DESIGN_IMG_NOTE}\n\nالمطلوب:\n${prompt}` },
+    ];
+}
+function oaiUser(prompt, design) {
+    if (!design) return prompt;
+    if (design.kind === 'svg') return svgBlock(DESIGN_SVG_NOTE, design.svg, prompt);
+    // الموديلات الافتراضيّة المجّانيّة لا تقرأ الصور — نوجّه المستخدم ونكمل بالوصف
+    return `ملاحظة: أرفق المستخدم تصميماً مرجعيّاً كصورة، لكنّ هذا الموديل لا يقرأ الصور؛ انصحه بلطفٍ في ملخّصك باستخدام مفتاح Claude (sk-ant-) أو Gemini لمطابقة الصورة بدقّة. ابنِ الآن واجهةً حديثةً نظيفةً حسب الوصف.\n\nالمطلوب:\n${prompt}`;
+}
+function geminiParts(prompt, design) {
+    if (!design) return [{ text: prompt }];
+    if (design.kind === 'svg') return [{ text: svgBlock(DESIGN_SVG_NOTE, design.svg, prompt) }];
+    return [{ inlineData: { mimeType: design.mediaType, data: design.base64 } }, { text: `${DESIGN_IMG_NOTE}\n\nالمطلوب:\n${prompt}` }];
+}
+
+async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
     const prov = pickProvider(KEY);
     const usage = blankUsage();
     const fullSys = skillsCtx ? SYSTEM_INSTRUCTION + skillsCtx : SYSTEM_INSTRUCTION;
@@ -598,7 +634,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
             messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
-        messages.push({ role: 'user', content: prompt });
+        messages.push({ role: 'user', content: anthroUser(prompt, design) });
         const headers = { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' };
         let full = '';
         for (let i = 0; i < 5; i++) {
@@ -622,7 +658,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
             messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
-        messages.push({ role: 'user', content: prompt });
+        messages.push({ role: 'user', content: oaiUser(prompt, design) });
         const headers = { Authorization: `Bearer ${KEY}` };
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         let full = '';
@@ -648,7 +684,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
         contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
         contents.push({ role: 'model', parts: [{ text: 'تمام، ما التعديل المطلوب؟' }] });
     }
-    contents.push({ role: 'user', parts: [{ text: prompt }] });
+    contents.push({ role: 'user', parts: geminiParts(prompt, design) });
     let full = '';
     for (let i = 0; i < 5; i++) {
         const payload = { systemInstruction: { role: 'system', parts: [{ text: fullSys }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 } };
@@ -703,7 +739,7 @@ function streamHTTPS(url, body, headers, onEvent, timeoutMs = UPSTREAM_TIMEOUT) 
 }
 
 /* ---- بثّ الموديل: يستدعي onDelta لكلّ قطعة نصّ، ويعيد {text, usage} ---- */
-async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
+async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design) {
     const prov = pickProvider(KEY);
     const usage = blankUsage();
     const fullSys = skillsCtx ? SYSTEM_INSTRUCTION + skillsCtx : SYSTEM_INSTRUCTION;
@@ -719,7 +755,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
             messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
-        messages.push({ role: 'user', content: prompt });
+        messages.push({ role: 'user', content: anthroUser(prompt, design) });
         const headers = { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' };
         for (let round = 0; round < 5; round++) {
             let piece = '', stop = '', errMsg = '';
@@ -747,7 +783,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
             messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
-        messages.push({ role: 'user', content: prompt });
+        messages.push({ role: 'user', content: oaiUser(prompt, design) });
         const headers = { Authorization: `Bearer ${KEY}` };
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         for (let round = 0; round < 5; round++) {
@@ -770,7 +806,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
     }
 
     // Gemini: لا بثّ تدريجيّ هنا — نستدعي النسخة المخزّنة ونرسلها دفعةً كـِدلتا واحدة
-    const r = await callModel(KEY, prompt, currentHtml);
+    const r = await callModel(KEY, prompt, currentHtml, skillsCtx, design);
     if (r.text) onDelta(r.text);
     return r;
 }
@@ -817,9 +853,10 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
+        const design = validDesign(b.design);
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
-        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx);
+        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
         const out = parseGenerated(text, prompt);
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
@@ -871,6 +908,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
         } catch (e) { /* ignore dataset errors */ }
     }
 
+    const design = validDesign(b.design);
     const skillIds = detectSkills(prompt);
     const skillsCtx = buildSkillsContext(skillIds);
     const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
@@ -878,7 +916,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt));
         try {
-            const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx);
+            const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx, design);
             if (!text) { lastErr = 'empty'; continue; }
             if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
             const out = parseGenerated(text, prompt);

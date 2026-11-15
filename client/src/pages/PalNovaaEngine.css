@@ -126,6 +126,9 @@
 .pne-root .chip .ct{font-family:var(--mono);font-size:10.5px;color:var(--muted);direction:ltr}
 .pne-root .chip button{color:var(--faint);display:grid;place-items:center;width:18px;height:18px;border-radius:4px}
 .pne-root .chip button:hover{color:var(--text);background:var(--line-2)}
+.pne-root .chip.design{background:var(--accent-soft,rgba(224,123,57,.12));border-color:var(--accent-line)}
+.pne-root .chip.design .ct{color:var(--accent-2)}
+.pne-root .tool.on{color:var(--accent-2);border-color:var(--accent-line);background:var(--accent-soft,rgba(224,123,57,.1))}
 .pne-root .composer textarea{display:block;width:100%;min-height:92px;max-height:260px;resize:none;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
 .pne-root .composer textarea::placeholder{color:var(--faint)}
 .pne-root .composer-bar{display:flex;align-items:center;gap:6px;padding:8px 10px 10px}
