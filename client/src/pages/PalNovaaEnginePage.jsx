@@ -63,6 +63,31 @@ const ensureGeoraster = async () => {
   if (!window.GeoRasterLayer) await loadScript(MAPLIBS.georasterLayer);
 };
 
+/* طبقة صورة ArcGIS ديناميكيّة موثوقة: export كصورة مباشرة (لا تحتاج CORS)،
+   مع إعادة الإسقاط من إسناد الخدمة إلى Web Mercator عبر الخادم. تتحدّث مع الحركة. */
+const makeArcgisImageLayer = (L, exportBase, layerIds, opacity = 0.85) => {
+  const group = L.layerGroup();
+  let current = null;
+  const redraw = () => {
+    const map = group._map; if (!map) return;
+    const b = map.getBounds();
+    const crs = L.CRS.EPSG3857;
+    const sw = crs.project(b.getSouthWest());
+    const ne = crs.project(b.getNorthEast());
+    const size = map.getSize();
+    const layersParam = (layerIds && layerIds.length) ? `&layers=show:${layerIds.join(',')}` : '';
+    const url = `${exportBase}/export?bbox=${sw.x},${sw.y},${ne.x},${ne.y}&bboxSR=3857&imageSR=3857&size=${Math.round(size.x)},${Math.round(size.y)}&format=png32&transparent=true&dpi=96${layersParam}&f=image`;
+    const ov = L.imageOverlay(url, b, { opacity });
+    ov.addTo(group);
+    const prev = current; current = ov;
+    ov.on('load', () => { if (prev) group.removeLayer(prev); });
+    ov.on('error', () => { if (prev) group.removeLayer(prev); });
+  };
+  group.on('add', () => { redraw(); if (group._map) group._map.on('moveend', redraw); });
+  group.on('remove', () => { if (group._map) group._map.off('moveend', redraw); });
+  return group;
+};
+
 const SRC = {
   postgis: { n: 'PostGIS', t: 'DB', ctx: 'قاعدة بيانات مكانيّة PostGIS' },
   geojson: { n: 'GeoJSON', t: 'JSON', ctx: 'طبقة GeoJSON' },
@@ -709,33 +734,40 @@ export default function PalNovaaEnginePage() {
       return new window.GeoRasterLayer({ georaster, opacity: 0.85, resolution: 256 });
     }
     if (d.kind === 'arcgis') {
-      await ensureLeaflet();
+      await ensureLeaflet(); await ensureProj4();
       const L = window.L; const m = d.meta || {}; const svc = m.serviceUrl; const type = m.serviceType || 'MapServer';
       if (!svc) throw new Error('هذا المصدر محفوظٌ قديماً — أعِد إضافته');
+      const base = `${svc}/${type === 'FeatureServer' ? 'FeatureServer' : 'MapServer'}`;
       const grp = L.featureGroup();
-      let rendered = 0;
-      // الأضمن: اجلب المعالم كـ GeoJSON (الاستعلام يدعم CORS) وارسمها متّجهة تفاعليّة
+      let vectorCount = 0; const imageIds = [];
+      // جرّب رسم كلّ طبقة كـGeoJSON متّجه (تفاعليّ)؛ ما يفشل → صورة
       for (const l of (m.layers || [])) {
-        const qUrl = `${svc}/${type}/${l.id}/query?where=1%3D1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000`;
-        try {
-          const gj = await fetch(qUrl).then((r) => r.json());
-          if (gj && Array.isArray(gj.features) && gj.features.length) {
-            L.geoJSON(gj, {
-              style: { color: col, weight: 1.6, fillColor: col, fillOpacity: 0.2 },
-              pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: col, fillColor: col, fillOpacity: 0.85, weight: 1 }),
-              onEachFeature: (f, ly) => { if (f.properties) ly.bindPopup(popupHtml(f.properties)); },
-            }).addTo(grp);
-            rendered += gj.features.length;
-            continue;
-          }
-        } catch { /* الاستعلام غير مدعوم → صورة */ }
-        // احتياطيّ (طبقات نقطيّة/مُبلّطة بلا استعلام): صورة export مباشرة
-        try {
-          await ensureEsri();
-          L.esri.dynamicMapLayer({ url: `${svc}/${type === 'FeatureServer' ? 'FeatureServer' : 'MapServer'}`, opacity: 0.85, f: 'image', useCors: false, layers: [l.id] }).addTo(grp);
-        } catch { /* */ }
+        let gj = null;
+        try { gj = await fetch(`${base}/${l.id}/query?where=1%3D1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000`).then((r) => r.json()); } catch { /* */ }
+        if (gj && Array.isArray(gj.features) && gj.features.length) {
+          L.geoJSON(gj, {
+            style: { color: col, weight: 1.6, fillColor: col, fillOpacity: 0.2 },
+            pointToLayer: (f, ll) => L.circleMarker(ll, { radius: 5, color: col, fillColor: col, fillOpacity: 0.85, weight: 1 }),
+            onEachFeature: (f, ly) => { if (f.properties) ly.bindPopup(popupHtml(f.properties)); },
+          }).addTo(grp);
+          vectorCount += gj.features.length;
+        } else imageIds.push(l.id);
       }
-      grp.__hasVector = rendered > 0;
+      // الطبقات التي لا تدعم الاستعلام (نقطيّة/مُبلّطة مثل الأورثوفوتو) → صورة ديناميكيّة موثوقة
+      if (imageIds.length || (m.layers || []).length === 0) makeArcgisImageLayer(L, base, imageIds, 0.9).addTo(grp);
+      // نطاق التكبير: من معلومات الخدمة (CORS متاح) عبر proj4
+      try {
+        const info = await fetch(`${base}?f=json`).then((r) => r.json());
+        const ext = info.fullExtent || info.extent;
+        const wk = ext && ext.spatialReference && (ext.spatialReference.latestWkid || ext.spatialReference.wkid);
+        if (ext && wk && window.proj4) {
+          const from = 'EPSG:' + wk;
+          const toLL = (x, y) => { try { const p = window.proj4(from, 'EPSG:4326', [x, y]); return [p[1], p[0]]; } catch { return null; } };
+          const sw = toLL(ext.xmin, ext.ymin), ne = toLL(ext.xmax, ext.ymax);
+          if (sw && ne) grp.__fitBounds = L.latLngBounds([sw, ne]);
+        }
+      } catch { /* */ }
+      void vectorCount;
       return grp;
     }
     if (d.kind === 'geojson' && d.meta && d.meta.tiled) {
@@ -763,6 +795,7 @@ export default function PalNovaaEnginePage() {
   const fitToLayer = (d, layer) => {
     const L = window.L; const map = mapRef.current; if (!map) return;
     try {
+      if (layer && layer.__fitBounds && layer.__fitBounds.isValid && layer.__fitBounds.isValid()) { map.fitBounds(layer.__fitBounds, { maxZoom: 15, padding: [26, 26] }); return; }
       if (d.meta && Array.isArray(d.meta.bbox) && d.kind !== 'geotiff') {
         const [minx, miny, maxx, maxy] = d.meta.bbox;
         if ([minx, miny, maxx, maxy].every(Number.isFinite) && Math.abs(minx) <= 180 && Math.abs(maxy) <= 90) { map.fitBounds(L.latLngBounds([[miny, minx], [maxy, maxx]]), { maxZoom: 15, padding: [26, 26] }); return; }
@@ -789,7 +822,12 @@ export default function PalNovaaEnginePage() {
   };
   const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
   const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; loadDatasets(); setExplorerOpen(true); };
-  const closeExplorer = () => setExplorerOpen(false);
+  const closeExplorer = () => {
+    const map = mapRef.current;
+    if (map) Object.values(layerObjs.current).forEach((ly) => { try { map.removeLayer(ly); } catch { /* */ } });
+    layerObjs.current = {}; setActiveLayers({}); setExplorerErr(''); pendingFocus.current = null;
+    setExplorerOpen(false);
+  };
 
   // تهيئة خريطة العارض عند فتح النافذة (مرّةً واحدة)
   useEffect(() => {
@@ -832,10 +870,10 @@ export default function PalNovaaEnginePage() {
   // Escape يغلق النافذة (إلّا إن كانت نافذةٌ منبثقة مفتوحة فوقها)
   useEffect(() => {
     if (!explorerOpen) return;
-    const onKey = (e) => { if (e.key === 'Escape' && !modal) setExplorerOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape' && !modal) closeExplorer(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [explorerOpen, modal]);
+  }, [explorerOpen, modal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // عرض الطبقة المطلوبة تلقائياً بعد جهوزيّة الخريطة
   useEffect(() => {
