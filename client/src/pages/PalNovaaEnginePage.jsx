@@ -762,7 +762,7 @@ export default function PalNovaaEnginePage() {
     setLayerBusy(null);
   };
   const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
-  const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; setExplorerOpen(true); };
+  const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; loadDatasets(); setExplorerOpen(true); };
   const closeExplorer = () => setExplorerOpen(false);
 
   // تهيئة خريطة العارض عند فتح النافذة (مرّةً واحدة)
