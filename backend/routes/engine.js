@@ -610,7 +610,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx) {
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         let full = '';
         for (let i = 0; i < 5; i++) {
-            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK }, headers, UPSTREAM_TIMEOUT);
+            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK }, headers, UPSTREAM_TIMEOUT);
             const choice = data?.choices?.[0]; const msg = choice?.message;
             const piece = ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '');
             full += piece;
@@ -735,7 +735,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx) {
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         for (let round = 0; round < 5; round++) {
             let piece = '', finish = '';
-            await streamHTTPS(prov.url, { model: prov.model, messages, temperature: 0.3, max_tokens: MAXTOK, stream: true, stream_options: { include_usage: true } }, headers, (ev, data) => {
+            await streamHTTPS(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK, stream: true, stream_options: { include_usage: true } }, headers, (ev, data) => {
                 if (data === '[DONE]') return;
                 let j; try { j = JSON.parse(data); } catch { return; }
                 const ch = j.choices?.[0];
