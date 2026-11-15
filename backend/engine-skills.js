@@ -172,13 +172,11 @@ const SKILLS = {
     keywords: ['arcgis','esri','mapserver','featureserver','imageserver','rest services','rest/services','geomolg','orthophoto','أورثوفوتو','أورثو','خدمة طبقات','خادم طبقات','قسائم','قطع أراضي','مخطط هيكلي','طبقات حكومية'],
     instructions: [
       '— مهارة: موصّل ArcGIS REST (طبقات جغرافيّة حيّة) —',
-      `ضمّن Leaflet أوّلاً ثمّ: <script src="${CDN.esriLeaflet}"></script> (بعد leaflet.js مباشرةً).`,
-      'طبقة خريطة ديناميكيّة (MapServer — قسائم، مبانٍ، طرق، أورثوفوتو، مخطّطات): const lyr=L.esri.dynamicMapLayer({url:"<serviceUrl>/MapServer", opacity:0.85, useCors:true}).addTo(map); وللطبقات الفرعيّة حدّد layers:[0,1].',
-      'طبقة متّجهة تفاعليّة (FeatureServer): const fl=L.esri.featureLayer({url:"<serviceUrl>/FeatureServer/<layerId>", style:()=>({color:"#E07B39",weight:1.5,fillOpacity:0.25})}).addTo(map); fl.bindPopup(l=>L.Util.template("<b>{name}</b>", l.feature.properties)); عالِج الحقول الفعليّة.',
-      'استعلام مباشر لجلب GeoJSON: fetch("<serviceUrl>/FeatureServer/<id>/query?where=1%3D1&outFields=*&outSR=4326&f=geojson&resultRecordCount=2000").then(r=>r.json()). الخادم يعيد الإسقاط إلى 4326.',
-      'الإسناد: خوادم فلسطين (GeoMOLG) بإسقاط PG1923 (wkid 28191)؛ dynamicMapLayer و featureLayer يُعيدان الإسقاط تلقائياً إلى Web Mercator — لا تحوّل يدويّاً.',
-      'التحكّم بالطبقات: L.control.layers(baseLayers,{ "الطبقة": lyr }).addTo(map). مؤشّر تحميل أثناء جلب البلاط (lyr.on("loading"/"load")). عالِج الفشل برسالةٍ واضحة.',
-      'للأورثوفوتو كخلفيّة أساس: أضِفها كطبقة سفليّة ثمّ الطبقات المتّجهة فوقها، واضبط setView على مركز fullExtent للخدمة.',
+      'الطريقة الموثوقة والافتراضيّة: جلب كلّ طبقة كـGeoJSON عبر نقطة query (تدعم CORS وتعيد الإسقاط إلى 4326) ورسمها بـLeaflet العاديّ. لا تعتمد على esri featureLayer ولا dynamicMapLayer الافتراضيّ لأنّ نقطة export في خوادم مثل GeoMOLG بلا CORS فتظهر الطبقة فارغة.',
+      'لكلّ طبقة: fetch("<serviceUrl>/<MapServer|FeatureServer>/<layerId>/query?where=1%3D1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000").then(r=>r.json()).then(gj=>{ const lyr=L.geoJSON(gj,{ style:{color:"#E07B39",weight:1.5,fillColor:"#E07B39",fillOpacity:0.2}, pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:5,color:"#E07B39",fillColor:"#F0954F",fillOpacity:0.85,weight:1}), onEachFeature:(f,l)=>{ if(f.properties) l.bindPopup(Object.entries(f.properties).slice(0,12).map(([k,v])=>"<b>"+k+"</b>: "+v).join("<br>")); } }).addTo(map); try{ map.fitBounds(lyr.getBounds()); }catch(e){} });',
+      'طبقات نقطيّة/مُبلّطة لا تدعم query (أورثوفوتو صور): استعمل صورة ديناميكيّة فقط: L.esri.dynamicMapLayer({url:"<serviceUrl>/MapServer", f:"image", useCors:false, opacity:0.9}).addTo(map) — f:"image" يحمّلها كصورة مباشرة بلا حاجة CORS.',
+      'الإسناد يُدار خادميّاً: outSR=4326 في الاستعلام و f:"image" في الصورة يعيدان الإسقاط تلقائياً من PG1923 (wkid 28191) إلى Web Mercator — لا تحوّل يدويّاً.',
+      'عدّة طبقات: ارسم كلّ معرّف بنداء مستقلّ، وأضِف L.control.layers لتبديل الظهور. عالِج فشل الجلب برسالةٍ واضحة وزرّ إعادة. استخدم رابط الخدمة ومعرّفات الطبقات حرفيّاً كما تُعطى.',
     ].join('\n'),
   },
 

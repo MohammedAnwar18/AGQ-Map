@@ -333,7 +333,7 @@ const SYSTEM_INSTRUCTION = [
     '• إن زُوِّدت بروابط بياناتٍ حقيقيّة (datasets) فاجلبها فعليّاً عبر fetch واعرضها، وعالِج الفشل بلُطف (رسالة + زرّ إعادة).',
     '• إن لم تُزوَّد ببيانات: ولّد بياناتٍ تجريبيّة واقعيّة ومتنوّعة مناسبة للسياق بأسماءٍ عربيّة صحيحة.',
     '• موصّلات مجّانيّة بلا مفتاح: OpenStreetMap Overpass API (amenities, buildings, roads)، Open-Meteo (طقس)، Open-Elevation، Nominatim (ترميز جغرافيّ).',
-    '• خدمات ArcGIS REST (مثل GeoMOLG الفلسطينيّ): حمّل esri-leaflet بعد leaflet.js. لطبقة MapServer ديناميكيّة (قسائم/مبانٍ/أورثوفوتو): L.esri.dynamicMapLayer({url:"<svc>/MapServer",opacity:0.8}).addTo(map). لطبقة FeatureServer متّجهة: L.esri.featureLayer({url:"<svc>/FeatureServer/<layerId>"}).addTo(map) مع bindPopup. الخوادم تعيد الإسقاط تلقائياً (PG1923 wkid:28191 → Web Mercator). استخدم رابط الخدمة المُعطى حرفيّاً دون تعديل.',
+    '• خدمات ArcGIS REST (مثل GeoMOLG الفلسطينيّ): الطريقة الموثوقة هي استعلام الطبقة كـGeoJSON (نقطة query تدعم CORS وتعيد الإسقاط إلى 4326): fetch("<svc>/<MapServer|FeatureServer>/<layerId>/query?where=1=1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000") ثمّ L.geoJSON(data,{style,pointToLayer:circleMarker,onEachFeature:bindPopup}).addTo(map) وmap.fitBounds. تجنّب esri featureLayer وdynamicMapLayer الافتراضيّ (f:json) لأنّ نقطة export في هذه الخوادم بلا CORS فتظهر فارغة؛ للطبقات النقطيّة التي لا تدعم query فقط استعمل L.esri.dynamicMapLayer({url,f:"image",useCors:false}).',
     '• لوّن الطبقات المكانيّة ترميزاً متدرّجاً (choropleth) وأضِف popup لخصائص كلّ عنصر.',
     '',
     '— الواجهة والتصميم —',
@@ -526,8 +526,13 @@ function buildDatasetInjection(rows, origin) {
             let meta = {}; try { meta = JSON.parse(d.content || '{}'); } catch { /* */ }
             const u = meta.serviceUrl || '';
             const t = meta.serviceType || 'MapServer';
+            const ids = (meta.layers || []).map((l) => l.id);
             const ls = (meta.layers || []).map((l) => `${l.id}:${l.name}${l.geometryType ? ` (${l.geometryType})` : ''}`).join('، ') || '—';
-            return `• خادم ArcGIS REST «${d.name}» — النوع ${t} — رابط الخدمة: ${u} — الطبقات [${ls}] — استهلكها حيّةً مباشرةً عبر esri-leaflet (dynamicMapLayer للـMapServer، featureLayer لكلّ طبقة FeatureServer). لا تحوّلها إلى GeoJSON ثابت واستخدم الرابط حرفيّاً.`;
+            const sample = ids.length ? ids[0] : 0;
+            return `• خادم ArcGIS REST «${d.name}» (${t}) — رابط الخدمة: ${u} — الطبقات [${ls}]. `
+                + `اعرضها فعلاً على الخريطة بالطريقة الموثوقة التالية (استعلام query يدعم CORS، بخلاف export): لكلّ طبقة من المعرّفات [${ids.join(', ')}] نفّذ:\n`
+                + `fetch("${u}/${t}/${sample}/query?where=1%3D1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000").then(r=>r.json()).then(gj=>{ const lyr=L.geoJSON(gj,{style:{color:"#E07B39",weight:1.5,fillColor:"#E07B39",fillOpacity:0.2}, pointToLayer:(f,ll)=>L.circleMarker(ll,{radius:5,color:"#E07B39",fillColor:"#F0954F",fillOpacity:0.85,weight:1}), onEachFeature:(f,l)=>{ if(f.properties) l.bindPopup(Object.entries(f.properties).slice(0,12).map(([k,v])=>"<b>"+k+"</b>: "+v).join("<br>")); }}).addTo(map); try{ map.fitBounds(lyr.getBounds()); }catch(e){} }).catch(()=>{});\n`
+                + `بدّل رقم الطبقة لكلّ معرّف. إن أعاد الاستعلام خطأً (طبقة نقطيّة/أورثوفوتو لا تدعم query) استعمل صورة فقط: L.esri.dynamicMapLayer({url:"${u}/${t}", f:"image", useCors:false, opacity:0.85}).addTo(map). مهمّ: لا تستعمل L.esri.featureLayer ولا dynamicMapLayer الافتراضيّ (f:json) لأنّ هذا الخادم بلا CORS على export فتظهر الطبقة فارغة. استخدم الرابط حرفيّاً.`;
         }
         const meta = d.meta && typeof d.meta === 'object' ? d.meta : (() => { try { return JSON.parse(d.meta || '{}'); } catch { return {}; } })();
         if (d.kind === 'geojson' && meta.tiled) {
@@ -542,7 +547,7 @@ function buildDatasetInjection(rows, origin) {
     return '\n\n[مصادر بياناتٍ حقيقيّة مرفقة — استخدمها فعليّاً وقت التشغيل بدل أيّ بياناتٍ تجريبيّة:\n'
         + lines.join('\n')
         + '\nملاحظة: روابط الرفع والتايلز تدعم CORS. '
-        + (hasArc ? 'خوادم ArcGIS تُستهلَك مباشرةً عبر esri-leaflet وتعيد الإسقاط تلقائياً من PG1923 إلى Web Mercator. ' : '')
+        + (hasArc ? 'لطبقات ArcGIS: استعمل استعلام query?f=geojson&outSR=4326 (يدعم CORS ويعيد الإسقاط) وارسمها بـL.geoJSON، ولا تعتمد على esri featureLayer/export الافتراضيّ. ضمّن Leaflet. اجعل الطبقات ظاهرة فعلاً وكبّر الخريطة على نطاقها. ' : '')
         + (hasTiles ? 'للبيانات المُقسَّمة تايلز: ضمّن Leaflet أوّلاً ثمّ VectorGrid، واستعمل L.vectorGrid.protobuf(قالب_الرابط,{vectorTileLayerStyles:{data:{...}},interactive:true,maxNativeZoom:20}).addTo(map) وbindPopup من خصائص الميزة. ' : '')
         + (hasRaster ? 'لصور GeoTIFF: ضمّن <script src="https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script> ثمّ <script src="https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script> بعد leaflet.js، و(للإسناد غير 4326) proj4 من cdnjs. ' : '')
         + 'اعرض البيانات فعلاً على الخريطة وعالِج فشل الجلب برسالةٍ واضحة وزرّ إعادة.]';
