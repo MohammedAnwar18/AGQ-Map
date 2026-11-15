@@ -61,6 +61,9 @@ const P_CW = parseFloat(process.env.PALNOVAA_PRICE_CACHE_WRITE_U || '2.5'); // $
 const FREE_MICRO = Math.round(parseFloat(process.env.PALNOVAA_FREE_USD || '1') * 1e6);
 const PRO_MICRO = Math.round(parseFloat(process.env.PALNOVAA_PRO_USD || '3') * 1e6);
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET || '';
+const GUMROAD_PRODUCT_URL = (process.env.GUMROAD_PRODUCT_URL || '').trim();
+const GUMROAD_SELLER_ID = (process.env.GUMROAD_SELLER_ID || '').trim();
+const GUMROAD_ACCESS_TOKEN = (process.env.GUMROAD_ACCESS_TOKEN || '').trim();
 
 const MAX_VERSIONS = 20;
 const MAX_DATASET_BYTES = 6 * 1024 * 1024;                                   // حدّ التخزين المباشر في قاعدة البيانات (رفع JSON)
@@ -1383,10 +1386,54 @@ router.get('/templates', (req, res) => {
 router.get('/billing-config', (req, res) => {
     res.json({
         ok: true,
+        provider: GUMROAD_PRODUCT_URL ? 'gumroad' : (process.env.PADDLE_CLIENT_TOKEN ? 'paddle' : 'none'),
+        gumroadUrl: GUMROAD_PRODUCT_URL,
         token: process.env.PADDLE_CLIENT_TOKEN || '',
         priceId: process.env.PADDLE_PRO_PRICE || '',
         env: process.env.PADDLE_ENV || 'production'
     });
+});
+
+/* ============================ Gumroad Webhook (Ping) ============================ */
+// POST /api/engine/gumroad/webhook — يُفعّل Pro عند الشراء؛ يتجدّد مع كلّ دفعة، وينتهي تلقائياً عند توقّف الدفع
+router.post('/gumroad/webhook', async (req, res) => {
+    try {
+        const b = req.body || {};
+        if (GUMROAD_SELLER_ID && b.seller_id && String(b.seller_id) !== String(GUMROAD_SELLER_ID)) return res.status(401).json({ ok: false, reason: 'bad seller' });
+        await ensureTable();
+
+        // تحديد المستخدم: من url_params.ident المُمرَّر وقت الدفع، أو بالبريد
+        let ident = (b.url_params && (b.url_params.ident || b.url_params.Ident)) ? String(b.url_params.ident || b.url_params.Ident) : null;
+        const email = b.email || b.purchaser_email || null;
+        if (!ident && email) { try { const u = await pool.query('SELECT id FROM users WHERE lower(email)=lower($1) LIMIT 1', [email]); if (u.rows.length) ident = 'u:' + u.rows[0].id; } catch { /* */ } }
+        if (!ident) return res.status(200).json({ ok: true, note: 'no ident — تعذّر الربط' });
+
+        // تحقّق اختياريّ من صحّة البيع عبر واجهة Gumroad
+        if (GUMROAD_ACCESS_TOKEN && b.sale_id) {
+            try {
+                const v = await httpGetText(`https://api.gumroad.com/v2/sales/${encodeURIComponent(b.sale_id)}?access_token=${encodeURIComponent(GUMROAD_ACCESS_TOKEN)}`, 15000, 500000);
+                const vj = JSON.parse(v.body);
+                if (!vj || vj.success !== true) return res.status(200).json({ ok: true, note: 'unverified' });
+            } catch { /* لو فشل التحقّق نُكمل بحذر اعتماداً على seller_id */ }
+        }
+
+        const refunded = b.refunded === 'true' || b.disputed === 'true' || b.chargebacked === 'true';
+        if (refunded) {
+            await pool.query(`UPDATE engine_accounts SET plan='free', allowance_micro=$2 WHERE ident=$1`, [ident, FREE_MICRO]);
+            return res.json({ ok: true, downgraded: true });
+        }
+
+        // تفعيل Pro ~33 يوماً (يتجدّد مع كلّ دفعة شهريّة؛ وينتهي تلقائياً إن توقّف الدفع)
+        const periodEnd = new Date(Date.now() + 33 * 24 * 60 * 60 * 1000).toISOString();
+        await pool.query(
+            `INSERT INTO engine_accounts (ident, plan, allowance_micro, used_micro, period_end, paddle_sub, email, updated_at)
+             VALUES ($1,'pro',$2,0,$3,$4,$5,now())
+             ON CONFLICT (ident) DO UPDATE SET plan='pro', allowance_micro=$2, used_micro=0, period_end=$3, paddle_sub=COALESCE($4, engine_accounts.paddle_sub), email=COALESCE($5, engine_accounts.email), updated_at=now()`,
+            [ident, PRO_MICRO, periodEnd, b.subscription_id || b.sale_id || null, email]);
+        return res.json({ ok: true });
+    } catch (err) {
+        return res.status(200).json({ ok: false, reason: String(err.message || 'error') });
+    }
 });
 
 /* ============================ الرصيد (balance) ============================ */

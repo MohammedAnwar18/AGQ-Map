@@ -57,7 +57,7 @@ const PLANS = [
 export default function PalNovaaEnginePricing() {
   const navigate = useNavigate();
   const [toast, setToast] = useState('');
-  const [cfg, setCfg] = useState({ token: DEF_TOKEN, priceId: DEF_PRICE, env: DEF_ENV });
+  const [cfg, setCfg] = useState({ token: DEF_TOKEN, priceId: DEF_PRICE, env: DEF_ENV, gumroadUrl: '', provider: '' });
   const contoursRef = useRef(null);
   const toastTimer = useRef(null);
 
@@ -85,9 +85,16 @@ export default function PalNovaaEnginePricing() {
   /* جلب إعداد الدفع من الخادم (قيمٌ عامّة) */
   useEffect(() => {
     fetch(`${API}/engine/billing-config`).then((r) => r.json()).then((d) => {
-      if (d?.ok && (d.token || d.priceId)) setCfg({ token: d.token || DEF_TOKEN, priceId: d.priceId || DEF_PRICE, env: d.env || DEF_ENV });
+      if (d?.ok) setCfg({ token: d.token || DEF_TOKEN, priceId: d.priceId || DEF_PRICE, env: d.env || DEF_ENV, gumroadUrl: d.gumroadUrl || '', provider: d.provider || '' });
     }).catch(() => {});
   }, []);
+
+  /* تحميل overlay تبع Gumroad إن تمّ تفعيله */
+  useEffect(() => {
+    if (!cfg.gumroadUrl || document.getElementById('gumroad-js')) return;
+    const s = document.createElement('script'); s.id = 'gumroad-js'; s.src = 'https://gumroad.com/js/gumroad.js'; s.async = true;
+    document.body.appendChild(s);
+  }, [cfg.gumroadUrl]);
 
   /* تحميل Paddle.js فقط إن توفّر الـtoken */
   useEffect(() => {
@@ -108,10 +115,20 @@ export default function PalNovaaEnginePricing() {
     if (plan === 'free') { navigate('/palnovaa-engine'); return; }
     if (plan === 'team') { window.location.href = 'mailto:support@palnovaa.com?subject=PalNovaa%20Engine%20Team'; return; }
     // Pro
+    const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
+    const uid = u?.id || u?.userId;
+    // Gumroad (المزوّد الحاليّ)
+    if (cfg.gumroadUrl) {
+      const params = new URLSearchParams({ wanted: 'true' });
+      if (uid) params.set('ident', `u:${uid}`);
+      if (u?.email) params.set('email', u.email);
+      const url = cfg.gumroadUrl + (cfg.gumroadUrl.includes('?') ? '&' : '?') + params.toString();
+      const a = document.createElement('a'); a.className = 'gumroad-button'; a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 200);
+      return;
+    }
     if (window.Paddle && cfg.priceId) {
       try {
-        const u = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
-        const uid = u?.id || u?.userId;
         window.Paddle.Checkout.open({
           items: [{ priceId: cfg.priceId, quantity: 1 }],
           ...(u?.email ? { customer: { email: u.email } } : {}),
@@ -120,7 +137,7 @@ export default function PalNovaaEnginePricing() {
       } catch { showToast('تعذّر فتح الدفع، جرّب لاحقاً'); }
       return;
     }
-    showToast('سيُفعّل الدفع عبر Paddle قريباً');
+    showToast('سيُفعّل الدفع قريباً');
   };
 
   return (
@@ -142,7 +159,7 @@ export default function PalNovaaEnginePricing() {
             <div className="pricing-inner">
               <div className="peyebrow"><span>خطط محرّك بالنوفا</span></div>
               <h1>ابنِ تطبيقات GIS بلا حدود</h1>
-              <p className="sub">ابدأ مجاناً، ثمّ ارتقِ إلى Pro حين تجدّ. تُدار المدفوعات بأمانٍ عبر Paddle.</p>
+              <p className="sub">ابدأ مجاناً، ثمّ ارتقِ إلى Pro حين تجدّ. تُدار المدفوعات بأمانٍ عبر مزوّدٍ موثوق.</p>
 
               <div className="plans">
                 {PLANS.map((p) => (
