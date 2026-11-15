@@ -306,6 +306,8 @@ const SYSTEM_INSTRUCTION = [
     '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN مثبّتة الإصدار من cdnjs.cloudflare.com.',
     '4) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط: <!--PNE:{"title":"عنوان قصير للمشروع","summary":"جملة تصف ما بُني"}-->',
     '5) اجعل <title> مطابقاً للعنوان.',
+    '6) على وسوم <link> و<script> للمكتبات: استخدم رابط الـsrc/href فقط. ممنوع منعاً باتّاً إضافة سمة integrity أو أيّ بصمة SRI (sha256/sha384/sha512) أو crossorigin — لا تعرف البصمة الصحيحة وستكسر التحميل أو تدخل في حلقة تكرار. اكتب <link rel="stylesheet" href="..."> و<script src="..."></script> بلا سمات أخرى.',
+    '7) لا تكرّر أيّ نصّ أو سطر أو سمة أكثر من مرّة بلا داعٍ، ولا تولّد سلاسل عشوائيّة طويلة إطلاقاً.',
     '',
     '— المكتبات المتاحة (CDN مثبّت — استخدم حسب الحاجة فقط) —',
     '• Leaflet 1.9.4 — خرائط تفاعليّة (leaflet.css + leaflet.js)',
@@ -325,7 +327,7 @@ const SYSTEM_INSTRUCTION = [
     '',
     '— الخرائط والتحليل المكانيّ (تخصّصك الأوّل) —',
     '• استخدم Leaflet 1.9.4 من cdnjs: ضمّن leaflet.css و leaflet.js.',
-    "• بلاط الخريطة الأساس: خرائط Google عبر L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {subdomains:['mt0','mt1','mt2','mt3'], maxZoom:20}). يمكنك lyrs=s للأقمار الصناعيّة.",
+    "• بلاط الخريطة الأساس (المفضّل، مجّانيّ بلا مفتاح من Esri — استخدمه افتراضيّاً في أيّ خريطة فيها طبقة بيانات): صور الأقمار الصناعيّة L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Esri'}). وخريطة الشوارع L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19}). أضِف الاثنتين في L.control.layers للتبديل بينهما. (بديلٌ اختياريّ: خرائط Google عبر L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {subdomains:['mt0','mt1','mt2','mt3'], maxZoom:20}).)",
     '• هيّئ الخريطة بعد تحميل DOM، واضبط setView على منطقةٍ منطقيّة (فلسطين/الضفة: [31.95,35.23] zoom 9).',
     '• لا تستخدم أيّ خدمةٍ تتطلّب مفتاح API. للترميز الجغرافيّ استخدم Nominatim العامّ باعتدال.',
     '',
@@ -569,6 +571,8 @@ function pickProvider(KEY) {
 
 const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت بالضبط (حرفٌ بحرف)، بلا إعادة أيّ جزءٍ سابق وبلا أيّ شرح. إن كان المستند قد اكتمل بـ</html> فاكتب "تمّ".';
 const looksComplete = (s) => /<\/html>\s*$/i.test((s || '').trim());
+// كشف حلقة التكرار (سلسلة طويلة بلا فراغات = بصمة SRI عشوائيّة أو تكرار منحرف)
+const looksLooped = (s) => /\S{2800,}/.test(s || '');
 const blankUsage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 
 async function callModel(KEY, prompt, currentHtml, skillsCtx) {
@@ -808,6 +812,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
         const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx);
+        if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
         const out = parseGenerated(text, prompt);
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
         let balance = null;
@@ -867,6 +872,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
         try {
             const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx);
             if (!text) { lastErr = 'empty'; continue; }
+            if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
             const out = parseGenerated(text, prompt);
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
             let balance = null;
