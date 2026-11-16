@@ -22,6 +22,11 @@ const CDN = {
   animateCSS:    'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css',
   confetti:      'https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js',
   esriLeaflet:   'https://cdnjs.cloudflare.com/ajax/libs/esri-leaflet/3.0.12/esri-leaflet.js',
+  echarts:       'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js',
+  maplibre:      'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js',
+  maplibreCSS:   'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css',
+  three:         'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+  gsap:          'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
 };
 
 const SKILLS = {
@@ -225,6 +230,50 @@ const SKILLS = {
       '• صقيع قطبيّ: #4A6FA5 · #D4E4F7 · #FAFAFA · #C0C0C0 — خفيفٌ أنيق.',
       '• وردة الصحراء: #B87D6D · #D4A5A5 · #5D2E46 · #E8D5C4 — ناعمٌ راقٍ.',
       'خطوط مقترحة (Google Fonts): عناوين Tajawal/Cairo للعربيّة، وInter/Manrope للّاتينيّة. يمكنك توليد لوحةٍ مخصّصةٍ متناسقةٍ إن لم تناسب أيٌّ منها، مع ضمان تباين WCAG AA.',
+    ].join('\n'),
+  },
+
+  // مهارة الحركة — أنيميشن واعٍ ومنضبط
+  motion: {
+    name: 'الحركة والانتقالات',
+    keywords: ['حركة','انيميشن','أنيميشن','animation','transition','انتقال','تأثير','effect','تمرير','scroll','parallax','بارالاكس','reveal','ظهور متدرج','micro','hover','تحريك','motion'],
+    instructions: [
+      '— مهارة: الحركة والانتقالات (بذوقٍ واعتدال) —',
+      'المبدأ: لحظةٌ واحدةٌ منسّقةٌ عند التحميل، أو كشفٌ واحدٌ، أفضل من تأثيراتٍ مبعثرة. الحركة التي تستجيب لفعل المستخدم (فتح/تأكيد/توسيع) مُرحَّبٌ بها. التزِم دائماً: @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}.',
+      'CSS أوّلاً: transition:transform .2s, opacity .2s للأزرار والبطاقات؛ و@keyframes للظهور (fade/slide/scale) بمنحنى cubic-bezier لطيف. حرّك transform وopacity فقط للأداء (تجنّب تحريك left/top/width).',
+      'كشفٌ عند التمرير بلا مكتبة: const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}}),{threshold:.15}); document.querySelectorAll(".reveal").forEach(el=>io.observe(el)); مع .reveal{opacity:0;transform:translateY(16px);transition:.6s} .reveal.in{opacity:1;transform:none}.',
+      `جاهز (اختياريّ): animate.css عبر <link rel="stylesheet" href="${CDN.animateCSS}"> ثمّ class="animate__animated animate__fadeInUp".`,
+      `تتابعٌ متقدّم لمشهدٍ واحدٍ مهمّ فقط (اختياريّ): GSAP عبر <script src="${CDN.gsap}"></script> ثمّ gsap.from(".item",{y:24,opacity:0,stagger:.08,duration:.6,ease:"power2.out"}).`,
+      `احتفاءٌ بنجاحٍ مهمّ: <script src="${CDN.confetti}"></script> ثمّ confetti({particleCount:120,spread:70}).`,
+    ].join('\n'),
+  },
+
+  // مهارة 3D — خرائط تضاريس ومجسّمات (بلا مفاتيح)
+  map3d: {
+    name: 'خرائط ومجسّمات 3D',
+    keywords: ['3d','ثلاثي الأبعاد','ثلاثيّ الأبعاد','تضاريس','terrain','مجسم','مجسّم','كرة أرضية','globe','مبانٍ','مباني','extrusion','بثق','dem','ارتفاعات','ثري دي','three','maplibre','منظور','pitch','tilt','ميلان'],
+    instructions: [
+      '— مهارة: خرائط ومجسّمات ثلاثيّة الأبعاد (بلا مفاتيح) —',
+      `خريطة 3D بتضاريس حقيقيّة (MapLibre GL): ضمّن <link href="${CDN.maplibreCSS}" rel="stylesheet"><script src="${CDN.maplibre}"></script>. ثمّ:`,
+      'const map=new maplibregl.Map({container:"map",center:[35.23,31.95],zoom:11,pitch:62,bearing:-18,maxPitch:85,style:{version:8,sources:{osm:{type:"raster",tiles:["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png","https://b.tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap"},dem:{type:"raster-dem",tiles:["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],encoding:"terrarium",tileSize:256,maxzoom:13}},layers:[{id:"osm",type:"raster",source:"osm"},{id:"hills",type:"hillshade",source:"dem"}],terrain:{source:"dem",exaggeration:1.5},sky:{}}}); map.addControl(new maplibregl.NavigationControl({visualizePitch:true}));',
+      'طبقات/مبانٍ مبثوقة (fill-extrusion) من GeoJSON فيه خاصيّة ارتفاع: map.on("load",()=>{map.addSource("b",{type:"geojson",data:fc}); map.addLayer({id:"b3d",type:"fill-extrusion",source:"b",paint:{"fill-extrusion-color":"#E07B39","fill-extrusion-height":["get","height"],"fill-extrusion-base":0,"fill-extrusion-opacity":.85}})});',
+      `مشاهد 3D عامّة (Three.js r128 — كرة أرضيّة/تصوّر بيانات): ضمّن <script src="${CDN.three}"></script>. أنشئ scene + PerspectiveCamera + WebGLRenderer({antialias:true})؛ أضِف AmbientLight + DirectionalLight؛ ادفع الرسم بـrequestAnimationFrame مع mesh.rotation.y+=0.003؛ وعالِج تغيّر الحجم (camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h)). للكرة: SphereGeometry + MeshPhongMaterial بخامة.`,
+      'أداء: حمّل maplibre/three فقط عند الحاجة الفعليّة لـ3D؛ وللخرائط ثنائيّة الأبعاد العاديّة استعمل Leaflet كالمعتاد.',
+    ].join('\n'),
+  },
+
+  // مهارة الرسوم المتقدّمة — ECharts لما يعجز Chart.js
+  chartsAdvanced: {
+    name: 'رسوم بيانيّة متقدّمة',
+    keywords: ['echarts','حراري','heatmap','treemap','شجري','sankey','تدفق','سانكي','gauge','عداد قياس','جيدج','قمع','funnel','candlestick','شمعة','شموع','شبكة علاقات','graph','network','مبعثر ضخم','مخطط متقدم','تريماب','sunburst','boxplot'],
+    instructions: [
+      '— مهارة: رسوم بيانيّة متقدّمة (Apache ECharts 5) —',
+      `استعملها لما تعجز Chart.js. ضمّن <script src="${CDN.echarts}"></script>. ثمّ const chart=echarts.init(document.getElementById("c"),null,{renderer:"canvas"}); chart.setOption(option); window.addEventListener("resize",()=>chart.resize());`,
+      'أنواعٌ قويّة: heatmap (+visualMap)، treemap، sankey (nodes+links)، gauge (عدّادات)، funnel (قمع)، graph (شبكة علاقات force)، candlestick (شموع ماليّة)، sunburst، boxplot، scatter ضخم.',
+      'Sankey: {series:[{type:"sankey",data:[{name:"أ"},{name:"ب"},{name:"ج"}],links:[{source:"أ",target:"ب",value:10},{source:"ب",target:"ج",value:6}],emphasis:{focus:"adjacency"}}]}.',
+      'Gauge: {series:[{type:"gauge",progress:{show:true},max:100,data:[{value:72,name:"الإنجاز"}]}]}.',
+      'Heatmap: {tooltip:{},grid:{height:"60%"},xAxis:{type:"category",data:xs},yAxis:{type:"category",data:ys},visualMap:{min:0,max:100,calculable:true,orient:"horizontal",left:"center",bottom:"2%"},series:[{type:"heatmap",data:[[0,0,45],[1,0,80]]}]}.',
+      'التصميم: color:[ألوان التطبيق]، backgroundColor:"transparent"، textStyle:{color:"#C8CDD4"}، ومحاور خافتة. تحديثٌ حيّ: chart.setOption({series:[{data:newData}]}).',
     ].join('\n'),
   },
 };
