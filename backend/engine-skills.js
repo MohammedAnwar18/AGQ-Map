@@ -327,6 +327,59 @@ const SKILLS = {
       'الخرائط داخل الصفحات: هيّئ خريطة الصفحة عند أوّل دخولٍ لها (lazy) أو استدعِ map.invalidateSize() بعد إظهار قسمها، وإلّا تظهر رماديّةً لأنّها هُيّئت وهي مخفيّة.',
     ].join('\n'),
   },
+
+  // مهارة خدمات الخرائط المفتوحة OGC
+  ogc: {
+    name: 'خدمات الخرائط المفتوحة (WMS/WMTS/WFS)',
+    keywords: ['wms','wmts','wfs','ogc','خدمة خرائط','geoserver','mapserver','طبقة حكومية','خدمة طبقات مفتوحة','capabilities','getmap','getfeature','gibs','ناسا','قمر صناعي مفتوح','طبقة رسمية'],
+    instructions: [
+      '— مهارة: خدمات الخرائط المفتوحة OGC (WMS/WMTS/WFS، بلا مفاتيح) —',
+      'WMS كطبقة صور (لا تحتاج CORS لأنّها تُحمَّل كـ<img>): L.tileLayer.wms("<baseUrl>",{layers:"<layerName>",format:"image/png",transparent:true,version:"1.3.0",attribution:"..."}).addTo(map). عدّة طبقات: افصلها بفاصلة في layers، وأضِفها في L.control.layers للتبديل.',
+      'WMTS كـXYZ (إن توفّر قالب تبليط RESTful): L.tileLayer("<template>/{z}/{y}/{x}.jpg",{maxZoom}). مثالٌ مفتوحٌ لصور الأقمار (NASA GIBS، يدعم CORS): L.tileLayer("https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/{time}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg",{time:"2024-06-01",maxZoom:9,attribution:"NASA EOSDIS GIBS"}).addTo(map).',
+      'WFS كـGeoJSON: fetch("<base>?service=WFS&version=2.0.0&request=GetFeature&typeName=<type>&outputFormat=application/json&srsName=EPSG:4326&count=4000").then(r=>r.json()).then(gj=>L.geoJSON(gj,{onEachFeature:(f,l)=>l.bindPopup(Object.entries(f.properties||{}).slice(0,10).map(([k,v])=>`<b>${k}</b>: ${v}`).join("<br>"))}).addTo(map)). ملاحظة: WFS يتطلّب دعم CORS من الخادم؛ إن فشل فاعرض رسالةً وبديلاً (WMS للعرض البصريّ).',
+      'الاستكشاف: GetCapabilities (<base>?service=WMS&request=GetCapabilities) يكشف أسماء الطبقات. عالِج فشل التحميل برسالةٍ واضحة وزرّ إعادة.',
+    ].join('\n'),
+  },
+
+  // مهارة كتالوجات صور الأقمار STAC
+  stac: {
+    name: 'كتالوجات صور الأقمار (STAC)',
+    keywords: ['stac','sentinel','سنتينل','landsat','صور أقمار','أقمار صناعية','imagery','مرئيات','cog','earth search','planetary computer','صور فضائية','غطاء سحابي','باند','ndvi','مؤشر نباتي'],
+    instructions: [
+      '— مهارة: البحث في صور الأقمار عبر STAC (Earth Search، بلا مفاتيح، يدعم CORS) —',
+      'بحث مشاهد Sentinel-2/Landsat: POST https://earth-search.aws.element84.com/v1/search بجسم JSON: {"collections":["sentinel-2-l2a"],"bbox":[minLon,minLat,maxLon,maxLat],"datetime":"2024-01-01/2024-12-31","query":{"eo:cloud_cover":{"lt":20}},"limit":12}.',
+      'fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(q)}).then(r=>r.json()).then(fc=>{ /* fc.features = عناصر STAC */ }). ارسم مساحات التغطية L.geoJSON(fc). لكلّ عنصر: f.properties (التاريخ datetime، الغطاء السحابيّ eo:cloud_cover)، والأصول f.assets (مثل assets.visual.href = COG، assets.thumbnail.href = معاينة سريعة، assets.red/nir لحساب NDVI).',
+      'العرض السريع: L.imageOverlay(f.assets.thumbnail.href, [[f.bbox[1],f.bbox[0]],[f.bbox[3],f.bbox[2]]], {opacity:0.9}). العرض الحقيقيّ: COG عبر georaster-layer (قراءة نطاقات). NDVI = (nir-red)/(nir+red) من باندَي الأصول.',
+      'واجهة: منتقي تاريخ + شريط غطاء سحابيّ + قائمة نتائج بمصغّرات، والنقر يعرض المشهد على الخريطة. عالِج الفشل بلطف.',
+    ].join('\n'),
+  },
+
+  // مهارة البحث والتوجيه
+  geocodeRoute: {
+    name: 'البحث والتوجيه (Geocoding/Routing)',
+    keywords: ['بحث عن موقع','ترميز جغرافي','geocode','geocoding','nominatim','عنوان','توجيه','routing','مسار','route','اتجاهات','directions','أقرب','nearest','osrm','وصول','navigation','ابحث عنوان','حدد موقع من اسم','طريق','كيف أصل'],
+    instructions: [
+      '— مهارة: البحث عن المواقع والتوجيه (Nominatim + OSRM، بلا مفاتيح، يدعمان CORS) —',
+      'بحث عنوان → إحداثيّات (Nominatim، التزِم حدّ طلب/ثانية): fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&limit=5&accept-language=ar`).then(r=>r.json()).then(a=>a.map(x=>({name:x.display_name,lat:+x.lat,lon:+x.lon}))). عكسيّ: `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=jsonv2&accept-language=ar`.',
+      'توجيه بين نقطتين (OSRM): fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson&steps=true`).then(r=>r.json()).then(d=>{const route=d.routes[0]; L.geoJSON(route.geometry,{style:{color:"#E07B39",weight:5,opacity:.85}}).addTo(map); map.fitBounds(L.geoJSON(route.geometry).getBounds()); /* route.distance متر · route.duration ثانية · route.legs[0].steps خطوات */}).',
+      'أقرب منشأة («وجّهني لأقرب مستشفى»): 1) اجلب المستشفيات من Overpass. 2) رتّبها بالقرب (turf.distance) أو استعمل OSRM table للأزمنة: `https://router.project-osrm.org/table/v1/driving/${lonLatList}?sources=0&annotations=duration`. 3) وجّه للأقرب عبر OSRM route وارسم المسار + بطاقة (المسافة/الزمن).',
+      'واجهة: صندوق بحثٍ بإكمالٍ تلقائيّ، علامات بداية/نهاية قابلة للسحب (أعِد الحساب عند السحب)، ولوحة اتّجاهاتٍ بالخطوات. عالِج الفشل برسالةٍ واضحة.',
+    ].join('\n'),
+  },
+
+  // مهارة تحديد موقع المستخدم (المتصفّح)
+  geolocation: {
+    name: 'تحديد الموقع (المتصفّح)',
+    keywords: ['موقعي','تحديد الموقع','geolocation','gps','أين أنا','locate me','موقع المستخدم','تتبع الموقع','watchposition','موقع حالي','current location','حدد موقعي','بوصلة'],
+    instructions: [
+      '— مهارة: تحديد موقع المستخدم من المتصفّح (navigator.geolocation) —',
+      'طلبٌ لمرّة: navigator.geolocation.getCurrentPosition(pos=>{const{latitude:lat,longitude:lon,accuracy:acc}=pos.coords; L.marker([lat,lon]).addTo(map).bindPopup("موقعك"); L.circle([lat,lon],{radius:acc,color:"#E07B39",fillOpacity:.1}).addTo(map); map.setView([lat,lon],15);}, err=>onGeoError(err.code), {enableHighAccuracy:true,timeout:10000,maximumAge:0}).',
+      'تتبّعٌ حيّ: const id=navigator.geolocation.watchPosition(pos=>onPositionUpdate(pos.coords), onGeoError, {enableHighAccuracy:true}); وأوقِفه بـnavigator.geolocation.clearWatch(id). زرّ «موقعي 📍» يبدّل التشغيل/الإيقاف.',
+      'أخطاء بوضوح: err.code (1=رُفض الإذن، 2=غير متاح، 3=انتهى الوقت) → رسالةٌ عربيّةٌ مناسبة. تعمل الخدمة على HTTPS فقط (رابط /pe آمن).',
+      'دوالّ قابلة للتعديل: افصل منطق الموقع في دوالّ واضحة ومسمّاة (locateUser / startTracking / stopTracking / onPositionUpdate) ليسهل تعديلها لاحقاً — مثل: حساب المسافة للوجهة، تنبيهٌ عند الاقتراب من نقطة، أو مشاركة الموقع.',
+      'دمجٌ قويّ: اجمعها مع التوجيه (موقعي → أقرب منشأة) أو مع الترميز العكسيّ لعرض عنواني الحاليّ تلقائياً.',
+    ].join('\n'),
+  },
 };
 
 /**
