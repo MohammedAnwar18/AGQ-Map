@@ -28,6 +28,8 @@ const CDN = {
   three:         'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
   gsap:          'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
   jsts:          'https://cdnjs.cloudflare.com/ajax/libs/jsts/2.12.1/jsts.min.js',
+  d3:            'https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js',
+  georaster:     'https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js',
 };
 
 const SKILLS = {
@@ -291,6 +293,23 @@ const SKILLS = {
       'تصحيح هندسة غير صالحة: if(!g.isValid()) g=g.buffer(0);. تبسيطٌ يحفظ الطوبولوجيا: jsts.simplify.TopologyPreservingSimplifier.simplify(g, tolerance).',
       'علاقات مكانيّة دقيقة: a.contains(b) · within · crosses · overlaps · touches · intersects · disjoint. ومغلّف محدب: g.convexHull().',
       'ملاحظة مهمّة: buffer/المسافات في JSTS بوحدات إحداثيّات المدخل (درجات لـlat/lon) — للقياسات المتريّة (مساحة/مسافة/محيط بالمتر) ابقَ على Turf؛ واستعمل JSTS للطوبولوجيا والـoverlay القويّ وتصحيح الهندسة.',
+    ].join('\n'),
+  },
+
+  // مهارة تحليل التضاريس بالمتصفّح — بديلٌ خفيف لـWhiteboxTools بلا خادم
+  terrain: {
+    name: 'تحليل التضاريس (DEM)',
+    keywords: ['تضاريس','terrain','ارتفاع رقمي','نموذج ارتفاع','dem','hillshade','تظليل تضاريسي','ميل','slope','انحدار','اتجاه المنحدر','aspect','كنتور','contour','خطوط كنتور','منحنيات تسوية','isolines','تحليل تضاريس','استواء'],
+    instructions: [
+      '— مهارة: تحليل التضاريس بالمتصفّح (DEM → hillshade/slope/aspect/كنتور) —',
+      'المبدأ: نقرأ شبكة ارتفاعات GeoTIFF (DEM) كاملةً في الذاكرة ونحسب المشتقّات بنافذة 3×3 (طريقة Horn)، ونرسم الناتج طبقةً فوق الخريطة. بلا خادم.',
+      `قراءة الـDEM: ضمّن <script src="${CDN.georaster}"></script> ثمّ fetch(demUrl).then(r=>r.arrayBuffer()).then(parseGeoraster).then(g=>{ const z=g.values[0]; const W=g.width,H=g.height,cs=g.pixelWidth; const bounds=[[g.ymin,g.xmin],[g.ymax,g.xmax]]; const nd=g.noDataValue; /* احسب ثمّ ارسم */ });`,
+      'جوار آمن: const at=(r,c)=>{const v=z[Math.min(H-1,Math.max(0,r))][Math.min(W-1,Math.max(0,c))]; return v===nd?0:v;};',
+      'المشتقّات (Horn): dzdx=((at(r-1,c+1)+2*at(r,c+1)+at(r+1,c+1))-(at(r-1,c-1)+2*at(r,c-1)+at(r+1,c-1)))/(8*cs); dzdy=((at(r+1,c-1)+2*at(r+1,c)+at(r+1,c+1))-(at(r-1,c-1)+2*at(r-1,c)+at(r-1,c+1)))/(8*cs);',
+      'الميل: slopeDeg=Math.atan(Math.hypot(dzdx,dzdy))*180/Math.PI. الاتّجاه: let a=Math.atan2(dzdy,-dzdx)*180/Math.PI; const aspect=(a<0?a+360:a). التظليل: const AZ=(360-315+90)*Math.PI/180,ALT=45*Math.PI/180,s=Math.atan(Math.hypot(dzdx,dzdy)),asp=Math.atan2(dzdy,-dzdx); const hs=255*Math.max(0,Math.cos(ALT)*Math.cos(s)+Math.sin(ALT)*Math.sin(s)*Math.cos(AZ-asp));',
+      'العرض: أنشئ <canvas> بحجم W×H، املأ ImageData (رماديّ hs للتظليل، تدرّج لونيّ للميل/الاتّجاه)، ثمّ L.imageOverlay(canvas.toDataURL(),bounds,{opacity:0.85}).addTo(map); map.fitBounds(bounds). زرّ لتبديل الطبقة (تظليل/ميل/اتّجاه).',
+      `الكنتور: ضمّن <script src="${CDN.d3}"></script>. flat=[].concat(...z); const lines=d3.contours().size([W,H]).thresholds(d3.range(min,max,step))(flat). حوّل إحداثيّات الشبكة إلى جغرافيّة: lng=g.xmin+col*g.pixelWidth, lat=g.ymax-row*g.pixelHeight، ثمّ ارسمها L.geoJSON(reprojected,{style:{color:"#E07B39",weight:1}}).addTo(map) مع label للارتفاع.`,
+      'دقّة متريّة: إن كان الـDEM بالدرجات (lat/lon) فحجم الخليّة بالأمتار ≈ g.pixelWidth*111320*cos(خط العرض) لنتائج ميلٍ واقعيّة؛ للتظليل البصريّ القيمة التقريبيّة تكفي. أداء: للشبكات الكبيرة احسب مرّةً وخزّن، أو صغّر العيّنة.',
     ].join('\n'),
   },
 };
