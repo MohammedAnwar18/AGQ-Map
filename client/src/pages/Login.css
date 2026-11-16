@@ -394,7 +394,7 @@
     position: fixed;
     inset: 0;
     display: grid;
-    grid-template-columns: calc(100vh * 1024 / 1536) 1fr;
+    grid-template-columns: minmax(380px, 460px) 1fr;
     background: var(--eng-ink);
     direction: rtl;
     overflow: hidden;
@@ -482,9 +482,9 @@
 .eng-login .eng-legal .sep { opacity: 0.4; }
 .eng-login .spinner-small { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: eng-spin 0.7s linear infinite; }
 @keyframes eng-spin { to { transform: rotate(360deg); } }
-/* الجانب التصويريّ: الصورة تملأ العمود حتى الحواف — العمود مضبوطٌ على نسبة الصورة فلا قصّ */
-.eng-login .eng-hero-side { position: relative; overflow: hidden; background: var(--eng-ink); }
-.eng-login .eng-hero-side img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* الجانب التصويريّ: الصورة كاملةً (contain) بحجمٍ مرتّب ومؤطّر — مرنة ولا يضيع منها شيء */
+.eng-login .eng-hero-side { position: relative; overflow: hidden; background: var(--eng-ink); display: flex; align-items: center; justify-content: center; padding: 4vh 3vw; box-sizing: border-box; }
+.eng-login .eng-hero-side img { max-width: 100%; max-height: 88vh; width: auto; height: auto; object-fit: contain; display: block; border-radius: 16px; box-shadow: 0 30px 70px -30px rgba(0,0,0,0.75); }
 @media (max-width: 900px) {
     .eng-login { grid-template-columns: 1fr; }
     .eng-login .eng-hero-side { display: none; }
