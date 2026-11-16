@@ -4,6 +4,17 @@ import { useAuth } from '../context/AuthContext';
 import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
+/* رابط التطبيق المنشور: نطاقٌ فرعيّ أنيق <slug>.palnovaa.com (عبر Cloudflare Worker)،
+   مع تراجعٍ إلى /pe/<slug> في التطوير (localhost/IP) أو إن تعذّر استخراج النطاق. */
+const APPS_BASE = (() => {
+  try {
+    const h = window.location.hostname;
+    if (!h || h === 'localhost' || /^(\d+\.){3}\d+$/.test(h)) return '';
+    return h.replace(/^www\./, '');
+  } catch { return ''; }
+})();
+const appLink = (slug) => (APPS_BASE ? `https://${slug}.${APPS_BASE}` : `${window.location.origin}/pe/${slug}`);
+
 /* ============================================================================
    PalNovaa Engine — واجهة المحرّك (نظامٌ متكامل شبيهٌ بريبلت)
    توليد حقيقيّ + حفظ المحادثة + نُسَخ/تراجع + بياناتٌ حقيقيّة (رفع) + fork +
@@ -838,11 +849,11 @@ export default function PalNovaaEnginePage() {
     showToast('جارٍ الحفظ…');
     const s = await persist();            // يحفظ أحدث نسخة وينشرها → الرابط الدائم جاهز
     if (!s) return;                        // persist يُظهر سبب الفشل
-    const link = `${window.location.origin}/pe/${s}`;
+    const link = appLink(s);
     try { await navigator.clipboard.writeText(link); showToast('تمّ الحفظ ونسخ الرابط ✓'); }
     catch { showToast('تمّ الحفظ — ' + link); }
   };
-  const openLive = () => { if (slug) window.open(`${window.location.origin}/pe/${slug}`, '_blank'); };
+  const openLive = () => { if (slug) window.open(appLink(slug), '_blank'); };
 
   const newProject = () => {
     clearTimeout(timerRef.current);
@@ -1160,7 +1171,7 @@ export default function PalNovaaEnginePage() {
     }
   }, [explorerOpen, mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const urlText = slug ? `${window.location.host}/pe/${slug}` : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
+  const urlText = slug ? (APPS_BASE ? `${slug}.${APPS_BASE}` : `${window.location.host}/pe/${slug}`) : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
   const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : k === 'geotiff' ? 'TIF' : (k || 'D').slice(0, 4).toUpperCase());
