@@ -620,18 +620,15 @@ const Login = () => {
                     </div>
                 </div>
                 <div className="eng-hero-side">
-                    <div className="eng-hero-inner">
-                        <ul className="eng-features">
-                            <li className="eng-feature"><img src="/engine-icons/prompt.svg" alt="" /><div><b>ابنِ بالأوامر</b><span>صِف فكرتك والمحرّك يبنيها</span></div></li>
-                            <li className="eng-feature"><img src="/engine-icons/spatial-data.svg" alt="" /><div><b>بيانات مكانيّة وGIS</b><span>طبقات وخرائط حيّة</span></div></li>
-                            <li className="eng-feature"><img src="/engine-icons/preview.svg" alt="" /><div><b>معاينة حيّة فوريّة</b><span>شاهد تطبيقك مباشرةً</span></div></li>
-                            <li className="eng-feature"><img src="/engine-icons/publish-share.svg" alt="" /><div><b>نشر ومشاركة</b><span>رابطٌ دائمٌ بضغطة</span></div></li>
-                            <li className="eng-feature"><img src="/engine-icons/cloud-storage.svg" alt="" /><div><b>تخزين سحابيّ آمن</b><span>مشاريعك محفوظة دائماً</span></div></li>
-                        </ul>
-                        <div className="eng-hero-img">
-                            <img src="/engine-login.png" alt="Palnovaa Engine — Build Powerful GIS Applications" />
-                        </div>
-                    </div>
+                    <img className="eng-hero-photo" src="/engine-login.png" alt="Palnovaa Engine — Build Powerful GIS Applications" />
+                    <div className="eng-hero-scrim" />
+                    <ul className="eng-features">
+                        <li className="eng-feature"><img src="/engine-icons/prompt.svg" alt="" /><div><b>ابنِ بالأوامر</b><span>صِف فكرتك والمحرّك يبنيها</span></div></li>
+                        <li className="eng-feature"><img src="/engine-icons/spatial-data.svg" alt="" /><div><b>بيانات مكانيّة وGIS</b><span>طبقات وخرائط حيّة</span></div></li>
+                        <li className="eng-feature"><img src="/engine-icons/preview.svg" alt="" /><div><b>معاينة حيّة فوريّة</b><span>شاهد تطبيقك مباشرةً</span></div></li>
+                        <li className="eng-feature"><img src="/engine-icons/publish-share.svg" alt="" /><div><b>نشر ومشاركة</b><span>رابطٌ دائمٌ بضغطة</span></div></li>
+                        <li className="eng-feature"><img src="/engine-icons/cloud-storage.svg" alt="" /><div><b>تخزين سحابيّ آمن</b><span>مشاريعك محفوظة دائماً</span></div></li>
+                    </ul>
                 </div>
             </div>
         );
