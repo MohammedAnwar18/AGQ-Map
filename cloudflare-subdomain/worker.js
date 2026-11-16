@@ -1,14 +1,19 @@
 /* ============================================================================
    PalNovaa Engine — Subdomain Publisher (Cloudflare Worker)
    ----------------------------------------------------------------------------
-   يخدم التطبيقات المنشورة على نطاقٍ فرعيٍّ لكلّ مشروع:
-       https://<slug>.apps.palnovaa.com
-   يقرأ الملفّ مباشرةً من نفس حاوية R2 التي ينشر إليها المحرّك
-   (المفتاح: apps/<slug>/index.html) — بلا خادمٍ وسيط وبلا تكلفة خروج.
+   يخدم كلّ تطبيقٍ منشورٍ على نطاقٍ فرعيٍّ لكلّ مشروع:
+       https://<slug>.palnovaa.com          (APPS_BASE = palnovaa.com)
+   قارئاً الملفّ مباشرةً من نفس حاوية R2 (apps/<slug>/index.html).
 
-   الأمان: كلّ تطبيقٍ على أصلٍ (origin) مستقلٍّ حسب الـslug، وتخزين الجلسة في
-   المحرّك عبر localStorage (مرتبطٌ بالأصل) فلا تصل التطبيقات لجلسة الموقع الرئيسيّ.
+   أيّ نطاقٍ فرعيٍّ ليس تطبيقاً (www, api, … أو مكتوبٌ خطأً) يُحوَّل للموقع الرئيسيّ،
+   فلا يتأثّر أيّ شيءٍ قائم. الجذر palnovaa.com لا يمرّ عبر هذا الـWorker أصلاً.
    ============================================================================ */
+
+const RESERVED = new Set([
+  'www', 'api', 'app', 'mail', 'cdn', 'ftp', 'blog', 'admin', 'status',
+  'dashboard', 'foresight', 'assets', 'static', 'img', 'images', 'media',
+  'docs', 'help', 'support', 'pe', 'apps', 'mx', 'ns', 'dev', 'staging',
+]);
 
 export default {
   async fetch(request, env) {
@@ -17,18 +22,20 @@ export default {
     }
     const url = new URL(request.url);
     const host = url.hostname.toLowerCase();
-    const base = (env.APPS_BASE || 'apps.palnovaa.com').toLowerCase();
+    const base = (env.APPS_BASE || 'palnovaa.com').toLowerCase();
+    const home = `https://${base}${url.pathname}${url.search}`;
 
-    // استخرج الـslug: أوّل مقطعٍ قبل نطاق الأساس
+    // استخرج الـslug (أوّل مقطعٍ قبل نطاق الأساس)
     let slug = '';
-    if (host === base || host === `www.${base}`) {
-      return landing(base);                      // زيارة الأساس نفسه
-    }
     if (host.endsWith(`.${base}`)) {
       slug = host.slice(0, host.length - base.length - 1).split('.').pop();
     }
-    slug = (slug || '').replace(/[^a-z0-9-]/gi, '');  // تعقيمٌ صارم
-    if (!slug) return notFound('رابطٌ غير صالح.');
+    slug = (slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+    // ليس تطبيقاً (محجوز أو نمطٌ غير صالح) → حوّل للموقع الرئيسيّ
+    if (!slug || RESERVED.has(slug) || !/^[a-z0-9]{5,12}$/.test(slug)) {
+      return Response.redirect(home, 302);
+    }
 
     const key = `apps/${slug}/index.html`;
     let obj;
@@ -46,19 +53,14 @@ export default {
   },
 };
 
-function page(title, bodyHtml, status) {
+function notFound(msg) {
   return new Response(
     `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">` +
-    `<meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>` +
+    `<meta name="viewport" content="width=device-width,initial-scale=1"><title>غير موجود</title></head>` +
     `<body style="font-family:system-ui,'Segoe UI',sans-serif;background:#0A0B0D;color:#C8CDD4;display:grid;place-items:center;min-height:100vh;margin:0">` +
-    `<div style="text-align:center;padding:24px">${bodyHtml}</div></body></html>`,
-    { status: status || 200, headers: { 'content-type': 'text/html; charset=utf-8' } }
+    `<div style="text-align:center;padding:24px"><h1 style="color:#E07B39;font-size:46px;margin:0">٤٠٤</h1>` +
+    `<p style="opacity:.8">${msg || 'الصفحة غير موجودة.'}</p>` +
+    `<p><a href="https://palnovaa.com" style="color:#E07B39">العودة للموقع</a></p></div></body></html>`,
+    { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } }
   );
-}
-function notFound(msg) {
-  return page('غير موجود', `<h1 style="color:#E07B39;font-size:46px;margin:0">٤٠٤</h1><p style="opacity:.8">${msg || 'الصفحة غير موجودة.'}</p>`, 404);
-}
-function landing(base) {
-  return page('PalNovaa Engine — التطبيقات',
-    `<h1 style="color:#E07B39">PalNovaa Engine</h1><p style="opacity:.8">تُنشَر تطبيقات المستخدمين على نطاقٍ فرعيٍّ خاصّ: <code>&lt;اسم-المشروع&gt;.${base}</code></p>`);
 }

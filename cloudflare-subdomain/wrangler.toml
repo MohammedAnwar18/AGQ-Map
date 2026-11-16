@@ -8,10 +8,10 @@ binding = "APPS_BUCKET"
 bucket_name = "REPLACE_WITH_YOUR_R2_BUCKET"   # ← ضع اسم حاوية R2 نفسها
 
 [vars]
-APPS_BASE = "apps.palnovaa.com"
+APPS_BASE = "palnovaa.com"
 
 # بعد النشر، اربط الـWorker بالمسار من Cloudflare Dashboard → Workers → Routes:
-#   *.apps.palnovaa.com/*   → palnovaa-apps
+#   *.palnovaa.com/*   → palnovaa-apps   (أوّل مستوى — مغطّى بشهادة SSL المجّانيّة)
 # (أو عبر الحقل أدناه إن استعملت wrangler publish)
 # [[routes]]
 # pattern = "*.apps.palnovaa.com/*"
