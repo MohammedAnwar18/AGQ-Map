@@ -338,6 +338,7 @@ export default function PalNovaaEnginePage() {
   const [activeFile, setActiveFile] = useState('index.html');
   const [hljsReady, setHljsReady] = useState(false);
   const [pvKey, setPvKey] = useState(0);   // يُجبر المعاينة على التجدّد الفوري مع كلّ تغيير كود
+  const [device, setDevice] = useState('desktop');  // معاينة متجاوبة: سطح مكتب/لوحيّ/جوّال
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
   const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
@@ -725,6 +726,21 @@ export default function PalNovaaEnginePage() {
   const sendHome = () => { if (prompt.trim()) { resetHeal(); runBuild(prompt, false); setPrompt(''); } };
   const sendEdit = () => { if (prompt2.trim() && html) { resetHeal(); runBuild(prompt2, true); setPrompt2(''); } };
   const autoFix = () => { resetHeal(); const msg = iframeErr; setIframeErr(''); runBuild(`التطبيق يُصدر خطأ JavaScript أثناء التشغيل: "${msg}". أصلح السبب الجذريّ وأعِد إخراج المستند كاملاً وهو يعمل بلا أخطاء.`, true); };
+
+  /* تنزيل المشروع HTML / فتحه بتبويبٍ مستقلّ (يعمل حتى قبل النشر) */
+  const downloadHtml = () => {
+    if (!html) return;
+    const safe = (title || 'palnovaa-app').replace(/[^\w؀-ۿ -]+/g, '').trim() || 'app';
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `${safe}.html`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast('نُزِّل ملفّ HTML');
+  };
+  const openPreviewTab = () => {
+    if (!html) return;
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 15000);
+  };
 
   const persist = async () => {
     if (!html) return null;
@@ -1294,13 +1310,22 @@ export default function PalNovaaEnginePage() {
               <div className="pv-bar">
                 <button className={`tab ${tab === 'app' ? 'on' : ''}`} onClick={() => setTab('app')}>{Ico.eye}معاينة</button>
                 <button className={`tab ${tab === 'code' ? 'on' : ''}`} onClick={() => setTab('code')}>{Ico.code}الكود</button>
+                {tab === 'app' && html && (
+                  <div className="pv-devices" title="معاينة بأحجام الأجهزة">
+                    <button className={device === 'desktop' ? 'on' : ''} title="سطح المكتب" onClick={() => setDevice('desktop')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg></button>
+                    <button className={device === 'tablet' ? 'on' : ''} title="لوحيّ" onClick={() => setDevice('tablet')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M12 18h.01" /></svg></button>
+                    <button className={device === 'mobile' ? 'on' : ''} title="جوّال" onClick={() => setDevice('mobile')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M12 18h.01" /></svg></button>
+                  </div>
+                )}
                 <div className={`url ${slug ? 'live' : ''}`}><i /><span>{urlText}</span></div>
+                <button className="icon-btn" title="فتح المعاينة بتبويب جديد" onClick={openPreviewTab} disabled={!html}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></button>
+                <button className="icon-btn" title="تنزيل HTML" onClick={downloadHtml} disabled={!html}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" /></svg></button>
                 <button className="icon-btn" title="فتح الرابط الدائم" onClick={openLive} disabled={!slug}>{Ico.ext}</button>
               </div>
               <div className="pv-body">
                 <div className={`pane ${tab === 'app' ? 'on' : ''}`}>
                   {!html && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يكتب PalNovaa 1.0 تطبيقك مباشرةً… (شاهد الكود في تبويب «الكود»)</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
-                  {html && <iframe key={pvKey} className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" />}
+                  {html && <div className={`pv-stage dev-${device}`}><iframe key={pvKey} className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" /></div>}
                   {html && iframeErr && !busy && (
                     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14, background: 'rgba(227,100,80,.14)', border: '1px solid rgba(227,100,80,.45)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 3, backdropFilter: 'blur(4px)' }}>
                       <span style={{ fontSize: 12.5, color: '#f0b3a8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>⚠ خطأ تشغيل (تعذّر الإصلاح التلقائيّ): {iframeErr}</span>
