@@ -1143,16 +1143,16 @@ export default function PalNovaaEnginePage() {
     try { const r = await jpost(`/engine/docs/${slug}/download`, {}); const url = (r?.ok && r.file_url) || fileUrl; if (url) window.open(url, '_blank', 'noopener'); loadDocs(); }
     catch { if (fileUrl) window.open(fileUrl, '_blank', 'noopener'); }
   };
-  const openDoc = async (slug) => { const d = await jget(`/engine/docs/${slug}`); if (d?.ok) setDocOpen(d.doc); else showToast('تعذّر فتح المستند'); };
+  const openDoc = async (slug) => { const d = await jget(`/engine/docs/${slug}`); if (d?.ok) setDocOpen(d.doc); else showToast('تعذّر فتح الإضافة'); };
   const saveDoc = async () => {
     const d = docEdit; if (!d || !(d.title || '').trim()) { showToast('العنوان مطلوب'); return; }
     setDocBusy(true);
     const payload = { title: d.title, excerpt: d.excerpt || '', cover_url: d.cover_url || '', body: d.body || '', file_url: d.file_url || '', file_name: d.file_name || '', kind: d.kind || 'article', published: d.published !== false, sort_order: d.sort_order || 0 };
     const res = d.slug ? await jput(`/engine/docs/${d.slug}`, payload) : await jpost('/engine/docs', payload);
     setDocBusy(false);
-    if (res?.ok) { showToast('حُفظ المستند'); setDocEdit(null); loadDocs(); } else showToast('تعذّر الحفظ: ' + (res?.reason || ''));
+    if (res?.ok) { showToast('حُفظت الإضافة'); setDocEdit(null); loadDocs(); } else showToast('تعذّر الحفظ: ' + (res?.reason || ''));
   };
-  const deleteDoc = async (slug) => { if (!window.confirm('حذف هذا المستند؟')) return; await jdel(`/engine/docs/${slug}`); loadDocs(); if (docOpen?.slug === slug) setDocOpen(null); };
+  const deleteDoc = async (slug) => { if (!window.confirm('حذف هذه الإضافة؟')) return; await jdel(`/engine/docs/${slug}`); loadDocs(); if (docOpen?.slug === slug) setDocOpen(null); };
   const attachDoc = async (slug) => {
     showToast('جارٍ الإضافة لبياناتك…');
     const res = await jpost(`/engine/docs/${slug}/attach`, {});
@@ -1290,7 +1290,7 @@ export default function PalNovaaEnginePage() {
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
-            <a className={docsOpen ? 'active' : ''} onClick={openDocsCenter}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg><span>المستندات</span></a>
+            <a className={docsOpen ? 'active' : ''} onClick={openDocsCenter}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M19.44 12.99c-.49.18-.82.59-.9 1.06a1.03 1.03 0 0 0 .3.88l.05.05a2.5 2.5 0 1 1-3.54 3.53l-.05-.05a1.03 1.03 0 0 0-1.76.73v.14a2.5 2.5 0 0 1-5 0v-.07a1.03 1.03 0 0 0-.67-.94 1.03 1.03 0 0 0-1.14.21l-.05.05a2.5 2.5 0 1 1-3.54-3.53l.05-.05a1.03 1.03 0 0 0-.73-1.76H2.5a2.5 2.5 0 0 1 0-5h.07a1.03 1.03 0 0 0 .94-1.81l-.05-.05A2.5 2.5 0 1 1 7 2.84l.05.05a1.03 1.03 0 0 0 1.76-.73V2a2.5 2.5 0 0 1 5 0v.07a1.03 1.03 0 0 0 1.81.94l.05-.05A2.5 2.5 0 1 1 20.16 7l-.05.05a1.03 1.03 0 0 0 .73 1.76H21a2.5 2.5 0 0 1 0 5h-.07a1.03 1.03 0 0 0-.49.23z" /></svg><span>الإضافات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
@@ -1571,9 +1571,9 @@ export default function PalNovaaEnginePage() {
       {docsOpen && (
         <div className="docs-overlay" dir="rtl">
           <header className="docs-bar">
-            <div className="docs-head"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg><b>المستندات</b><span>مقالات وموارد وملفّات جاهزة</span></div>
+            <div className="docs-head"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M19.44 12.99c-.49.18-.82.59-.9 1.06a1.03 1.03 0 0 0 .3.88l.05.05a2.5 2.5 0 1 1-3.54 3.53l-.05-.05a1.03 1.03 0 0 0-1.76.73v.14a2.5 2.5 0 0 1-5 0v-.07a1.03 1.03 0 0 0-.67-.94 1.03 1.03 0 0 0-1.14.21l-.05.05a2.5 2.5 0 1 1-3.54-3.53l.05-.05a1.03 1.03 0 0 0-.73-1.76H2.5a2.5 2.5 0 0 1 0-5h.07a1.03 1.03 0 0 0 .94-1.81l-.05-.05A2.5 2.5 0 1 1 7 2.84l.05.05a1.03 1.03 0 0 0 1.76-.73V2a2.5 2.5 0 0 1 5 0v.07a1.03 1.03 0 0 0 1.81.94l.05-.05A2.5 2.5 0 1 1 20.16 7l-.05.05a1.03 1.03 0 0 0 .73 1.76H21a2.5 2.5 0 0 1 0 5h-.07a1.03 1.03 0 0 0-.49.23z" /></svg><b>الإضافات</b><span>إضافاتٌ تُوسّع المحرّك — طبقات وأدوات وقوالب</span></div>
             <div className="docs-actions">
-              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'file', published: true })}>+ مورد جديد</button>}
+              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'file', published: true })}>+ إضافة جديدة</button>}
               <button className="icon-btn" title="إغلاق" onClick={() => { setDocsOpen(false); setDocOpen(null); setDocEdit(null); }}>{Ico.close}</button>
             </div>
           </header>
@@ -1587,18 +1587,18 @@ export default function PalNovaaEnginePage() {
               </aside>
               <div className="docs-main">
                 <div className="docs-toolbar">
-                  <input className="docs-search" placeholder="ابحث في الموارد…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
+                  <input className="docs-search" placeholder="ابحث في الإضافات…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
                   <select className="docs-sort" value={docSort} onChange={(e) => setDocSort(e.target.value)}>
                     <option value="new">الأحدث</option>
                     <option value="downloads">الأكثر تنزيلاً</option>
                     <option value="title">الاسم</option>
                   </select>
-                  <span className="docs-count">{docsFiltered.length} عنصر</span>
+                  <span className="docs-count">{docsFiltered.length} إضافة</span>
                 </div>
                 {docsLoading ? (
                   <div className="docs-empty">…جارِ التحميل</div>
                 ) : docsFiltered.length === 0 ? (
-                  <div className="docs-empty">لا موارد{isAdmin ? ' — أضِف أوّل مورد من «+ رفع مورد».' : ' مطابقة.'}</div>
+                  <div className="docs-empty">لا إضافات{isAdmin ? ' — أضِف أوّل إضافة من «+ إضافة جديدة».' : ' مطابقة.'}</div>
                 ) : (
                   <div className="docs-grid">
                     {docsFiltered.map((d) => (
@@ -1658,9 +1658,9 @@ export default function PalNovaaEnginePage() {
           {docEdit && (
             <div className="docs-editor-scrim" onClick={() => setDocEdit(null)}>
               <div className="docs-editor" onClick={(e) => e.stopPropagation()}>
-                <h3>{docEdit.slug ? 'تحرير مستند' : 'مستند جديد'}</h3>
-                <label>العنوان</label>
-                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="اسم المورد" />
+                <h3>{docEdit.slug ? 'تحرير إضافة' : 'إضافة جديدة'}</h3>
+                <label>الاسم</label>
+                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="اسم الإضافة" />
                 <div className="doc-row2">
                   <div><label>الكاتب / المصدر</label><input value={docEdit.author || ''} onChange={(e) => setDocEdit({ ...docEdit, author: e.target.value })} placeholder="مثلاً: PalNovaa" /></div>
                   <div><label>الإصدار</label><input value={docEdit.version || ''} onChange={(e) => setDocEdit({ ...docEdit, version: e.target.value })} placeholder="1.0" /></div>
