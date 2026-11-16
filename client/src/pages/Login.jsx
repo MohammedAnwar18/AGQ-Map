@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
@@ -11,9 +11,17 @@ const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { login } = useAuth();
-    const redirectTo = location.state?.from || '/map';   // الرجوع للصفحة المقصودة بعد الدخول (مثل المحرّك)
-    const fromEngine = (location.state?.from || '').startsWith('/palnovaa-engine');  // فتحٌ من رابط محرّك بالنوفا → واجهةٌ مخصّصة
-    useEngineBranding(fromEngine);  // أيقونة وعنوان المحرّك في التبويب عند الدخول من رابطه
+    // فتحٌ من رابط محرّك بالنوفا → واجهةٌ وعلامةٌ مخصّصة، تبقى حتى بعد تحديث الصفحة (عبر sessionStorage)
+    const stateFrom = location.state?.from || '';
+    const fromEngine = (() => {
+        const s = stateFrom.startsWith('/palnovaa-engine');
+        try { if (s) sessionStorage.setItem('pne_login', '1'); return s || sessionStorage.getItem('pne_login') === '1'; }
+        catch { return s; }
+    })();
+    const redirectTo = stateFrom || (fromEngine ? '/palnovaa-engine' : '/map');   // الرجوع للصفحة المقصودة بعد الدخول
+    useEngineBranding(fromEngine);  // أيقونة وعنوان «PalNovaa Engine» في التبويب
+    // تُنظَّف العلامة عند مغادرة صفحة الدخول (تنقّلٌ داخل التطبيق)، فتبقى عبر الـrefresh فقط
+    useEffect(() => () => { try { sessionStorage.removeItem('pne_login'); } catch { /* */ } }, []);
     const [isLogin, setIsLogin] = useState(location.state?.mode === 'register' ? false : true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
