@@ -862,6 +862,44 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design)
     return r;
 }
 
+/* ---- نداءٌ خفيفٌ أحاديّ (لمحسّن الوصف ونحوه) عبر أيّ مزوّد ---- */
+async function quickComplete(KEY, system, user, maxTokens) {
+    const prov = pickProvider(KEY);
+    if (prov.kind === 'anthropic') {
+        const data = await postJSON(prov.url, { model: prov.model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }, { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' }, UPSTREAM_TIMEOUT);
+        const blocks = Array.isArray(data?.content) ? data.content : [];
+        return blocks.filter((b) => b && b.type === 'text').map((b) => b.text || '').join('');
+    }
+    if (prov.kind === 'oai') {
+        const headers = { Authorization: `Bearer ${KEY}` };
+        if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
+        const data = await postJSON(prov.url, { model: prov.model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.6, max_tokens: maxTokens }, headers, UPSTREAM_TIMEOUT);
+        const msg = data?.choices?.[0]?.message;
+        return (typeof msg?.content === 'string' ? msg.content : (Array.isArray(msg?.content) ? msg.content.map((c) => c?.text || '').join('') : '')) || '';
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:generateContent`;
+    const data = await postJSON(url, { systemInstruction: { role: 'system', parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens } }, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
+    return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('');
+}
+const ENHANCER_SYS = 'أنت خبيرٌ في صياغة أوصاف تطبيقات الويب لمحرّك بناءٍ بالذكاء الاصطناعيّ متخصّص بالخرائط وGIS. خذ وصف المستخدم المختصر ووسّعه إلى مواصفةٍ غنيّةٍ واضحةٍ قابلةٍ للتنفيذ، محافظاً على نيّته تماماً دون تغيير الفكرة. غطِّ: الأقسام/الصفحات، الميزات الرئيسة، نوع البيانات (أو بيانات تجريبيّة واقعيّة)، عناصر الخريطة إن لزمت، لوحات المؤشّرات والفلاتر والتفاعلات، ولمسات تجربة المستخدم. اكتب بالعربيّة بإيجازٍ منظّم (جملة تمهيديّة ثمّ نقاط)، بلا أيّ كودٍ وبلا ماركداون ثقيل، وبما لا يتجاوز ~170 كلمة. أخرِج الوصف المحسّن فقط.';
+
+/* ============================ محسّن الوصف (✨) ============================ */
+// POST /api/engine/enhance  { prompt, key? } → { ok, prompt }
+router.post('/enhance', optionalAuth, async (req, res) => {
+    try {
+        const raw = (req.body?.prompt || '').toString().trim().slice(0, 2000);
+        if (!raw) return res.json({ ok: false, reason: 'empty' });
+        const reqKey = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
+        const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
+        if (!KEY) return res.json({ ok: false, reason: 'missing_key' });
+        const out = (await quickComplete(KEY, ENHANCER_SYS, raw, 700) || '').trim().replace(/^```[a-z]*\n?|\n?```$/gi, '').trim();
+        if (!out) return res.json({ ok: false, reason: 'empty_result' });
+        return res.json({ ok: true, prompt: out.slice(0, 3500) });
+    } catch (err) {
+        return res.json({ ok: false, reason: String(err.message || 'error') });
+    }
+});
+
 /* ============================ التوليد (بثّ حيّ) ============================ */
 // POST /api/engine/generate-stream  (SSE) — نفس مدخلات /generate
 router.post('/generate-stream', optionalAuth, async (req, res) => {

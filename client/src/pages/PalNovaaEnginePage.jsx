@@ -309,6 +309,7 @@ export default function PalNovaaEnginePage() {
   const [view, setView] = useState('home');  // home | workspace | templates
   const [prompt, setPrompt] = useState('');
   const [prompt2, setPrompt2] = useState('');
+  const [enhancing, setEnhancing] = useState(false);
   const [attached, setAttached] = useState([]);     // تلميحات مصادر عامّة
   const [datasets, setDatasets] = useState([]);     // بيانات مرفقة (مرفوعة)
   const [myDatasets, setMyDatasets] = useState([]); // المتاحة
@@ -723,6 +724,19 @@ export default function PalNovaaEnginePage() {
   };
 
   const resetHeal = () => { autoHealRef.current = { tries: 0, lastErr: '' }; };
+  const enhancePrompt = async () => {
+    const base = prompt.trim();
+    if (!base) { showToast('اكتب فكرةً مختصرةً أولاً'); return; }
+    if (enhancing || busy) return;
+    setEnhancing(true);
+    try {
+      const key = localStorage.getItem(KEY_LS) || '';
+      const d = await jpost('/engine/enhance', { prompt: base, key });
+      if (d?.ok && d.prompt) { setPrompt(d.prompt); showToast('حُسّن الوصف ✨ — عدّله أو ابنِ مباشرةً'); }
+      else showToast(d?.reason === 'missing_key' ? 'أضِف مفتاح الموديل أولاً' : 'تعذّر التحسين، جرّب مجدّداً');
+    } catch { showToast('تعذّر الاتصال بالخادم'); }
+    finally { setEnhancing(false); }
+  };
   const sendHome = () => { if (prompt.trim()) { resetHeal(); runBuild(prompt, false); setPrompt(''); } };
   const sendEdit = () => { if (prompt2.trim() && html) { resetHeal(); runBuild(prompt2, true); setPrompt2(''); } };
   const autoFix = () => { resetHeal(); const msg = iframeErr; setIframeErr(''); runBuild(`التطبيق يُصدر خطأ JavaScript أثناء التشغيل: "${msg}". أصلح السبب الجذريّ وأعِد إخراج المستند كاملاً وهو يعمل بلا أخطاء.`, true); };
@@ -1178,6 +1192,10 @@ export default function PalNovaaEnginePage() {
                     <button className="tool" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}البيانات</button>
                     <button className="tool" data-menu-anchor onClick={(e) => openMenu('mode', e)}>النوع: <span className="v">{mode}</span></button>
                     <button className="tool mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="v">{crs}</span></button>
+                    <button className={`tool enhance ${enhancing ? 'busy' : ''}`} title="حسّن الوصف تلقائياً قبل البناء" disabled={!prompt.trim() || enhancing || busy} onClick={enhancePrompt}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" /></svg>
+                      {enhancing ? 'يحسّن…' : 'تحسين'}
+                    </button>
                     <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>
                   </div>
                 </div>
