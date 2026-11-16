@@ -27,6 +27,7 @@ const CDN = {
   maplibreCSS:   'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css',
   three:         'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
   gsap:          'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
+  jsts:          'https://cdnjs.cloudflare.com/ajax/libs/jsts/2.12.1/jsts.min.js',
 };
 
 const SKILLS = {
@@ -274,6 +275,22 @@ const SKILLS = {
       'Gauge: {series:[{type:"gauge",progress:{show:true},max:100,data:[{value:72,name:"الإنجاز"}]}]}.',
       'Heatmap: {tooltip:{},grid:{height:"60%"},xAxis:{type:"category",data:xs},yAxis:{type:"category",data:ys},visualMap:{min:0,max:100,calculable:true,orient:"horizontal",left:"center",bottom:"2%"},series:[{type:"heatmap",data:[[0,0,45],[1,0,80]]}]}.',
       'التصميم: color:[ألوان التطبيق]، backgroundColor:"transparent"، textStyle:{color:"#C8CDD4"}، ومحاور خافتة. تحديثٌ حيّ: chart.setOption({series:[{data:newData}]}).',
+    ].join('\n'),
+  },
+
+  // مهارة الطوبولوجيا المتقدّمة — JSTS (منفذ JTS) لعمليّاتٍ هندسيّةٍ قويّة يصعب على Turf ضمانها
+  topology: {
+    name: 'التحليل المكانيّ المتقدّم (JSTS)',
+    keywords: ['اتحاد','union','تقاطع','intersection','فرق هندسي','difference','symmetric','طوبولوجيا','topology','تبسيط مضلع','simplify','تصحيح هندسة','صلاحية هندسة','geometry valid','دمج مضلعات','merge polygons','علاقة مكانية','spatial relation','مغلف محدب','convex hull','overlay','jsts','طبقات متراكبة','تراكب'],
+    instructions: [
+      '— مهارة: التحليل المكانيّ المتقدّم والطوبولوجيا (JSTS) —',
+      `استعملها للعمليّات الهندسيّة القويّة التي يصعب على Turf ضمانها على المضلّعات المعقّدة/المتعدّدة. ضمّن <script src="${CDN.jsts}"></script> (المتغيّر العامّ jsts). حوّل بين GeoJSON وهندسة JSTS:`,
+      'const reader=new jsts.io.GeoJSONReader(), writer=new jsts.io.GeoJSONWriter(); const a=reader.read(geojsonA.geometry), b=reader.read(geojsonB.geometry);',
+      'عمليّات التراكب: a.union(b) اتحاد · a.intersection(b) تقاطع · a.difference(b) فرق · a.symDifference(b). النتيجة → writer.write(result) تُعيد هندسة GeoJSON ترسمها بـL.geoJSON({type:"Feature",geometry:result}).',
+      'اتحاد طبقةٍ كاملةٍ بثبات: const geoms=features.map(f=>reader.read(f.geometry)); const merged=new jsts.operation.union.UnaryUnionOp(new jsts.geom.GeometryFactory().createGeometryCollection(geoms)).union();',
+      'تصحيح هندسة غير صالحة: if(!g.isValid()) g=g.buffer(0);. تبسيطٌ يحفظ الطوبولوجيا: jsts.simplify.TopologyPreservingSimplifier.simplify(g, tolerance).',
+      'علاقات مكانيّة دقيقة: a.contains(b) · within · crosses · overlaps · touches · intersects · disjoint. ومغلّف محدب: g.convexHull().',
+      'ملاحظة مهمّة: buffer/المسافات في JSTS بوحدات إحداثيّات المدخل (درجات لـlat/lon) — للقياسات المتريّة (مساحة/مسافة/محيط بالمتر) ابقَ على Turf؛ واستعمل JSTS للطوبولوجيا والـoverlay القويّ وتصحيح الهندسة.',
     ].join('\n'),
   },
 };
