@@ -234,6 +234,11 @@ function ensureTable() {
                     created_at TIMESTAMPTZ DEFAULT now(),
                     updated_at TIMESTAMPTZ DEFAULT now()
                 );`);
+            // حقول السوق (بنمط مستودع إضافات QGIS)
+            await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS author TEXT;`);
+            await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS category TEXT;`);
+            await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS version TEXT;`);
+            await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS downloads INTEGER DEFAULT 0;`);
         })().catch((e) => { tableReady = null; throw e; });
     }
     return tableReady;
@@ -1717,6 +1722,7 @@ router.get('/admin/payments', authenticateToken, isAdmin, async (req, res) => {
 const docRow = (r, full) => ({
   slug: r.slug, title: r.title, excerpt: r.excerpt || '', cover_url: r.cover_url || '',
   kind: r.kind || 'article', file_url: r.file_url || '', file_name: r.file_name || '',
+  author: r.author || '', category: r.category || '', version: r.version || '', downloads: r.downloads || 0,
   published: r.published, sort_order: r.sort_order || 0, created_at: r.created_at, updated_at: r.updated_at,
   ...(full ? { body: r.body || '' } : {}),
 });
@@ -1727,7 +1733,7 @@ router.get('/docs', optionalAuth, async (req, res) => {
     await ensureTable();
     const isAdm = !!(req.user && req.user.role === 'admin');
     const r = await pool.query(
-      `SELECT slug,title,excerpt,cover_url,kind,file_url,file_name,published,sort_order,created_at,updated_at
+      `SELECT slug,title,excerpt,cover_url,kind,file_url,file_name,author,category,version,downloads,published,sort_order,created_at,updated_at
        FROM engine_docs ${isAdm ? '' : 'WHERE published = true'}
        ORDER BY sort_order DESC, created_at DESC LIMIT 300`
     );
@@ -1755,9 +1761,9 @@ router.post('/docs', authenticateToken, isAdmin, async (req, res) => {
     if (!title) return res.status(400).json({ ok: false, reason: 'العنوان مطلوب' });
     const slug = makeSlug();
     await pool.query(
-      `INSERT INTO engine_docs (slug,title,excerpt,cover_url,body,file_url,file_name,kind,published,sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [slug, title, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0]
+      `INSERT INTO engine_docs (slug,title,excerpt,cover_url,body,file_url,file_name,kind,published,sort_order,author,category,version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [slug, title, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30)]
     );
     return res.json({ ok: true, slug });
   } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
@@ -1770,9 +1776,9 @@ router.put('/docs/:slug', authenticateToken, isAdmin, async (req, res) => {
     const b = req.body || {};
     const r = await pool.query(
       `UPDATE engine_docs SET title=COALESCE($2,title), excerpt=$3, cover_url=$4, body=$5,
-         file_url=$6, file_name=$7, kind=$8, published=$9, sort_order=$10, updated_at=now()
+         file_url=$6, file_name=$7, kind=$8, published=$9, sort_order=$10, author=$11, category=$12, version=$13, updated_at=now()
        WHERE slug=$1 RETURNING slug`,
-      [req.params.slug, (b.title || '').slice(0, 200) || null, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0]
+      [req.params.slug, (b.title || '').slice(0, 200) || null, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30)]
     );
     if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not_found' });
     return res.json({ ok: true, slug: r.rows[0].slug });
@@ -1795,6 +1801,16 @@ router.post('/docs/presign', authenticateToken, isAdmin, async (req, res) => {
     const uploadUrl = await getSignedUrl(r2Client, new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: contentType }), { expiresIn: 900 });
     return res.json({ ok: true, uploadUrl, publicUrl: `${r2Base}/${key}`, contentType });
   } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// POST /api/engine/docs/:slug/download — يزيد العدّاد ويعيد رابط الملفّ
+router.post('/docs/:slug/download', optionalAuth, async (req, res) => {
+  try {
+    await ensureTable();
+    const r = await pool.query('UPDATE engine_docs SET downloads = COALESCE(downloads,0)+1 WHERE slug=$1 AND published=true RETURNING file_url, file_name', [req.params.slug]);
+    if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not_found' });
+    return res.json({ ok: true, file_url: r.rows[0].file_url, file_name: r.rows[0].file_name });
+  } catch (err) { return res.json({ ok: false, reason: String(err.message || 'error') }); }
 });
 
 // POST /api/engine/docs/:slug/attach — إضافة ملفّ المستند لبيانات المستخدم (يظهر في «بياناتك»)

@@ -390,6 +390,10 @@ export default function PalNovaaEnginePage() {
   const [docOpen, setDocOpen] = useState(null);   // المستند المفتوح (تفصيل)
   const [docEdit, setDocEdit] = useState(null);    // المستند قيد التحرير (أدمن)
   const [docBusy, setDocBusy] = useState(false);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [docCat, setDocCat] = useState('');       // تصنيف مُختار
+  const [docSearch, setDocSearch] = useState('');
+  const [docSort, setDocSort] = useState('new');   // new | downloads | title
   const isAdmin = user?.role === 'admin';
   const [mode, setMode] = useState(MODES[0]);
   const [crs, setCrs] = useState(CRS[0]);
@@ -1133,8 +1137,12 @@ export default function PalNovaaEnginePage() {
   const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; loadDatasets(); setExplorerOpen(true); };
 
   /* ---- مركز المستندات ---- */
-  const loadDocs = () => { jget('/engine/docs').then((d) => { if (d?.ok) setDocs(d.docs || []); }).catch(() => {}); };
-  const openDocsCenter = () => { setMenu(null); setDocOpen(null); setDocEdit(null); loadDocs(); setDocsOpen(true); };
+  const loadDocs = () => { setDocsLoading(true); jget('/engine/docs').then((d) => { setDocs(d?.ok ? (d.docs || []) : []); }).catch(() => setDocs([])).finally(() => setDocsLoading(false)); };
+  const openDocsCenter = () => { setMenu(null); setDocOpen(null); setDocEdit(null); setDocCat(''); setDocSearch(''); loadDocs(); setDocsOpen(true); };
+  const downloadDoc = async (slug, fileUrl) => {
+    try { const r = await jpost(`/engine/docs/${slug}/download`, {}); const url = (r?.ok && r.file_url) || fileUrl; if (url) window.open(url, '_blank', 'noopener'); loadDocs(); }
+    catch { if (fileUrl) window.open(fileUrl, '_blank', 'noopener'); }
+  };
   const openDoc = async (slug) => { const d = await jget(`/engine/docs/${slug}`); if (d?.ok) setDocOpen(d.doc); else showToast('تعذّر فتح المستند'); };
   const saveDoc = async () => {
     const d = docEdit; if (!d || !(d.title || '').trim()) { showToast('العنوان مطلوب'); return; }
@@ -1242,6 +1250,24 @@ export default function PalNovaaEnginePage() {
     return `${(d.kind || '').toUpperCase()} · ${d.feature_count}${gt ? ` · ${gt}` : ''}${tiled}`;
   };
   const allChips = [...attached.map((k) => ({ k, t: SRC[k].t, n: SRC[k].n, kind: 'src' })), ...datasets.map((d) => ({ k: d.slug, t: dsLabel(d.kind), n: d.name, kind: 'ds' }))];
+
+  /* سوق المستندات: تصنيفات + فلترة + فرز */
+  const docCategories = (() => {
+    const m = {};
+    docs.forEach((d) => { const c = (d.category || '').trim(); if (c) m[c] = (m[c] || 0) + 1; });
+    return Object.entries(m).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  })();
+  const docsFiltered = (() => {
+    let a = docs;
+    if (docCat) a = a.filter((d) => (d.category || '') === docCat);
+    if (docSearch.trim()) { const q = docSearch.trim().toLowerCase(); a = a.filter((d) => `${d.title} ${d.excerpt} ${d.author} ${d.category}`.toLowerCase().includes(q)); }
+    a = [...a];
+    if (docSort === 'downloads') a.sort((x, y) => (y.downloads || 0) - (x.downloads || 0));
+    else if (docSort === 'title') a.sort((x, y) => String(x.title).localeCompare(String(y.title), 'ar'));
+    else a.sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
+    return a;
+  })();
+  const fmtDocDate = (d) => { try { return new Date(d).toLocaleDateString('ar', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
 
   /* =========================================================================== */
   return (
@@ -1547,52 +1573,101 @@ export default function PalNovaaEnginePage() {
           <header className="docs-bar">
             <div className="docs-head"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg><b>المستندات</b><span>مقالات وموارد وملفّات جاهزة</span></div>
             <div className="docs-actions">
-              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'article', published: true })}>+ مستند جديد</button>}
+              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'file', published: true })}>+ مورد جديد</button>}
               <button className="icon-btn" title="إغلاق" onClick={() => { setDocsOpen(false); setDocOpen(null); setDocEdit(null); }}>{Ico.close}</button>
             </div>
           </header>
-          <div className="docs-body">
-            {!docOpen ? (
-              <div className="docs-grid">
-                {docs.length === 0 && <div className="docs-empty">لا مستندات بعد{isAdmin ? ' — أضِف أوّل مستند من «+ مستند جديد».' : '.'}</div>}
-                {docs.map((d) => (
-                  <div className="doc-card" key={d.slug} onClick={() => openDoc(d.slug)}>
-                    <div className="doc-cover" style={d.cover_url ? { backgroundImage: `url("${d.cover_url}")` } : undefined}>
-                      {!d.cover_url && <span className="doc-cover-ph">{d.file_url ? '📦' : '📄'}</span>}
-                      {d.file_url && <span className="doc-badge">ملفّ</span>}
-                      {!d.published && <span className="doc-badge draft">مسودّة</span>}
-                    </div>
-                    <div className="doc-meta"><b>{d.title}</b><small>{d.excerpt}</small></div>
-                    {isAdmin && (
-                      <div className="doc-admin" onClick={(e) => e.stopPropagation()}>
-                        <button title="تحرير" onClick={async () => { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) setDocEdit(r.doc); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></button>
-                        <button title="حذف" onClick={() => deleteDoc(d.slug)}>{Ico.trash}</button>
-                      </div>
-                    )}
-                  </div>
+          {!docOpen ? (
+            <div className="docs-market">
+              <aside className="docs-cats">
+                <button className={!docCat ? 'on' : ''} onClick={() => setDocCat('')}>الكلّ<span>{docs.length}</span></button>
+                {docCategories.map((c) => (
+                  <button key={c.name} className={docCat === c.name ? 'on' : ''} onClick={() => setDocCat(c.name)}>{c.name}<span>{c.count}</span></button>
                 ))}
+              </aside>
+              <div className="docs-main">
+                <div className="docs-toolbar">
+                  <input className="docs-search" placeholder="ابحث في الموارد…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
+                  <select className="docs-sort" value={docSort} onChange={(e) => setDocSort(e.target.value)}>
+                    <option value="new">الأحدث</option>
+                    <option value="downloads">الأكثر تنزيلاً</option>
+                    <option value="title">الاسم</option>
+                  </select>
+                  <span className="docs-count">{docsFiltered.length} عنصر</span>
+                </div>
+                {docsLoading ? (
+                  <div className="docs-empty">…جارِ التحميل</div>
+                ) : docsFiltered.length === 0 ? (
+                  <div className="docs-empty">لا موارد{isAdmin ? ' — أضِف أوّل مورد من «+ رفع مورد».' : ' مطابقة.'}</div>
+                ) : (
+                  <div className="docs-grid">
+                    {docsFiltered.map((d) => (
+                      <div className="doc-card" key={d.slug}>
+                        <div className="doc-ic" style={d.cover_url ? { backgroundImage: `url("${d.cover_url}")` } : undefined}>
+                          {!d.cover_url && <span className="doc-ic-ph">{d.file_url ? '📦' : '📄'}</span>}
+                          {!d.published && <span className="doc-badge draft">مسودّة</span>}
+                        </div>
+                        <div className="doc-info">
+                          <b className="doc-t" onClick={() => openDoc(d.slug)}>{d.title}</b>
+                          {d.author && <span className="doc-by">by {d.author}</span>}
+                          <p className="doc-desc">{d.excerpt}</p>
+                          <div className="doc-foot">
+                            <span className="doc-date">🗓 {fmtDocDate(d.created_at)}{d.version ? ` · v${d.version}` : ''}</span>
+                          </div>
+                          <div className="doc-dl">
+                            {d.file_url
+                              ? <button className="doc-dlbtn" onClick={() => downloadDoc(d.slug, d.file_url)}>⬇ تنزيل</button>
+                              : <button className="doc-dlbtn ghost" onClick={() => openDoc(d.slug)}>اقرأ المزيد</button>}
+                            <span className="doc-count">⬇ {(d.downloads || 0).toLocaleString('ar')}</span>
+                          </div>
+                        </div>
+                        {isAdmin && (
+                          <div className="doc-admin">
+                            <button title="تحرير" onClick={async () => { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) setDocEdit(r.doc); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></button>
+                            <button title="حذف" onClick={() => deleteDoc(d.slug)}>{Ico.trash}</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
+            </div>
+          ) : (
+            <div className="docs-body">
               <article className="doc-detail">
                 <button className="doc-back" onClick={() => setDocOpen(null)}>→ رجوع للقائمة</button>
                 {docOpen.cover_url && <img className="doc-detail-cover" src={docOpen.cover_url} alt="" />}
                 <h1>{docOpen.title}</h1>
+                <div className="doc-detail-meta">
+                  {docOpen.author && <span>بقلم {docOpen.author}</span>}
+                  {docOpen.category && <span>· {docOpen.category}</span>}
+                  {docOpen.version && <span>· v{docOpen.version}</span>}
+                  <span>· ⬇ {(docOpen.downloads || 0).toLocaleString('ar')}</span>
+                </div>
                 {docOpen.file_url && (
                   <div className="doc-file">
-                    <a className="btn accent" href={docOpen.file_url} target="_blank" rel="noopener" download>⬇ تنزيل {docOpen.file_name || 'الملفّ'}</a>
+                    <button className="btn accent" onClick={() => downloadDoc(docOpen.slug, docOpen.file_url)}>⬇ تنزيل {docOpen.file_name || 'الملفّ'}</button>
                     {/\.(geojson|json|csv)(\?|$)/i.test(docOpen.file_url + ' ' + (docOpen.file_name || '')) && <button className="btn" onClick={() => attachDoc(docOpen.slug)}>＋ أضِف إلى بياناتي</button>}
                   </div>
                 )}
                 <div className="doc-body" dangerouslySetInnerHTML={{ __html: mdToHtml(docOpen.body) }} />
               </article>
-            )}
-          </div>
+            </div>
+          )}
           {docEdit && (
             <div className="docs-editor-scrim" onClick={() => setDocEdit(null)}>
               <div className="docs-editor" onClick={(e) => e.stopPropagation()}>
                 <h3>{docEdit.slug ? 'تحرير مستند' : 'مستند جديد'}</h3>
                 <label>العنوان</label>
-                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="عنوان المستند" />
+                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="اسم المورد" />
+                <div className="doc-row2">
+                  <div><label>الكاتب / المصدر</label><input value={docEdit.author || ''} onChange={(e) => setDocEdit({ ...docEdit, author: e.target.value })} placeholder="مثلاً: PalNovaa" /></div>
+                  <div><label>الإصدار</label><input value={docEdit.version || ''} onChange={(e) => setDocEdit({ ...docEdit, version: e.target.value })} placeholder="1.0" /></div>
+                </div>
+                <label>التصنيف</label>
+                <input list="doc-cats" value={docEdit.category || ''} onChange={(e) => setDocEdit({ ...docEdit, category: e.target.value })} placeholder="مثلاً: أقمار صناعيّة / طبقات / قوالب / أدلّة" />
+                <datalist id="doc-cats"><option value="أقمار صناعيّة" /><option value="طبقات جاهزة" /><option value="قوالب" /><option value="أدلّة" /><option value="موارد فلسطين" /><option value="أدوات" /></datalist>
                 <label>مقتطف (يظهر على البطاقة)</label>
                 <input value={docEdit.excerpt || ''} onChange={(e) => setDocEdit({ ...docEdit, excerpt: e.target.value })} placeholder="وصفٌ قصير" />
                 <label>صورة الغلاف</label>
