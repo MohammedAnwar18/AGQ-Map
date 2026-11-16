@@ -324,6 +324,20 @@ const TICONS = {
 
 /* ====== عرض الكود كمشروع متعدّد الملفّات (شبيه VS Code) ====== */
 const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* ماركداون مبسّط → HTML (محتوى المستندات يحرّره الأدمن فقط) */
+const mdToHtml = (md) => {
+  let h = escapeHtml(md || '');
+  h = h.replace(/^### (.*)$/gm, '<h3>$1</h3>').replace(/^## (.*)$/gm, '<h2>$1</h2>').replace(/^# (.*)$/gm, '<h1>$1</h1>');
+  h = h.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, '<img alt="$1" src="$2" />');
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/^(?:- |• )(.*)$/gm, '<li>$1</li>');
+  h = h.replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul>$1</ul>');
+  h = h.split(/\n{2,}/).map((p) => (/^\s*<(h\d|ul|img|blockquote)/.test(p) ? p : `<p>${p.replace(/\n/g, '<br>')}</p>`)).join('');
+  return h;
+};
 function splitProjectFiles(html) {
   if (!html) return [{ name: 'index.html', lang: 'xml', code: '' }];
   const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join('\n\n').trim();
@@ -370,6 +384,13 @@ export default function PalNovaaEnginePage() {
   const [attached, setAttached] = useState([]);     // تلميحات مصادر عامّة
   const [datasets, setDatasets] = useState([]);     // بيانات مرفقة (مرفوعة)
   const [myDatasets, setMyDatasets] = useState([]); // المتاحة
+  /* مركز المستندات */
+  const [docsOpen, setDocsOpen] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [docOpen, setDocOpen] = useState(null);   // المستند المفتوح (تفصيل)
+  const [docEdit, setDocEdit] = useState(null);    // المستند قيد التحرير (أدمن)
+  const [docBusy, setDocBusy] = useState(false);
+  const isAdmin = user?.role === 'admin';
   const [mode, setMode] = useState(MODES[0]);
   const [crs, setCrs] = useState(CRS[0]);
 
@@ -1110,6 +1131,37 @@ export default function PalNovaaEnginePage() {
   };
   const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
   const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; loadDatasets(); setExplorerOpen(true); };
+
+  /* ---- مركز المستندات ---- */
+  const loadDocs = () => { jget('/engine/docs').then((d) => { if (d?.ok) setDocs(d.docs || []); }).catch(() => {}); };
+  const openDocsCenter = () => { setMenu(null); setDocOpen(null); setDocEdit(null); loadDocs(); setDocsOpen(true); };
+  const openDoc = async (slug) => { const d = await jget(`/engine/docs/${slug}`); if (d?.ok) setDocOpen(d.doc); else showToast('تعذّر فتح المستند'); };
+  const saveDoc = async () => {
+    const d = docEdit; if (!d || !(d.title || '').trim()) { showToast('العنوان مطلوب'); return; }
+    setDocBusy(true);
+    const payload = { title: d.title, excerpt: d.excerpt || '', cover_url: d.cover_url || '', body: d.body || '', file_url: d.file_url || '', file_name: d.file_name || '', kind: d.kind || 'article', published: d.published !== false, sort_order: d.sort_order || 0 };
+    const res = d.slug ? await jput(`/engine/docs/${d.slug}`, payload) : await jpost('/engine/docs', payload);
+    setDocBusy(false);
+    if (res?.ok) { showToast('حُفظ المستند'); setDocEdit(null); loadDocs(); } else showToast('تعذّر الحفظ: ' + (res?.reason || ''));
+  };
+  const deleteDoc = async (slug) => { if (!window.confirm('حذف هذا المستند؟')) return; await jdel(`/engine/docs/${slug}`); loadDocs(); if (docOpen?.slug === slug) setDocOpen(null); };
+  const attachDoc = async (slug) => {
+    showToast('جارٍ الإضافة لبياناتك…');
+    const res = await jpost(`/engine/docs/${slug}/attach`, {});
+    if (res?.ok && res.dataset) { addDatasetResult(res.dataset); showToast(`أُضيف «${res.dataset.name}» إلى بياناتك`); }
+    else showToast('تعذّر الإضافة: ' + (res?.reason || ''));
+  };
+  const uploadDocAsset = async (file, field) => {
+    if (!file) return;
+    showToast('جارٍ الرفع…');
+    try {
+      const pre = await jpost('/engine/docs/presign', { filename: file.name, contentType: file.type || 'application/octet-stream' });
+      if (!pre?.ok) { showToast(pre?.reason || 'تعذّر الرفع'); return; }
+      await fetch(pre.uploadUrl, { method: 'PUT', headers: { 'Content-Type': pre.contentType }, body: file });
+      setDocEdit((e) => ({ ...e, [field]: pre.publicUrl, ...(field === 'file_url' ? { file_name: file.name } : {}) }));
+      showToast('تمّ الرفع ✓');
+    } catch { showToast('تعذّر الرفع'); }
+  };
   const closeExplorer = () => {
     const map = mapRef.current;
     if (map) Object.values(layerObjs.current).forEach((ly) => { try { map.removeLayer(ly); } catch { /* */ } });
@@ -1212,6 +1264,7 @@ export default function PalNovaaEnginePage() {
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
+            <a className={docsOpen ? 'active' : ''} onClick={openDocsCenter}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg><span>المستندات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
@@ -1487,6 +1540,74 @@ export default function PalNovaaEnginePage() {
 
         </main>
       </div>
+
+      {/* ============ DOCS OVERLAY (مركز المستندات) ============ */}
+      {docsOpen && (
+        <div className="docs-overlay" dir="rtl">
+          <header className="docs-bar">
+            <div className="docs-head"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg><b>المستندات</b><span>مقالات وموارد وملفّات جاهزة</span></div>
+            <div className="docs-actions">
+              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'article', published: true })}>+ مستند جديد</button>}
+              <button className="icon-btn" title="إغلاق" onClick={() => { setDocsOpen(false); setDocOpen(null); setDocEdit(null); }}>{Ico.close}</button>
+            </div>
+          </header>
+          <div className="docs-body">
+            {!docOpen ? (
+              <div className="docs-grid">
+                {docs.length === 0 && <div className="docs-empty">لا مستندات بعد{isAdmin ? ' — أضِف أوّل مستند من «+ مستند جديد».' : '.'}</div>}
+                {docs.map((d) => (
+                  <div className="doc-card" key={d.slug} onClick={() => openDoc(d.slug)}>
+                    <div className="doc-cover" style={d.cover_url ? { backgroundImage: `url("${d.cover_url}")` } : undefined}>
+                      {!d.cover_url && <span className="doc-cover-ph">{d.file_url ? '📦' : '📄'}</span>}
+                      {d.file_url && <span className="doc-badge">ملفّ</span>}
+                      {!d.published && <span className="doc-badge draft">مسودّة</span>}
+                    </div>
+                    <div className="doc-meta"><b>{d.title}</b><small>{d.excerpt}</small></div>
+                    {isAdmin && (
+                      <div className="doc-admin" onClick={(e) => e.stopPropagation()}>
+                        <button title="تحرير" onClick={async () => { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) setDocEdit(r.doc); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></button>
+                        <button title="حذف" onClick={() => deleteDoc(d.slug)}>{Ico.trash}</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <article className="doc-detail">
+                <button className="doc-back" onClick={() => setDocOpen(null)}>→ رجوع للقائمة</button>
+                {docOpen.cover_url && <img className="doc-detail-cover" src={docOpen.cover_url} alt="" />}
+                <h1>{docOpen.title}</h1>
+                {docOpen.file_url && (
+                  <div className="doc-file">
+                    <a className="btn accent" href={docOpen.file_url} target="_blank" rel="noopener" download>⬇ تنزيل {docOpen.file_name || 'الملفّ'}</a>
+                    {/\.(geojson|json|csv)(\?|$)/i.test(docOpen.file_url + ' ' + (docOpen.file_name || '')) && <button className="btn" onClick={() => attachDoc(docOpen.slug)}>＋ أضِف إلى بياناتي</button>}
+                  </div>
+                )}
+                <div className="doc-body" dangerouslySetInnerHTML={{ __html: mdToHtml(docOpen.body) }} />
+              </article>
+            )}
+          </div>
+          {docEdit && (
+            <div className="docs-editor-scrim" onClick={() => setDocEdit(null)}>
+              <div className="docs-editor" onClick={(e) => e.stopPropagation()}>
+                <h3>{docEdit.slug ? 'تحرير مستند' : 'مستند جديد'}</h3>
+                <label>العنوان</label>
+                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="عنوان المستند" />
+                <label>مقتطف (يظهر على البطاقة)</label>
+                <input value={docEdit.excerpt || ''} onChange={(e) => setDocEdit({ ...docEdit, excerpt: e.target.value })} placeholder="وصفٌ قصير" />
+                <label>صورة الغلاف</label>
+                <div className="doc-row"><input value={docEdit.cover_url || ''} onChange={(e) => setDocEdit({ ...docEdit, cover_url: e.target.value })} placeholder="رابط صورة أو ارفع" /><label className="doc-up">رفع<input type="file" accept="image/*" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'cover_url')} /></label></div>
+                <label>المحتوى (ماركداون)</label>
+                <textarea value={docEdit.body || ''} onChange={(e) => setDocEdit({ ...docEdit, body: e.target.value })} rows={8} placeholder={'# عنوان\nنصّ... **عريض** و[رابط](https://...)\n- نقطة'} />
+                <label>ملفّ للتنزيل (اختياريّ)</label>
+                <div className="doc-row"><input value={docEdit.file_url || ''} onChange={(e) => setDocEdit({ ...docEdit, file_url: e.target.value })} placeholder="رابط ملفّ أو ارفع (geojson/csv يصير قابلاً للإضافة لبياناتك)" /><label className="doc-up">رفع<input type="file" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'file_url')} /></label></div>
+                <label className="doc-check"><input type="checkbox" checked={docEdit.published !== false} onChange={(e) => setDocEdit({ ...docEdit, published: e.target.checked })} /> منشور (يظهر للمستخدمين)</label>
+                <div className="docs-editor-foot"><button className="btn" onClick={() => setDocEdit(null)}>إلغاء</button><button className="btn accent" disabled={docBusy} onClick={saveDoc}>{docBusy ? 'يحفظ…' : 'حفظ'}</button></div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ============ EXPLORER OVERLAY (معاينة البيانات — نافذة مستقلّة) ============ */}
       <div className={`exp-overlay ${explorerOpen ? 'open' : ''}`}>

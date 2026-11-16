@@ -217,6 +217,23 @@ function ensureTable() {
             await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS price_cents INTEGER;`);
             await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS currency TEXT;`);
             await pool.query(`ALTER TABLE engine_accounts ADD COLUMN IF NOT EXISTS last_sale_at TIMESTAMPTZ;`);
+            // مركز المستندات (مدوّنة + ملفّات/موارد يحرّرها الأدمن ويصل إليها المستخدمون)
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS engine_docs (
+                    id SERIAL PRIMARY KEY,
+                    slug TEXT UNIQUE NOT NULL,
+                    title TEXT NOT NULL,
+                    excerpt TEXT,
+                    cover_url TEXT,
+                    body TEXT,
+                    file_url TEXT,
+                    file_name TEXT,
+                    kind TEXT DEFAULT 'article',
+                    published BOOLEAN DEFAULT true,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMPTZ DEFAULT now(),
+                    updated_at TIMESTAMPTZ DEFAULT now()
+                );`);
         })().catch((e) => { tableReady = null; throw e; });
     }
     return tableReady;
@@ -1694,6 +1711,107 @@ router.get('/admin/payments', authenticateToken, isAdmin, async (req, res) => {
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'error') });
     }
+});
+
+/* ============================ مركز المستندات (Docs) ============================ */
+const docRow = (r, full) => ({
+  slug: r.slug, title: r.title, excerpt: r.excerpt || '', cover_url: r.cover_url || '',
+  kind: r.kind || 'article', file_url: r.file_url || '', file_name: r.file_name || '',
+  published: r.published, sort_order: r.sort_order || 0, created_at: r.created_at, updated_at: r.updated_at,
+  ...(full ? { body: r.body || '' } : {}),
+});
+
+// GET /api/engine/docs — القائمة (الأدمن يرى الكلّ، غيره المنشور فقط)
+router.get('/docs', optionalAuth, async (req, res) => {
+  try {
+    await ensureTable();
+    const isAdm = !!(req.user && req.user.role === 'admin');
+    const r = await pool.query(
+      `SELECT slug,title,excerpt,cover_url,kind,file_url,file_name,published,sort_order,created_at,updated_at
+       FROM engine_docs ${isAdm ? '' : 'WHERE published = true'}
+       ORDER BY sort_order DESC, created_at DESC LIMIT 300`
+    );
+    return res.json({ ok: true, admin: isAdm, docs: r.rows.map((x) => docRow(x, false)) });
+  } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// GET /api/engine/docs/:slug
+router.get('/docs/:slug', optionalAuth, async (req, res) => {
+  try {
+    await ensureTable();
+    const isAdm = !!(req.user && req.user.role === 'admin');
+    const r = await pool.query('SELECT * FROM engine_docs WHERE slug=$1', [req.params.slug]);
+    if (!r.rows.length || (!r.rows[0].published && !isAdm)) return res.status(404).json({ ok: false, reason: 'not_found' });
+    return res.json({ ok: true, doc: docRow(r.rows[0], true) });
+  } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// POST /api/engine/docs (admin) — إنشاء
+router.post('/docs', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    await ensureTable();
+    const b = req.body || {};
+    const title = (b.title || '').toString().trim().slice(0, 200);
+    if (!title) return res.status(400).json({ ok: false, reason: 'العنوان مطلوب' });
+    const slug = makeSlug();
+    await pool.query(
+      `INSERT INTO engine_docs (slug,title,excerpt,cover_url,body,file_url,file_name,kind,published,sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [slug, title, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0]
+    );
+    return res.json({ ok: true, slug });
+  } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// PUT /api/engine/docs/:slug (admin) — تعديل
+router.put('/docs/:slug', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    await ensureTable();
+    const b = req.body || {};
+    const r = await pool.query(
+      `UPDATE engine_docs SET title=COALESCE($2,title), excerpt=$3, cover_url=$4, body=$5,
+         file_url=$6, file_name=$7, kind=$8, published=$9, sort_order=$10, updated_at=now()
+       WHERE slug=$1 RETURNING slug`,
+      [req.params.slug, (b.title || '').slice(0, 200) || null, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0]
+    );
+    if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not_found' });
+    return res.json({ ok: true, slug: r.rows[0].slug });
+  } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// DELETE /api/engine/docs/:slug (admin)
+router.delete('/docs/:slug', authenticateToken, isAdmin, async (req, res) => {
+  try { await ensureTable(); await pool.query('DELETE FROM engine_docs WHERE slug=$1', [req.params.slug]); return res.json({ ok: true }); }
+  catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// POST /api/engine/docs/presign (admin) — رفع غلافٍ أو ملفٍّ إلى R2
+router.post('/docs/presign', authenticateToken, isAdmin, async (req, res) => {
+  try {
+    if (!R2_ON || !r2Base) return res.json({ ok: false, reason: 'التخزين السحابيّ غير مُفعّل (R2).' });
+    const name = (req.body?.filename || 'file').toString().replace(/[^\w.\-؀-ۿ]+/g, '_').slice(0, 90);
+    const contentType = (req.body?.contentType || 'application/octet-stream').toString().slice(0, 100);
+    const key = `docs/${makeSlug()}/${name}`;
+    const uploadUrl = await getSignedUrl(r2Client, new PutObjectCommand({ Bucket: R2_BUCKET, Key: key, ContentType: contentType }), { expiresIn: 900 });
+    return res.json({ ok: true, uploadUrl, publicUrl: `${r2Base}/${key}`, contentType });
+  } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// POST /api/engine/docs/:slug/attach — إضافة ملفّ المستند لبيانات المستخدم (يظهر في «بياناتك»)
+router.post('/docs/:slug/attach', optionalAuth, async (req, res) => {
+  try {
+    await ensureTable();
+    const r = await pool.query('SELECT * FROM engine_docs WHERE slug=$1 AND published=true', [req.params.slug]);
+    if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not_found' });
+    const d = r.rows[0];
+    if (!d.file_url) return res.status(400).json({ ok: false, reason: 'لا ملفّ قابلٌ للإضافة في هذا المستند' });
+    const low = (d.file_url + ' ' + (d.file_name || '')).toLowerCase();
+    const kind = (/\.csv(\?|$)/.test(low) || low.includes('.csv')) ? 'csv' : 'geojson';
+    const { body } = await httpGetFollow(d.file_url, { maxRedirects: 4, timeoutMs: 45000, maxBytes: MAX_GEOJSON_BYTES + 1024 });
+    if (!body || body.length < 2) return res.status(400).json({ ok: false, reason: 'تعذّر جلب الملفّ' });
+    const saved = await createDatasetFromContent({ name: (d.title || 'مستند').slice(0, 60), kind, content: body, ownerId: ownerOf(req) });
+    return res.json({ ok: true, dataset: saved });
+  } catch (err) { return res.json({ ok: false, reason: String(err.message || 'error') }); }
 });
 
 module.exports = router;
