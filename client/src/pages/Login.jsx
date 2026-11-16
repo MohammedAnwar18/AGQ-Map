@@ -597,7 +597,7 @@ const Login = () => {
                         <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
                         <div className="card-header">
                             <h2>{cardTitle}</h2>
-                            {cardSubtitle && <p className="subtitle">{cardSubtitle}</p>}
+                            {!isLogin && !isForgotPassword && <p className="subtitle">انضم إلى المجتمع</p>}
                         </div>
                         <form onSubmit={handleSubmit} className="login-form">
                             {formBody}
