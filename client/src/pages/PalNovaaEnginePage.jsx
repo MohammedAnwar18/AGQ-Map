@@ -1189,7 +1189,7 @@ export default function PalNovaaEnginePage() {
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
-            <a onClick={() => navigate('/palnovaa-engine/pricing')}>{Ico.rocket}<span>الأسعار والترقية</span></a>
+            <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
           <div className="side-section">مشاريعي</div>

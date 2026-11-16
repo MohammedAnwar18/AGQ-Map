@@ -313,6 +313,20 @@ const SKILLS = {
       'دقّة متريّة: إن كان الـDEM بالدرجات (lat/lon) فحجم الخليّة بالأمتار ≈ g.pixelWidth*111320*cos(خط العرض) لنتائج ميلٍ واقعيّة؛ للتظليل البصريّ القيمة التقريبيّة تكفي. أداء: للشبكات الكبيرة احسب مرّةً وخزّن، أو صغّر العيّنة.',
     ].join('\n'),
   },
+
+  // مهارة تطبيق متعدّد الصفحات — توجيهٌ داخليّ في ملفٍّ واحد
+  multipage: {
+    name: 'تطبيق متعدّد الصفحات',
+    keywords: ['صفحات','متعدد الصفحات','multi-page','multipage','صفحة فرعية','صفحات فرعية','روابط داخلية','تنقل بين','توجيه','routing','router','قائمة تنقل','ربط صفحات','عدة صفحات','أقسام الموقع','موقع من صفحات'],
+    instructions: [
+      '— مهارة: تطبيقٌ متعدّد الصفحات (توجيهٌ داخليّ في ملفٍّ واحد) —',
+      'المحرّك يبني ملفّاً واحداً، لكن يمكن أن يحوي عدّة «صفحات» مترابطة عبر توجيهٍ بالـhash — يعمل على الرابط الدائم /pe دون أيّ خادم.',
+      'البنية: اجعل كلّ صفحة <section data-route="home"> ... </section> (home/map/reports/about…)، وأخفِ كلّ الأقسام إلّا المطابقة للمسار. شريط تنقّل ثابت (header أو sidebar) ظاهرٌ في كلّ الصفحات بروابط <a href="#/about">.',
+      'الراوتر: function render(){const r=location.hash.replace("#/","")||"home"; document.querySelectorAll("[data-route]").forEach(s=>s.hidden=s.dataset.route!==r); document.querySelectorAll("nav a").forEach(a=>a.classList.toggle("active",a.getAttribute("href")==="#/"+r)); window.scrollTo(0,0); onRoute&&onRoute(r);} window.addEventListener("hashchange",render); render();',
+      'كلّ صفحة لها عنوانها ومحتواها المستقلّ (خريطة/جدول/نموذج/لوحة…)، والروابط بينها عبر href="#/<route>". أضِف عنوان المستند حسب الصفحة إن أردت.',
+      'الخرائط داخل الصفحات: هيّئ خريطة الصفحة عند أوّل دخولٍ لها (lazy) أو استدعِ map.invalidateSize() بعد إظهار قسمها، وإلّا تظهر رماديّةً لأنّها هُيّئت وهي مخفيّة.',
+    ].join('\n'),
+  },
 };
 
 /**
