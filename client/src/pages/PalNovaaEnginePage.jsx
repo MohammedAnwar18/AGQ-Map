@@ -755,6 +755,10 @@ export default function PalNovaaEnginePage() {
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 15000);
   };
+  const copyCode = () => {
+    if (!html || !navigator.clipboard) { showToast('تعذّر النسخ'); return; }
+    navigator.clipboard.writeText(html).then(() => showToast('نُسخ الكود')).catch(() => showToast('تعذّر النسخ'));
+  };
 
   const persist = async () => {
     if (!html) return null;
@@ -1334,6 +1338,9 @@ export default function PalNovaaEnginePage() {
                     <button className={device === 'tablet' ? 'on' : ''} title="لوحيّ" onClick={() => setDevice('tablet')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M12 18h.01" /></svg></button>
                     <button className={device === 'mobile' ? 'on' : ''} title="جوّال" onClick={() => setDevice('mobile')}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M12 18h.01" /></svg></button>
                   </div>
+                )}
+                {tab === 'code' && html && (
+                  <button className="icon-btn" title="نسخ الكود" onClick={copyCode}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></svg></button>
                 )}
                 <div className={`url ${slug ? 'live' : ''}`}><i /><span>{urlText}</span></div>
                 <button className="icon-btn" title="فتح المعاينة بتبويب جديد" onClick={openPreviewTab} disabled={!html}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></button>
