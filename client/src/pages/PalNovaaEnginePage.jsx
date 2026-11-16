@@ -621,10 +621,10 @@ export default function PalNovaaEnginePage() {
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
     setMessages((m) => [...m, {
       id: `n${bId}`, role: 'ai', kind: 'note',
-      text: isEdit ? 'طبّقتُ التعديل وحدّثت المعاينة.' : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
+      text: isEdit ? (d.mode === 'diff' ? `طبّقتُ التعديل بدقّةٍ وسرعة (${d.applied || ''} تغيير موضعيّ) وحدّثت المعاينة.` : 'طبّقتُ التعديل وحدّثت المعاينة.') : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
       suggests: isEdit ? ['أحسنت — أضِف ميزة أخرى'] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'صدّر PDF', 'أضِف بحثاً عن موقع'],
     }]);
-    showToast('المعاينة جاهزة');
+    showToast(isEdit && d.mode === 'diff' ? 'تعديلٌ فوريّ ✓' : 'المعاينة جاهزة');
   };
   const finishError = (reason, isEdit, bId) => {
     const text = reason === '__missing'

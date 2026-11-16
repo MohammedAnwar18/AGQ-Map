@@ -398,6 +398,44 @@ function parseGenerated(text, fallbackPrompt) {
     return { html, title, summary };
 }
 
+/* ---- التعديل بالفروقات (SEARCH/REPLACE): أسرع وأرخص وأأمن من إعادة التوليد الكامل ---- */
+function extractMeta(html) {
+    const m = (html || '').match(/<!--PNE:(\{[\s\S]*?\})-->/);
+    if (m) { try { const j = JSON.parse(m[1]); return { title: j.title || null, summary: j.summary || null }; } catch { /* */ } }
+    const t = (html || '').match(/<title>([\s\S]*?)<\/title>/i);
+    return { title: t ? t[1].trim() : null, summary: null };
+}
+function parseSearchReplace(text) {
+    const blocks = [];
+    const re = /<{5,9}\s*SEARCH[^\n]*\n([\s\S]*?)\n?={5,9}[^\n]*\n([\s\S]*?)\n?>{5,9}\s*REPLACE/g;
+    let m;
+    while ((m = re.exec(text || ''))) blocks.push({ search: m[1], replace: m[2] });
+    return blocks;
+}
+function applyOneEdit(html, search, replace) {
+    if (!search) return null;
+    if (html.includes(search)) return html.replace(search, () => replace);           // مطابقةٌ حرفيّة
+    if (search.length < 4000) {                                                        // مطابقةٌ متسامحةٌ مع المسافات (محدودةٌ للأداء)
+        const esc = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+        try { const rx = new RegExp(esc); if (rx.test(html)) return html.replace(rx, () => replace); } catch { /* */ }
+    }
+    return null;
+}
+// يقرّر تلقائياً: كتل فروقات → يطبّقها على الكود الحاليّ؛ وإلّا مستندٌ كامل كالمعتاد
+function applyEdits(text, currentHtml, fallbackPrompt) {
+    const blocks = parseSearchReplace(text);
+    if (blocks.length && currentHtml) {
+        let html = currentHtml, applied = 0;
+        for (const b of blocks) { const r = applyOneEdit(html, b.search, b.replace); if (r !== null) { html = r; applied++; } }
+        if (applied > 0) {
+            const meta = extractMeta(html);
+            const cur = extractMeta(currentHtml);
+            return { html, title: meta.title || cur.title || (fallbackPrompt || '').slice(0, 60), summary: meta.summary || cur.summary || '', mode: 'diff', applied, total: blocks.length };
+        }
+    }
+    return { ...parseGenerated(text, fallbackPrompt), mode: 'full' };
+}
+
 /* ---- وصف بنية مجموعة بيانات (لتوجيه الموديل) ---- */
 function datasetSchema(kind, content) {
     try {
@@ -588,6 +626,9 @@ function pickProvider(KEY) {
 }
 
 const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت بالضبط (حرفٌ بحرف)، بلا إعادة أيّ جزءٍ سابق وبلا أيّ شرح. إن كان المستند قد اكتمل بـ</html> فاكتب "تمّ".';
+
+// يُلحَق برسالة «التطبيق الحاليّ» عند التعديل — يطلب فروقات SEARCH/REPLACE للتعديلات الموضعيّة بدل إعادة الملفّ كاملاً
+const EDIT_HINT = '\n\n[طريقة التعديل — مهمّة]\nللتعديلات الموضعيّة على هذا التطبيق، لا تُعِد كتابة الملفّ كاملاً؛ أخرِج فقط التغييرات ككتلٍ بهذا الشكل الحرفيّ (يمكن أكثر من كتلة):\n<<<<<<< SEARCH\n(انسخ المقطع الأصليّ من الكود أعلاه حرفيّاً كما هو تماماً — بما في ذلك المسافات — وبما يكفي ليكون فريداً)\n=======\n(المقطع الجديد البديل)\n>>>>>>> REPLACE\nانسخ مقطع SEARCH بدقّةٍ تامّة من الكود الموجود، ولا تضع أيّ شرحٍ خارج الكتل. استثناء وحيد: إن كان التعديل جذريّاً وواسعاً جداً فأخرِج المستند كاملاً من <!doctype html> حتى </html> كالمعتاد.';
 const looksComplete = (s) => /<\/html>\s*$/i.test((s || '').trim());
 // كشف حلقة التكرار (سلسلة طويلة بلا فراغات = بصمة SRI عشوائيّة أو تكرار منحرف)
 const looksLooped = (s) => /\S{2800,}/.test(s || '');
@@ -641,7 +682,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
         ];
         const messages = [];
         if (currentHtml) {
-            messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
+            messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT, cache_control: { type: 'ephemeral' } }] });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
         messages.push({ role: 'user', content: anthroUser(prompt, design) });
@@ -665,7 +706,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
     if (prov.kind === 'oai') {
         const messages = [{ role: 'system', content: fullSys }];
         if (currentHtml) {
-            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
+            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
         messages.push({ role: 'user', content: oaiUser(prompt, design) });
@@ -691,7 +732,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:generateContent`;
     const contents = [];
     if (currentHtml) {
-        contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' }] });
+        contents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT }] });
         contents.push({ role: 'model', parts: [{ text: 'تمام، ما التعديل المطلوب؟' }] });
     }
     contents.push({ role: 'user', parts: geminiParts(prompt, design) });
@@ -762,7 +803,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design)
         ];
         const messages = [];
         if (currentHtml) {
-            messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```', cache_control: { type: 'ephemeral' } }] });
+            messages.push({ role: 'user', content: [{ type: 'text', text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT, cache_control: { type: 'ephemeral' } }] });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
         messages.push({ role: 'user', content: anthroUser(prompt, design) });
@@ -790,7 +831,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design)
     if (prov.kind === 'oai') {
         const messages = [{ role: 'system', content: fullSys }];
         if (currentHtml) {
-            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' });
+            messages.push({ role: 'user', content: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT });
             messages.push({ role: 'assistant', content: 'تمام، ما التعديل المطلوب؟' });
         }
         messages.push({ role: 'user', content: oaiUser(prompt, design) });
@@ -868,12 +909,12 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const skillsCtx = buildSkillsContext(skillIds);
         const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
-        const out = parseGenerated(text, prompt);
+        const out = currentHtml ? applyEdits(text, currentHtml, prompt) : parseGenerated(text, prompt);
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
         let balance = null;
         if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
         await recordUsage(ident, usage);
-        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance });
+        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance, mode: out.mode, applied: out.applied });
         return res.end();
     } catch (err) {
         let m = String(err.message || 'error');
@@ -929,7 +970,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
             const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx, design);
             if (!text) { lastErr = 'empty'; continue; }
             if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
-            const out = parseGenerated(text, prompt);
+            const out = currentHtml ? applyEdits(text, currentHtml, prompt) : parseGenerated(text, prompt);
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
             let balance = null;
             if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
