@@ -442,6 +442,7 @@ export default function PalNovaaEnginePage() {
   const fileRef = useRef(null);
   const messagesRef = useRef([]);
   const autoHealRef = useRef({ tries: 0, lastErr: '' });  // الإصلاح الذاتيّ: ميزانيّة محاولاتٍ لكلّ بناء
+  const codeScrollRef = useRef(null);  // تمرير عرض الكود تلقائياً أثناء الكتابة الحيّة
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -513,6 +514,9 @@ export default function PalNovaaEnginePage() {
   }, [iframeErr, busy]);
 
   useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(toastTimer.current); }, []);
+
+  /* تمرير عرض الكود لأسفل أثناء الكتابة الحيّة (إحساس IDE) */
+  useEffect(() => { if (busy && codeScrollRef.current) codeScrollRef.current.scrollTop = codeScrollRef.current.scrollHeight; }, [streamCode, busy]);
 
   /* autosave: بعد ضبط slug، كلّ تغيير كود يُحفَظ ويُنشَر وتُسجَّل نسخة */
   useEffect(() => {
@@ -1414,34 +1418,42 @@ export default function PalNovaaEnginePage() {
                   )}
                 </div>
                 <div className={`pane ${tab === 'code' ? 'on' : ''}`}>
-                  {busy && streamCode ? (
-                    <div className="code"><pre>{streamCode + '▋'}</pre></div>
-                  ) : html ? (() => {
-                    const files = splitProjectFiles(html);
-                    const active = files.find((f) => f.name === activeFile) || files[0];
+                  {((busy && streamCode) || html) ? (() => {
+                    const streaming = busy && !!streamCode;
+                    const files = streaming
+                      ? [
+                          { name: 'index.html', lang: 'xml', code: streamCode },
+                          { name: 'styles.css', lang: 'css', code: '', pending: true },
+                          { name: 'app.js', lang: 'javascript', code: '', pending: true },
+                        ]
+                      : splitProjectFiles(html);
+                    const active = streaming ? files[0] : (files.find((f) => f.name === activeFile) || files[0]);
                     let hi; try { hi = (hljsReady && window.hljs) ? window.hljs.highlight(active.code, { language: active.lang, ignoreIllegal: true }).value : escapeHtml(active.code); } catch { hi = escapeHtml(active.code); }
-                    const lines = active.code.split('\n').length;
+                    const lines = Math.max(1, active.code.split('\n').length);
+                    const fIcon = (n) => (n.endsWith('.html') ? '◆' : n.endsWith('.css') ? '#' : '{}');
+                    const pick = (f) => { if (!f.pending) setActiveFile(f.name); };
                     return (
                       <div className="vscode">
                         <div className="vs-tree">
                           <div className="vs-root">{Ico.chevD}{Ico.folder}<b>{(title && title !== 'محادثة جديدة') ? title.slice(0, 22) : 'المشروع'}</b></div>
                           {files.map((f) => (
-                            <button key={f.name} className={`vs-file ${active.name === f.name ? 'on' : ''}`} onClick={() => setActiveFile(f.name)}>
-                              <span className={`vs-ic ${f.lang}`}>{f.name.endsWith('.html') ? '◆' : f.name.endsWith('.css') ? '#' : '{}'}</span>{f.name}
+                            <button key={f.name} className={`vs-file ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
+                              <span className={`vs-ic ${f.lang}`}>{fIcon(f.name)}</span>{f.name}
+                              {streaming && f.name === 'index.html' && <span className="vs-writing" title="يكتب…" />}
                             </button>
                           ))}
                         </div>
                         <div className="vs-main">
                           <div className="vs-tabs">
                             {files.map((f) => (
-                              <button key={f.name} className={`vs-tab ${active.name === f.name ? 'on' : ''}`} onClick={() => setActiveFile(f.name)}>
-                                <span className={`vs-ic ${f.lang}`}>{f.name.endsWith('.html') ? '◆' : f.name.endsWith('.css') ? '#' : '{}'}</span>{f.name}
+                              <button key={f.name} className={`vs-tab ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
+                                <span className={`vs-ic ${f.lang}`}>{fIcon(f.name)}</span>{f.name}
                               </button>
                             ))}
                           </div>
-                          <div className="vs-code">
+                          <div className="vs-code" ref={codeScrollRef}>
                             <div className="vs-gutter">{Array.from({ length: lines }, (_, i) => <span key={i}>{i + 1}</span>)}</div>
-                            <pre className="vs-pre"><code className="hljs" dangerouslySetInnerHTML={{ __html: hi }} /></pre>
+                            <pre className="vs-pre"><code className="hljs" dangerouslySetInnerHTML={{ __html: hi + (streaming ? '<span class="vs-caret">▋</span>' : '') }} /></pre>
                           </div>
                         </div>
                       </div>
