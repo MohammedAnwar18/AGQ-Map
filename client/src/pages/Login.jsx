@@ -629,17 +629,10 @@ const Login = () => {
                         <span>© {new Date().getFullYear()} PalNovaa</span>
                     </div>
                 </div>
-                <div className="eng-hero-side">
-                    <ul className="eng-features">
-                        <li className="eng-feature"><img src="/engine-icons/prompt.svg" alt="" /><div><b>ابنِ بالأوامر</b><span>صِف فكرتك والمحرّك يبنيها</span></div></li>
-                        <li className="eng-feature"><img src="/engine-icons/spatial-data.svg" alt="" /><div><b>بيانات مكانيّة وGIS</b><span>طبقات وخرائط حيّة</span></div></li>
-                        <li className="eng-feature"><img src="/engine-icons/preview.svg" alt="" /><div><b>معاينة حيّة فوريّة</b><span>شاهد تطبيقك مباشرةً</span></div></li>
-                        <li className="eng-feature"><img src="/engine-icons/publish-share.svg" alt="" /><div><b>نشر ومشاركة</b><span>رابطٌ دائمٌ بضغطة</span></div></li>
-                        <li className="eng-feature"><img src="/engine-icons/cloud-storage.svg" alt="" /><div><b>تخزين سحابيّ آمن</b><span>مشاريعك محفوظة دائماً</span></div></li>
-                    </ul>
-                    <div className="eng-hero-img">
-                        <img src="/engine-login.png" alt="Palnovaa Engine — Build Powerful GIS Applications" />
-                    </div>
+                <div className="eng-hero-side eng-hero-map-side">
+                    <img className="eng-hero-map" src="/engine-login-map.jpg" alt="PalNovaa Engine — خريطة مكانيّة" />
+                    <div className="eng-hero-glow" aria-hidden="true" />
+                    <div className="eng-hero-vignette" aria-hidden="true" />
                 </div>
             </div>
         );
