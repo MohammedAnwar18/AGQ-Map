@@ -833,7 +833,15 @@ export default function PalNovaaEnginePage() {
   };
 
   const onDeploy = async () => { if (!html || busy) return; showToast('جارٍ النشر…'); const s = await persist(); if (s) showToast('تمّ النشر — رابطٌ دائم جاهز'); };
-  const onShare = async () => { if (!html) return; const s = slug || await persist(); if (!s) return; const link = `${window.location.origin}/pe/${s}`; try { await navigator.clipboard.writeText(link); showToast('تمّ نسخ رابط المشاركة'); } catch { showToast(link); } };
+  const onShare = async () => {
+    if (!html || busy) return;
+    showToast('جارٍ الحفظ…');
+    const s = await persist();            // يحفظ أحدث نسخة وينشرها → الرابط الدائم جاهز
+    if (!s) return;                        // persist يُظهر سبب الفشل
+    const link = `${window.location.origin}/pe/${s}`;
+    try { await navigator.clipboard.writeText(link); showToast('تمّ الحفظ ونسخ الرابط ✓'); }
+    catch { showToast('تمّ الحفظ — ' + link); }
+  };
   const openLive = () => { if (slug) window.open(`${window.location.origin}/pe/${slug}`, '_blank'); };
 
   const newProject = () => {
