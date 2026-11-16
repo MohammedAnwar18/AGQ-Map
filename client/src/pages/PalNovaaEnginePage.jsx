@@ -1103,7 +1103,7 @@ export default function PalNovaaEnginePage() {
             <div className="avatar">PN</div>
             <div className="who">
               <b>{userName || 'PalNovaa 1.0'}{balance && <span className={`plan-badge ${balance.plan === 'pro' ? 'pro' : ''}`}>{balance.plan === 'pro' ? 'Pro' : 'مجّاني'}</span>}</b>
-              <small>{balance ? `بقي $${balance.remaining_usd} من $${balance.allowance_usd}` : 'المحرّك الذكيّ'}</small>
+              <small>{balance ? (balance.plan === 'pro' ? 'خطّة Pro' : 'الخطّة المجّانيّة') : 'المحرّك الذكيّ'}</small>
             </div>
           </div>
         </aside>
@@ -1151,7 +1151,7 @@ export default function PalNovaaEnginePage() {
                     <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>
                   </div>
                 </div>
-                <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? `${balance.plan === 'pro' ? 'Pro' : 'مجّاني'} · رصيد $${balance.remaining_usd} من $${balance.allowance_usd}` : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
+                <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
                 <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON · CSV · Shapefile · GeoPackage · GeoTIFF</a></div>
                 <div className="sources">
@@ -1230,7 +1230,7 @@ export default function PalNovaaEnginePage() {
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
                       <div className="body">
-                        <p>استنفدتَ رصيدك المجّانيّ {balance ? `($${balance.allowance_usd})` : ''}. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح رصيداً أكبر، أو أضِف مفتاحك الخاصّ.</p>
+                        <p>استنفدتَ حصّتك المجّانيّة لهذه الفترة. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح حصّةً أكبر، أو أضِف مفتاحك الخاصّ.</p>
                         <div className="suggests">
                           <button className="suggest" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent-2)' }} onClick={() => navigate('/palnovaa-engine/pricing')}>اشترك في Pro — $5</button>
                           <button className="suggest" onClick={() => { setKeyDraft(localStorage.getItem(KEY_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
