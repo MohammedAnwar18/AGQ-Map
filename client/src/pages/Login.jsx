@@ -11,6 +11,7 @@ const Login = () => {
     const location = useLocation();
     const { login } = useAuth();
     const redirectTo = location.state?.from || '/map';   // الرجوع للصفحة المقصودة بعد الدخول (مثل المحرّك)
+    const fromEngine = (location.state?.from || '').startsWith('/palnovaa-engine');  // فتحٌ من رابط محرّك بالنوفا → واجهةٌ مخصّصة
     const [isLogin, setIsLogin] = useState(location.state?.mode === 'register' ? false : true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -296,22 +297,23 @@ const Login = () => {
                             {/* أيقونة الموقع بيضاء لتبدو مريحة للعين */}
                             <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white" />
                         </svg>
-                        <h1 
-                            style={{ 
-                                fontSize: '2.25rem', /* text-4xl */
+                        <h1
+                            style={{
+                                fontSize: fromEngine ? '1.9rem' : '2.25rem', /* text-4xl */
                                 fontWeight: 'bold', /* font-bold */
                                 color: 'white', /* text-white */
-                                letterSpacing: '0.1em', /* tracking-widest */
+                                letterSpacing: fromEngine ? '0.02em' : '0.1em', /* tracking-widest */
                                 margin: 0,
                                 marginBottom: '0.75rem', /* mb-3 */
                                 textShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                                zIndex: 1
+                                zIndex: 1,
+                                whiteSpace: 'nowrap'
                             }}
                         >
-                            PALNOVAA
+                            {fromEngine ? 'Palnovaa Engine' : 'PALNOVAA'}
                         </h1>
                     </div>
-                    <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>
+                    {!fromEngine && <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>}
                 </div>
 
                 <div className="login-card glass">

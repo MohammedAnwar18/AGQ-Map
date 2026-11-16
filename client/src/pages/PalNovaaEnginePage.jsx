@@ -109,6 +109,50 @@ function gpkgGeom(u8) {
   return wkbToGeoJSON(u8.subarray(8 + envBytes));
 }
 
+/* محلّل DXF (AutoCAD نصّيّ) → GeoJSON. يدعم LINE/LWPOLYLINE/POLYLINE+VERTEX/POINT/CIRCLE/ARC.
+   ملاحظة: إحداثيّات DXF بوحدات الرسم (قد تكون مسقطاً مثل جريد فلسطين/ITM) بلا CRS معرّف — يُعاد إسقاطها من العارض. */
+function dxfToGeoJSON(text) {
+  const raw = (text || '').split(/\r\n|\r|\n/);
+  const pairs = [];
+  for (let i = 0; i + 1 < raw.length; i += 2) { const c = parseInt(raw[i], 10); if (!Number.isNaN(c)) pairs.push([c, raw[i + 1]]); }
+  const feats = [];
+  const circlePoly = (cx, cy, r, a0, a1) => {
+    const pts = []; const n = 48; const s = a0 == null ? 0 : a0 * Math.PI / 180; const e = a1 == null ? 2 * Math.PI : a1 * Math.PI / 180;
+    let span = e - s; if (span <= 0) span += 2 * Math.PI;
+    for (let i = 0; i <= n; i++) { const t = s + span * (i / n); pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); }
+    return pts;
+  };
+  const push = (geom, layer, type) => { if (geom) feats.push({ type: 'Feature', properties: { layer: layer || '0', cad: type }, geometry: geom }); };
+  const emit = (ent) => {
+    if (!ent) return;
+    const g = (code) => { const f = ent.codes.find((p) => p[0] === code); return f ? parseFloat(f[1]) : undefined; };
+    const all = (code) => ent.codes.filter((p) => p[0] === code).map((p) => parseFloat(p[1]));
+    const layer = (ent.codes.find((p) => p[0] === 8) || [, '0'])[1];
+    if (ent.type === 'LINE') { const x1 = g(10), y1 = g(20), x2 = g(11), y2 = g(21); if ([x1, y1, x2, y2].every(Number.isFinite)) push({ type: 'LineString', coordinates: [[x1, y1], [x2, y2]] }, layer, 'line'); }
+    else if (ent.type === 'LWPOLYLINE' || ent.type === 'POLYLINE') {
+      const xs = all(10), ys = all(20); const verts = []; for (let i = 0; i < Math.min(xs.length, ys.length); i++) if (Number.isFinite(xs[i]) && Number.isFinite(ys[i])) verts.push([xs[i], ys[i]]);
+      if (verts.length >= 2) { const closed = ((g(70) || 0) & 1) === 1; if (closed && verts.length >= 3) { const r = [...verts, verts[0]]; push({ type: 'Polygon', coordinates: [r] }, layer, 'polyline'); } else push({ type: 'LineString', coordinates: verts }, layer, 'polyline'); }
+    }
+    else if (ent.type === 'POINT') { const x = g(10), y = g(20); if (Number.isFinite(x) && Number.isFinite(y)) push({ type: 'Point', coordinates: [x, y] }, layer, 'point'); }
+    else if (ent.type === 'CIRCLE') { const x = g(10), y = g(20), r = g(40); if ([x, y, r].every(Number.isFinite)) push({ type: 'Polygon', coordinates: [circlePoly(x, y, r)] }, layer, 'circle'); }
+    else if (ent.type === 'ARC') { const x = g(10), y = g(20), r = g(40); if ([x, y, r].every(Number.isFinite)) push({ type: 'LineString', coordinates: circlePoly(x, y, r, g(50), g(51)) }, layer, 'arc'); }
+  };
+  const KINDS = new Set(['LINE', 'LWPOLYLINE', 'POLYLINE', 'POINT', 'CIRCLE', 'ARC']);
+  let inEnt = false, cur = null;
+  for (let k = 0; k < pairs.length; k++) {
+    const [code, valR] = pairs[k]; const val = (valR || '').trim();
+    if (code === 2 && val === 'ENTITIES') { inEnt = true; continue; }
+    if (code === 0) {
+      if (inEnt && cur) { emit(cur); cur = null; }
+      if (val === 'ENDSEC') { inEnt = false; continue; }
+      if (inEnt) cur = KINDS.has(val) ? { type: val, codes: [] } : null;   // نتجاهل VERTEX/SEQEND وغيرها
+      continue;
+    }
+    if (inEnt && cur) cur.codes.push([code, valR]);
+  }
+  return { type: 'FeatureCollection', features: feats };
+}
+
 /* طبقة صورة ArcGIS ديناميكيّة موثوقة: export كصورة مباشرة (لا تحتاج CORS)،
    مع إعادة الإسقاط من إسناد الخدمة إلى Web Mercator عبر الخادم. تتحدّث مع الحركة. */
 const makeArcgisImageLayer = (L, exportBase, layerIds, opacity = 0.85) => {
@@ -584,6 +628,15 @@ export default function PalNovaaEnginePage() {
         await handleShapefile(f, name);
       } else if (ext === 'gpkg') {
         await handleGeopackage(f, name);
+      } else if (ext === 'dxf') {
+        if (f.size > 40 * 1024 * 1024) { showToast('ملفّ DXF كبير (الحدّ 40MB)'); return; }
+        showToast('جارٍ تحويل DXF (AutoCAD)…');
+        const fc = dxfToGeoJSON(await f.text());
+        if (!fc.features.length) { showToast('لم يُعثر على كياناتٍ مدعومة في DXF (LINE/POLYLINE/POINT/CIRCLE/ARC)'); return; }
+        const ds = addDatasetResult(await uploadText(name, 'geojson', JSON.stringify(fc)));
+        showToast(`أُرفق «${ds.name}» (${fc.features.length} كيان CAD — عيّن نظام الإحداثيّات من العارض)`);
+      } else if (ext === 'dwg') {
+        showToast('DWG صيغةٌ ثنائيّةٌ مغلقة — صدّره إلى DXF من AutoCAD (Save As → DXF) ثمّ ارفعه');
       } else {
         if (f.size > 40 * 1024 * 1024) { showToast('الملفّ كبيرٌ جداً (الحدّ 40MB)'); return; }
         const kind = ext === 'csv' ? 'csv' : 'geojson';
@@ -1116,7 +1169,7 @@ export default function PalNovaaEnginePage() {
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl">
-      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg" hidden onChange={onFile} />
+      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg,.dxf,.dwg" hidden onChange={onFile} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
@@ -1205,13 +1258,12 @@ export default function PalNovaaEnginePage() {
                 </div>
                 <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
-                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع GeoJSON · CSV · Shapefile · GeoPackage · GeoTIFF</a></div>
+                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع ملفّ</a></div>
                 <div className="sources">
-                  <button className="source" onClick={() => fileRef.current?.click()}><span className="s-ic">{Ico.up}</span><span><b>رفع ملفّ</b><small>geojson·csv·shp·gpkg·tiff</small></span></button>
-                  {myDatasets.slice(0, 4).map((d) => (
+                  {myDatasets.slice(0, 6).map((d) => (
                     <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span><span className="st" /></button>
                   ))}
-                  {myDatasets.length === 0 && <button className="source add" onClick={() => setModal('postgis')}>{Ico.plus}ربط PostGIS</button>}
+                  {myDatasets.length === 0 && <div style={{ gridColumn: '1/-1', padding: '14px 4px', color: 'var(--faint)', fontSize: 13 }}>لا طبقات محفوظة بعد — أضِف مصادرك من زرّ «البيانات» بالأعلى، وتُخزَّن هنا.</div>}
                 </div>
               </div>
             </section>
@@ -1490,7 +1542,7 @@ export default function PalNovaaEnginePage() {
         <div className="menu" style={{ top: menu.top, bottom: menu.bottom, left: menu.left, maxHeight: menu.maxH }}>
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON·CSV·Shapefile(.zip)·GeoPackage·GeoTIFF</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON·CSV·Shapefile·GeoPackage·GeoTIFF·AutoCAD DXF</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>256 مجموعة فلسطينيّة — بحث وتنزيل وإضافة</small></span></button>
             <button className="menu-item" onClick={() => { setMenu(null); setModal('postgis'); }}><span className="mi-ic">PG</span><span><b>PostgreSQL / PostGIS</b><small>كمصدرٍ لبناء التطبيق</small></span></button>
@@ -1505,7 +1557,7 @@ export default function PalNovaaEnginePage() {
           </>)}
           {menu.name === 'data' && (<>
             <h6>بياناتي</h6>
-            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson·csv·shp·gpkg·tiff</small></span></button>
+            <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson·csv·shp·gpkg·tiff·dxf</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
             {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}

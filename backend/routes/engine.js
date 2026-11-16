@@ -883,6 +883,21 @@ async function quickComplete(KEY, system, user, maxTokens) {
 }
 const ENHANCER_SYS = 'أنت خبيرٌ في صياغة أوصاف تطبيقات الويب لمحرّك بناءٍ بالذكاء الاصطناعيّ متخصّص بالخرائط وGIS. خذ وصف المستخدم المختصر ووسّعه إلى مواصفةٍ غنيّةٍ واضحةٍ قابلةٍ للتنفيذ، محافظاً على نيّته تماماً دون تغيير الفكرة. غطِّ: الأقسام/الصفحات، الميزات الرئيسة، نوع البيانات (أو بيانات تجريبيّة واقعيّة)، عناصر الخريطة إن لزمت، لوحات المؤشّرات والفلاتر والتفاعلات، ولمسات تجربة المستخدم. اكتب بالعربيّة بإيجازٍ منظّم (جملة تمهيديّة ثمّ نقاط)، بلا أيّ كودٍ وبلا ماركداون ثقيل، وبما لا يتجاوز ~170 كلمة. أخرِج الوصف المحسّن فقط.';
 
+/* ---- التخطيط الصامت (plan-then-build) للطلبات المعقّدة فقط ---- */
+const PLANNER_SYS = 'أنت مخطّطٌ معماريّ لتطبيقات الويب في مجال الخرائط وGIS. من وصف المستخدم، أخرِج مخطّطاً تنفيذيّاً موجزاً جداً (نقاط فقط): الأقسام/التبويبات، المكوّنات الرئيسة، البيانات المطلوبة (أو تجريبيّة واقعيّة)، عناصر الخريطة، لوحات المؤشّرات والفلاتر، وترتيب التخطيط العامّ. بلا أيّ كود، بلا شرحٍ زائد، بالعربيّة، وبما لا يتجاوز ~120 كلمة.';
+// يُفعَّل للطلبات المعقّدة فقط حتى لا يبطّئ البسيطة
+function isComplexPrompt(p) {
+    const s = (p || '').trim();
+    if (!s) return false;
+    const words = s.split(/\s+/).length;
+    const hints = /(نظام|منصّ[ةه]|لوح[ةه]|تبويب|تقرير|إدار[ةه]|متعدّد|عدّ[ةه]|صفحات|فلات[رى]|مؤشّر|dashboard|CRUD|تحليل|مقارن[ةه]|خطوات|workflow)/i.test(s);
+    return words >= 40 || (words >= 22 && hints);
+}
+async function silentPlan(KEY, prompt) {
+    try { const plan = (await quickComplete(KEY, PLANNER_SYS, prompt, 450) || '').trim(); return plan || null; }
+    catch { return null; }
+}
+
 /* ============================ محسّن الوصف (✨) ============================ */
 // POST /api/engine/enhance  { prompt, key? } → { ok, prompt }
 router.post('/enhance', optionalAuth, async (req, res) => {
@@ -942,6 +957,10 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
+        if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
+            const plan = await silentPlan(KEY, prompt);
+            if (plan) prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan;
+        }
         const design = validDesign(b.design);
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
@@ -997,6 +1016,10 @@ router.post('/generate', optionalAuth, async (req, res) => {
         } catch (e) { /* ignore dataset errors */ }
     }
 
+    if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
+        const plan = await silentPlan(KEY, prompt);
+        if (plan) prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan;
+    }
     const design = validDesign(b.design);
     const skillIds = detectSkills(prompt);
     const skillsCtx = buildSkillsContext(skillIds);
