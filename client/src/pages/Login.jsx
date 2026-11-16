@@ -77,10 +77,10 @@ const Login = () => {
         if (name === 'date_of_birth') {
             // تنظيف المدخلات للسماح بالأرقام والفواصل فقط
             let cleanValue = value.replace(/[^0-9/]/g, '');
-            
+
             const prevVal = formData.date_of_birth || '';
             const isDeleting = cleanValue.length < prevVal.length;
-            
+
             if (!isDeleting) {
                 if (cleanValue.length === 2 && !cleanValue.includes('/')) {
                     cleanValue += '/';
@@ -88,7 +88,7 @@ const Login = () => {
                     cleanValue += '/';
                 }
             }
-            
+
             setFormData({
                 ...formData,
                 date_of_birth: cleanValue.substring(0, 10)
@@ -106,7 +106,7 @@ const Login = () => {
         if (!dateStr) return '';
         // إذا كان بالتنسيق الصحيح بالفعل
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-        
+
         // محاولة التحويل من DD/MM/YYYY إلى YYYY-MM-DD مع دعم النقاط والشرطات
         const normalized = dateStr.replace(/[-.]/g, '/');
         const parts = normalized.split('/');
@@ -251,6 +251,375 @@ const Login = () => {
         }
     };
 
+    const cardTitle = isForgotPassword ? 'استعادة كلمة المرور' : (!isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول');
+    const cardSubtitle = isForgotPassword ? null : (!isLogin ? 'انضم إلى المجتمع' : (isReturningVisitor ? 'مرحباً بعودتك!' : 'سجّل دخولك للمتابعة'));
+
+    // ===== محتوى النموذج (مشترَكٌ بين الواجهة العاديّة وواجهة المحرّك) =====
+    const formBody = (
+        <>
+            {successMessage && (
+                <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#10b981', fontSize: '0.9rem', marginBottom: '10px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    {successMessage}
+                </div>
+            )}
+            {error && (
+                <div className="error-message">
+                    <span className="error-icon">⚠️</span>
+                    {typeof error === 'string' ? error : (error.message || JSON.stringify(error))}
+                </div>
+            )}
+
+            {isForgotPassword ? (
+                <>
+                    {resetStep === 1 ? (
+                        <div className="form-group">
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                className="input"
+                                placeholder="البريد الإلكتروني (email@example.com)"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="form-group fade-in">
+                                <label htmlFor="otp">رمز التحقق</label>
+                                <p className="text-sm text-gray-400 mb-2">
+                                    تم إرسال رمز التحقق إلى بريدك الإلكتروني: {formData.email}
+                                </p>
+                                <input
+                                    type="text"
+                                    id="otp"
+                                    name="otp"
+                                    value={otpCode}
+                                    onChange={(e) => setOtpCode(e.target.value)}
+                                    className="input text-center text-2xl tracking-widest"
+                                    placeholder="000000"
+                                    required
+                                    maxLength={6}
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="form-group">
+                                <input
+                                    type="password"
+                                    id="newPassword"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className="input"
+                                    placeholder="كلمة المرور الجديدة"
+                                    required
+                                />
+                            </div>
+                        </>
+                    )}
+                </>
+            ) : (
+                <>
+                    {!isOtpStep && (
+                        <>
+                            <div className="form-group">
+                                <input
+                                    type="text"
+                                    id="username"
+                                    name="username"
+                                    value={formData.username}
+                                    onChange={handleChange}
+                                    className="input"
+                                    placeholder={isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'اسم المستخدم للدخول (بالإنجليزي)'}
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+
+                            {!isLogin && (
+                                <>
+                                    <div className="form-group">
+                                        <input
+                                            type="email"
+                                            id="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="input"
+                                            placeholder="البريد الإلكتروني (email@example.com)"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <input
+                                            type="text"
+                                            id="full_name"
+                                            name="full_name"
+                                            value={formData.full_name}
+                                            onChange={handleChange}
+                                            className="input"
+                                            placeholder="الاسم الكامل (سيظهر للجميع)"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <select
+                                            id="gender"
+                                            name="gender"
+                                            value={formData.gender || ''}
+                                            onChange={handleChange}
+                                            className="input"
+                                            required
+                                        >
+                                            <option value="">اختر الجنس</option>
+                                            <option value="male">ذكر</option>
+                                            <option value="female">أنثى</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ position: 'relative' }}>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <input
+                                                type="text"
+                                                id="date_of_birth"
+                                                name="date_of_birth"
+                                                value={formData.date_of_birth}
+                                                onChange={handleChange}
+                                                className="input"
+                                                placeholder="تاريخ الميلاد (يوم/شهر/سنة)"
+                                                required
+                                                style={{ flex: 1 }}
+                                                maxLength={10}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCalendar(!showCalendar)}
+                                                className="input"
+                                                style={{ width: '50px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
+                                                    <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {showCalendar && (
+                                            <div style={{ position: 'absolute', bottom: '100%', left: '0', right: '0', zIndex: 100 }}>
+                                                <CustomCalendar
+                                                    selectedDate={parseDateForServer(formData.date_of_birth)}
+                                                    onChange={(date) => {
+                                                        // تحويل YYYY-MM-DD القادم من التقويم إلى DD/MM/YYYY للعرض
+                                                        const [y, m, d] = date.split('-');
+                                                        setFormData({ ...formData, date_of_birth: `${d}/${m}/${y}` });
+                                                    }}
+                                                    onClose={() => setShowCalendar(false)}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="form-group">
+                                <input
+                                    type="password"
+                                    id="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    className="input"
+                                    placeholder="كلمة المرور"
+                                    required
+                                />
+                            </div>
+
+                            {!isLogin && !isOtpStep && (
+                                <div className="form-group terms-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '15px', padding: '0 5px' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="terms"
+                                        checked={termsAccepted}
+                                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                                        required
+                                        style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#fbab15', marginTop: '3px' }}
+                                    />
+                                    <label htmlFor="terms" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', cursor: 'pointer', lineHeight: '1.4' }}>
+                                        أوافق على <Link to="/terms" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>شروط الخدمة</Link> و <Link to="/privacy" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>سياسة الخصوصية</Link> لنظام بالنوفا.
+                                    </label>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {isOtpStep && (
+                        <div className="form-group fade-in">
+                            <label htmlFor="otp">رمز التحقق</label>
+                            <p className="text-sm text-gray-400 mb-2">
+                                تم إرسال رمز التحقق إلى بريدك الإلكتروني: {formData.email}
+                            </p>
+                            <input
+                                type="text"
+                                id="otp"
+                                name="otp"
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value)}
+                                className="input text-center text-2xl tracking-widest"
+                                placeholder="000000"
+                                required
+                                maxLength={6}
+                                autoFocus
+                            />
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        className="btn btn-primary btn-submit"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <div className="spinner-small"></div>
+                                جاري المعالجة...
+                            </>
+                        ) : (
+                            isLogin ? (isOtpStep ? 'تحقق' : 'دخول') : 'إنشاء الحساب'
+                        )}
+                    </button>
+
+                    {!isOtpStep && (
+                        <div className="google-login-container">
+                            <div className="divider">
+                                <span>أو</span>
+                            </div>
+                            <div className="google-btn-wrapper">
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={handleGoogleError}
+                                    theme="filled_blue"
+                                    shape="pill"
+                                    text="continue_with"
+                                    locale="ar"
+                                    width="280"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {isForgotPassword && (
+                <button
+                    type="submit"
+                    className="btn btn-primary btn-submit"
+                    disabled={loading}
+                >
+                    {loading ? (
+                        <>
+                            <div className="spinner-small"></div>
+                            جاري المعالجة...
+                        </>
+                    ) : (
+                        resetStep === 1 ? 'إرسال الرمز' : 'تعيين كلمة المرور'
+                    )}
+                </button>
+            )}
+        </>
+    );
+
+    const footerBody = (
+        <div className="card-footer">
+            {isForgotPassword ? (
+                <p>
+                    <button
+                        className="toggle-btn"
+                        onClick={() => {
+                            setIsForgotPassword(false);
+                            setResetStep(1);
+                            setError('');
+                        }}
+                    >
+                        العودة لتسجيل الدخول
+                    </button>
+                </p>
+            ) : isOtpStep ? (
+                <p>
+                    <button
+                        className="toggle-btn"
+                        onClick={() => {
+                            setIsOtpStep(false);
+                            setError('');
+                        }}
+                    >
+                        العودة لتسجيل الدخول
+                    </button>
+                </p>
+            ) : (
+                <>
+                    <p>
+                        {isLogin ? 'ليس لديك حساب؟' : 'لديك حساب بالفعل؟'}
+                        <button
+                            className="toggle-btn"
+                            onClick={() => setIsLogin(!isLogin)}
+                        >
+                            {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+                        </button>
+                    </p>
+                    {isLogin && (
+                        <p style={{ marginTop: '10px' }}>
+                            <button
+                                className="toggle-btn"
+                                style={{ fontSize: '0.9em', opacity: 0.8 }}
+                                onClick={() => {
+                                    setIsForgotPassword(true);
+                                    setError('');
+                                    setFormData({ ...formData, email: '' });
+                                }}
+                            >
+                                نسيت كلمة المرور؟
+                            </button>
+                        </p>
+                    )}
+                </>
+            )}
+        </div>
+    );
+
+    // ===== واجهة المحرّك (بورتفوليو مقسوم) — تظهر فقط عند الفتح من رابط بالنوفا إنجن =====
+    if (fromEngine) {
+        return (
+            <div className="eng-login" dir="rtl">
+                <div className="eng-form-side">
+                    <div className="eng-card fade-in">
+                        <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
+                        <div className="card-header">
+                            <h2>{cardTitle}</h2>
+                            {cardSubtitle && <p className="subtitle">{cardSubtitle}</p>}
+                        </div>
+                        <form onSubmit={handleSubmit} className="login-form">
+                            {formBody}
+                        </form>
+                        {footerBody}
+                        <div className="eng-legal">
+                            <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }}>شروط الخدمة</Link>
+                            <span style={{ opacity: 0.3 }}>·</span>
+                            <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }}>سياسة الخصوصية</Link>
+                            <span style={{ opacity: 0.3 }}>·</span>
+                            <span>© {new Date().getFullYear()} PalNovaa</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="eng-hero-side">
+                    <img src="/engine-login.png" alt="Palnovaa Engine — Build Powerful GIS Applications" />
+                    <div className="eng-hero-overlay" />
+                </div>
+            </div>
+        );
+    }
+
+    // ===== الواجهة العاديّة لبالنوفا (بلا تغيير) =====
     return (
         <div className="login-container">
             <div className="login-background">
@@ -293,369 +662,41 @@ const Login = () => {
                             <circle className="smooth-flash" cx="50" cy="50" r="35" />
                             <circle className="pulse-circle" cx="50" cy="50" r="35" fill="none" />
                             <circle className="pulse-circle-delayed" cx="50" cy="50" r="35" fill="none" />
-                            
+
                             {/* أيقونة الموقع بيضاء لتبدو مريحة للعين */}
                             <path d="M50 15C36.2 15 25 26.2 25 40C25 58.75 50 85 50 85C50 85 75 58.75 75 40C75 26.2 63.8 15 50 15ZM50 48.75C45.175 48.75 41.25 44.825 41.25 40C41.25 35.175 45.175 31.25 50 31.25C54.825 31.25 58.75 35.175 58.75 40C58.75 44.825 54.825 48.75 50 48.75Z" fill="white" />
                         </svg>
                         <h1
                             style={{
-                                fontSize: fromEngine ? '1.9rem' : '2.25rem', /* text-4xl */
+                                fontSize: '2.25rem', /* text-4xl */
                                 fontWeight: 'bold', /* font-bold */
                                 color: 'white', /* text-white */
-                                letterSpacing: fromEngine ? '0.02em' : '0.1em', /* tracking-widest */
+                                letterSpacing: '0.1em', /* tracking-widest */
                                 margin: 0,
                                 marginBottom: '0.75rem', /* mb-3 */
                                 textShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                                zIndex: 1,
-                                whiteSpace: 'nowrap'
+                                zIndex: 1
                             }}
                         >
-                            {fromEngine ? 'Palnovaa Engine' : 'PALNOVAA'}
+                            PALNOVAA
                         </h1>
                     </div>
-                    {!fromEngine && <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>}
+                    <p className="tagline">اكتشف العالم من حولك، شارك لحظاتك المكانية</p>
                 </div>
 
                 <div className="login-card glass">
                     <div className="card-header">
-                        <h2>
-                            {isForgotPassword ? 'استعادة كلمة المرور' :
-                                (!isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول')}
-                        </h2>
-                        {!isForgotPassword && (
-                            <p className="subtitle">
-                                {!isLogin ? 'انضم إلى المجتمع' : (isReturningVisitor ? 'مرحباً بعودتك!' : 'سجّل دخولك للمتابعة')}
-                            </p>
+                        <h2>{cardTitle}</h2>
+                        {cardSubtitle && (
+                            <p className="subtitle">{cardSubtitle}</p>
                         )}
                     </div>
 
                     <form onSubmit={handleSubmit} className="login-form">
-                        {successMessage && (
-                            <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', color: '#10b981', fontSize: '0.9rem', marginBottom: '10px' }}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                {successMessage}
-                            </div>
-                        )}
-                        {error && (
-                            <div className="error-message">
-                                <span className="error-icon">⚠️</span>
-                                {typeof error === 'string' ? error : (error.message || JSON.stringify(error))}
-                            </div>
-                        )}
-
-                        {isForgotPassword ? (
-                            <>
-                                {resetStep === 1 ? (
-                                    <div className="form-group">
-                                        <input
-                                            type="email"
-                                            id="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className="input"
-                                            placeholder="البريد الإلكتروني (email@example.com)"
-                                            required
-                                            autoFocus
-                                        />
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="form-group fade-in">
-                                            <label htmlFor="otp">رمز التحقق</label>
-                                            <p className="text-sm text-gray-400 mb-2">
-                                                تم إرسال رمز التحقق إلى بريدك الإلكتروني: {formData.email}
-                                            </p>
-                                            <input
-                                                type="text"
-                                                id="otp"
-                                                name="otp"
-                                                value={otpCode}
-                                                onChange={(e) => setOtpCode(e.target.value)}
-                                                className="input text-center text-2xl tracking-widest"
-                                                placeholder="000000"
-                                                required
-                                                maxLength={6}
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <input
-                                                type="password"
-                                                id="newPassword"
-                                                name="password"
-                                                value={formData.password}
-                                                onChange={handleChange}
-                                                className="input"
-                                                placeholder="كلمة المرور الجديدة"
-                                                required
-                                            />
-                                        </div>
-                                    </>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                {!isOtpStep && (
-                                    <>
-                                        <div className="form-group">
-                                            <input
-                                                type="text"
-                                                id="username"
-                                                name="username"
-                                                value={formData.username}
-                                                onChange={handleChange}
-                                                className="input"
-                                                placeholder={isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'اسم المستخدم للدخول (بالإنجليزي)'}
-                                                required
-                                                autoFocus
-                                            />
-                                        </div>
-
-                                        {!isLogin && (
-                                            <>
-                                                <div className="form-group">
-                                                    <input
-                                                        type="email"
-                                                        id="email"
-                                                        name="email"
-                                                        value={formData.email}
-                                                        onChange={handleChange}
-                                                        className="input"
-                                                        placeholder="البريد الإلكتروني (email@example.com)"
-                                                        required
-                                                    />
-                                                </div>
-
-                                                <div className="form-group">
-                                                    <input
-                                                        type="text"
-                                                        id="full_name"
-                                                        name="full_name"
-                                                        value={formData.full_name}
-                                                        onChange={handleChange}
-                                                        className="input"
-                                                        placeholder="الاسم الكامل (سيظهر للجميع)"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="form-group">
-                                                    <select
-                                                        id="gender"
-                                                        name="gender"
-                                                        value={formData.gender || ''}
-                                                        onChange={handleChange}
-                                                        className="input"
-                                                        required
-                                                    >
-                                                        <option value="">اختر الجنس</option>
-                                                        <option value="male">ذكر</option>
-                                                        <option value="female">أنثى</option>
-                                                    </select>
-                                                </div>
-                                                <div className="form-group" style={{ position: 'relative' }}>
-                                                    <div style={{ display: 'flex', gap: '5px' }}>
-                                                        <input
-                                                            type="text"
-                                                            id="date_of_birth"
-                                                            name="date_of_birth"
-                                                            value={formData.date_of_birth}
-                                                            onChange={handleChange}
-                                                            className="input"
-                                                            placeholder="تاريخ الميلاد (يوم/شهر/سنة)"
-                                                            required
-                                                            style={{ flex: 1 }}
-                                                            maxLength={10}
-                                                        />
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => setShowCalendar(!showCalendar)}
-                                                            className="input"
-                                                            style={{ width: '50px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                                                        >
-                                                            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#fff">
-                                                                <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
-                                                            </svg>
-                                                        </button>
-                                                    </div>
-                                                    {showCalendar && (
-                                                        <div style={{ position: 'absolute', bottom: '100%', left: '0', right: '0', zIndex: 100 }}>
-                                                            <CustomCalendar
-                                                                selectedDate={parseDateForServer(formData.date_of_birth)}
-                                                                onChange={(date) => {
-                                                                    // تحويل YYYY-MM-DD القادم من التقويم إلى DD/MM/YYYY للعرض
-                                                                    const [y, m, d] = date.split('-');
-                                                                    setFormData({ ...formData, date_of_birth: `${d}/${m}/${y}` });
-                                                                }}
-                                                                onClose={() => setShowCalendar(false)}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-
-                                        <div className="form-group">
-                                            <input
-                                                type="password"
-                                                id="password"
-                                                name="password"
-                                                value={formData.password}
-                                                onChange={handleChange}
-                                                className="input"
-                                                placeholder="كلمة المرور"
-                                                required
-                                            />
-                                        </div>
-
-                                        {!isLogin && !isOtpStep && (
-                                            <div className="form-group terms-group" style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '15px', padding: '0 5px' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="terms" 
-                                                    checked={termsAccepted}
-                                                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                                                    required 
-                                                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#fbab15', marginTop: '3px' }}
-                                                />
-                                                <label htmlFor="terms" style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.9rem', cursor: 'pointer', lineHeight: '1.4' }}>
-                                                    أوافق على <Link to="/terms" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>شروط الخدمة</Link> و <Link to="/privacy" state={{ mode: 'register' }} style={{ color: '#fbab15', fontWeight: 'bold', textDecoration: 'none' }}>سياسة الخصوصية</Link> لنظام بالنوفا.
-                                                </label>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-
-                                {isOtpStep && (
-                                    <div className="form-group fade-in">
-                                        <label htmlFor="otp">رمز التحقق</label>
-                                        <p className="text-sm text-gray-400 mb-2">
-                                            تم إرسال رمز التحقق إلى بريدك الإلكتروني: {formData.email}
-                                        </p>
-                                        <input
-                                            type="text"
-                                            id="otp"
-                                            name="otp"
-                                            value={otpCode}
-                                            onChange={(e) => setOtpCode(e.target.value)}
-                                            className="input text-center text-2xl tracking-widest"
-                                            placeholder="000000"
-                                            required
-                                            maxLength={6}
-                                            autoFocus
-                                        />
-                                    </div>
-                                )}
-
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary btn-submit"
-                                    disabled={loading}
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="spinner-small"></div>
-                                            جاري المعالجة...
-                                        </>
-                                    ) : (
-                                        isLogin ? (isOtpStep ? 'تحقق' : 'دخول') : 'إنشاء الحساب'
-                                    )}
-                                </button>
-
-                                {!isOtpStep && (
-                                    <div className="google-login-container">
-                                        <div className="divider">
-                                            <span>أو</span>
-                                        </div>
-                                        <div className="google-btn-wrapper">
-                                            <GoogleLogin
-                                                onSuccess={handleGoogleSuccess}
-                                                onError={handleGoogleError}
-                                                theme="filled_blue"
-                                                shape="pill"
-                                                text="continue_with"
-                                                locale="ar"
-                                                width="280"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {isForgotPassword && (
-                            <button
-                                type="submit"
-                                className="btn btn-primary btn-submit"
-                                disabled={loading}
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="spinner-small"></div>
-                                        جاري المعالجة...
-                                    </>
-                                ) : (
-                                    resetStep === 1 ? 'إرسال الرمز' : 'تعيين كلمة المرور'
-                                )}
-                            </button>
-                        )}
+                        {formBody}
                     </form>
 
-                    <div className="card-footer">
-                        {isForgotPassword ? (
-                            <p>
-                                <button
-                                    className="toggle-btn"
-                                    onClick={() => {
-                                        setIsForgotPassword(false);
-                                        setResetStep(1);
-                                        setError('');
-                                    }}
-                                >
-                                    العودة لتسجيل الدخول
-                                </button>
-                            </p>
-                        ) : isOtpStep ? (
-                            <p>
-                                <button
-                                    className="toggle-btn"
-                                    onClick={() => {
-                                        setIsOtpStep(false);
-                                        setError('');
-                                    }}
-                                >
-                                    العودة لتسجيل الدخول
-                                </button>
-                            </p>
-                        ) : (
-                            <>
-                                <p>
-                                    {isLogin ? 'ليس لديك حساب؟' : 'لديك حساب بالفعل؟'}
-                                    <button
-                                        className="toggle-btn"
-                                        onClick={() => setIsLogin(!isLogin)}
-                                    >
-                                        {isLogin ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
-                                    </button>
-                                </p>
-                                {isLogin && (
-                                    <p style={{ marginTop: '10px' }}>
-                                        <button
-                                            className="toggle-btn"
-                                            style={{ fontSize: '0.9em', opacity: 0.8 }}
-                                            onClick={() => {
-                                                setIsForgotPassword(true);
-                                                setError('');
-                                                setFormData({ ...formData, email: '' });
-                                            }}
-                                        >
-                                            نسيت كلمة المرور؟
-                                        </button>
-                                    </p>
-                                )}
-                            </>
-                        )}
-                    </div>
+                    {footerBody}
                 </div>
 
                 <div className="features">

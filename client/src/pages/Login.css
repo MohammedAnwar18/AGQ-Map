@@ -385,3 +385,101 @@
     display: flex !important;
     justify-content: center !important;
 }
+/* ===================== واجهة محرّك بالنوفا (بورتفوليو مقسوم) ===================== */
+.eng-login {
+    --eng-rust: #AE4E14;
+    --eng-dark: #2A2F37;
+    --eng-cream: #E9E2DA;
+    --eng-ink: #0B0D10;
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-columns: 1.02fr 0.98fr;
+    background: var(--eng-ink);
+    direction: rtl;
+    overflow: hidden;
+    font-family: 'Tajawal', sans-serif;
+}
+.eng-login .eng-form-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 30px;
+    overflow-y: auto;
+}
+.eng-login .eng-card { width: 100%; max-width: 420px; }
+.eng-login .eng-logo-img { height: 38px; width: auto; display: block; margin-bottom: 30px; }
+.eng-login .card-header { text-align: right; margin-bottom: 22px; }
+.eng-login .card-header h2 { color: var(--eng-cream); font-size: 1.85rem; font-weight: 800; margin: 0 0 6px; }
+.eng-login .card-header .subtitle { color: rgba(233, 226, 218, 0.5); font-size: 0.95rem; margin: 0; }
+.eng-login .login-form { display: flex; flex-direction: column; gap: 14px; }
+.eng-login .form-group { margin: 0; }
+.eng-login .form-group label { color: rgba(233, 226, 218, 0.75); font-size: 0.85rem; display: block; margin-bottom: 6px; }
+.eng-login .input {
+    background: var(--eng-dark);
+    border: 1px solid rgba(233, 226, 218, 0.1);
+    color: var(--eng-cream);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.eng-login .input::placeholder { color: rgba(233, 226, 218, 0.38); }
+.eng-login .input:focus { outline: none; border-color: var(--eng-rust); box-shadow: 0 0 0 3px rgba(174, 78, 20, 0.2); }
+.eng-login select.input option { background: var(--eng-dark); color: var(--eng-cream); }
+.eng-login .btn-submit {
+    background: var(--eng-rust);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+    transition: filter 0.15s ease, transform 0.1s ease;
+}
+.eng-login .btn-submit:hover { filter: brightness(1.12); }
+.eng-login .btn-submit:active { transform: translateY(1px); }
+.eng-login .btn-submit:disabled { opacity: 0.6; cursor: default; }
+.eng-login .divider { display: flex; align-items: center; color: rgba(233, 226, 218, 0.4); font-size: 0.85rem; margin: 10px 0 2px; }
+.eng-login .divider::before, .eng-login .divider::after { content: ''; flex: 1; height: 1px; background: rgba(233, 226, 218, 0.12); }
+.eng-login .divider span { padding: 0 12px; }
+.eng-login .google-login-container { margin-top: 8px; }
+.eng-login .google-btn-wrapper { display: flex; justify-content: center; }
+.eng-login .error-message {
+    background: rgba(174, 78, 20, 0.12);
+    border: 1px solid rgba(174, 78, 20, 0.4);
+    color: #f0b49a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.eng-login .card-footer { margin-top: 20px; text-align: center; color: rgba(233, 226, 218, 0.6); font-size: 0.9rem; }
+.eng-login .card-footer p { margin: 6px 0; }
+.eng-login .toggle-btn { background: none; border: none; color: var(--eng-rust); font-weight: 700; cursor: pointer; padding: 0 4px; font-size: 0.9rem; }
+.eng-login .toggle-btn:hover { text-decoration: underline; }
+.eng-login .terms-group label { color: rgba(233, 226, 218, 0.82) !important; }
+.eng-login .eng-legal { margin-top: 24px; text-align: center; font-size: 0.8rem; color: rgba(233, 226, 218, 0.4); display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.eng-login .eng-legal a { color: rgba(233, 226, 218, 0.6); text-decoration: none; }
+.eng-login .eng-legal a:hover { color: var(--eng-cream); }
+.eng-login .spinner-small { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: eng-spin 0.7s linear infinite; }
+@keyframes eng-spin { to { transform: rotate(360deg); } }
+/* الجانب التصويريّ (الصورة البورتفوليو) */
+.eng-login .eng-hero-side { position: relative; overflow: hidden; background: var(--eng-dark); }
+.eng-login .eng-hero-side img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+.eng-login .eng-hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,13,16,0.6) 0%, rgba(11,13,16,0) 38%); pointer-events: none; }
+@media (max-width: 900px) {
+    .eng-login { grid-template-columns: 1fr; }
+    .eng-login .eng-hero-side { display: none; }
+    .eng-login .eng-form-side { padding: 32px 22px; }
+}
