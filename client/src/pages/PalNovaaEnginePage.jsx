@@ -393,6 +393,7 @@ export default function PalNovaaEnginePage() {
   const toastTimer = useRef(null);
   const fileRef = useRef(null);
   const messagesRef = useRef([]);
+  const autoHealRef = useRef({ tries: 0, lastErr: '' });  // الإصلاح الذاتيّ: ميزانيّة محاولاتٍ لكلّ بناء
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
@@ -450,6 +451,18 @@ export default function PalNovaaEnginePage() {
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, []);
+
+  /* self-heal تلقائيّ: عند رصد خطأ تشغيل، يصلحه المحرّك وحده (حتى محاولتين، ويتوقّف لو تكرّر الخطأ نفسه — بلا حلقات) */
+  useEffect(() => {
+    if (!iframeErr || busy || !html) return;
+    const st = autoHealRef.current;
+    if (st.tries >= 2 || st.lastErr === iframeErr) return;  // استُنفدت الميزانيّة أو الخطأ نفسه تكرّر → نترك الزرّ اليدويّ
+    st.tries += 1; st.lastErr = iframeErr;
+    const msg = iframeErr; setIframeErr('');
+    showToast('رصدتُ خطأً وأُصلحه تلقائياً…');
+    runBuild(`التطبيق يُصدر خطأ JavaScript أثناء التشغيل: "${msg}". أصلح السبب الجذريّ وأعِد إخراج المستند كاملاً وهو يعمل بلا أخطاء.`, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iframeErr, busy]);
 
   useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(toastTimer.current); }, []);
 
@@ -708,9 +721,10 @@ export default function PalNovaaEnginePage() {
     }
   };
 
-  const sendHome = () => { if (prompt.trim()) { runBuild(prompt, false); setPrompt(''); } };
-  const sendEdit = () => { if (prompt2.trim() && html) { runBuild(prompt2, true); setPrompt2(''); } };
-  const autoFix = () => { const msg = iframeErr; setIframeErr(''); runBuild(`التطبيق يُصدر خطأ JavaScript أثناء التشغيل: "${msg}". أصلح السبب الجذريّ وأعِد إخراج المستند كاملاً وهو يعمل بلا أخطاء.`, true); };
+  const resetHeal = () => { autoHealRef.current = { tries: 0, lastErr: '' }; };
+  const sendHome = () => { if (prompt.trim()) { resetHeal(); runBuild(prompt, false); setPrompt(''); } };
+  const sendEdit = () => { if (prompt2.trim() && html) { resetHeal(); runBuild(prompt2, true); setPrompt2(''); } };
+  const autoFix = () => { resetHeal(); const msg = iframeErr; setIframeErr(''); runBuild(`التطبيق يُصدر خطأ JavaScript أثناء التشغيل: "${msg}". أصلح السبب الجذريّ وأعِد إخراج المستند كاملاً وهو يعمل بلا أخطاء.`, true); };
 
   const persist = async () => {
     if (!html) return null;
@@ -733,14 +747,14 @@ export default function PalNovaaEnginePage() {
     clearTimeout(timerRef.current);
     setView('home'); setMessages([]); setHtml(''); setTitle('محادثة جديدة'); setSummary('');
     setSlug(null); setPublicUrl(''); setDirty(false); setPrompt(''); setPrompt2(''); setMenu(null);
-    setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch('');
+    setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch(''); resetHeal();
   };
   const openProject = async (p) => {
     setMenu(null);
     const d = await jget(`/engine/projects/${p.slug}`);
     if (d?.ok) {
       setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || '');
-      setSlug(d.project.slug); setPublicUrl(d.project.public_url || ''); setDirty(false); setIframeErr('');
+      setSlug(d.project.slug); setPublicUrl(d.project.public_url || ''); setDirty(false); setIframeErr(''); resetHeal();
       const thread = Array.isArray(d.project.thread) ? d.project.thread : null;
       setMessages(thread && thread.length ? thread : [{ id: `open${p.slug}`, role: 'ai', kind: 'note', text: `فُتح المشروع: ${d.project.title}. تابع التعديل أو افتح الرابط الدائم.`, suggests: [] }]);
       setView('workspace'); setTab('app');
@@ -1289,8 +1303,8 @@ export default function PalNovaaEnginePage() {
                   {html && <iframe key={pvKey} className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" />}
                   {html && iframeErr && !busy && (
                     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14, background: 'rgba(227,100,80,.14)', border: '1px solid rgba(227,100,80,.45)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 3, backdropFilter: 'blur(4px)' }}>
-                      <span style={{ fontSize: 12.5, color: '#f0b3a8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>⚠ خطأ تشغيل: {iframeErr}</span>
-                      <button className="btn accent" style={{ height: 30 }} onClick={autoFix}>إصلاح تلقائيّ</button>
+                      <span style={{ fontSize: 12.5, color: '#f0b3a8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>⚠ خطأ تشغيل (تعذّر الإصلاح التلقائيّ): {iframeErr}</span>
+                      <button className="btn accent" style={{ height: 30 }} onClick={autoFix}>أصلح الآن</button>
                       <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={() => setIframeErr('')}>{Ico.close}</button>
                     </div>
                   )}
