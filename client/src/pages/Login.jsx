@@ -406,16 +406,21 @@ const Login = () => {
                                             </button>
                                         </div>
                                         {showCalendar && (
-                                            <div style={{ position: 'absolute', bottom: '100%', left: '0', right: '0', zIndex: 100 }}>
-                                                <CustomCalendar
-                                                    selectedDate={parseDateForServer(formData.date_of_birth)}
-                                                    onChange={(date) => {
-                                                        // تحويل YYYY-MM-DD القادم من التقويم إلى DD/MM/YYYY للعرض
-                                                        const [y, m, d] = date.split('-');
-                                                        setFormData({ ...formData, date_of_birth: `${d}/${m}/${y}` });
-                                                    }}
-                                                    onClose={() => setShowCalendar(false)}
-                                                />
+                                            <div
+                                                style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', padding: '16px' }}
+                                                onClick={() => setShowCalendar(false)}
+                                            >
+                                                <div onClick={(e) => e.stopPropagation()}>
+                                                    <CustomCalendar
+                                                        selectedDate={parseDateForServer(formData.date_of_birth)}
+                                                        onChange={(date) => {
+                                                            // تحويل YYYY-MM-DD القادم من التقويم إلى DD/MM/YYYY للعرض
+                                                            const [y, m, d] = date.split('-');
+                                                            setFormData({ ...formData, date_of_birth: `${d}/${m}/${y}` });
+                                                        }}
+                                                        onClose={() => setShowCalendar(false)}
+                                                    />
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -593,23 +598,25 @@ const Login = () => {
         return (
             <div className="eng-login" dir="rtl">
                 <div className="eng-form-side">
-                    <div className="eng-card fade-in">
-                        <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
-                        <div className="card-header">
-                            <h2>{cardTitle}</h2>
-                            {!isLogin && !isForgotPassword && <p className="subtitle">انضم إلى المجتمع</p>}
+                    <div className="eng-card-wrap">
+                        <div className="eng-card fade-in">
+                            <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
+                            <div className="card-header">
+                                <h2>{cardTitle}</h2>
+                                {!isLogin && !isForgotPassword && <p className="subtitle">انضم إلى المجتمع</p>}
+                            </div>
+                            <form onSubmit={handleSubmit} className="login-form">
+                                {formBody}
+                            </form>
+                            {footerBody}
                         </div>
-                        <form onSubmit={handleSubmit} className="login-form">
-                            {formBody}
-                        </form>
-                        {footerBody}
-                        <div className="eng-legal">
-                            <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }}>شروط الخدمة</Link>
-                            <span style={{ opacity: 0.3 }}>·</span>
-                            <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }}>سياسة الخصوصية</Link>
-                            <span style={{ opacity: 0.3 }}>·</span>
-                            <span>© {new Date().getFullYear()} PalNovaa</span>
-                        </div>
+                    </div>
+                    <div className="eng-legal">
+                        <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }}>شروط الخدمة</Link>
+                        <span className="sep">·</span>
+                        <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }}>سياسة الخصوصية</Link>
+                        <span className="sep">·</span>
+                        <span>© {new Date().getFullYear()} PalNovaa</span>
                     </div>
                 </div>
                 <div className="eng-hero-side">
