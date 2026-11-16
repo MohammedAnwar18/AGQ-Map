@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 /* ============================================================================
@@ -340,6 +341,7 @@ const serializeThread = (msgs) => msgs.map((m) => (m.kind === 'build' ? { ...m, 
 export default function PalNovaaEnginePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  useEngineBranding();
   const greeting = (() => {
     const h = new Date().getHours();
     if (h >= 5 && h < 12) return 'صباح الخير';

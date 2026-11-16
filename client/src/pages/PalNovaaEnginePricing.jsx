@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 /* ============================================================================
@@ -46,6 +47,7 @@ const PLANS = [
 
 export default function PalNovaaEnginePricing() {
   const navigate = useNavigate();
+  useEngineBranding();
   const [toast, setToast] = useState('');
   const [cfg, setCfg] = useState({ token: DEF_TOKEN, priceId: DEF_PRICE, env: DEF_ENV, gumroadUrl: '', provider: '' });
   const contoursRef = useRef(null);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
+import useEngineBranding from '../hooks/useEngineBranding';
 import CustomCalendar from '../components/CustomCalendar';
 import { GoogleLogin } from '@react-oauth/google';
 import './Login.css';
@@ -12,6 +13,7 @@ const Login = () => {
     const { login } = useAuth();
     const redirectTo = location.state?.from || '/map';   // الرجوع للصفحة المقصودة بعد الدخول (مثل المحرّك)
     const fromEngine = (location.state?.from || '').startsWith('/palnovaa-engine');  // فتحٌ من رابط محرّك بالنوفا → واجهةٌ مخصّصة
+    useEngineBranding(fromEngine);  // أيقونة وعنوان المحرّك في التبويب عند الدخول من رابطه
     const [isLogin, setIsLogin] = useState(location.state?.mode === 'register' ? false : true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');

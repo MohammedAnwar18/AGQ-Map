@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 /* ============================================================================
@@ -19,6 +20,7 @@ const money = (v, c) => (v == null ? '—' : `${v.toFixed(2)} ${c || 'USD'}`);
 
 export default function PalNovaaPayments() {
   const navigate = useNavigate();
+  useEngineBranding();
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [q, setQ] = useState('');
 
