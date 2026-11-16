@@ -486,7 +486,7 @@
 /* الجانب الأيمن: مزايا نظيفة بجانب صورةٍ متوسّطةٍ بحوافّ ناعمة (عرض منتج) */
 .eng-login .eng-hero-side { position: relative; overflow: hidden; background: radial-gradient(130% 110% at 100% 0%, #171c24 0%, #0b0d10 62%); display: flex; align-items: center; justify-content: center; gap: 46px; padding: 5vh 4vw; box-sizing: border-box; }
 .eng-login .eng-hero-img { flex: none; opacity: 0; animation: eng-img-in 0.9s ease forwards; min-width: 0; }
-.eng-login .eng-hero-img img { max-height: 64vh; max-width: min(36vw, 380px); width: auto; height: auto; object-fit: contain; display: block; border-radius: 20px; box-shadow: 0 34px 80px -30px rgba(0,0,0,0.75), 0 0 0 1px rgba(233,226,218,0.05); }
+.eng-login .eng-hero-img img { max-height: 82vh; max-width: min(44vw, 470px); width: auto; height: auto; object-fit: contain; display: block; border-radius: 20px; box-shadow: 0 34px 80px -30px rgba(0,0,0,0.75), 0 0 0 1px rgba(233,226,218,0.05); }
 @keyframes eng-img-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 /* قائمة المزايا — بجانب الصورة، مرتّبة وواضحة وبتباعدٍ مريح */
 .eng-login .eng-features { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 24px; direction: rtl; flex: none; width: 262px; }
