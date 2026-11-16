@@ -51,6 +51,7 @@ export default function PalNovaaEnginePricing() {
   const contoursRef = useRef(null);
   const toastTimer = useRef(null);
   const pollRef = useRef(null);
+  const gumroadLinkRef = useRef(null);  // رابط Gumroad مخفيّ لفتح الـoverlay (نتحكّم بالزرّ المرئيّ بالكامل)
 
   const showToast = (m) => { setToast(m); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 2600); };
 
@@ -190,7 +191,7 @@ export default function PalNovaaEnginePricing() {
                     </ul>
                     <div className="cta">
                       {p.id === 'pro' && gumroadHref
-                        ? <a className="btn accent gumroad-button" href={gumroadHref} data-gumroad-single-product="true" onClick={startProWatch}><span className="gr-label">{p.cta}</span></a>
+                        ? <button className="btn pro-cta" onClick={() => { startProWatch(); gumroadLinkRef.current?.click(); }}>{p.cta}</button>
                         : <button className={`btn ${p.feat ? 'accent' : ''}`} onClick={() => subscribe(p.id)}>{p.cta}</button>}
                     </div>
                   </div>
@@ -207,6 +208,7 @@ export default function PalNovaaEnginePricing() {
           </section>
         </main>
       </div>
+      {gumroadHref && <a ref={gumroadLinkRef} className="gumroad-button" href={gumroadHref} style={{ display: 'none' }} aria-hidden="true" tabIndex={-1}>اشتراك</a>}
       <div className={`toast ${toast ? 'show' : ''}`}><i /><span>{toast}</span></div>
     </div>
   );

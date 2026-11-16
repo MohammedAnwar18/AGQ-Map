@@ -311,7 +311,6 @@ export default function PalNovaaEnginePage() {
   const [prompt2, setPrompt2] = useState('');
   const [attached, setAttached] = useState([]);     // تلميحات مصادر عامّة
   const [datasets, setDatasets] = useState([]);     // بيانات مرفقة (مرفوعة)
-  const [design, setDesign] = useState(null);       // تصميم مرجعيّ (design-to-code): {kind, mediaType?, data?, svg?, name}
   const [myDatasets, setMyDatasets] = useState([]); // المتاحة
   const [mode, setMode] = useState(MODES[0]);
   const [crs, setCrs] = useState(CRS[0]);
@@ -393,7 +392,6 @@ export default function PalNovaaEnginePage() {
   const timerRef = useRef(null);
   const toastTimer = useRef(null);
   const fileRef = useRef(null);
-  const designRef = useRef(null);
   const messagesRef = useRef([]);
 
   useEffect(() => { messagesRef.current = messages; }, [messages]);
@@ -582,29 +580,6 @@ export default function PalNovaaEnginePage() {
     } catch (err) { showToast('تعذّر: ' + String(err.message || err).slice(0, 55)); }
   };
 
-  /* استيراد تصميم → كود: صورة (PNG/JPG/WebP) أو SVG مُصدَّر من Penpot */
-  const onDesignFile = async (e) => {
-    const f = e.target.files?.[0]; if (e.target) e.target.value = '';
-    if (!f) return;
-    const ext = (f.name.toLowerCase().match(/\.([a-z0-9]+)$/) || [, ''])[1];
-    const isSvg = ext === 'svg' || f.type === 'image/svg+xml';
-    const isImg = /^(png|jpe?g|webp|gif)$/.test(ext) || /^image\//.test(f.type);
-    if (!isSvg && !isImg) { showToast('ارفع صورة تصميم (PNG/JPG/WebP) أو ملفّ SVG'); return; }
-    try {
-      if (isSvg) {
-        if (f.size > 2 * 1024 * 1024) { showToast('ملفّ SVG كبير (الحدّ 2MB)'); return; }
-        const svg = await f.text();
-        setDesign({ kind: 'svg', svg, name: f.name });
-        showToast('أُرفق التصميم (SVG) — سيُطابَق عند البناء');
-      } else {
-        if (f.size > 3 * 1024 * 1024) { showToast('صورة التصميم كبيرة (الحدّ 3MB — كلّما أصغر كان أدقّ)'); return; }
-        const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
-        setDesign({ kind: 'image', mediaType: f.type || 'image/png', data: dataUrl, name: f.name });
-        showToast('أُرفقت صورة التصميم — ستُطابَق عند البناء (Claude أو Gemini)');
-      }
-    } catch { showToast('تعذّر قراءة ملفّ التصميم'); }
-  };
-
   const openMenu = (name, e) => {
     e.stopPropagation();
     if (name === 'versions') loadVersions();
@@ -723,8 +698,7 @@ export default function PalNovaaEnginePage() {
     };
     timerRef.current = setTimeout(tick, 1100);
 
-    const designPayload = design ? (design.kind === 'svg' ? { kind: 'svg', svg: design.svg } : { kind: 'image', mediaType: design.mediaType, data: design.data }) : undefined;
-    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin, design: designPayload };
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin };
     try {
       const handled = await tryStream(body, bId, isEdit);
       if (!handled) await nonStream(body, bId, isEdit);
@@ -759,7 +733,7 @@ export default function PalNovaaEnginePage() {
     clearTimeout(timerRef.current);
     setView('home'); setMessages([]); setHtml(''); setTitle('محادثة جديدة'); setSummary('');
     setSlug(null); setPublicUrl(''); setDirty(false); setPrompt(''); setPrompt2(''); setMenu(null);
-    setDatasets([]); setAttached([]); setDesign(null); setIframeErr(''); setTplSearch('');
+    setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch('');
   };
   const openProject = async (p) => {
     setMenu(null);
@@ -1095,7 +1069,6 @@ export default function PalNovaaEnginePage() {
   return (
     <div className="pne-root" dir="rtl">
       <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg" hidden onChange={onFile} />
-      <input ref={designRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/*" hidden onChange={onDesignFile} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
@@ -1158,13 +1131,8 @@ export default function PalNovaaEnginePage() {
                 <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
 
                 <div className="composer">
-                  {(allChips.length > 0 || design) && (
+                  {allChips.length > 0 && (
                     <div className="chips">
-                      {design && (
-                        <span className="chip design" key="design"><span className="ct">تصميم</span>{design.name || (design.kind === 'svg' ? 'SVG' : 'صورة')}
-                          <button title="إزالة التصميم" onClick={() => setDesign(null)}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
-                        </span>
-                      )}
                       {allChips.map((c) => (
                         <span className="chip" key={c.kind + c.k}><span className="ct">{c.t}</span>{c.n}
                           <button title="إزالة" onClick={() => (c.kind === 'ds' ? rmDataset(c.k) : rmSrc(c.k))}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
@@ -1178,10 +1146,6 @@ export default function PalNovaaEnginePage() {
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
                     <button className="tool" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}البيانات</button>
-                    <button className={`tool ${design ? 'on' : ''}`} title="استيراد تصميم (صورة أو SVG من Penpot) ليبنيه المحرّك مطابقاً" onClick={() => designRef.current?.click()}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="m3 15 5-5 4 4 3-3 6 6" /><circle cx="8.5" cy="8.5" r="1.5" /></svg>
-                      التصميم
-                    </button>
                     <button className="tool" data-menu-anchor onClick={(e) => openMenu('mode', e)}>النوع: <span className="v">{mode}</span></button>
                     <button className="tool mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="v">{crs}</span></button>
                     <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>

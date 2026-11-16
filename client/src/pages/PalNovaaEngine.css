@@ -126,9 +126,6 @@
 .pne-root .chip .ct{font-family:var(--mono);font-size:10.5px;color:var(--muted);direction:ltr}
 .pne-root .chip button{color:var(--faint);display:grid;place-items:center;width:18px;height:18px;border-radius:4px}
 .pne-root .chip button:hover{color:var(--text);background:var(--line-2)}
-.pne-root .chip.design{background:var(--accent-soft,rgba(224,123,57,.12));border-color:var(--accent-line)}
-.pne-root .chip.design .ct{color:var(--accent-2)}
-.pne-root .tool.on{color:var(--accent-2);border-color:var(--accent-line);background:var(--accent-soft,rgba(224,123,57,.1))}
 .pne-root .composer textarea{display:block;width:100%;min-height:92px;max-height:260px;resize:none;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
 .pne-root .composer textarea::placeholder{color:var(--faint)}
 .pne-root .composer-bar{display:flex;align-items:center;gap:6px;padding:8px 10px 10px}
@@ -469,24 +466,11 @@
 .pne-root .plan .cta .btn{width:100%;justify-content:center;height:42px;font-size:14px;box-sizing:border-box;text-decoration:none;cursor:pointer}
 .pne-root .plan .cta a.btn{color:inherit}
 .pne-root .plan .cta a.btn.accent{color:#170C04}
-/* زرّ Gumroad: أبيض افتراضاً، واللون المميّز يظهر عند المرور/الضغط — نتغلّب على تنسيق gumroad.js */
-.pne-root .plan .cta a.gumroad-button,
-.pne-root .plan .cta a.gumroad-button:link,
-.pne-root .plan .cta a.gumroad-button:visited{
-  background:#ffffff !important;background-image:none !important;
-  color:#15100A !important;border:1px solid var(--line-2) !important;
-  box-shadow:none !important;text-indent:0 !important;font-weight:600 !important;
-  transition:background .15s ease,color .15s ease,border-color .15s ease;
-}
-.pne-root .plan .cta a.gumroad-button::before,
-.pne-root .plan .cta a.gumroad-button::after{content:none !important;background:none !important;display:none !important}
-.pne-root .plan .cta a.gumroad-button > *{display:none !important}
-.pne-root .plan .cta a.gumroad-button > .gr-label{display:inline !important}
-.pne-root .plan .cta a.gumroad-button:hover,
-.pne-root .plan .cta a.gumroad-button:focus,
-.pne-root .plan .cta a.gumroad-button:active{
-  background:var(--accent) !important;border-color:var(--accent) !important;color:#170C04 !important;
-}
+/* زرّ Pro: أبيض افتراضاً، ويصير باللون المميّز البرتقاليّ عند المرور/الضغط */
+.pne-root .plan .cta .pro-cta{background:#ffffff;color:#15100A;border:1px solid var(--line-2);font-weight:600;transition:background .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
+.pne-root .plan .cta .pro-cta:hover,
+.pne-root .plan .cta .pro-cta:focus-visible{background:var(--accent);border-color:var(--accent);color:#170C04;box-shadow:0 10px 24px -10px rgba(224,123,57,.6)}
+.pne-root .plan .cta .pro-cta:active{background:var(--accent-2,#D06A2A);border-color:var(--accent-2,#D06A2A)}
 .pne-root .pricing .pfoot{text-align:center;color:var(--faint);font-size:12.5px;margin-top:26px}
 .pne-root .pricing .pfoot b{color:var(--text-2);font-weight:500}
 @media (max-width:860px){.pne-root .plans{grid-template-columns:1fr}.pne-root .pricing h1{font-size:26px}}
