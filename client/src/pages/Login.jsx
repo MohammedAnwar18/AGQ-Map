@@ -498,11 +498,12 @@ const Login = () => {
                                 <GoogleLogin
                                     onSuccess={handleGoogleSuccess}
                                     onError={handleGoogleError}
-                                    theme="filled_blue"
-                                    shape="pill"
+                                    theme={fromEngine ? 'outline' : 'filled_blue'}
+                                    shape={fromEngine ? 'rectangular' : 'pill'}
+                                    size="large"
                                     text="continue_with"
                                     locale="ar"
-                                    width="280"
+                                    width={fromEngine ? '372' : '280'}
                                 />
                             </div>
                         </div>
@@ -613,7 +614,6 @@ const Login = () => {
                 </div>
                 <div className="eng-hero-side">
                     <img src="/engine-login.png" alt="Palnovaa Engine — Build Powerful GIS Applications" />
-                    <div className="eng-hero-overlay" />
                 </div>
             </div>
         );
