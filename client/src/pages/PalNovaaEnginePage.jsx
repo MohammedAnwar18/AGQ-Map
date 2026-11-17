@@ -350,6 +350,23 @@ function splitProjectFiles(html) {
   if (scripts) files.push({ name: 'app.js', lang: 'javascript', code: scripts });
   return files;
 }
+/* أيقونات ملفّات احترافيّة حسب نوع اللغة ولونها (شارات مدوّرة بنمط VS Code) */
+const FILE_META = {
+  xml: { bg: '#E07B39', fg: '#1a0d04', label: '<>' },
+  css: { bg: '#5B9BF0', fg: '#07152b', label: '#' },
+  javascript: { bg: '#E3B341', fg: '#2a1f05', label: 'JS' },
+  json: { bg: '#9AA0A6', fg: '#101317', label: '{}' },
+};
+const fileLang = (n) => (n.endsWith('.css') ? 'css' : n.endsWith('.js') ? 'javascript' : n.endsWith('.json') ? 'json' : 'xml');
+function FileIcon({ name }) {
+  const m = FILE_META[fileLang(name)] || FILE_META.xml;
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none' }}>
+      <rect width="16" height="16" rx="4" fill={m.bg} />
+      <text x="8" y="8" dy="0.36em" textAnchor="middle" fontSize={m.label.length > 1 ? 6.6 : 9} fontWeight="800" fontFamily="var(--mono), ui-monospace, monospace" fill={m.fg}>{m.label}</text>
+    </svg>
+  );
+}
 const HLJS_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
 const HLJS_JS = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
 const ensureHljs = async () => { if (window.hljs) return; loadCss(HLJS_CSS); await loadScript(HLJS_JS); };
@@ -404,6 +421,8 @@ export default function PalNovaaEnginePage() {
 
   const [html, setHtml] = useState('');
   const [title, setTitle] = useState('محادثة جديدة');
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const [summary, setSummary] = useState('');
   const [slug, setSlug] = useState(null);
   const [publicUrl, setPublicUrl] = useState('');
@@ -725,7 +744,7 @@ export default function PalNovaaEnginePage() {
       text: isEdit ? (d.mode === 'diff' ? `طبّقتُ التعديل بدقّةٍ وسرعة (${d.applied || ''} تغيير موضعيّ) وحدّثت المعاينة.` : 'طبّقتُ التعديل وحدّثت المعاينة.') : (d.summary || 'التطبيق جاهزٌ للمعاينة.'),
       suggests: isEdit ? ['أحسنت — أضِف ميزة أخرى'] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'صدّر PDF', 'أضِف بحثاً عن موقع'],
     }]);
-    showToast(isEdit && d.mode === 'diff' ? 'تعديلٌ فوريّ ✓' : 'المعاينة جاهزة');
+    showToast(isEdit ? (d.mode === 'diff' ? 'تعديلٌ فوريّ ✓' : 'تمّ التعديل ✓') : 'تمّ البناء ✓ — المعاينة جاهزة');
   };
   const finishError = (reason, isEdit, bId) => {
     const text = reason === '__missing'
@@ -850,11 +869,6 @@ export default function PalNovaaEnginePage() {
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     showToast('نُزِّل ملفّ HTML');
   };
-  const openPreviewTab = () => {
-    if (!html) return;
-    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-    window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 15000);
-  };
   const copyCode = () => {
     if (!html || !navigator.clipboard) { showToast('تعذّر النسخ'); return; }
     navigator.clipboard.writeText(html).then(() => showToast('نُسخ الكود')).catch(() => showToast('تعذّر النسخ'));
@@ -884,6 +898,20 @@ export default function PalNovaaEnginePage() {
     catch { showToast('تمّ الحفظ — ' + link); }
   };
   const openLive = () => { if (slug) window.open(appLink(slug), '_blank'); };
+
+  /* إعادة تسمية المشروع (تُحفظ تلقائياً إن كان منشوراً) */
+  const beginRename = () => { setNameDraft((title && title !== 'محادثة جديدة') ? title : ''); setRenaming(true); };
+  const commitRename = async () => {
+    const n = nameDraft.trim().slice(0, 60);
+    setRenaming(false);
+    if (!n || n === title) return;
+    setTitle(n);
+    if (slug) {
+      const res = await jput(`/engine/projects/${slug}`, { title: n });
+      if (res?.ok) { showToast('أُعيدت التسمية ✓'); loadProjects(); }
+      else showToast('تعذّر حفظ الاسم');
+    } else { setDirty(true); showToast('سُمّي المشروع — انشر لحفظه'); }
+  };
 
   const newProject = () => {
     clearTimeout(timerRef.current);
@@ -1527,9 +1555,8 @@ export default function PalNovaaEnginePage() {
                   <button className="icon-btn" title="نسخ الكود" onClick={copyCode}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></svg></button>
                 )}
                 <div className={`url ${slug ? 'live' : ''}`}><i /><span>{urlText}</span></div>
-                <button className="icon-btn" title="فتح المعاينة بتبويب جديد" onClick={openPreviewTab} disabled={!html}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg></button>
                 <button className="icon-btn" title="تنزيل HTML" onClick={downloadHtml} disabled={!html}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14" /></svg></button>
-                <button className="icon-btn" title="فتح الرابط الدائم" onClick={openLive} disabled={!slug}>{Ico.ext}</button>
+                <button className="btn pv-live" title="فتح الرابط الدائم للتطبيق المنشور" onClick={openLive} disabled={!slug}>{Ico.ext}<span>الفتح الدائم</span></button>
               </div>
               <div className="pv-body">
                 <div className={`pane ${tab === 'app' ? 'on' : ''}`}>
@@ -1556,15 +1583,29 @@ export default function PalNovaaEnginePage() {
                     const active = streaming ? files[0] : (files.find((f) => f.name === activeFile) || files[0]);
                     let hi; try { hi = (hljsReady && window.hljs) ? window.hljs.highlight(active.code, { language: active.lang, ignoreIllegal: true }).value : escapeHtml(active.code); } catch { hi = escapeHtml(active.code); }
                     const lines = Math.max(1, active.code.split('\n').length);
-                    const fIcon = (n) => (n.endsWith('.html') ? '◆' : n.endsWith('.css') ? '#' : '{}');
                     const pick = (f) => { if (!f.pending) setActiveFile(f.name); };
                     return (
                       <div className="vscode">
                         <div className="vs-tree">
-                          <div className="vs-root">{Ico.chevD}{Ico.folder}<b>{(title && title !== 'محادثة جديدة') ? title.slice(0, 22) : 'المشروع'}</b></div>
+                          <div className="vs-root">
+                            {Ico.chevD}{Ico.folder}
+                            {renaming ? (
+                              <input className="vs-rename" autoFocus value={nameDraft}
+                                onChange={(e) => setNameDraft(e.target.value)}
+                                onBlur={commitRename}
+                                onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false); }} />
+                            ) : (
+                              <>
+                                <b title={title}>{(title && title !== 'محادثة جديدة') ? title.slice(0, 26) : 'المشروع'}</b>
+                                <button className="vs-rename-btn" title="إعادة تسمية المشروع" onClick={beginRename}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
                           {files.map((f) => (
                             <button key={f.name} className={`vs-file ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
-                              <span className={`vs-ic ${f.lang}`}>{fIcon(f.name)}</span>{f.name}
+                              <span className="vs-ic"><FileIcon name={f.name} /></span>{f.name}
                               {streaming && f.name === 'index.html' && <span className="vs-writing" title="يكتب…" />}
                             </button>
                           ))}
@@ -1573,7 +1614,7 @@ export default function PalNovaaEnginePage() {
                           <div className="vs-tabs">
                             {files.map((f) => (
                               <button key={f.name} className={`vs-tab ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
-                                <span className={`vs-ic ${f.lang}`}>{fIcon(f.name)}</span>{f.name}
+                                <span className="vs-ic"><FileIcon name={f.name} /></span>{f.name}
                               </button>
                             ))}
                           </div>

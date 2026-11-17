@@ -236,6 +236,10 @@
 .pne-root .url span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pne-root .url i{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
 .pne-root .url.live i{background:var(--ok)}
+.pne-root .pv-live{height:30px;padding:0 12px;font-size:12.5px;gap:6px}
+.pne-root .pv-live:not(:disabled){border-color:var(--accent-line);color:var(--accent-2)}
+.pne-root .pv-live:not(:disabled):hover{background:var(--accent);border-color:var(--accent);color:#170C04}
+.pne-root .pv-live svg{width:15px;height:15px}
 .pne-root .pv-body{flex:1;min-height:0;position:relative;padding:14px}
 .pne-root .pane{position:absolute;inset:14px;display:none;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--panel)}
 .pne-root .pane.on{display:block}
@@ -264,14 +268,16 @@
 .pne-root .vs-root{display:flex;align-items:center;gap:5px;padding:8px 10px 6px;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
 .pne-root .vs-root svg{color:var(--muted);flex:none}
 .pne-root .vs-root svg:first-child{color:var(--faint)}
-.pne-root .vs-root b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pne-root .vs-root b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.pne-root .vs-rename-btn{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--faint);opacity:0;transition:opacity .15s,color .15s,background .15s;margin-inline-start:2px}
+.pne-root .vs-root:hover .vs-rename-btn{opacity:1}
+.pne-root .vs-rename-btn:hover{color:var(--accent-2);background:var(--surface-2)}
+.pne-root .vs-rename{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--accent-line);border-radius:6px;color:var(--text);font-size:12px;font-weight:600;padding:3px 7px;text-transform:none;letter-spacing:0;outline:none}
 .pne-root .vs-file{display:flex;align-items:center;gap:8px;width:100%;padding:5px 10px 5px 22px;color:var(--text-2);font-size:12.5px;font-family:var(--mono);text-align:left;white-space:nowrap}
 .pne-root .vs-file:hover{background:var(--surface)}
 .pne-root .vs-file.on{background:var(--surface-2);color:var(--text)}
-.pne-root .vs-ic{flex:none;width:14px;text-align:center;font-weight:700;font-size:11px}
-.pne-root .vs-ic.xml{color:#E07B39}
-.pne-root .vs-ic.css{color:#5B9BF0}
-.pne-root .vs-ic.javascript{color:#E3B341}
+.pne-root .vs-ic{flex:none;width:15px;height:15px;display:grid;place-items:center}
+.pne-root .vs-ic svg{display:block}
 .pne-root .vs-main{display:flex;flex-direction:column;min-width:0;min-height:0}
 .pne-root .vs-tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
 .pne-root .vs-tab{display:flex;align-items:center;gap:7px;padding:8px 13px;font-size:12px;font-family:var(--mono);color:var(--muted);border-right:1px solid var(--line);white-space:nowrap;background:var(--surface)}
