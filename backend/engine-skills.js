@@ -87,14 +87,15 @@ const SKILLS = {
 
   mapsAdvanced: {
     name: 'خرائط متقدّمة',
-    keywords: ['رسم على الخريطة','draw','قياس','measure','تجميع','cluster','حراري','heatmap','مسار','route','routing','تتبع','track','geofence','كثافة','density','marker cluster','خطوط متساوية'],
+    keywords: ['رسم على الخريطة','draw','قياس','measure','تجميع','cluster','حراري','heatmap','مسار','route','routing','تتبع','track','geofence','كثافة','density','marker cluster','خطوط متساوية','طبقات','layers','مفتاح الطبقات','تبديل الطبقات','layer control','معلومات الطبقة'],
     instructions: [
       '— مهارة: خرائط متقدّمة —',
       `رسم أشكال: ضمّن <link href="${CDN.leafletDrawCSS}" rel="stylesheet"><script src="${CDN.leafletDraw}"></script>. new L.Control.Draw({draw:{polygon:true,polyline:true,rectangle:true,circle:true,marker:true},edit:{featureGroup:drawnItems}}). حساب turf.area + turf.length.`,
       `تجميع العلامات: ضمّن <link href="${CDN.clusterCSS}" rel="stylesheet"><link href="${CDN.clusterDefCSS}" rel="stylesheet"><script src="${CDN.markerCluster}"></script>. var markers=L.markerClusterGroup(); markers.addLayers(pointArray); map.addLayer(markers).`,
       `خريطة حراريّة: ضمّن <script src="${CDN.leafletHeat}"></script>. L.heatLayer(latlngs,{radius:25,blur:15,maxZoom:17}).addTo(map).`,
       'أدوات قياس: بوليلاين → turf.length(line,{units:"kilometers"}).toFixed(2)+" كم". بوليغون → (turf.area(poly)/1e6).toFixed(3)+" كم²".',
-      'طبقات أساس: L.control.layers({"خرائط Google":googleStreets,"أقمار صناعيّة":googleSat,"OpenStreetMap":osmLayer},{overlays}).addTo(map).',
+      'طبقات أساس: var layerControl=L.control.layers({"خرائط Google":googleStreets,"أقمار صناعيّة":googleSat},{"طبقتي":overlay}).addTo(map).',
+      'مهمّ — واجهة عنصر الطبقات (L.control.layers): الدوالّ المتاحة فقط هي addBaseLayer(layer,name) و addOverlay(layer,name) و removeLayer(layer). لا توجد دالّة refresh()/update()/reload() — لا تستدعِها أبداً. لتحديث الطبقات: أضِف/أزِل الطبقة من العنصر بهذه الدوالّ، أو اعرض/أخفِ الطبقة بـ map.addLayer/removeLayer مباشرةً. وعموماً لا تستدعِ أيّ دالّة لست متأكّداً من وجودها في Leaflet.',
     ].join('\n'),
   },
 
