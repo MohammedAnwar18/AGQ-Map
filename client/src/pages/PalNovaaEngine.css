@@ -231,10 +231,19 @@
 @keyframes pneSpin{to{transform:rotate(360deg)}}
 /* تدفّق التفكير/البناء (بنمط النماذج العالميّة) — بلا وصفٍ إنجليزيّ ولا عدّاد */
 .pne-root .think{margin:2px 0 2px}
-.pne-root .think-head{display:flex;align-items:center;font-size:13.5px;margin-bottom:9px}
-.pne-root .think-live{display:inline-flex;align-items:center;gap:9px}
-.pne-root .think-orb{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;animation:think-orb 1.4s ease-in-out infinite}
-@keyframes think-orb{0%,100%{box-shadow:0 0 0 0 rgba(224,123,57,.45);opacity:1}50%{box-shadow:0 0 0 6px rgba(224,123,57,0);opacity:.55}}
+.pne-root .think-head{display:flex;align-items:center;font-size:13.5px;margin-bottom:11px}
+.pne-root .think-live{display:inline-flex;align-items:center;gap:10px}
+/* شعار PalNovaa يدور (الخارجيّ يدور، الداخليّ عكسيّاً، والنقطة تنبض) — بديل النقطة الوامضة */
+.pne-root .pn-mark{width:24px;height:24px;flex:none;color:var(--text)}
+.pne-root .pn-mark .o,.pne-root .pn-mark .i,.pne-root .pn-mark .d{transform-box:view-box;transform-origin:40px 40px;animation:1.8s cubic-bezier(.7,0,.25,1) infinite}
+.pne-root .pn-mark .o{animation-name:pnspin-o}
+.pne-root .pn-mark .i{animation-name:pnspin-i}
+.pne-root .pn-mark .d{animation-name:pnspin-d;animation-timing-function:ease-in-out}
+@keyframes pnspin-o{0%{transform:rotate(0)}62%,100%{transform:rotate(360deg)}}
+@keyframes pnspin-i{0%,8%{transform:rotate(0)}72%,100%{transform:rotate(-360deg)}}
+@keyframes pnspin-d{0%,100%{transform:scale(1)}30%{transform:scale(.55)}62%{transform:scale(1.3)}76%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.pne-root .pn-mark .o,.pne-root .pn-mark .i{animation:none}}
+@keyframes think-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .pne-root .think-txt{font-weight:500;background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite}
 @keyframes think-shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .pne-root .think-dots{display:inline-flex;gap:3px;align-items:center}
@@ -246,11 +255,11 @@
 .pne-root .think-done svg{width:15px;height:15px}
 .pne-root .think-err{color:#e46;font-weight:500}
 .pne-root .think-steps{display:flex;flex-direction:column;gap:1px;padding-inline-start:2px}
-.pne-root .think-step{display:flex;align-items:center;gap:11px;padding:5px 0;font-size:13px;transition:opacity .35s ease}
+.pne-root .think-step{display:flex;align-items:center;gap:11px;padding:6px 0;font-size:13px;animation:think-in .42s cubic-bezier(.22,1,.36,1) both}
 .pne-root .think-step .tnode{width:16px;height:16px;flex:none;display:grid;place-items:center}
 .pne-root .think-step .tnode svg{width:14px;height:14px}
 .pne-root .tdot{width:6px;height:6px;border-radius:50%;background:var(--line-2)}
-.pne-root .tpulse{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:think-orb 1.3s ease-in-out infinite}
+.pne-root .tpulse{width:14px;height:14px;border-radius:50%;border:2px solid rgba(224,123,57,.28);border-top-color:var(--accent);animation:pneSpin .7s linear infinite}
 .pne-root .think-step.wait{opacity:.4}
 .pne-root .think-step.wait .tlabel{color:var(--faint)}
 .pne-root .think-step.done .tlabel{color:var(--muted)}

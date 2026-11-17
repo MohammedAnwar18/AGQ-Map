@@ -1339,6 +1339,14 @@ export default function PalNovaaEnginePage() {
                   );
                   if (m.kind === 'build') {
                     const finished = m.progress >= STEPS.length && m.state !== 'running';
+                    const mark = (
+                      <svg className="pn-mark" viewBox="0 0 80 80" width="24" height="24" aria-hidden="true">
+                        <g className="o"><path transform="translate(7 14)" d="M14 58V6h19a20 20 0 0 1 0 40H14" fill="none" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /></g>
+                        <g className="i"><path transform="translate(7 14)" d="M23 15.5h10a10.5 10.5 0 0 1 0 21H23" fill="none" stroke="#E07B39" strokeWidth="5.5" strokeLinecap="round" /></g>
+                        <g className="d"><circle cx="40" cy="40" r="2.8" fill="#E07B39" /></g>
+                      </svg>
+                    );
+                    const visible = m.state === 'error' ? m.progress : (m.state === 'running' ? Math.min(m.progress + 1, STEPS.length) : STEPS.length);
                     return (
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
@@ -1349,10 +1357,10 @@ export default function PalNovaaEnginePage() {
                               ? <span className="think-err">توقّف البناء.</span>
                               : finished
                                 ? <span className="think-done">{Ico.check}<span>تمّ التحليل والبناء</span></span>
-                                : <span className="think-live"><span className="think-orb" /><span className="think-txt">أُحلّل المطلوب وأبنيه</span><span className="think-dots"><i /><i /><i /></span></span>}
+                                : <span className="think-live">{mark}<span className="think-txt">أُحلّل المطلوب وأبنيه</span><span className="think-dots"><i /><i /><i /></span></span>}
                           </div>
                           <div className="think-steps">
-                            {STEPS.map((s, i) => {
+                            {STEPS.slice(0, visible).map((s, i) => {
                               const done = i < m.progress;
                               const active = i === m.progress && m.state === 'running';
                               return (
