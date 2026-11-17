@@ -1521,13 +1521,16 @@ router.get('/datasets', optionalAuth, async (req, res) => {
 router.get('/datasets/:slug/data', async (req, res) => {
     try {
         await ensureTable();
-        const r = await pool.query(`SELECT kind, content FROM engine_datasets WHERE slug=$1`, [req.params.slug]);
+        const r = await pool.query(`SELECT kind, content, url FROM engine_datasets WHERE slug=$1`, [req.params.slug]);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=120');
         if (!r.rows.length) return res.status(404).json({ error: 'not found' });
         const d = r.rows[0];
         res.setHeader('Content-Type', d.kind === 'geojson' ? 'application/geo+json; charset=utf-8' : 'text/csv; charset=utf-8');
-        return res.send(d.content || '');
+        let body = d.content || '';
+        // الملفّات الكبيرة محتواها في R2 لا في قاعدة البيانات — اجلبه من هناك حتى لا يعود فارغاً
+        if (!body && d.url) { try { const rr = await fetch(d.url); if (rr.ok) body = await rr.text(); } catch { /* */ } }
+        return res.send(body);
     } catch (err) {
         res.setHeader('Access-Control-Allow-Origin', '*');
         return res.status(500).json({ error: String(err.message || 'error') });
