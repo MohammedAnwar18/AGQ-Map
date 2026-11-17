@@ -113,14 +113,15 @@ const SKILLS = {
 
   crud: {
     name: 'إدارة السجلات',
-    keywords: ['حفظ','save','تعديل','edit','حذف','delete','إدارة','manage','سجل','record','قاعدة','database','CRUD','إضافة','add','مخزون','inventory','أرشيف','archive','عملاء','customers','موظفين','employees','منتجات','products'],
+    keywords: ['حفظ','save','تعديل','edit','حذف','delete','إدارة','manage','سجل','record','قاعدة','database','CRUD','إضافة','add','مخزون','inventory','أرشيف','archive','عملاء','customers','موظفين','employees','منتجات','products','مشترك','shared','سحاب','cloud','backend','خلفية','يحفظ','تخزين','نموذج تسجيل','طلبات','اشتراك','حجز','booking','يبقى','persist'],
     instructions: [
-      '— مهارة: إدارة السجلات (CRUD + localStorage) —',
-      'تخزين: const DB="app_data"; const load=()=>JSON.parse(localStorage.getItem(DB)||"[]"); const save=d=>localStorage.setItem(DB,JSON.stringify(d));',
-      'إضافة: نموذج → {id:crypto.randomUUID(), ...fields, createdAt:new Date().toISOString()} → push → save → renderList().',
-      'تعديل: ملء النموذج بالبيانات → عند الحفظ: find+assign → save → renderList(). حذف: confirm("هل أنت متأكّد؟") → filter → save → renderList().',
-      'قائمة: بحث فوري + ترتيب + ترقيم صفحات. عداد إجماليّ. عرض "لا توجد سجلات" إن فارغ.',
-      'نسخة احتياطيّة: زرّ تصدير JSON (Blob+download). زرّ استيراد (input[type=file] → FileReader → JSON.parse → save → render).',
+      '— مهارة: إدارة السجلات (تخزينٌ سحابيّ مشترك + تراجعٌ محلّيّ تلقائيّ) —',
+      'لكلّ تطبيقٍ منشورٍ خلفيّةٌ خاصّةٌ ومعزولةٌ على نطاقه عبر REST على /__pn/data (مجموعات = جداول، ووثائق JSON بمعرّفات). استعملها لحفظ أيّ سجلّات/طلبات/نماذج فتبقى محفوظةً ومشتركةً بين كلّ الزوّار (لا على جهازٍ واحد).',
+      'ضع طبقة الوصول هذه حرفيّاً — تستعمل الخلفيّة، وتتراجع تلقائيّاً إلى localStorage أثناء المعاينة (حيث الخلفيّة غير متاحة) فيعمل التطبيق في الحالتين دون كسر:',
+      "const pn=(c)=>{const B='/__pn/data/'+c,LS='pn_'+c;const ls=()=>{try{return JSON.parse(localStorage.getItem(LS)||'[]')}catch{return[]}};const sv=a=>localStorage.setItem(LS,JSON.stringify(a));return{async list(){try{const r=await fetch(B);if(!r.ok)throw 0;return (await r.json()).items||[]}catch{return ls()}},async get(id){try{const r=await fetch(B+'/'+id);if(!r.ok)throw 0;return (await r.json()).item}catch{return ls().find(x=>x.id===id)}},async add(o){try{const r=await fetch(B,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw 0;return (await r.json()).item}catch{const a=ls();const it=Object.assign({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:Date.now()},o);a.unshift(it);sv(a);return it}},async update(id,o){try{const r=await fetch(B+'/'+id,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(o)});if(!r.ok)throw 0;return (await r.json()).item}catch{const a=ls();const i=a.findIndex(x=>x.id===id);if(i>-1){a[i]=Object.assign({},a[i],o);sv(a);return a[i]}}},async remove(id){try{const r=await fetch(B+'/'+id,{method:'DELETE'});if(!r.ok)throw 0}catch{sv(ls().filter(x=>x.id!==id))}}};};",
+      'الاستعمال: const tasks=pn("tasks"); await tasks.add({title:"...",done:false}); const all=await tasks.list(); await tasks.update(id,{done:true}); await tasks.remove(id). كلّ عنصرٍ يأخذ id وcreated تلقائيّاً. استعمل اسم مجموعةٍ وصفيّاً لكلّ نوعِ سجلّ (tasks/clients/orders…).',
+      'اجعل كلّ العمليّات async/await وحدّث الواجهة بعد كلٍّ منها (renderList). أظهر "لا توجد سجلات" عند الفراغ، مع بحثٍ فوريّ وترتيبٍ وعدّادٍ إجماليّ، وconfirm قبل الحذف.',
+      'نسخة احتياطيّة: زرّ تصدير JSON (Blob+download)، وزرّ استيراد (input[type=file]→FileReader→JSON.parse→إضافة عبر pn.add).',
     ].join('\n'),
   },
 
