@@ -353,6 +353,7 @@ const SYSTEM_INSTRUCTION = [
     '1) أخرِج مستند HTML كاملاً فقط: يبدأ بـ <!doctype html> وينتهي بـ </html>. لا شرح ولا نصّ قبله ولا بعده، ولا تضعه داخل أسوار ```.',
     '2) اكتب الكود كاملاً فعليّاً. ممنوع منعاً باتّاً ترك عناصر نائبة مثل «... بقيّة الكود» أو دوالّ فارغة. كلّ دالّة مُنفَّذة بالكامل، وكلّ زرّ موصولٌ بوظيفةٍ حقيقيّة.',
     '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN مثبّتة الإصدار من cdnjs.cloudflare.com.',
+    '3ب) صحّة الصياغة إلزاميّة: يجب أن يُحمَّل الكود بلا أيّ خطأ صياغة (SyntaxError). وازِن كلّ الأقواس {}()[] وأغلِق كلّ سلسلةٍ نصّيّة/قالب. لا تضع السلسلة الحرفيّة «</script>» داخل كودٍ أو نصٍّ داخل <script> — اكتبها «<\\/script>» دائماً. لا تخلط وحدات ESM (import/export) مع سكربتٍ عاديّ في نفس الوسم. راجِع الكود ذهنيّاً قبل الإخراج للتأكّد أنه يعمل فوراً.',
     '4) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط: <!--PNE:{"title":"عنوان قصير للمشروع","summary":"جملة تصف ما بُني"}-->',
     '5) اجعل <title> مطابقاً للعنوان.',
     '6) على وسوم المكتبات: ممنوع منعاً باتّاً إضافة سمة integrity أو أيّ بصمة SRI (sha256/sha384/sha512) — لا تعرف البصمة الصحيحة وستكسر التحميل أو تدخل في حلقة تكرار. لكن أضِف دائماً سمة crossorigin="anonymous" إلى كلّ وسم <script src> خارجيّ (مصادر cdnjs وjsDelivr وunpkg وesm.sh كلّها تدعم CORS، فالسمة آمنة) حتى تَظهر تفاصيل أخطاء التشغيل الحقيقيّة بدل رسالة «Script error.» المبهمة. مثال: <script src="..." crossorigin="anonymous"></script>. أمّا <link rel="stylesheet" href="..."> فاتركه بلا سمات.',
@@ -460,13 +461,16 @@ function assembleProject(files) {
     html = html.replace(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi, (tag) => {
         const h = (tag.match(/href=["']([^"']+)["']/i) || [])[1];
         if (!h || /^https?:\/\//i.test(h) || /^\/\//.test(h)) return tag;
-        const key = cleanRel(h); return files[key] != null ? `<style>\n${files[key]}\n</style>` : tag;
+        if (h == null) return tag; const key = cleanRel(h); if (files[key] == null) return tag;
+        const css = String(files[key]).replace(/<\/(style)/gi, '<\\/$1');   // كيلا يُغلق وسم <style> مبكراً
+        return `<style>\n${css}\n</style>`;
     });
     html = html.replace(/<script\b([^>]*)\ssrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (tag, pre, src, post) => {
         if (/^https?:\/\//i.test(src) || /^\/\//.test(src)) return tag;
         const key = cleanRel(src); if (files[key] == null) return tag;
         const mod = /type=["']module["']/i.test(pre + ' ' + post) ? ' type="module"' : '';
-        return `<script${mod}>\n${files[key]}\n</script>`;
+        const js = String(files[key]).replace(/<\/(script)/gi, '<\\/$1');   // كيلا يُغلق وسم <script> مبكراً داخل سلاسل نصّيّة
+        return `<script${mod}>\n${js}\n</script>`;
     });
     return html;
 }
