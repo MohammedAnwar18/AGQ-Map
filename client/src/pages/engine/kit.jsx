@@ -383,7 +383,7 @@ export const ensureHljs = async () => { if (window.hljs) return; loadCss(HLJS_CS
 
 /* يحقن ملتقط أخطاء التشغيل في معاينة الـiframe (المعاينة فقط، لا النسخة المنشورة) */
 export function injectCatcher(h) {
-  const s = `<script>(function(){function p(m){try{parent.postMessage({__pne:'err',msg:String(m).slice(0,280)},'*')}catch(e){}}window.addEventListener('error',function(e){p((e.message||'خطأ')+(e.lineno?(' @'+e.lineno):''))});window.addEventListener('unhandledrejection',function(e){p('promise: '+((e.reason&&e.reason.message)||e.reason||''))});})();<\/script>`;
+  const s = `<script>(function(){function p(m){try{parent.postMessage({__pne:'err',msg:String(m).slice(0,280)},'*')}catch(e){}}window.addEventListener('error',function(e){var m=e.message||'خطأ';if(!e.error&&/script error/i.test(m)){p('خطأ تشغيل داخل مكتبةٍ خارجيّة (أخفاه المتصفّح لأنّها عبر أصلٍ آخر). تحقّق من طريقة استدعاء المكتبة — غالباً دالّة/وسيط غير صحيح.');return;}var f=e.filename?(' @'+(e.filename.split('/').pop()||'')+':'+(e.lineno||0)):(e.lineno?(' @'+e.lineno):'');p(m+f);});window.addEventListener('unhandledrejection',function(e){p('promise: '+((e.reason&&e.reason.message)||e.reason||''))});})();<\/script>`;
   if (/<head[^>]*>/i.test(h)) return h.replace(/<head[^>]*>/i, (m) => m + s);
   if (/<html[^>]*>/i.test(h)) return h.replace(/<html[^>]*>/i, (m) => m + s);
   return s + h;
