@@ -119,6 +119,7 @@ export default function PalNovaaEnginePage() {
   const expCrsRef = useRef('EPSG:4326');
   useEffect(() => { expCrsRef.current = expCrs; }, [expCrs]);
 
+  const [symbolsOpen, setSymbolsOpen] = useState(false);   // مكتبة الرموز (صفحة ثابتة في إطارٍ معزول — لا تُثقل الحزمة)
   /* ====== بناء البيانات (محرّر GIS: رسم/تعديل + طبقات + جداول) ====== */
   const [builderOpen, setBuilderOpen] = useState(false);
   const [bErr, setBErr] = useState('');
@@ -1178,6 +1179,7 @@ export default function PalNovaaEnginePage() {
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a className={builderOpen ? 'active' : ''} onClick={openBuilder}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg><span>بناء البيانات</span></a>
+            <a className={symbolsOpen ? 'active' : ''} onClick={() => { setMenu(null); setSymbolsOpen(true); }}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="3.2" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><path d="M4 20 7 14l3 6z" /><path d="M14 17h6" /></svg><span>مكتبة الرموز</span></a>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
@@ -1731,6 +1733,17 @@ export default function PalNovaaEnginePage() {
           </div>
         </div>
       </div>
+
+      {/* ============ SYMBOLS LIBRARY OVERLAY (مكتبة الرموز — صفحة ثابتة في إطارٍ معزول) ============ */}
+      {symbolsOpen && (
+        <div className="sym-overlay open">
+          <header className="sym-top">
+            <div className="sym-brand"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="3.2" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><path d="M4 20 7 14l3 6z" /><path d="M14 17h6" /></svg><b>مكتبة الرموز</b><span>استعرض وانسخ كود الرمز ثمّ ألصقه في طلب البناء</span></div>
+            <button className="sym-close" onClick={() => setSymbolsOpen(false)} title="إغلاق">{Ico.close}<span>إغلاق</span></button>
+          </header>
+          <iframe className="sym-frame" title="مكتبة الرموز" src="/palnovaa-symbols.html" />
+        </div>
+      )}
 
       {/* ============ DATA BUILDER OVERLAY (بناء البيانات — محرّر GIS) ============ */}
       <div className={`gb-overlay ${builderOpen ? 'open' : ''}`}>

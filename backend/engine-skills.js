@@ -383,6 +383,19 @@ const SKILLS = {
       'دمجٌ قويّ: اجمعها مع التوجيه (موقعي → أقرب منشأة) أو مع الترميز العكسيّ لعرض عنواني الحاليّ تلقائياً.',
     ].join('\n'),
   },
+
+  symbols: {
+    name: 'مكتبة رموز PalNovaa',
+    keywords: ['رمز','رموز','أيقونة','أيقونات','symbol','symbols','PNSymbols','ليجند','legend','دليل الخريطة','نمط خط','تعبئة','نسيج','pattern','ثيم خريطة','تدرّج ألوان','ramp','شبكة مياه','صرف صحي','خط غاز','كهرباء','سكة','محبس','حنفية','منهل','خط كنتور','استعمالات الأراضي','point.','line.','fill.','theme.','ramp.'],
+    instructions: [
+      '— مهارة: مكتبة رموز PalNovaa الخرائطيّة (جاهزة، 102 رمزاً) —',
+      'تتوفّر مكتبة رموزٍ موحّدة على نفس النطاق تُحمَّل كسكربت: <script src="https://palnovaa.com/palnovaa-symbols.js" crossorigin="anonymous"></script> فتُتيح window.PNSymbols. إن أعطاك المستخدم معرّف رمزٍ (مثل point.hospital أو line.water-main أو fill.flood-zone أو theme.night أو ramp.risk) فاستعمله بهذه المكتبة بدل رسم أيقوناتٍ من الصفر.',
+      'نقاط على Leaflet (الافتراضيّ): L.marker([lat,lon],{icon:L.divIcon({html:PNSymbols.toSVG("point.hospital",{size:32}),className:"",iconSize:[32,32],iconAnchor:[16,16]})}).addTo(map). استعمل toSVG لأيّ أيقونةٍ نقطيّة.',
+      'خطوط/مساحات على Leaflet: اقرأ ألوان الرمز من PNSymbols.get(id) (strokes/outline/bg) وطبّقها في style: مثال خط L.geoJSON(data,{style:()=>({color:PNSymbols.get("line.water-main").strokes[0].c,weight:3.5})}). للتعبئات استعمل bg وoutline.',
+      'خرائط MapLibre (إن كان التطبيق MapLibre): await PNSymbols.addToMap(map, "line.water-main", { source:"pipes" }) — يضيف الصور والطبقات جاهزةً. وللثيمات: PNSymbols.toMapLibre("theme.night",{source:"openmaptiles"}).layers. وللتدرّجات: PNSymbols.toMapLibre("ramp.risk",{field:"value",min:0,max:100}).expression.',
+      'ليجند تلقائيّ: استعمل PNSymbols.toSVG(id) لعرض عيّنة كلّ طبقةٍ في مفتاح الخريطة. عالِج فشل تحميل المكتبة بلطفٍ (رمزٌ بديلٌ بسيط).',
+    ].join('\n'),
+  },
 };
 
 /**
