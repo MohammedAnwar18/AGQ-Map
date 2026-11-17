@@ -48,6 +48,8 @@ export default function PalNovaaEnginePage() {
   const [busy, setBusy] = useState(false);
 
   const [html, setHtml] = useState('');
+  const [files, setFiles] = useState(null);        // مشروعٌ موسّع: خريطة ملفّات {path: content} أو null (ملفٌّ واحد)
+  const [expanded, setExpanded] = useState(false); // وضع المشروع الموسّع (اختياريّ)
   const [title, setTitle] = useState('محادثة جديدة');
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -397,6 +399,7 @@ export default function PalNovaaEnginePage() {
 
   const finishSuccess = (d, isEdit, bId) => {
     setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
+    if (d.files && typeof d.files === 'object') setFiles(d.files); else if (!isEdit) setFiles(null);
     setDirty(true); if (d.balance) setBalance(d.balance); setTab('app');
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
     const diffFailed = isEdit && d.mode === 'diff' && !d.applied;
@@ -495,7 +498,9 @@ export default function PalNovaaEnginePage() {
     };
     timerRef.current = setTimeout(tick, 1100);
 
-    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin };
+    // الوضع الموسّع: مشروعٌ جديد إن فُعّل، أو تعديلُ مشروعٍ موسّعٍ قائم (نرسل ملفّاته)
+    const useExpanded = expanded || (isEdit && !!files);
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
     try {
       const handled = await tryStream(body, bId, isEdit);
       if (!handled) await nonStream(body, bId, isEdit);
@@ -540,8 +545,8 @@ export default function PalNovaaEnginePage() {
   const persist = async () => {
     if (!html) return null;
     let res;
-    if (slug) res = await jput(`/engine/projects/${slug}`, { html, title, summary, thread: serializeThread(messagesRef.current) });
-    else res = await jpost('/engine/projects', { title, summary, html, thread: serializeThread(messagesRef.current) });
+    if (slug) res = await jput(`/engine/projects/${slug}`, { html, title, summary, thread: serializeThread(messagesRef.current), files: files || undefined });
+    else res = await jpost('/engine/projects', { title, summary, html, thread: serializeThread(messagesRef.current), files: files || undefined });
     if (res?.ok) {
       const s = res.project?.slug || slug; setSlug(s);
       if (res.public_url) setPublicUrl(res.public_url);
@@ -578,7 +583,7 @@ export default function PalNovaaEnginePage() {
 
   const newProject = () => {
     clearTimeout(timerRef.current);
-    setView('home'); setMessages([]); setHtml(''); setTitle('محادثة جديدة'); setSummary('');
+    setView('home'); setMessages([]); setHtml(''); setFiles(null); setTitle('محادثة جديدة'); setSummary('');
     setSlug(null); setPublicUrl(''); setDirty(false); setPrompt(''); setPrompt2(''); setMenu(null);
     setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch(''); resetHeal();
   };
@@ -587,6 +592,7 @@ export default function PalNovaaEnginePage() {
     const d = await jget(`/engine/projects/${p.slug}`);
     if (d?.ok) {
       setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || '');
+      const pf = d.project.files && typeof d.project.files === 'object' ? d.project.files : null; setFiles(pf); if (pf) setExpanded(true);
       setSlug(d.project.slug); setPublicUrl(d.project.public_url || ''); setDirty(false); setIframeErr(''); resetHeal();
       const thread = Array.isArray(d.project.thread) ? d.project.thread : null;
       setMessages(thread && thread.length ? thread : [{ id: `open${p.slug}`, role: 'ai', kind: 'note', text: `فُتح المشروع: ${d.project.title}. تابع التعديل أو افتح الرابط الدائم.`, suggests: [] }]);
@@ -611,7 +617,7 @@ export default function PalNovaaEnginePage() {
   const restoreVersion = async (vid) => {
     setMenu(null); showToast('جارٍ الاسترجاع…');
     const d = await jpost(`/engine/projects/${slug}/restore`, { versionId: vid });
-    if (d?.ok) { setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || ''); if (d.project.public_url) setPublicUrl(d.project.public_url); setIframeErr(''); showToast('استُرجعت النسخة'); }
+    if (d?.ok) { setHtml(d.project.html); setFiles(null); setTitle(d.project.title); setSummary(d.project.summary || ''); if (d.project.public_url) setPublicUrl(d.project.public_url); setIframeErr(''); showToast('استُرجعت النسخة'); }
     else showToast('تعذّر الاسترجاع');
   };
 
@@ -1202,7 +1208,7 @@ export default function PalNovaaEnginePage() {
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
               <button className="icon-btn" title="نسخ المشروع (fork)" onClick={forkProject} disabled={!slug}>{Ico.fork}</button>
               <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyDraft(localStorage.getItem(KEY_LS) || ''); setModal('key'); }}>{Ico.key}</button>
-              <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>مشاركة</span></button>
+              <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>حفظ</span></button>
               <button className="btn primary" onClick={onDeploy} disabled={!html || busy}>{Ico.rocket}<span>{slug && !dirty ? 'منشور' : 'نشر التطبيق'}</span></button>
             </div>
           </header>
@@ -1238,6 +1244,10 @@ export default function PalNovaaEnginePage() {
                     <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>البيانات</span></button>
                     <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
                     <button className="tool chip mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
+                    <button className={`tool chip expand ${expanded ? 'on' : ''}`} title="مشروعٌ موسّع: عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد" onClick={() => setExpanded((v) => !v)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg>
+                      <span>موسّع</span>
+                    </button>
                     <span className="bar-sp" />
                     <button className={`tool enhance ${enhancing ? 'busy' : ''}`} title="حسّن الوصف تلقائياً قبل البناء" disabled={!prompt.trim() || enhancing || busy} onClick={enhancePrompt}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" /></svg>
@@ -1431,14 +1441,17 @@ export default function PalNovaaEnginePage() {
                 <div className={`pane ${tab === 'code' ? 'on' : ''}`}>
                   {((busy && streamCode) || html) ? (() => {
                     const streaming = busy && !!streamCode;
-                    const files = streaming
+                    const langOf = (n) => (n.endsWith('.css') ? 'css' : (n.endsWith('.js') || n.endsWith('.mjs')) ? 'javascript' : n.endsWith('.json') ? 'json' : 'xml');
+                    const codeFiles = streaming
                       ? [
                           { name: 'index.html', lang: 'xml', code: streamCode },
                           { name: 'styles.css', lang: 'css', code: '', pending: true },
                           { name: 'app.js', lang: 'javascript', code: '', pending: true },
                         ]
-                      : splitProjectFiles(html);
-                    const active = streaming ? files[0] : (files.find((f) => f.name === activeFile) || files[0]);
+                      : (files && typeof files === 'object' && Object.keys(files).length)
+                        ? Object.entries(files).map(([name, code]) => ({ name, lang: langOf(name), code: String(code) }))
+                        : splitProjectFiles(html);
+                    const active = streaming ? codeFiles[0] : (codeFiles.find((f) => f.name === activeFile) || codeFiles[0]);
                     let hi; try { hi = (hljsReady && window.hljs) ? window.hljs.highlight(active.code, { language: active.lang, ignoreIllegal: true }).value : escapeHtml(active.code); } catch { hi = escapeHtml(active.code); }
                     const lines = Math.max(1, active.code.split('\n').length);
                     const pick = (f) => { if (!f.pending) setActiveFile(f.name); };
@@ -1461,7 +1474,7 @@ export default function PalNovaaEnginePage() {
                               </>
                             )}
                           </div>
-                          {files.map((f) => (
+                          {codeFiles.map((f) => (
                             <button key={f.name} className={`vs-file ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
                               <span className="vs-ic"><FileIcon name={f.name} /></span>{f.name}
                               {streaming && f.name === 'index.html' && <span className="vs-writing" title="يكتب…" />}
@@ -1470,7 +1483,7 @@ export default function PalNovaaEnginePage() {
                         </div>
                         <div className="vs-main">
                           <div className="vs-tabs">
-                            {files.map((f) => (
+                            {codeFiles.map((f) => (
                               <button key={f.name} className={`vs-tab ${active.name === f.name ? 'on' : ''} ${f.pending ? 'pending' : ''}`} onClick={() => pick(f)}>
                                 <span className="vs-ic"><FileIcon name={f.name} /></span>{f.name}
                               </button>

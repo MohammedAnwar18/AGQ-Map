@@ -265,7 +265,8 @@
 .pne-root .think-step.done .tlabel{color:var(--muted)}
 .pne-root .think-step.active .tlabel{background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite;font-weight:500}
 .pne-root .think-usage{margin-top:9px;font-size:11px;color:var(--faint);font-family:var(--mono);direction:ltr}
-.pne-root .suggests{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.pne-root .suggests{display:flex;flex-wrap:wrap;gap:10px 8px;margin-top:9px}
+.pne-root .tool.chip.expand.on{background:var(--accent-soft,rgba(224,123,57,.14));border-color:var(--accent-line);color:var(--accent-2)}
 .pne-root .suggest{font-size:12.5px;border:1px solid var(--line-2);border-radius:999px;padding:4px 12px;color:var(--text-2)}
 .pne-root .suggest:hover{border-color:#3b424c;color:var(--text);background:var(--surface)}
 .pne-root .msg-err{border:1px solid rgba(227,100,80,.4);background:rgba(227,100,80,.08);color:#f0b3a8;border-radius:var(--r);padding:10px 14px;font-size:13px}
