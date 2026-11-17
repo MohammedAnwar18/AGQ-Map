@@ -402,15 +402,16 @@ export default function PalNovaaEnginePage() {
     if (d.files && typeof d.files === 'object') setFiles(d.files); else if (!isEdit) setFiles(null);
     setDirty(true); if (d.balance) setBalance(d.balance); setTab('app');
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
-    const diffFailed = isEdit && d.mode === 'diff' && !d.applied;
+    const diffFailed = isEdit && (d.mode === 'files-noop' || (d.mode === 'diff' && !d.applied));
+    const isDiff = d.mode === 'diff' || d.mode === 'files-diff';
     setMessages((m) => [...m, {
       id: `n${bId}`, role: 'ai', kind: 'note',
       text: diffFailed
         ? 'لم أتمكّن من تحديد موضع التعديل بدقّة فأبقيتُ التطبيق كما هو دون أيّ تغيير. أعِد صياغة الطلب بوضوحٍ أكبر (مثلاً: اذكر اسم الزرّ أو الجزء أو نصّ رسالة الخطأ).'
-        : (isEdit ? (d.mode === 'diff' ? `طبّقتُ التعديل بدقّةٍ وسرعة (${d.applied} تغيير موضعيّ) دون المساس ببقيّة الكود.` : 'طبّقتُ التعديل وحدّثت المعاينة.') : (d.summary || 'التطبيق جاهزٌ للمعاينة.')),
+        : (isEdit ? (isDiff ? `طبّقتُ التعديل بدقّةٍ وسرعة (${d.applied} تغيير موضعيّ) دون المساس ببقيّة الكود.` : 'طبّقتُ التعديل وحدّثت المعاينة.') : (d.summary || 'التطبيق جاهزٌ للمعاينة.')),
       suggests: isEdit ? ['أحسنت — أضِف ميزة أخرى'] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'صدّر PDF', 'أضِف بحثاً عن موقع'],
     }]);
-    showToast(diffFailed ? 'لم يُطبَّق التعديل — أعِد الصياغة' : (isEdit ? (d.mode === 'diff' ? 'تعديلٌ فوريّ ✓' : 'تمّ التعديل ✓') : 'تمّ البناء ✓ — المعاينة جاهزة'));
+    showToast(diffFailed ? 'لم يُطبَّق التعديل — أعِد الصياغة' : (isEdit ? (isDiff ? 'تعديلٌ فوريّ ✓' : 'تمّ التعديل ✓') : 'تمّ البناء ✓ — المعاينة جاهزة'));
   };
   const finishError = (reason, isEdit, bId) => {
     const text = reason === '__missing'

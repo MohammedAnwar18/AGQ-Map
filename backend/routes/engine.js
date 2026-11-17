@@ -460,6 +460,14 @@ const MULTIFILE_HINT = '\n\n[وضع المشروع الموسّع — إلزام
   + '- صفحاتٌ فرعيّة: ملفّاتٌ منفصلة داخل pages/ مع روابطٍ بينها بمساراتٍ نسبيّة.\n'
   + '- لا تكتب أيّ شرحٍ خارج الملفّات. ابدأ مباشرةً بالسطر: ===FILE: index.html===';
 
+const MULTIFILE_EDIT_HINT = '\n\n[وضع المشروع الموسّع — تعديلٌ تفاضليّ دقيق، إلزاميّ]\n'
+  + 'عدّل الملفّات المعنيّة فقط بأقلّ تغييرٍ ممكن — لا تُعِد كتابة الملفّات كاملةً ولا تُخرِج ملفّاً لم يتغيّر. لكلّ ملفٍّ تعدّله ضع قسمه ثمّ كتلة/كتل فروقاتٍ داخله:\n'
+  + '===FILE: js/app.js===\n<<<<<<< SEARCH\n(انسخ المقطع الأصليّ من الملفّ حرفيّاً كما هو تماماً — أقصر مقطعٍ فريد، بضعة أسطر)\n=======\n(البديل الجديد)\n>>>>>>> REPLACE\n'
+  + 'قواعد صارمة:\n'
+  + '- مقطع SEARCH يجب أن يطابق محتوى الملفّ الحاليّ حرفاً بحرف (المسافات مهمّة). عدّة كتلٍ صغيرةٍ أفضل من كبيرة.\n'
+  + '- أخرِج أقسام الملفّات المتغيّرة فقط. لإنشاء ملفٍّ جديد: ضع قسمه ومحتواه الكامل بلا كتل SEARCH.\n'
+  + '- لا شرح خارج الأقسام. إن كان التغيير جذريّاً يمسّ أغلب ملفٍّ فأعِد محتواه الكامل في قسمه (بلا كتل SEARCH).';
+
 const PATH_CT = { html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', json: 'application/json; charset=utf-8', geojson: 'application/geo+json; charset=utf-8', csv: 'text/csv; charset=utf-8', svg: 'image/svg+xml', txt: 'text/plain; charset=utf-8', xml: 'application/xml; charset=utf-8' };
 const ctForPath = (p) => PATH_CT[(p.split('.').pop() || '').toLowerCase()] || 'text/plain; charset=utf-8';
 const cleanRel = (p) => String(p || '').trim().replace(/^\.?\/+/, '').replace(/\\/g, '/');
@@ -484,25 +492,63 @@ function assembleProject(files) {
     return html;
 }
 
-// يحلّل مخرجات الوضع الموسّع إلى خريطة ملفّات؛ وإن لم يجد علاماتٍ يعود لمسار الملفّ الواحد
-function parseMultiFile(text, fallbackPrompt) {
+// يقسّم مخرجات الوضع الموسّع إلى أقسام ملفّات [{path, body}]
+function splitFileSections(text) {
     let t = (text || '').replace(/^﻿/, '').trim();
     const re = /^[ \t]*===FILE:\s*(.+?)\s*===[ \t]*$/gm;
     const marks = []; let m;
     while ((m = re.exec(t))) marks.push({ path: cleanRel(m[1]), start: m.index, bodyStart: re.lastIndex });
-    if (!marks.length) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
-    const files = {};
+    const out = [];
     for (let i = 0; i < marks.length; i++) {
         const stop = i + 1 < marks.length ? marks[i + 1].start : t.length;
-        let body = t.slice(marks[i].bodyStart, stop).replace(/^\r?\n/, '').replace(/\s+$/, '');
-        body = body.replace(/^```[a-z0-9]*\r?\n/i, '').replace(/\r?\n```\s*$/i, '');   // إزالة أسوار الشيفرة إن وُجدت
-        if (marks[i].path && !marks[i].path.includes('..')) files[marks[i].path] = body;
+        const body = t.slice(marks[i].bodyStart, stop).replace(/^\r?\n/, '').replace(/\s+$/, '');
+        if (marks[i].path && !marks[i].path.includes('..')) out.push({ path: marks[i].path, body });
     }
-    if (!files['index.html']) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
-    const html = assembleProject(files);
+    return out;
+}
+const stripFence = (s) => String(s).replace(/^```[a-z0-9]*\r?\n/i, '').replace(/\r?\n```\s*$/i, '');
+const metaTitle = (html, fallbackPrompt) => {
     const meta = extractMeta(html);
     let title = meta.title; if (!title) { const tt = html.match(/<title>([\s\S]*?)<\/title>/i); if (tt) title = tt[1].trim(); }
-    return { html, files, title: title || (fallbackPrompt || 'تطبيق GIS').slice(0, 60), summary: meta.summary || (fallbackPrompt || '').slice(0, 160), mode: 'files', fileCount: Object.keys(files).length };
+    return { title: title || (fallbackPrompt || 'تطبيق GIS').slice(0, 60), summary: meta.summary || (fallbackPrompt || '').slice(0, 160) };
+};
+
+// بناءٌ موسّعٌ جديد: يحلّل مجموعة الملفّات الكاملة؛ وإن لم يجد علاماتٍ يعود للملفّ الواحد
+function parseMultiFile(text, fallbackPrompt) {
+    const sections = splitFileSections(text);
+    if (!sections.length) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
+    const files = {};
+    for (const s of sections) files[s.path] = stripFence(s.body);
+    if (!files['index.html']) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
+    const html = assembleProject(files);
+    return { html, files, ...metaTitle(html, fallbackPrompt), mode: 'files', fileCount: Object.keys(files).length };
+}
+
+// تعديلٌ تفاضليّ لكلّ ملفّ: يطبّق كتل SEARCH/REPLACE على الملفّات المعنيّة فقط
+// (قسمٌ بلا كتل = محتوى ملفٍّ كامل: إنشاء/استبدال). يعيد null إن لم يجد أقسام ملفّات (يتراجع للتحليل الكامل).
+function applyMultiFileEdits(text, currentFiles, fallbackPrompt) {
+    const sections = splitFileSections(text);
+    if (!sections.length) return null;
+    const files = { ...(currentFiles || {}) };
+    let applied = 0, touched = 0;
+    for (const sec of sections) {
+        const blocks = parseSearchReplace(sec.body);
+        if (blocks.length) {
+            let content = files[sec.path] != null ? String(files[sec.path]) : '';
+            let local = 0;
+            for (const b of blocks) { const r = applyOneEdit(content, b.search, b.replace); if (r !== null) { content = r; local++; } }
+            if (local) { files[sec.path] = content; applied += local; touched++; }
+        } else {
+            const body = stripFence(sec.body);
+            if (body.trim()) { files[sec.path] = body; applied++; touched++; }   // ملفٌّ جديد أو مُستبدَل كاملاً
+        }
+    }
+    if (!touched || !files['index.html']) {
+        const html = assembleProject(currentFiles || {});
+        return { html, files: currentFiles || {}, ...metaTitle(html, fallbackPrompt), mode: 'files-noop', applied: 0 };
+    }
+    const html = assembleProject(files);
+    return { html, files, ...metaTitle(html, fallbackPrompt), mode: 'files-diff', applied, fileCount: Object.keys(files).length };
 }
 // سياق ملفّات التطبيق الحاليّة (عند تعديل مشروعٍ موسّع)
 function injectCurrentFiles(files) {
@@ -1093,11 +1139,14 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
         const expanded = b.expanded === true;
+        const editingExpanded = expanded && b.files && typeof b.files === 'object' && !Array.isArray(b.files) && Object.keys(b.files).length > 0;
         const curHtml = expanded ? '' : currentHtml;   // الوضع الموسّع يُولّد مجموعة ملفّات، لا فروقات ملفٍّ واحد
-        if (expanded) { prompt += injectCurrentFiles(b.files) + MULTIFILE_HINT; }
+        if (expanded) { prompt += injectCurrentFiles(b.files) + (editingExpanded ? MULTIFILE_EDIT_HINT : MULTIFILE_HINT); }
         const { text, usage } = await streamModel(KEY, prompt, curHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
-        const out = expanded ? parseMultiFile(text, prompt) : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
+        const out = expanded
+          ? (editingExpanded ? (applyMultiFileEdits(text, b.files, prompt) || parseMultiFile(text, prompt)) : parseMultiFile(text, prompt))
+          : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
         let balance = null;
         if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
@@ -1155,8 +1204,9 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const skillIds = detectSkills(prompt);
     const skillsCtx = buildSkillsContext(skillIds);
     const expanded = b.expanded === true;
+    const editingExpanded = expanded && b.files && typeof b.files === 'object' && !Array.isArray(b.files) && Object.keys(b.files).length > 0;
     const curHtml = expanded ? '' : currentHtml;
-    if (expanded) { prompt += injectCurrentFiles(b.files) + MULTIFILE_HINT; }
+    if (expanded) { prompt += injectCurrentFiles(b.files) + (editingExpanded ? MULTIFILE_EDIT_HINT : MULTIFILE_HINT); }
     const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
     let lastErr = 'unavailable';
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -1165,7 +1215,9 @@ router.post('/generate', optionalAuth, async (req, res) => {
             const { text, usage } = await callModel(KEY, prompt, curHtml, skillsCtx, design);
             if (!text) { lastErr = 'empty'; continue; }
             if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
-            const out = expanded ? parseMultiFile(text, prompt) : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
+            const out = expanded
+                ? (editingExpanded ? (applyMultiFileEdits(text, b.files, prompt) || parseMultiFile(text, prompt)) : parseMultiFile(text, prompt))
+                : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
             let balance = null;
             if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
