@@ -239,6 +239,7 @@ function ensureTable() {
             await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS category TEXT;`);
             await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS version TEXT;`);
             await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS downloads INTEGER DEFAULT 0;`);
+            await pool.query(`ALTER TABLE engine_docs ADD COLUMN IF NOT EXISTS code TEXT;`);
         })().catch((e) => { tableReady = null; throw e; });
     }
     return tableReady;
@@ -1724,7 +1725,7 @@ const docRow = (r, full) => ({
   kind: r.kind || 'article', file_url: r.file_url || '', file_name: r.file_name || '',
   author: r.author || '', category: r.category || '', version: r.version || '', downloads: r.downloads || 0,
   published: r.published, sort_order: r.sort_order || 0, created_at: r.created_at, updated_at: r.updated_at,
-  ...(full ? { body: r.body || '' } : {}),
+  ...(full ? { body: r.body || '', code: r.code || '' } : {}),
 });
 
 // GET /api/engine/docs — القائمة (الأدمن يرى الكلّ، غيره المنشور فقط)
@@ -1761,9 +1762,9 @@ router.post('/docs', authenticateToken, isAdmin, async (req, res) => {
     if (!title) return res.status(400).json({ ok: false, reason: 'العنوان مطلوب' });
     const slug = makeSlug();
     await pool.query(
-      `INSERT INTO engine_docs (slug,title,excerpt,cover_url,body,file_url,file_name,kind,published,sort_order,author,category,version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [slug, title, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30)]
+      `INSERT INTO engine_docs (slug,title,excerpt,cover_url,body,file_url,file_name,kind,published,sort_order,author,category,version,code)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      [slug, title, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30), (b.code || '').slice(0, 20000)]
     );
     return res.json({ ok: true, slug });
   } catch (err) { return res.status(500).json({ ok: false, reason: String(err.message || 'error') }); }
@@ -1776,9 +1777,9 @@ router.put('/docs/:slug', authenticateToken, isAdmin, async (req, res) => {
     const b = req.body || {};
     const r = await pool.query(
       `UPDATE engine_docs SET title=COALESCE($2,title), excerpt=$3, cover_url=$4, body=$5,
-         file_url=$6, file_name=$7, kind=$8, published=$9, sort_order=$10, author=$11, category=$12, version=$13, updated_at=now()
+         file_url=$6, file_name=$7, kind=$8, published=$9, sort_order=$10, author=$11, category=$12, version=$13, code=$14, updated_at=now()
        WHERE slug=$1 RETURNING slug`,
-      [req.params.slug, (b.title || '').slice(0, 200) || null, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30)]
+      [req.params.slug, (b.title || '').slice(0, 200) || null, (b.excerpt || '').slice(0, 500), b.cover_url || '', b.body || '', b.file_url || '', (b.file_name || '').slice(0, 160), b.kind || 'article', b.published !== false, parseInt(b.sort_order, 10) || 0, (b.author || '').slice(0, 80), (b.category || '').slice(0, 60), (b.version || '').slice(0, 30), (b.code || '').slice(0, 20000)]
     );
     if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not_found' });
     return res.json({ ok: true, slug: r.rows[0].slug });

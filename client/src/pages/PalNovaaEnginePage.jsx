@@ -394,6 +394,7 @@ export default function PalNovaaEnginePage() {
   const [docCat, setDocCat] = useState('');       // تصنيف مُختار
   const [docSearch, setDocSearch] = useState('');
   const [docSort, setDocSort] = useState('new');   // new | downloads | title
+  const [attachedExts, setAttachedExts] = useState([]); // إضافات (أدوات/أصول) مربوطة بالبناء الحاليّ
   const isAdmin = user?.role === 'admin';
   const [mode, setMode] = useState(MODES[0]);
   const [crs, setCrs] = useState(CRS[0]);
@@ -708,6 +709,10 @@ export default function PalNovaaEnginePage() {
     if (mode && mode !== MODES[0]) parts.push('نوع المُخرَج المطلوب: ' + mode + '.');
     if (crs && crs !== CRS[0]) parts.push('نظام الإسناد: ' + crs + '.');
     if (parts.length) p += '\n\n[' + parts.join(' ') + ']';
+    if (attachedExts.length) {
+      p += '\n\n[إضافاتٌ جاهزةٌ يجب تضمينها واستعمالها في التطبيق كما هي (أدوات تحليل/أيقونات/نصوص/ألوان):]';
+      attachedExts.forEach((e) => { p += `\n\n— ${e.title} (${e.kind === 'asset' ? 'أصول' : 'أداة'}):\n\`\`\`\n${(e.code || '').slice(0, 8000)}\n\`\`\``; });
+    }
     return p;
   };
 
@@ -1159,6 +1164,25 @@ export default function PalNovaaEnginePage() {
     if (res?.ok && res.dataset) { addDatasetResult(res.dataset); showToast(`أُضيف «${res.dataset.name}» إلى بياناتك`); }
     else showToast('تعذّر الإضافة: ' + (res?.reason || ''));
   };
+  /* ربط إضافة (أداة/أصول) بالبناء → تُحقن في توليد الـAI */
+  const attachExt = async (d) => {
+    let full = d;
+    if (!d.code) { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) full = r.doc; }
+    if (!full.code) { showToast('لا كود في هذه الإضافة'); return; }
+    setAttachedExts((a) => (a.find((x) => x.slug === full.slug) ? a : [...a, { slug: full.slug, title: full.title, kind: full.kind, code: full.code }]));
+    showToast(`أُضيفت «${full.title}» للبناء — سيستعملها المحرّك`);
+  };
+  const rmExt = (slug) => setAttachedExts((a) => a.filter((x) => x.slug !== slug));
+  const copyExtCode = (code) => { if (!navigator.clipboard) { showToast('تعذّر النسخ'); return; } navigator.clipboard.writeText(code || '').then(() => showToast('نُسخ الكود')).catch(() => showToast('تعذّر النسخ')); };
+  const exportCode = (d) => {
+    if (!d.code) return;
+    const ext = d.kind === 'asset' ? 'txt' : 'js';
+    const safe = (d.title || 'extension').replace(/[^\w؀-ۿ -]+/g, '').trim() || 'extension';
+    const url = URL.createObjectURL(new Blob([d.code], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `${safe}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast('صُدِّر الكود');
+  };
   const uploadDocAsset = async (file, field) => {
     if (!file) return;
     showToast('جارٍ الرفع…');
@@ -1336,11 +1360,16 @@ export default function PalNovaaEnginePage() {
                 <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
 
                 <div className="composer">
-                  {allChips.length > 0 && (
+                  {(allChips.length > 0 || attachedExts.length > 0) && (
                     <div className="chips">
                       {allChips.map((c) => (
                         <span className="chip" key={c.kind + c.k}><span className="ct">{c.t}</span>{c.n}
                           <button title="إزالة" onClick={() => (c.kind === 'ds' ? rmDataset(c.k) : rmSrc(c.k))}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+                        </span>
+                      ))}
+                      {attachedExts.map((e) => (
+                        <span className="chip ext" key={'x' + e.slug}><span className="ct">{e.kind === 'asset' ? 'أصول' : 'أداة'}</span>{e.title}
+                          <button title="إزالة" onClick={() => rmExt(e.slug)}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
                         </span>
                       ))}
                     </div>
@@ -1604,7 +1633,7 @@ export default function PalNovaaEnginePage() {
                     {docsFiltered.map((d) => (
                       <div className="doc-card" key={d.slug}>
                         <div className="doc-ic" style={d.cover_url ? { backgroundImage: `url("${d.cover_url}")` } : undefined}>
-                          {!d.cover_url && <span className="doc-ic-ph">{d.file_url ? '📦' : '📄'}</span>}
+                          {!d.cover_url && <span className="doc-ic-ph">{d.kind === 'tool' ? '🧩' : d.kind === 'asset' ? '🎨' : d.file_url ? '📦' : '📄'}</span>}
                           {!d.published && <span className="doc-badge draft">مسودّة</span>}
                         </div>
                         <div className="doc-info">
@@ -1615,10 +1644,12 @@ export default function PalNovaaEnginePage() {
                             <span className="doc-date">🗓 {fmtDocDate(d.created_at)}{d.version ? ` · v${d.version}` : ''}</span>
                           </div>
                           <div className="doc-dl">
-                            {d.file_url
-                              ? <button className="doc-dlbtn" onClick={() => downloadDoc(d.slug, d.file_url)}>⬇ تنزيل</button>
-                              : <button className="doc-dlbtn ghost" onClick={() => openDoc(d.slug)}>اقرأ المزيد</button>}
-                            <span className="doc-count">⬇ {(d.downloads || 0).toLocaleString('ar')}</span>
+                            {(d.kind === 'tool' || d.kind === 'asset')
+                              ? <button className="doc-dlbtn" onClick={() => attachExt(d)}>＋ أضِف للمشروع</button>
+                              : d.file_url
+                                ? <button className="doc-dlbtn" onClick={() => downloadDoc(d.slug, d.file_url)}>⬇ تنزيل</button>
+                                : <button className="doc-dlbtn ghost" onClick={() => openDoc(d.slug)}>اقرأ المزيد</button>}
+                            <span className="doc-count">{(d.kind === 'tool' || d.kind === 'asset') ? (d.kind === 'asset' ? '🎨 أصول' : '🧩 أداة') : `⬇ ${(d.downloads || 0).toLocaleString('ar')}`}</span>
                           </div>
                         </div>
                         {isAdmin && (
@@ -1645,6 +1676,16 @@ export default function PalNovaaEnginePage() {
                   {docOpen.version && <span>· v{docOpen.version}</span>}
                   <span>· ⬇ {(docOpen.downloads || 0).toLocaleString('ar')}</span>
                 </div>
+                {(docOpen.kind === 'tool' || docOpen.kind === 'asset') && docOpen.code && (
+                  <div className="doc-file">
+                    <button className="btn accent" onClick={() => attachExt(docOpen)}>＋ أضِف للمشروع</button>
+                    <button className="btn" onClick={() => copyExtCode(docOpen.code)}>نسخ الكود</button>
+                    <button className="btn" onClick={() => exportCode(docOpen)}>تصدير</button>
+                  </div>
+                )}
+                {(docOpen.kind === 'tool' || docOpen.kind === 'asset') && docOpen.code && (
+                  <pre className="doc-code" dir="ltr"><code>{docOpen.code}</code></pre>
+                )}
                 {docOpen.file_url && (
                   <div className="doc-file">
                     <button className="btn accent" onClick={() => downloadDoc(docOpen.slug, docOpen.file_url)}>⬇ تنزيل {docOpen.file_name || 'الملفّ'}</button>
@@ -1659,6 +1700,13 @@ export default function PalNovaaEnginePage() {
             <div className="docs-editor-scrim" onClick={() => setDocEdit(null)}>
               <div className="docs-editor" onClick={(e) => e.stopPropagation()}>
                 <h3>{docEdit.slug ? 'تحرير إضافة' : 'إضافة جديدة'}</h3>
+                <label>النوع</label>
+                <select value={docEdit.kind || 'tool'} onChange={(e) => setDocEdit({ ...docEdit, kind: e.target.value })}>
+                  <option value="tool">أداة (كود تحليل مكانيّ — تُحقن في البناء)</option>
+                  <option value="asset">أصول (أيقونات/نصوص/ألوان — تُحقن في البناء)</option>
+                  <option value="file">ملفّ/طبقة (تنزيل + إضافة لبياناتي)</option>
+                  <option value="article">مقال/دليل</option>
+                </select>
                 <label>الاسم</label>
                 <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="اسم الإضافة" />
                 <div className="doc-row2">
@@ -1672,8 +1720,14 @@ export default function PalNovaaEnginePage() {
                 <input value={docEdit.excerpt || ''} onChange={(e) => setDocEdit({ ...docEdit, excerpt: e.target.value })} placeholder="وصفٌ قصير" />
                 <label>صورة الغلاف</label>
                 <div className="doc-row"><input value={docEdit.cover_url || ''} onChange={(e) => setDocEdit({ ...docEdit, cover_url: e.target.value })} placeholder="رابط صورة أو ارفع" /><label className="doc-up">رفع<input type="file" accept="image/*" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'cover_url')} /></label></div>
-                <label>المحتوى (ماركداون)</label>
-                <textarea value={docEdit.body || ''} onChange={(e) => setDocEdit({ ...docEdit, body: e.target.value })} rows={8} placeholder={'# عنوان\nنصّ... **عريض** و[رابط](https://...)\n- نقطة'} />
+                {(docEdit.kind === 'tool' || docEdit.kind === 'asset') && (
+                  <>
+                    <label>الكود {docEdit.kind === 'asset' ? '(أيقونات SVG / متغيّرات ألوان CSS / نصوص)' : '(دالّة/كود جاهز يُحقن في بناء الـAI)'}</label>
+                    <textarea value={docEdit.code || ''} onChange={(e) => setDocEdit({ ...docEdit, code: e.target.value })} rows={9} dir="ltr" style={{ fontFamily: 'var(--mono)', fontSize: 12.5 }} placeholder={docEdit.kind === 'asset' ? ':root{ --brand:#E07B39 }\n<svg>...</svg>' : 'function bufferKm(geojson, km){ /* ... */ }'} />
+                  </>
+                )}
+                <label>المحتوى/الوصف (ماركداون)</label>
+                <textarea value={docEdit.body || ''} onChange={(e) => setDocEdit({ ...docEdit, body: e.target.value })} rows={6} placeholder={'# عنوان\nشرح الاستعمال... **عريض** و[رابط](https://...)'} />
                 <label>ملفّ للتنزيل (اختياريّ)</label>
                 <div className="doc-row"><input value={docEdit.file_url || ''} onChange={(e) => setDocEdit({ ...docEdit, file_url: e.target.value })} placeholder="رابط ملفّ أو ارفع (geojson/csv يصير قابلاً للإضافة لبياناتك)" /><label className="doc-up">رفع<input type="file" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'file_url')} /></label></div>
                 <label className="doc-check"><input type="checkbox" checked={docEdit.published !== false} onChange={(e) => setDocEdit({ ...docEdit, published: e.target.checked })} /> منشور (يظهر للمستخدمين)</label>

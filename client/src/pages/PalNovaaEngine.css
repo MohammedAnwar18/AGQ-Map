@@ -617,3 +617,10 @@
 .pne-root .doc-row2{display:flex;gap:10px}
 .pne-root .doc-row2>div{flex:1}
 @media (max-width:820px){.pne-root .docs-market{grid-template-columns:1fr}.pne-root .docs-cats{flex-direction:row;overflow-x:auto;border-inline-end:none;border-bottom:1px solid var(--line);padding:10px}}
+
+/* إضافات: شريحة الأداة/الأصول + عرض الكود */
+.pne-root .chip.ext{background:var(--accent-soft,rgba(224,123,57,.12));border-color:var(--accent-line)}
+.pne-root .chip.ext .ct{color:var(--accent-2)}
+.pne-root .doc-code{background:#0d1013;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;max-height:420px;margin:4px 0 18px}
+.pne-root .doc-code code{font-family:var(--mono);font-size:12.5px;line-height:1.6;color:#C9CED6;white-space:pre;display:block}
+.pne-root .docs-editor select{width:100%;box-sizing:border-box;background:var(--surface-2);border:1px solid var(--line-2);color:var(--text);border-radius:9px;padding:10px 12px;font-size:13.5px}
