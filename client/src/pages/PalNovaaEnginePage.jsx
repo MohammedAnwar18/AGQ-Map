@@ -596,6 +596,15 @@ export default function PalNovaaEnginePage() {
   const rmSrc = (k) => setAttached((a) => a.filter((x) => x !== k));
   const attachDataset = (d) => { setDatasets((a) => (a.find((x) => x.slug === d.slug) ? a : [...a, d])); showToast(`أُرفقت «${d.name}»`); setMenu(null); };
   const rmDataset = (s) => setDatasets((a) => a.filter((x) => x.slug !== s));
+  /* حذف طبقة محفوظة نهائياً من «بياناتك» (مع إزالتها من المرفقات إن كانت) */
+  const removeDataset = async (d) => {
+    try {
+      await jdel(`/engine/datasets/${d.slug}`);
+      setMyDatasets((a) => a.filter((x) => x.slug !== d.slug));
+      setDatasets((a) => a.filter((x) => x.slug !== d.slug));
+      showToast(`حُذفت «${d.name}»`);
+    } catch { showToast('تعذّر الحذف'); }
+  };
 
   const SAFE_INLINE_BYTES = 4 * 1024 * 1024;   // تحت حدّ جسم طلب Vercel (~4.5MB)
   const uploadLargeFile = async (file, name, kind) => {
@@ -1408,9 +1417,10 @@ export default function PalNovaaEnginePage() {
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
-                    <button className="tool" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}البيانات</button>
-                    <button className="tool" data-menu-anchor onClick={(e) => openMenu('mode', e)}>النوع: <span className="v">{mode}</span></button>
-                    <button className="tool mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="v">{crs}</span></button>
+                    <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>البيانات</span></button>
+                    <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
+                    <button className="tool chip mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
+                    <span className="bar-sp" />
                     <button className={`tool enhance ${enhancing ? 'busy' : ''}`} title="حسّن الوصف تلقائياً قبل البناء" disabled={!prompt.trim() || enhancing || busy} onClick={enhancePrompt}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" /></svg>
                       {enhancing ? 'يحسّن…' : 'تحسين'}
@@ -1420,10 +1430,15 @@ export default function PalNovaaEnginePage() {
                 </div>
                 <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
 
-                <div className="block-title"><h3>بياناتك</h3><a onClick={() => fileRef.current?.click()}>رفع ملفّ</a></div>
+                <div className="block-title"><h3>بياناتك{myDatasets.length > 0 && <span className="bt-count">{myDatasets.length}</span>}</h3><a onClick={() => fileRef.current?.click()}>رفع ملفّ</a></div>
                 <div className="sources">
-                  {myDatasets.slice(0, 6).map((d) => (
-                    <button className="source" key={d.slug} onClick={() => attachDataset(d)}><span className="s-ic">{Ico.db}</span><span><b>{d.name}</b><small>{dsMeta(d)}</small></span><span className="st" /></button>
+                  {myDatasets.map((d) => (
+                    <div className="source" key={d.slug}>
+                      <span className="s-ic">{dsIcon(d.kind)}</span>
+                      <span className="s-txt" title="أضِفها كمصدرٍ للبناء" onClick={() => attachDataset(d)}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
+                      <button className="s-act" title="معاينة على الخريطة" onClick={() => openExplorer(d)}>{Ico.eye}</button>
+                      <button className="s-act danger" title="حذف الطبقة" onClick={() => removeDataset(d)}>{Ico.trash}</button>
+                    </div>
                   ))}
                   {myDatasets.length === 0 && <div style={{ gridColumn: '1/-1', padding: '14px 4px', color: 'var(--faint)', fontSize: 13 }}>لا طبقات محفوظة بعد — أضِف مصادرك من زرّ «البيانات» بالأعلى، وتُخزَّن هنا.</div>}
                 </div>
@@ -1885,13 +1900,7 @@ export default function PalNovaaEnginePage() {
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ جديد</b><small>geojson·csv·shp·gpkg·tiff·dxf</small></span></button>
             <button className="menu-item" onClick={openArcgis}><span className="mi-ic">GIS</span><span><b>ربط خادم ArcGIS REST</b><small>طبقات حيّة من GeoMOLG وغيره</small></span></button>
             <button className="menu-item" onClick={openHdx}><span className="mi-ic">HDX</span><span><b>بيانات HDX الإنسانيّة</b><small>بحث وتنزيل وإضافة — 256 مجموعة فلسطينيّة</small></span></button>
-            {myDatasets.length === 0 && <div style={{ padding: '8px 10px', color: 'var(--faint)', fontSize: 12.5 }}>لا بيانات بعد</div>}
-            {myDatasets.length > 0 && <button className="menu-item" onClick={() => openExplorer()}><span className="mi-ic">{Ico.mapIco}</span><span><b>معاينة الكلّ على الخريطة</b><small>افتح العارض التفاعليّ</small></span></button>}
-            {myDatasets.map((d) => (
-              <div className="menu-item" key={d.slug}><span className="mi-ic">{dsIcon(d.kind)}</span><span onClick={() => openExplorer(d)} style={{ cursor: 'pointer', flex: 1 }}><b>{d.name}</b><small>{dsMeta(d)} · اضغط للمعاينة</small></span>
-                <button className="del" title="عرض على الخريطة" onClick={(e) => { e.stopPropagation(); openExplorer(d); }} style={{ color: 'var(--muted)' }}>{Ico.eye}</button>
-                <button className="del" title="حذف" onClick={async (e) => { e.stopPropagation(); await jdel(`/engine/datasets/${d.slug}`); loadDatasets(); setDatasets((a) => a.filter((x) => x.slug !== d.slug)); }}>{Ico.trash}</button></div>
-            ))}
+            {myDatasets.length > 0 && <button className="menu-item" onClick={() => openExplorer()}><span className="mi-ic">{Ico.mapIco}</span><span><b>معاينة الكلّ على الخريطة</b><small>طبقاتك المحفوظة تُدار من «بياناتك» في الرئيسيّة</small></span></button>}
           </>)}
           {menu.name === 'mode' && (<>
             <h6>نوع المُخرَج</h6>

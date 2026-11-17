@@ -128,12 +128,17 @@
 .pne-root .chip button:hover{color:var(--text);background:var(--line-2)}
 .pne-root .composer textarea{display:block;width:100%;min-height:92px;max-height:260px;resize:none;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
 .pne-root .composer textarea::placeholder{color:var(--faint)}
-.pne-root .composer-bar{display:flex;align-items:center;gap:6px;padding:8px 10px 10px}
-.pne-root .tool{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;border-radius:8px;color:var(--text-2);font-size:12.5px;border:1px solid transparent;white-space:nowrap}
+.pne-root .composer-bar{display:flex;align-items:center;gap:7px;padding:9px 10px 11px}
+.pne-root .bar-sp{flex:1}
+.pne-root .tool{display:inline-flex;align-items:center;gap:7px;height:33px;padding:0 11px;border-radius:9px;color:var(--text-2);font-size:12.5px;border:1px solid transparent;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
 .pne-root .tool:hover{background:var(--surface-2);color:var(--text);border-color:var(--line)}
-.pne-root .tool .v{color:var(--text);font-weight:500}
-.pne-root .tool.enhance{color:var(--accent-2);border-color:var(--accent-line)}
-.pne-root .tool.enhance:hover{background:var(--accent-soft,rgba(224,123,57,.12));color:var(--accent-2)}
+/* شرائح عصريّة: خلفيّةٌ خفيفة وحدٌّ ناعم دائماً، مع وسمٍ خافتٍ فوق القيمة */
+.pne-root .tool.chip{background:var(--surface-2);border-color:var(--line)}
+.pne-root .tool.chip:hover{border-color:var(--line-2);background:var(--surface-3)}
+.pne-root .tool .tk{color:var(--faint);font-size:11px;font-weight:400}
+.pne-root .tool .v{color:var(--text);font-weight:600}
+.pne-root .tool.enhance{color:var(--accent-2);border-color:var(--accent-line);background:var(--accent-soft,rgba(224,123,57,.1));font-weight:600}
+.pne-root .tool.enhance:hover{background:rgba(224,123,57,.18);color:var(--accent-2);border-color:var(--accent)}
 .pne-root .tool.enhance:disabled{opacity:.5}
 .pne-root .tool.enhance.busy svg{animation:pne-spin 1.1s linear infinite}
 @keyframes pne-spin{to{transform:rotate(360deg)}}
@@ -161,16 +166,22 @@
 
 /* sources strip */
 .pne-root .block-title{display:flex;align-items:center;justify-content:space-between;margin:40px 0 12px}
-.pne-root .block-title h3{font-size:13px;font-weight:500;color:var(--text-2)}
+.pne-root .block-title h3{font-size:13px;font-weight:500;color:var(--text-2);display:flex;align-items:center;gap:8px}
+.pne-root .block-title .bt-count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);color:var(--text-2);font-size:11px;font-weight:600}
 .pne-root .block-title a{font-size:12.5px;color:var(--muted);cursor:pointer}
 .pne-root .block-title a:hover{color:var(--text)}
-.pne-root .sources{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.pne-root .source{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);background:rgba(19,22,26,.6);text-align:start}
+.pne-root .sources{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:10px}
+.pne-root .source{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid var(--line);border-radius:var(--r);background:rgba(19,22,26,.6);text-align:start;transition:border-color .15s,background .15s}
 .pne-root .source:hover{border-color:var(--line-2);background:var(--surface)}
-.pne-root .source .s-ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line-2);flex:none}
-.pne-root .source b{display:block;font-weight:500;font-size:13px}
-.pne-root .source small{color:var(--muted);font-size:11.5px;font-family:var(--mono);direction:ltr;display:block;text-align:end}
-.pne-root .source .st{margin-inline-start:auto;width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.pne-root .source .s-ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line-2);flex:none;font-family:var(--mono);font-size:9.5px;color:var(--text-2)}
+.pne-root .source .s-txt{flex:1;min-width:0;cursor:pointer}
+.pne-root .source b{display:block;font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pne-root .source small{color:var(--muted);font-size:11.5px;font-family:var(--mono);direction:ltr;display:block;text-align:start;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pne-root .source .s-act{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--muted);flex:none;opacity:0;transition:opacity .15s,color .15s,background .15s}
+.pne-root .source:hover .s-act{opacity:1}
+.pne-root .source .s-act:hover{background:var(--surface-2);color:var(--text)}
+.pne-root .source .s-act.danger:hover{background:rgba(227,100,80,.14);color:#e46}
+@media (hover:none){.pne-root .source .s-act{opacity:1}}
 .pne-root .source.add{border-style:dashed;color:var(--muted);justify-content:center}
 .pne-root .source.add:hover{color:var(--text)}
 
