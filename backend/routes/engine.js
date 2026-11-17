@@ -184,6 +184,7 @@ function ensureTable() {
             await pool.query(`ALTER TABLE engine_projects ADD COLUMN IF NOT EXISTS forked_from TEXT;`);
             await pool.query(`ALTER TABLE engine_projects ADD COLUMN IF NOT EXISTS tok_in BIGINT DEFAULT 0;`);
             await pool.query(`ALTER TABLE engine_projects ADD COLUMN IF NOT EXISTS tok_out BIGINT DEFAULT 0;`);
+            await pool.query(`ALTER TABLE engine_projects ADD COLUMN IF NOT EXISTS files JSONB;`);  // مشروعٌ موسّع متعدّد الملفّات (NULL = ملفٌّ واحد كالمعتاد)
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS engine_versions (
                     id SERIAL PRIMARY KEY,
@@ -275,6 +276,23 @@ async function removeFromR2(slug) {
     if (!R2_ON) return;
     try { await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: appKey(slug) })); }
     catch (e) { console.warn('engine: R2 delete failed:', e.message); }
+}
+// نشر مشروعٍ موسّع: يكتب كلّ ملفٍّ إلى apps/<slug>/<path> (الـWorker يخدمها)
+async function publishFilesToR2(slug, files) {
+    if (!R2_ON || !files || typeof files !== 'object') return null;
+    const entries = Object.entries(files).filter(([p]) => p && !cleanRel(p).includes('..'));
+    if (!entries.length) return null;
+    try {
+        for (const [path, content] of entries) {
+            const key = cleanRel(path);
+            const body = key === 'index.html' ? String(content).replace(/<!--PNE:[\s\S]*?-->\s*/, '') : String(content);
+            await r2Client.send(new PutObjectCommand({
+                Bucket: R2_BUCKET, Key: `apps/${slug}/${key}`, Body: body,
+                ContentType: ctForPath(key), CacheControl: /\.html?$/i.test(key) ? 'public, max-age=60' : 'public, max-age=3600'
+            }));
+        }
+        return r2Base ? `${r2Base}/${appKey(slug)}` : null;
+    } catch (e) { console.warn('engine: R2 multi-file publish failed:', e.message); return null; }
 }
 
 /* ---- نُسَخ: لقطة قبل التغيير + تقليم ---- */
@@ -420,6 +438,67 @@ function parseGenerated(text, fallbackPrompt) {
     if (!title) title = (fallbackPrompt || 'تطبيق GIS').slice(0, 60);
     if (!summary) summary = (fallbackPrompt || '').slice(0, 160);
     return { html, title, summary };
+}
+
+/* ---- المشاريع الموسّعة (متعدّدة الملفّات، بلا خطوة بناء) ---- */
+const MULTIFILE_HINT = '\n\n[وضع المشروع الموسّع — إلزاميّ]\n'
+  + 'ابنِ المشروع كعدّة ملفّاتٍ مترابطة بدل ملفٍّ واحد: index.html + ملفّات CSS وJS وصفحاتٍ فرعيّة وأصولٍ نصّيّة حسب الحاجة. أخرِج كلّ ملفٍّ بهذا الشكل الحرفيّ تماماً، وأوّل ملفٍّ يجب أن يكون index.html:\n'
+  + '===FILE: index.html===\n<محتوى الملفّ كاملاً>\n===FILE: css/style.css===\n<محتوى>\n===FILE: js/app.js===\n<محتوى>\n'
+  + 'قواعد صارمة:\n'
+  + '- اربط الملفّات داخل index.html بوسومٍ عاديّة بمساراتٍ نسبيّة: <link rel="stylesheet" href="css/style.css"> و<script src="js/app.js"></script>.\n'
+  + '- استعمل سكربتات عاديّة (classic) بترتيب تحميلٍ صحيح؛ لا تستورد وحداتِ ESM محلّيّةً بعضها من بعض (استعمل نطاقاً عامّاً أو نمطَ وحدةٍ بسيطاً) حتى تعمل المعاينة والنشر سواءً. مكتبات CDN الخارجيّة تبقى كما هي مع crossorigin="anonymous".\n'
+  + '- صفحاتٌ فرعيّة: ملفّاتٌ منفصلة داخل pages/ مع روابطٍ بينها بمساراتٍ نسبيّة.\n'
+  + '- لا تكتب أيّ شرحٍ خارج الملفّات. ابدأ مباشرةً بالسطر: ===FILE: index.html===';
+
+const PATH_CT = { html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', json: 'application/json; charset=utf-8', geojson: 'application/geo+json; charset=utf-8', csv: 'text/csv; charset=utf-8', svg: 'image/svg+xml', txt: 'text/plain; charset=utf-8', xml: 'application/xml; charset=utf-8' };
+const ctForPath = (p) => PATH_CT[(p.split('.').pop() || '').toLowerCase()] || 'text/plain; charset=utf-8';
+const cleanRel = (p) => String(p || '').trim().replace(/^\.?\/+/, '').replace(/\\/g, '/');
+
+// يُركّب HTML واحداً قابلاً للمعاينة: يُدرِج CSS/JS المحلّيّة داخل index.html
+function assembleProject(files) {
+    let html = files['index.html'] || '';
+    html = html.replace(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi, (tag) => {
+        const h = (tag.match(/href=["']([^"']+)["']/i) || [])[1];
+        if (!h || /^https?:\/\//i.test(h) || /^\/\//.test(h)) return tag;
+        const key = cleanRel(h); return files[key] != null ? `<style>\n${files[key]}\n</style>` : tag;
+    });
+    html = html.replace(/<script\b([^>]*)\ssrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (tag, pre, src, post) => {
+        if (/^https?:\/\//i.test(src) || /^\/\//.test(src)) return tag;
+        const key = cleanRel(src); if (files[key] == null) return tag;
+        const mod = /type=["']module["']/i.test(pre + ' ' + post) ? ' type="module"' : '';
+        return `<script${mod}>\n${files[key]}\n</script>`;
+    });
+    return html;
+}
+
+// يحلّل مخرجات الوضع الموسّع إلى خريطة ملفّات؛ وإن لم يجد علاماتٍ يعود لمسار الملفّ الواحد
+function parseMultiFile(text, fallbackPrompt) {
+    let t = (text || '').replace(/^﻿/, '').trim();
+    const re = /^[ \t]*===FILE:\s*(.+?)\s*===[ \t]*$/gm;
+    const marks = []; let m;
+    while ((m = re.exec(t))) marks.push({ path: cleanRel(m[1]), start: m.index, bodyStart: re.lastIndex });
+    if (!marks.length) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
+    const files = {};
+    for (let i = 0; i < marks.length; i++) {
+        const stop = i + 1 < marks.length ? marks[i + 1].start : t.length;
+        let body = t.slice(marks[i].bodyStart, stop).replace(/^\r?\n/, '').replace(/\s+$/, '');
+        body = body.replace(/^```[a-z0-9]*\r?\n/i, '').replace(/\r?\n```\s*$/i, '');   // إزالة أسوار الشيفرة إن وُجدت
+        if (marks[i].path && !marks[i].path.includes('..')) files[marks[i].path] = body;
+    }
+    if (!files['index.html']) { const g = parseGenerated(text, fallbackPrompt); return { html: g.html, files: null, title: g.title, summary: g.summary, mode: 'full' }; }
+    const html = assembleProject(files);
+    const meta = extractMeta(html);
+    let title = meta.title; if (!title) { const tt = html.match(/<title>([\s\S]*?)<\/title>/i); if (tt) title = tt[1].trim(); }
+    return { html, files, title: title || (fallbackPrompt || 'تطبيق GIS').slice(0, 60), summary: meta.summary || (fallbackPrompt || '').slice(0, 160), mode: 'files', fileCount: Object.keys(files).length };
+}
+// سياق ملفّات التطبيق الحاليّة (عند تعديل مشروعٍ موسّع)
+function injectCurrentFiles(files) {
+    if (!files || typeof files !== 'object' || Array.isArray(files)) return '';
+    const entries = Object.entries(files).slice(0, 40);
+    if (!entries.length) return '';
+    let s = '\n\n[ملفّات التطبيق الحاليّة التي تعدّلها — أعِد إخراج المجموعة كاملةً بعد التعديل بنفس صيغة ===FILE:]\n';
+    for (const [p, c] of entries) s += `\n===FILE: ${cleanRel(p)}===\n${String(c).slice(0, 40000)}\n`;
+    return s;
 }
 
 /* ---- التعديل بالفروقات (SEARCH/REPLACE): أسرع وأرخص وأأمن من إعادة التوليد الكامل ---- */
@@ -1000,14 +1079,17 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const design = validDesign(b.design);
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
-        const { text, usage } = await streamModel(KEY, prompt, currentHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
+        const expanded = b.expanded === true;
+        const curHtml = expanded ? '' : currentHtml;   // الوضع الموسّع يُولّد مجموعة ملفّات، لا فروقات ملفٍّ واحد
+        if (expanded) { prompt += injectCurrentFiles(b.files) + MULTIFILE_HINT; }
+        const { text, usage } = await streamModel(KEY, prompt, curHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
-        const out = currentHtml ? applyEdits(text, currentHtml, prompt) : parseGenerated(text, prompt);
+        const out = expanded ? parseMultiFile(text, prompt) : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
         if (!out.html || out.html.length < 60) { send({ type: 'error', reason: 'no_html' }); return res.end(); }
         let balance = null;
         if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
         await recordUsage(ident, usage);
-        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance, mode: out.mode, applied: out.applied });
+        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance, mode: out.mode, applied: out.applied, files: out.files || null });
         return res.end();
     } catch (err) {
         let m = String(err.message || 'error');
@@ -1059,15 +1141,18 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const design = validDesign(b.design);
     const skillIds = detectSkills(prompt);
     const skillsCtx = buildSkillsContext(skillIds);
+    const expanded = b.expanded === true;
+    const curHtml = expanded ? '' : currentHtml;
+    if (expanded) { prompt += injectCurrentFiles(b.files) + MULTIFILE_HINT; }
     const isTransient = (m) => /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m || '');
     let lastErr = 'unavailable';
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt));
         try {
-            const { text, usage } = await callModel(KEY, prompt, currentHtml, skillsCtx, design);
+            const { text, usage } = await callModel(KEY, prompt, curHtml, skillsCtx, design);
             if (!text) { lastErr = 'empty'; continue; }
             if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
-            const out = currentHtml ? applyEdits(text, currentHtml, prompt) : parseGenerated(text, prompt);
+            const out = expanded ? parseMultiFile(text, prompt) : (curHtml ? applyEdits(text, curHtml, prompt) : parseGenerated(text, prompt));
             if (!out.html || out.html.length < 60) { lastErr = 'no_html'; continue; }
             let balance = null;
             if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
@@ -1094,6 +1179,8 @@ router.post('/projects', optionalAuth, async (req, res) => {
         const prompt = (b.prompt || '').toString().slice(0, 4000);
         const summary = (b.summary || '').toString().slice(0, 300);
         const html = (b.html || '').toString();
+        const files = (b.files && typeof b.files === 'object' && !Array.isArray(b.files) && Object.keys(b.files).length) ? b.files : null;
+        const filesJson = files ? JSON.stringify(files).slice(0, 8_000_000) : null;
         const thread = Array.isArray(b.thread) ? JSON.stringify(b.thread).slice(0, 2_000_000) : null;
         if (!html || html.length < 60) return res.status(400).json({ ok: false, reason: 'empty html' });
         const ownerId = ownerOf(req);
@@ -1102,16 +1189,16 @@ router.post('/projects', optionalAuth, async (req, res) => {
         for (let i = 0; i < 5; i++) {
             try {
                 const r = await pool.query(
-                    `INSERT INTO engine_projects (slug, title, prompt, summary, html, owner_id, thread)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb) RETURNING id, slug, title, summary, owner_id, created_at`,
-                    [slug, title, prompt, summary, html, ownerId, thread]
+                    `INSERT INTO engine_projects (slug, title, prompt, summary, html, owner_id, thread, files)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb) RETURNING id, slug, title, summary, owner_id, created_at`,
+                    [slug, title, prompt, summary, html, ownerId, thread, filesJson]
                 );
                 saved = r.rows[0]; break;
             } catch (e) { if (/unique/i.test(e.message)) { slug = makeSlug(); continue; } throw e; }
         }
         if (!saved) throw new Error('slug conflict');
 
-        const publicUrl = await publishToR2(saved.slug, html);
+        const publicUrl = files ? await publishFilesToR2(saved.slug, files) : await publishToR2(saved.slug, html);
         if (publicUrl) { await pool.query(`UPDATE engine_projects SET public_url=$1 WHERE slug=$2`, [publicUrl, saved.slug]); saved.public_url = publicUrl; }
         return res.json({ ok: true, project: saved, url: `/pe/${saved.slug}`, public_url: publicUrl });
     } catch (err) {
@@ -1130,6 +1217,7 @@ router.put('/projects/:slug', optionalAuth, async (req, res) => {
         if (!canEdit(project, req)) return res.status(403).json({ ok: false, reason: 'forbidden' });
 
         const b = req.body || {};
+        const files = (b.files && typeof b.files === 'object' && !Array.isArray(b.files) && Object.keys(b.files).length) ? b.files : null;
         const htmlChanging = typeof b.html === 'string' && b.html.length >= 60 && b.html !== project.html;
         if (htmlChanging && project.html) await snapshot(project.id, 'تلقائيّ');
 
@@ -1137,13 +1225,17 @@ router.put('/projects/:slug', optionalAuth, async (req, res) => {
         ['title', 'summary', 'prompt', 'html'].forEach((k) => {
             if (typeof b[k] === 'string') { fields.push(`${k}=$${i++}`); vals.push(b[k]); }
         });
+        if (files) { fields.push(`files=$${i++}::jsonb`); vals.push(JSON.stringify(files).slice(0, 8_000_000)); }
         if (Array.isArray(b.thread)) { fields.push(`thread=$${i++}::jsonb`); vals.push(JSON.stringify(b.thread).slice(0, 2_000_000)); }
         if (!fields.length) return res.status(400).json({ ok: false, reason: 'nothing to update' });
         fields.push(`updated_at=now()`); vals.push(slug);
         const r = await pool.query(`UPDATE engine_projects SET ${fields.join(', ')} WHERE slug=$${i} RETURNING id, slug, title, summary, updated_at`, vals);
 
         let publicUrl = null;
-        if (htmlChanging) {
+        if (files) {
+            publicUrl = await publishFilesToR2(slug, files);
+            if (publicUrl) { await pool.query(`UPDATE engine_projects SET public_url=$1 WHERE slug=$2`, [publicUrl, slug]); r.rows[0].public_url = publicUrl; }
+        } else if (htmlChanging) {
             publicUrl = await publishToR2(slug, b.html);
             if (publicUrl) { await pool.query(`UPDATE engine_projects SET public_url=$1 WHERE slug=$2`, [publicUrl, slug]); r.rows[0].public_url = publicUrl; }
         }
@@ -1171,7 +1263,7 @@ router.get('/projects', optionalAuth, async (req, res) => {
 router.get('/projects/:slug', async (req, res) => {
     try {
         await ensureTable();
-        const r = await pool.query(`SELECT id, slug, title, summary, prompt, html, public_url, thread, created_at, updated_at FROM engine_projects WHERE slug=$1`, [req.params.slug]);
+        const r = await pool.query(`SELECT id, slug, title, summary, prompt, html, public_url, thread, files, created_at, updated_at FROM engine_projects WHERE slug=$1`, [req.params.slug]);
         if (!r.rows.length) return res.status(404).json({ ok: false, reason: 'not found' });
         return res.json({ ok: true, project: r.rows[0] });
     } catch (err) {
