@@ -229,6 +229,33 @@
 .pne-root .step.done{color:var(--text-2)}
 .pne-root .step .meta{display:block;font-size:11.5px;color:var(--faint);font-family:var(--mono);direction:ltr;text-align:end;margin-top:2px}
 @keyframes pneSpin{to{transform:rotate(360deg)}}
+/* تدفّق التفكير/البناء (بنمط النماذج العالميّة) — بلا وصفٍ إنجليزيّ ولا عدّاد */
+.pne-root .think{margin:2px 0 2px}
+.pne-root .think-head{display:flex;align-items:center;font-size:13.5px;margin-bottom:9px}
+.pne-root .think-live{display:inline-flex;align-items:center;gap:9px}
+.pne-root .think-orb{width:9px;height:9px;border-radius:50%;background:var(--accent);flex:none;animation:think-orb 1.4s ease-in-out infinite}
+@keyframes think-orb{0%,100%{box-shadow:0 0 0 0 rgba(224,123,57,.45);opacity:1}50%{box-shadow:0 0 0 6px rgba(224,123,57,0);opacity:.55}}
+.pne-root .think-txt{font-weight:500;background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite}
+@keyframes think-shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.pne-root .think-dots{display:inline-flex;gap:3px;align-items:center}
+.pne-root .think-dots i{width:3px;height:3px;border-radius:50%;background:var(--accent-2);animation:think-dot 1.2s ease-in-out infinite}
+.pne-root .think-dots i:nth-child(2){animation-delay:.18s}
+.pne-root .think-dots i:nth-child(3){animation-delay:.36s}
+@keyframes think-dot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
+.pne-root .think-done{display:inline-flex;align-items:center;gap:7px;color:var(--ok);font-weight:500}
+.pne-root .think-done svg{width:15px;height:15px}
+.pne-root .think-err{color:#e46;font-weight:500}
+.pne-root .think-steps{display:flex;flex-direction:column;gap:1px;padding-inline-start:2px}
+.pne-root .think-step{display:flex;align-items:center;gap:11px;padding:5px 0;font-size:13px;transition:opacity .35s ease}
+.pne-root .think-step .tnode{width:16px;height:16px;flex:none;display:grid;place-items:center}
+.pne-root .think-step .tnode svg{width:14px;height:14px}
+.pne-root .tdot{width:6px;height:6px;border-radius:50%;background:var(--line-2)}
+.pne-root .tpulse{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:think-orb 1.3s ease-in-out infinite}
+.pne-root .think-step.wait{opacity:.4}
+.pne-root .think-step.wait .tlabel{color:var(--faint)}
+.pne-root .think-step.done .tlabel{color:var(--muted)}
+.pne-root .think-step.active .tlabel{background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite;font-weight:500}
+.pne-root .think-usage{margin-top:9px;font-size:11px;color:var(--faint);font-family:var(--mono);direction:ltr}
 .pne-root .suggests{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .pne-root .suggest{font-size:12.5px;border:1px solid var(--line-2);border-radius:999px;padding:4px 12px;color:var(--text-2)}
 .pne-root .suggest:hover{border-color:#3b424c;color:var(--text);background:var(--surface)}

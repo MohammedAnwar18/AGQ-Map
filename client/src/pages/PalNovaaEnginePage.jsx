@@ -1337,23 +1337,38 @@ export default function PalNovaaEnginePage() {
                       </div>
                     </div>
                   );
-                  if (m.kind === 'build') return (
+                  if (m.kind === 'build') {
+                    const finished = m.progress >= STEPS.length && m.state !== 'running';
+                    return (
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
                       <div className="body">
-                        <p>{m.state === 'error' ? 'توقّف البناء.' : 'فهمتُ المطلوب — أبني التطبيق الآن:'}</p>
-                        <div className="steps">
-                          <div className="steps-head"><b>خطّة البناء</b><span>{Math.min(m.progress, STEPS.length)} / {STEPS.length}</span></div>
-                          <div className="progress"><i style={{ width: `${(Math.min(m.progress, STEPS.length) / STEPS.length) * 100}%` }} /></div>
-                          {STEPS.map((s, i) => {
-                            const cls = i < m.progress ? 'done' : (i === m.progress && m.state === 'running' ? 'run' : '');
-                            return (<div className={`step ${cls}`} key={i}><span className="si">{i < m.progress ? Ico.check : <span className="ring" />}</span><span>{s.t}<span className="meta">{s.m}</span></span></div>);
-                          })}
+                        <div className="think">
+                          <div className="think-head">
+                            {m.state === 'error'
+                              ? <span className="think-err">توقّف البناء.</span>
+                              : finished
+                                ? <span className="think-done">{Ico.check}<span>تمّ التحليل والبناء</span></span>
+                                : <span className="think-live"><span className="think-orb" /><span className="think-txt">أُحلّل المطلوب وأبنيه</span><span className="think-dots"><i /><i /><i /></span></span>}
+                          </div>
+                          <div className="think-steps">
+                            {STEPS.map((s, i) => {
+                              const done = i < m.progress;
+                              const active = i === m.progress && m.state === 'running';
+                              return (
+                                <div className={`think-step ${done ? 'done' : active ? 'active' : 'wait'}`} key={i}>
+                                  <span className="tnode">{done ? Ico.check : <span className={active ? 'tpulse' : 'tdot'} />}</span>
+                                  <span className="tlabel">{s.t}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        {m.usage && <div style={{ fontSize: 11, color: 'var(--faint)', fontFamily: 'var(--mono)', direction: 'ltr' }}>tokens in {(m.usage.input + m.usage.cacheRead + m.usage.cacheWrite) || 0} · out {m.usage.output || 0}{m.usage.cacheRead ? ` · cache ${m.usage.cacheRead}` : ''}</div>}
+                        {m.usage && <div className="think-usage">tokens in {(m.usage.input + m.usage.cacheRead + m.usage.cacheWrite) || 0} · out {m.usage.output || 0}{m.usage.cacheRead ? ` · cache ${m.usage.cacheRead}` : ''}</div>}
                       </div>
                     </div>
-                  );
+                    );
+                  }
                   return (
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
