@@ -715,7 +715,9 @@ export default function PalNovaaEnginePage() {
     if (name === 'versions') loadVersions();
     const r = e.currentTarget.getBoundingClientRect();
     const vw = window.innerWidth, vh = window.innerHeight;
-    const left = Math.max(12, Math.min(r.left, vw - 312));
+    // عرض القائمة ثابتٌ (انظر CSS)؛ نُثبّت يسارها بحيث تبقى داخل الشاشة كاملةً (RTL)
+    const MW = Math.min(320, vw - 24);
+    const left = Math.max(12, Math.min(r.right - MW, vw - MW - 12));
     const spaceBelow = vh - r.bottom;
     // لو ما في مساحة كافية تحت الزرّ، افتح القائمة للأعلى فتبقى ظاهرة بالكامل
     if (spaceBelow < 320 && r.top > spaceBelow) setMenu({ name, left, bottom: vh - r.top + 6, maxH: Math.max(180, r.top - 16) });
