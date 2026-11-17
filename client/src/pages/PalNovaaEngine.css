@@ -781,13 +781,3 @@
   .pne-root .gb-side{width:auto;border-inline-start:0;border-top:1px solid var(--line);max-height:240px}
   .pne-root .gb-map-wrap{min-height:300px;flex:1}
 }
-
-/* ============ مكتبة الرموز (إطارٌ معزول — لا تُثقل حزمة المحرّك) ============ */
-.pne-root .sym-overlay{position:fixed;inset:0;z-index:86;background:var(--bg);display:flex;flex-direction:column}
-.pne-root .sym-top{height:56px;flex:none;display:flex;align-items:center;gap:13px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
-.pne-root .sym-brand{display:flex;align-items:center;gap:9px;color:var(--text);font-weight:600;font-size:14px;min-width:0}
-.pne-root .sym-brand svg{color:var(--accent);flex:none}
-.pne-root .sym-brand span{color:var(--faint);font-weight:400;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pne-root .sym-close{margin-inline-start:auto;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface);font-size:13px;color:var(--text-2);flex:none}
-.pne-root .sym-close:hover{background:var(--surface-2);color:var(--text);border-color:#39404a}
-.pne-root .sym-frame{flex:1;width:100%;border:0;background:var(--bg);display:block}
