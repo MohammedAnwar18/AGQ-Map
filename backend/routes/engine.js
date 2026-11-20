@@ -662,12 +662,13 @@ function analyzeGeoJSON(content) {
 }
 
 /* ---- تخزين مجموعة بيانات (تحليل + تقرير التقطيع + حفظ + R2) ---- */
-async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 = false, publicUrl = null, slug = null }) {
+async function createDatasetFromContent({ name, kind, content, ownerId, skipR2 = false, publicUrl = null, slug = null, extraMeta = null }) {
     const bytes = Buffer.byteLength(content, 'utf8');
     if (bytes > MAX_GEOJSON_BYTES) { const e = new Error(`الملفّ كبيرٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB).`); e.code = 413; throw e; }
     let meta = { bytes }; let count = 0;
     if (kind === 'geojson') { const a = analyzeGeoJSON(content); count = a.featureCount; meta = { ...a, bytes }; }
     else count = countFeatures(kind, content);
+    if (extraMeta && typeof extraMeta === 'object') meta = { ...meta, ...extraMeta };   // مصدرٌ/تتبّعٌ اختياريّ (مثلاً مصدر ArcGIS) — لا يطغى على حقول التقطيع أدناه
     const tiled = kind === 'geojson' && bytes > TILE_THRESHOLD_BYTES && count > 0;
     meta.tiled = tiled; if (tiled) meta.layer = 'data';
 
@@ -1490,6 +1491,45 @@ router.post('/arcgis/save', optionalAuth, async (req, res) => {
         }
         if (!saved) throw new Error('slug conflict');
         return res.json({ ok: true, dataset: saved });
+    } catch (err) {
+        return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
+    }
+});
+
+// POST /api/engine/arcgis/ingest  { name, content(GeoJSON), source:{serviceUrl,serviceType,layerId,where} }
+// «اسحب وامتلك»: المتصفّح يسحب معالم الطبقة (ترقيمٌ مُثبَت، بلا ضغطٍ على خادم Vercel) ويرسلها هنا لتُخزَّن
+// مملوكةً كـGeoJSON في Postgres+R2. الكبير (> ‎2.5MB‎) يُقطَّع تايلز تلقائيّاً فيُعرَض بذكاء بلا أيّ تغييرٍ في التوليد.
+router.post('/arcgis/ingest', optionalAuth, async (req, res) => {
+    try {
+        await ensureTable();
+        const b = req.body || {};
+        const name = (b.name || 'طبقة ArcGIS').toString().slice(0, 160);
+        const content = (b.content || '').toString();
+        if (!content) return res.status(400).json({ ok: false, reason: 'لا توجد بيانات لتخزينها.' });
+        if (Buffer.byteLength(content, 'utf8') > MAX_GEOJSON_BYTES) {
+            return res.status(413).json({ ok: false, reason: `الطبقة كبيرةٌ جداً (الحدّ ${Math.floor(MAX_GEOJSON_BYTES / 1048576)}MB) — قلّصها بفلترٍ (where) أو نطاقٍ (bbox).` });
+        }
+        let gj; try { gj = JSON.parse(content); } catch { return res.status(400).json({ ok: false, reason: 'GeoJSON غير صالح.' }); }
+        if (!gj || gj.type !== 'FeatureCollection' || !Array.isArray(gj.features) || gj.features.length === 0) {
+            return res.status(400).json({ ok: false, reason: 'لا معالم في هذه الطبقة (قد تكون نقطيّة/أورثوفوتو لا تدعم الاستعلام).' });
+        }
+        const s = b.source && typeof b.source === 'object' ? b.source : {};
+        const lid = Number(s.layerId);
+        const extraMeta = {
+            arcgisSource: true,
+            serviceUrl: String(s.serviceUrl || '').slice(0, 500),
+            serviceType: String(s.serviceType || '').slice(0, 40),
+            layerId: Number.isFinite(lid) ? lid : null,
+            where: String(s.where || '1=1').slice(0, 500),
+            ingestedAt: new Date().toISOString(),
+        };
+        try {
+            const saved = await createDatasetFromContent({ name, kind: 'geojson', content, ownerId: ownerOf(req), extraMeta });
+            return res.json({ ok: true, dataset: saved, tiled: !!(saved.meta && saved.meta.tiled) });
+        } catch (e) {
+            if (e.code === 413) return res.status(413).json({ ok: false, reason: e.message });
+            return res.status(400).json({ ok: false, reason: String(e.message || 'تعذّر تخزين الطبقة.') });
+        }
     } catch (err) {
         return res.status(500).json({ ok: false, reason: String(err.message || 'db error') });
     }

@@ -93,6 +93,8 @@ export default function PalNovaaEnginePage() {
   const [arcErr, setArcErr] = useState('');
   const [arcFilter, setArcFilter] = useState('');
   const [arcDl, setArcDl] = useState(null);         // معرّف الطبقة قيد التنزيل
+  const [arcIng, setArcIng] = useState(null);       // معرّف الطبقة قيد السحب والتخزين عندي
+  const [arcWhere, setArcWhere] = useState('');      // فلتر اختياريّ (where) للسحب الجزئيّ
 
   /* HDX (Humanitarian Data Exchange) connector */
   const [hdxQ, setHdxQ] = useState('');
@@ -624,7 +626,7 @@ export default function PalNovaaEnginePage() {
   const saveKey = () => { const k = keyDraft.trim(); if (k) localStorage.setItem(KEY_LS, k); else localStorage.removeItem(KEY_LS); setModal(null); showToast(k ? 'تمّ حفظ المفتاح على جهازك' : 'أُزيل المفتاح'); };
 
   /* ---- ArcGIS REST ---- */
-  const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
+  const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcWhere(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
   const browseArc = async (url, push = true) => {
     const target = (url || arcUrl || '').trim(); if (!target) return;
     setArcBusy(true); setArcErr(''); setArcFilter('');
@@ -678,6 +680,41 @@ export default function PalNovaaEnginePage() {
       showToast(`نُزّلت «${layer.name}» (${all.length} عنصر)`);
     } catch (e) { showToast(`تعذّر التنزيل: ${String(e.message || e).slice(0, 60)}`); }
     setArcDl(null);
+  };
+  // «اسحب وخزّن عندي»: نفس الترقيم المُثبَت، لكن بدل التنزيل نخزّن الطبقة مملوكةً كـGeoJSON (تقطيعٌ تلقائيّ للكبير)
+  const ingestArcLayer = async (layer) => {
+    if (!arcData || arcIng !== null || arcDl !== null) return;
+    const base = `${arcData.url}/${layer.id}/query`;
+    const whereRaw = (arcWhere || '').trim() || '1=1';
+    const whereEnc = encodeURIComponent(whereRaw);
+    setArcIng(layer.id); showToast(`جارٍ سحب «${layer.name}» وتخزينها عندك…`);
+    try {
+      let offset = 0, all = [], guard = 0;
+      while (guard++ < 200) {
+        const u = `${base}?where=${whereEnc}&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
+        const r = await fetch(u);
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
+        const feats = j.features || [];
+        all = all.concat(feats);
+        const more = j.exceededTransferLimit || j.properties?.exceededTransferLimit;
+        if (!more || feats.length === 0) break;
+        offset += feats.length;
+        if (all.length > 400000) break;   // سقف أمان
+      }
+      if (!all.length) { showToast('لا معالم في هذه الطبقة لهذا الفلتر'); setArcIng(null); return; }
+      const fc = { type: 'FeatureCollection', features: all };
+      const name = `${String(arcData.name).split('/').pop()} · ${layer.name}`.slice(0, 120);
+      const res = await jpost('/engine/arcgis/ingest', {
+        name, content: JSON.stringify(fc),
+        source: { serviceUrl: arcData.url, serviceType: arcData.serviceType, layerId: layer.id, where: whereRaw },
+      });
+      if (res?.ok) {
+        setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset);
+        showToast(`خُزّنت «${layer.name}» عندك (${all.length} معلم${res.tiled ? ' · تايلز ذكيّة' : ''})`);
+      } else showToast(res?.reason || 'تعذّر التخزين');
+    } catch (e) { showToast(`تعذّر السحب: ${String(e.message || e).slice(0, 70)}`); }
+    setArcIng(null);
   };
 
   /* ---- HDX ---- */
@@ -1983,6 +2020,12 @@ export default function PalNovaaEnginePage() {
               {arcData && arcData.kind === 'service' && (
                 <div className="arc-list">
                   <div className="arc-svc-name">{String(arcData.name).split('/').pop()}{arcData.description ? <small>{arcData.description}</small> : null}</div>
+                  {(arcData.layers || []).length > 0 && (
+                    <div className="arc-where">
+                      <input type="text" value={arcWhere} onChange={(e) => setArcWhere(e.target.value)}
+                        placeholder="فلتر اختياريّ للسحب الجزئيّ — مثلاً: CITY='نابلس' (اتركه فارغاً لكلّ المعالم)" />
+                    </div>
+                  )}
                   {(arcData.layers || []).length === 0 && <div className="arc-empty">لا طبقات في هذه الخدمة.</div>}
                   {(arcData.layers || []).map((l) => (
                     <div className="arc-layer" key={l.id}>
@@ -1991,7 +2034,10 @@ export default function PalNovaaEnginePage() {
                         <span className="arc-lname"><b>{l.name}</b>{l.geometryType && <span className="arc-geom mono">{l.geometryType.replace('esriGeometry', '')}</span>}</span>
                       </label>
                       <span className="arc-lid mono">#{l.id}</span>
-                      <button className="arc-dl" title="تنزيل الطبقة GeoJSON" disabled={arcDl !== null} onClick={() => downloadArcLayer(l)}>
+                      <button className="arc-store" title="اسحب الطبقة وخزّنها عندك (تُعرَض بذكاء — تايلز للكبير)" disabled={arcIng !== null || arcDl !== null} onClick={() => ingestArcLayer(l)}>
+                        {arcIng === l.id ? <span className="ring" /> : Ico.db}
+                      </button>
+                      <button className="arc-dl" title="تنزيل الطبقة GeoJSON" disabled={arcDl !== null || arcIng !== null} onClick={() => downloadArcLayer(l)}>
                         {arcDl === l.id ? <span className="ring" /> : Ico.down}
                       </button>
                     </div>
@@ -2000,7 +2046,7 @@ export default function PalNovaaEnginePage() {
               )}
             </div>
             <div className="modal-foot">
-              <span className="note">تُستهلَك الطبقات حيّةً عبر esri-leaflet — الخادم يعيد الإسقاط تلقائياً.</span>
+              <span className="note">زرّ «أرفق» = طبقاتٌ حيّة من الخادم. زرّ التخزين {Ico.db} بجانب كلّ طبقة = اسحبها وامتلكها عندك (تُعرَض بذكاء — تايلز للكبير).</span>
               {arcData?.kind === 'service'
                 ? <button className="btn accent sp" disabled={arcBusy || !arcSel.length} onClick={attachArcgis}>أرفق {arcSel.length || ''} طبقة</button>
                 : <button className="btn sp" onClick={() => setModal(null)}>إغلاق</button>}

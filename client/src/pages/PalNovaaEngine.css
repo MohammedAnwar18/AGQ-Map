@@ -431,6 +431,15 @@
 .pne-root .arc-dl:hover:not(:disabled){color:var(--accent-2);border-color:var(--accent-line);background:var(--accent-soft)}
 .pne-root .arc-dl:disabled{opacity:.5;cursor:not-allowed}
 .pne-root .arc-dl .ring{width:13px;height:13px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--accent);animation:pneSpin .8s linear infinite}
+.pne-root .arc-store{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;color:var(--accent-2,#e9a06b);border:1px solid var(--accent-line,rgba(224,123,57,.32));background:var(--accent-soft,rgba(224,123,57,.1));flex:none}
+.pne-root .arc-store:hover:not(:disabled){color:#fff;background:var(--accent);border-color:var(--accent)}
+.pne-root .arc-store:disabled{opacity:.5;cursor:not-allowed}
+.pne-root .arc-store svg{width:15px;height:15px}
+.pne-root .arc-store .ring{width:13px;height:13px;border-radius:50%;border:2px solid rgba(224,123,57,.35);border-top-color:#fff;animation:pneSpin .8s linear infinite}
+.pne-root .arc-where{padding:2px 2px 9px}
+.pne-root .arc-where input{width:100%;box-sizing:border-box;padding:8px 11px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--text);font-size:12.5px;font-family:inherit}
+.pne-root .arc-where input:focus{outline:none;border-color:var(--accent-line);background:var(--surface-2)}
+.pne-root .arc-where input::placeholder{color:var(--faint)}
 .pne-root .arc-lname{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
 .pne-root .arc-lname b{font-weight:500;font-size:13px;line-height:1.4}
 .pne-root .arc-geom{font-size:10px;color:var(--accent-2);align-self:flex-start;border:1px solid var(--accent-line);border-radius:4px;padding:0 5px}
