@@ -409,7 +409,6 @@ export default function PalNovaaEnginePage() {
       text: diffFailed
         ? 'لم أتمكّن من تحديد موضع التعديل بدقّة فأبقيتُ التطبيق كما هو دون أيّ تغيير. أعِد صياغة الطلب بوضوحٍ أكبر (مثلاً: اذكر اسم الزرّ أو الجزء أو نصّ رسالة الخطأ).'
         : (isEdit ? (isDiff ? `طبّقتُ التعديل بدقّةٍ وسرعة (${d.applied} تغيير موضعيّ) دون المساس ببقيّة الكود.` : 'طبّقتُ التعديل وحدّثت المعاينة.') : (d.summary || 'التطبيق جاهزٌ للمعاينة.')),
-      suggests: isEdit ? ['أحسنت — أضِف ميزة أخرى'] : ['أضِف فلتراً حسب المنطقة', 'غيّر تدرّج الألوان', 'أضِف لوحة مؤشّرات', 'صدّر PDF', 'أضِف بحثاً عن موقع'],
     }]);
     showToast(diffFailed ? 'لم يُطبَّق التعديل — أعِد الصياغة' : (isEdit ? (isDiff ? 'تعديلٌ فوريّ ✓' : 'تمّ التعديل ✓') : 'تمّ البناء ✓ — المعاينة جاهزة'));
   };
@@ -1357,31 +1356,23 @@ export default function PalNovaaEnginePage() {
                         <g className="d"><circle cx="40" cy="40" r="2.8" fill="#E07B39" /></g>
                       </svg>
                     );
-                    const visible = m.state === 'error' ? m.progress : (m.state === 'running' ? Math.min(m.progress + 1, STEPS.length) : STEPS.length);
+                    const errored = m.state === 'error';
+                    const running = m.state === 'running';
+                    const curStep = Math.max(0, Math.min(m.progress, STEPS.length - 1));
+                    const pct = Math.round((Math.min(m.progress, STEPS.length) / STEPS.length) * 100);
                     return (
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
                       <div className="body">
-                        <div className="think">
-                          <div className="think-head">
-                            {m.state === 'error'
-                              ? <span className="think-err">توقّف البناء.</span>
-                              : finished
-                                ? <span className="think-done">{Ico.check}<span>تمّ التحليل والبناء</span></span>
-                                : <span className="think-live">{mark}<span className="think-txt">أُحلّل المطلوب وأبنيه</span><span className="think-dots"><i /><i /><i /></span></span>}
+                        <div className={`pn-build ${errored ? 'err' : finished ? 'done' : 'run'}`}>
+                          <div className="pn-build-row">
+                            <span className="pn-build-mark">{errored ? <span className="pn-build-x">!</span> : finished ? Ico.check : mark}</span>
+                            <span className="pn-build-title">{errored ? 'توقّف البناء' : finished ? 'تمّ البناء بنجاح' : (STEPS[curStep]?.t || 'أُحلّل وأبني')}</span>
+                            <span className="pn-build-seg" aria-hidden="true">
+                              {STEPS.map((s, i) => <i key={i} className={i < m.progress ? 'on' : (running && i === m.progress ? 'cur' : '')} />)}
+                            </span>
                           </div>
-                          <div className="think-steps">
-                            {STEPS.slice(0, visible).map((s, i) => {
-                              const done = i < m.progress;
-                              const active = i === m.progress && m.state === 'running';
-                              return (
-                                <div className={`think-step ${done ? 'done' : active ? 'active' : 'wait'}`} key={i}>
-                                  <span className="tnode">{done ? Ico.check : <span className={active ? 'tpulse' : 'tdot'} />}</span>
-                                  <span className="tlabel">{s.t}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          {!finished && !errored && <div className="pn-build-bar"><span style={{ width: `${Math.max(6, pct)}%` }} /></div>}
                         </div>
                         {isAdmin && m.usage && (() => {
                           const tin = (m.usage.input || 0) + (m.usage.cacheRead || 0) + (m.usage.cacheWrite || 0);
