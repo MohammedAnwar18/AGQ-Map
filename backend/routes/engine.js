@@ -43,7 +43,7 @@ const MODEL_NAME = 'PalNovaa 1.0';
 const OAI_URL = (process.env.PALNOVAA_API_URL || '').trim();
 const USE_OAI = !!OAI_URL;
 const OAI_KEY = process.env.PALNOVAA_API_KEY || '';
-const GEMINI_MODEL = process.env.PALNOVAA_MODEL || 'gemini-3.8-flash';
+const GEMINI_MODEL = process.env.PALNOVAA_MODEL || 'gemini-flash-latest';
 const OAI_MODEL = process.env.PALNOVAA_MODEL || 'deepseek/deepseek-chat-v3:free';
 const ANTHROPIC_MODEL = process.env.PALNOVAA_MODEL || 'claude-sonnet-5-5';
 const SERVER_KEY = process.env.PALNOVAA_MODEL_KEY || process.env.GEMINI_API_KEY || '';
@@ -788,7 +788,7 @@ function pickProvider(KEY) {
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'openai/gpt-oss-120b') };
     if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v4.1-flash') };
-    return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-2.0-flash') };
+    return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-flash-latest') };  // 2.0/2.5-flash أوقفتهما Google؛ -latest يتبع الأحدث (حاليّاً 3.8-flash) فلا يتعطّل
 }
 
 const CONTINUE_MSG = 'أكمل بقيّة الكود من حيث توقّفت بالضبط (حرفٌ بحرف)، بلا إعادة أيّ جزءٍ سابق وبلا أيّ شرح. إن كان المستند قد اكتمل بـ</html> فاكتب "تمّ".';
@@ -912,7 +912,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
     contents.push({ role: 'user', parts: geminiParts(prompt, design) });
     let full = '';
     for (let i = 0; i < 5; i++) {
-        const payload = { systemInstruction: { role: 'system', parts: [{ text: fullSys }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95 } };
+        const payload = { systemInstruction: { role: 'system', parts: [{ text: fullSys }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95, thinkingConfig: { thinkingBudget: 0 } } };  // thinkingBudget:0 — موديلات gemini 3.x تفكّر كثيراً فتُهدر الميزانيّة وتقطع الكود؛ نعطّله ليذهب كلّ الناتج للـHTML (التخطيط يتمّ خارجيّاً عبر silentPlan)
         const data = await postJSON(url, payload, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
         const cand = data?.candidates?.[0];
         const piece = (cand?.content?.parts || []).map((p) => p?.text || '').join('');
@@ -1052,7 +1052,7 @@ async function quickComplete(KEY, system, user, maxTokens) {
         return (typeof msg?.content === 'string' ? msg.content : (Array.isArray(msg?.content) ? msg.content.map((c) => c?.text || '').join('') : '')) || '';
     }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:generateContent`;
-    const data = await postJSON(url, { systemInstruction: { role: 'system', parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens } }, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
+    const data = await postJSON(url, { systemInstruction: { role: 'system', parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } } }, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
     return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('');
 }
 const ENHANCER_SYS = 'أنت خبيرٌ في صياغة أوصاف تطبيقات الويب لمحرّك بناءٍ بالذكاء الاصطناعيّ متخصّص بالخرائط وGIS. خذ وصف المستخدم المختصر ووسّعه إلى مواصفةٍ غنيّةٍ واضحةٍ قابلةٍ للتنفيذ، محافظاً على نيّته تماماً دون تغيير الفكرة. غطِّ: الأقسام/الصفحات، الميزات الرئيسة، نوع البيانات (أو بيانات تجريبيّة واقعيّة)، عناصر الخريطة إن لزمت، لوحات المؤشّرات والفلاتر والتفاعلات، ولمسات تجربة المستخدم. اكتب بالعربيّة بإيجازٍ منظّم (جملة تمهيديّة ثمّ نقاط)، بلا أيّ كودٍ وبلا ماركداون ثقيل، وبما لا يتجاوز ~170 كلمة. أخرِج الوصف المحسّن فقط.';
