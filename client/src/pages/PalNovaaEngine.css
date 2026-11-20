@@ -265,6 +265,16 @@
 .pne-root .think-step.done .tlabel{color:var(--muted)}
 .pne-root .think-step.active .tlabel{background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite;font-weight:500}
 .pne-root .think-usage{margin-top:9px;font-size:11px;color:var(--faint);font-family:var(--mono);direction:ltr}
+/* قياس الأدمن: لوحة استهلاك احترافيّة تظهر للأدمن وحده */
+.pne-root .adm-meter{margin-top:11px;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:9px 12px;border:1px solid var(--accent-line,rgba(224,123,57,.32));border-radius:12px;background:linear-gradient(180deg,var(--accent-soft,rgba(224,123,57,.09)),transparent)}
+.pne-root .adm-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--accent-2,#e9a06b);letter-spacing:.2px}
+.pne-root .adm-tag svg{width:13px;height:13px}
+.pne-root .adm-cells{display:flex;flex-wrap:wrap;gap:4px 18px;flex:1}
+.pne-root .adm-cell{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:48px}
+.pne-root .adm-cell b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);line-height:1.1;direction:ltr}
+.pne-root .adm-cell span{font-size:10.5px;color:var(--faint)}
+.pne-root .adm-cell.adm-sum b{color:var(--accent-2,#e9a06b)}
+.pne-root .adm-model{font-family:var(--mono);font-size:10px;color:var(--faint);opacity:.75;direction:ltr;margin-inline-start:auto}
 .pne-root .suggests{display:flex;flex-wrap:wrap;gap:10px 8px;margin-top:9px}
 .pne-root .tool.chip.expand.on{background:var(--accent-soft,rgba(224,123,57,.14));border-color:var(--accent-line);color:var(--accent-2)}
 .pne-root .suggest{font-size:12.5px;border:1px solid var(--line-2);border-radius:999px;padding:4px 12px;color:var(--text-2)}

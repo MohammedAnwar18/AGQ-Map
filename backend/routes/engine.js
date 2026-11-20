@@ -1142,7 +1142,9 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const editingExpanded = expanded && b.files && typeof b.files === 'object' && !Array.isArray(b.files) && Object.keys(b.files).length > 0;
         const curHtml = expanded ? '' : currentHtml;   // الوضع الموسّع يُولّد مجموعة ملفّات، لا فروقات ملفٍّ واحد
         if (expanded) { prompt += injectCurrentFiles(b.files) + (editingExpanded ? MULTIFILE_EDIT_HINT : MULTIFILE_HINT); }
+        const t0 = Date.now();
         const { text, usage } = await streamModel(KEY, prompt, curHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
+        const elapsed = Date.now() - t0;
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
         const out = expanded
           ? (editingExpanded ? (applyMultiFileEdits(text, b.files, prompt) || parseMultiFile(text, prompt)) : parseMultiFile(text, prompt))
@@ -1151,7 +1153,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         let balance = null;
         if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
         await recordUsage(ident, usage);
-        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, balance, mode: out.mode, applied: out.applied, files: out.files || null });
+        send({ type: 'done', model: MODEL_NAME, html: out.html, title: out.title, summary: out.summary, usage, elapsed, balance, mode: out.mode, applied: out.applied, files: out.files || null });
         return res.end();
     } catch (err) {
         let m = String(err.message || 'error');
@@ -1212,7 +1214,9 @@ router.post('/generate', optionalAuth, async (req, res) => {
     for (let attempt = 0; attempt < 3; attempt++) {
         if (attempt) await new Promise((r) => setTimeout(r, 1200 * attempt));
         try {
+            const t0 = Date.now();
             const { text, usage } = await callModel(KEY, prompt, curHtml, skillsCtx, design);
+            const elapsed = Date.now() - t0;
             if (!text) { lastErr = 'empty'; continue; }
             if (looksLooped(text)) { lastErr = 'دخل الموديل في حلقة تكرار. أعِد المحاولة أو استخدم موديلاً أقوى مثل Claude.'; continue; }
             const out = expanded
@@ -1222,7 +1226,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
             let balance = null;
             if (metered && acct) { const c = costMicro(usage); await addCost(ident, c); acct.used_micro = (acct.used_micro || 0) + c; balance = balanceOf(acct); }
             await recordUsage(ident, usage);
-            return res.json({ ok: true, model: MODEL_NAME, usage, balance, ...out });
+            return res.json({ ok: true, model: MODEL_NAME, usage, elapsed, balance, ...out });
         } catch (err) {
             lastErr = String(err.message || 'unavailable');
             if (!isTransient(lastErr)) break;

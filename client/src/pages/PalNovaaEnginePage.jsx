@@ -401,7 +401,7 @@ export default function PalNovaaEnginePage() {
     setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
     if (d.files && typeof d.files === 'object') setFiles(d.files); else if (!isEdit) setFiles(null);
     setDirty(true); if (d.balance) setBalance(d.balance); setTab('app');
-    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage } : x)));
+    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage, elapsed: d.elapsed, model: d.model } : x)));
     const diffFailed = isEdit && (d.mode === 'files-noop' || (d.mode === 'diff' && !d.applied));
     const isDiff = d.mode === 'diff' || d.mode === 'files-diff';
     setMessages((m) => [...m, {
@@ -1383,7 +1383,28 @@ export default function PalNovaaEnginePage() {
                             })}
                           </div>
                         </div>
-                        {m.usage && <div className="think-usage">tokens in {(m.usage.input + m.usage.cacheRead + m.usage.cacheWrite) || 0} · out {m.usage.output || 0}{m.usage.cacheRead ? ` · cache ${m.usage.cacheRead}` : ''}</div>}
+                        {isAdmin && m.usage && (() => {
+                          const tin = (m.usage.input || 0) + (m.usage.cacheRead || 0) + (m.usage.cacheWrite || 0);
+                          const tout = m.usage.output || 0;
+                          const total = tin + tout;
+                          const secs = m.elapsed ? m.elapsed / 1000 : 0;
+                          const tps = secs > 0 ? Math.round(tout / secs) : 0;
+                          const fmt = (n) => (n || 0).toLocaleString('en-US');
+                          return (
+                            <div className="adm-meter" title="قياس إداريّ — يظهر لك وحدك">
+                              <span className="adm-tag">{Ico.cube}<span>قياس الأدمن</span></span>
+                              <div className="adm-cells">
+                                <div className="adm-cell"><b>{fmt(tin)}</b><span>إدخال</span></div>
+                                <div className="adm-cell"><b>{fmt(tout)}</b><span>إخراج</span></div>
+                                <div className="adm-cell adm-sum"><b>{fmt(total)}</b><span>إجماليّ</span></div>
+                                {m.usage.cacheRead ? <div className="adm-cell"><b>{fmt(m.usage.cacheRead)}</b><span>مخزّن</span></div> : null}
+                                {secs > 0 && <div className="adm-cell"><b>{secs.toFixed(1)}s</b><span>الزمن</span></div>}
+                                {tps > 0 && <div className="adm-cell"><b>{fmt(tps)}</b><span>رمز/ث</span></div>}
+                              </div>
+                              {m.model && <span className="adm-model">{m.model}</span>}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     );
