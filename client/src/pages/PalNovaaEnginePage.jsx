@@ -177,6 +177,36 @@ export default function PalNovaaEnginePage() {
   const loadTemplates = useCallback(() => { jget('/engine/templates').then((d) => { if (d?.ok && d.templates?.length) setTemplates(d.templates); }).catch(() => {}); }, []);
   useEffect(() => { loadProjects(); loadDatasets(); loadBalance(); loadTemplates(); }, [loadProjects, loadDatasets, loadBalance, loadTemplates]);
 
+  /* فهرسة محركات البحث: عنوانٌ ووصفٌ وبياناتٌ منظّمة خاصّة بصفحة المحرّك، تُستعاد عند المغادرة */
+  useEffect(() => {
+    const TITLE = 'PalNovaa Engine — بناء تطبيقات GIS بالذكاء الاصطناعيّ';
+    const DESC = 'PalNovaa Engine: مولّد تطبيقات خرائط ونظم معلومات جغرافيّة (GIS) بالذكاء الاصطناعيّ. صِف فكرتك بالعربيّة فيبني لك تطبيق ويب تفاعليّاً بخرائط وبيانات حقيقيّة (GeoMOLG، GeoJSON، ArcGIS) بلا كتابة كود.';
+    const prevTitle = document.title;
+    document.title = TITLE;
+    const restorers = [];
+    const upsert = (attr, key, val) => {
+      let el = document.head.querySelector(`meta[${attr}="${key}"]`); let created = false;
+      if (!el) { el = document.createElement('meta'); el.setAttribute(attr, key); document.head.appendChild(el); created = true; }
+      const prev = el.getAttribute('content'); el.setAttribute('content', val);
+      restorers.push(() => { if (created) el.remove(); else if (prev != null) el.setAttribute('content', prev); });
+    };
+    upsert('name', 'description', DESC);
+    upsert('property', 'og:title', TITLE); upsert('property', 'og:description', DESC);
+    upsert('name', 'twitter:title', TITLE); upsert('name', 'twitter:description', DESC);
+    const origin = (typeof location !== 'undefined' && location.origin) ? location.origin : '';
+    const ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = 'pne-ld';
+    ld.textContent = JSON.stringify({
+      '@context': 'https://schema.org', '@type': 'WebApplication',
+      name: 'PalNovaa Engine', alternateName: 'محرّك بالنوفا', inLanguage: 'ar',
+      applicationCategory: 'DesignApplication', operatingSystem: 'Web',
+      url: origin + '/palnovaa-engine', description: DESC,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      publisher: { '@type': 'Organization', name: 'PalNovaa' },
+    });
+    document.head.appendChild(ld);
+    return () => { document.title = prevTitle; restorers.forEach((f) => f()); ld.remove(); };
+  }, []);
+
   /* contour background */
   useEffect(() => {
     const svg = contoursRef.current; if (!svg) return;
@@ -592,16 +622,22 @@ export default function PalNovaaEnginePage() {
     setDatasets([]); setAttached([]); setIframeErr(''); setTplSearch(''); resetHeal();
   };
   const openProject = async (p) => {
-    setMenu(null);
-    const d = await jget(`/engine/projects/${p.slug}`);
-    if (d?.ok) {
-      setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || '');
-      const pf = d.project.files && typeof d.project.files === 'object' ? d.project.files : null; setFiles(pf); if (pf) setExpanded(true);
-      setSlug(d.project.slug); setPublicUrl(d.project.public_url || ''); setDirty(false); setIframeErr(''); resetHeal();
-      const thread = Array.isArray(d.project.thread) ? d.project.thread : null;
-      setMessages(thread && thread.length ? thread : [{ id: `open${p.slug}`, role: 'ai', kind: 'note', text: `فُتح المشروع: ${d.project.title}. تابع التعديل أو افتح الرابط الدائم.`, suggests: [] }]);
-      setView('workspace'); setTab('app');
-    }
+    setMenu(null); setDrawer(false);
+    // فتحٌ متفائل: التبديل والاسم والمعاينة (بمؤشّر تحميل) فوراً، ثمّ يُملأ المحتوى عند وصوله — إحساسٌ فوريّ
+    setView('workspace'); setTab('app');
+    setSlug(p.slug); setTitle(p.title || 'مشروع'); setHtml(''); setFiles(null); setSummary('');
+    setDirty(false); setIframeErr(''); resetHeal();
+    setMessages([{ id: `load${p.slug}`, role: 'ai', kind: 'note', text: 'جارٍ فتح المشروع…', suggests: [] }]);
+    try {
+      const d = await jget(`/engine/projects/${p.slug}`);
+      if (d?.ok) {
+        setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || '');
+        const pf = d.project.files && typeof d.project.files === 'object' ? d.project.files : null; setFiles(pf); if (pf) setExpanded(true);
+        setPublicUrl(d.project.public_url || '');
+        const thread = Array.isArray(d.project.thread) ? d.project.thread : null;
+        setMessages(thread && thread.length ? thread : [{ id: `open${p.slug}`, role: 'ai', kind: 'note', text: `فُتح المشروع: ${d.project.title}. تابع التعديل أو افتح الرابط الدائم.`, suggests: [] }]);
+      } else setMessages([{ id: `e${p.slug}`, role: 'err', text: 'تعذّر فتح المشروع — حدّث الصفحة وحاول ثانيةً.' }]);
+    } catch { setMessages([{ id: `e${p.slug}`, role: 'err', text: 'تعذّر الاتصال بالخادم.' }]); }
   };
   const deleteProject = async (p, e) => {
     e.stopPropagation();
@@ -1245,7 +1281,20 @@ export default function PalNovaaEnginePage() {
             <button className="icon-btn nav-toggle" title="القائمة" onClick={() => { setCollapsed(false); setDrawer(true); }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
             </button>
-            <div className="crumbs"><span style={{ cursor: 'pointer' }} onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span><span className="sep">/</span><b>{view === 'templates' ? 'القوالب الجاهزة' : title}</b></div>
+            <div className="crumbs">
+              <span className="crumb-home" onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span>
+              <span className="sep">/</span>
+              {view === 'templates'
+                ? <b>القوالب الجاهزة</b>
+                : (renaming
+                    ? <input className="crumb-rename" autoFocus value={nameDraft} placeholder="اسم المشروع…"
+                        onChange={(e) => setNameDraft(e.target.value)} onBlur={commitRename}
+                        onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false); }} />
+                    : <button className="crumb-title" title="سمِّ المشروع" onClick={beginRename}>
+                        <b>{title}</b>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                      </button>)}
+            </div>
             <span className={`status-pill ${allChips.length ? 'on' : ''}`}><i /><span>{allChips.length ? `${allChips.length} مرفق` : 'لا مصدر بيانات'}</span></span>
             <div className="top-actions">
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
@@ -1285,11 +1334,15 @@ export default function PalNovaaEnginePage() {
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
                     <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>البيانات</span></button>
-                    <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
-                    <button className="tool chip mono" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
-                    <button className={`tool chip expand ${expanded ? 'on' : ''}`} title="مشروعٌ موسّع: عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد" onClick={() => setExpanded((v) => !v)}>
+                    <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
+                    <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
+                    <button className={`tool chip expand only-desk ${expanded ? 'on' : ''}`} title="مشروعٌ موسّع: عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد" onClick={() => setExpanded((v) => !v)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg>
                       <span>موسّع</span>
+                    </button>
+                    <button className="tool chip only-mob" title="خيارات المشروع" onClick={() => setModal('opts')}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></svg>
+                      <span>خيارات</span>{expanded && <span className="opt-dot" />}
                     </button>
                     <span className="bar-sp" />
                     <button className={`tool enhance ${enhancing ? 'busy' : ''}`} title="حسّن الوصف تلقائياً قبل البناء" disabled={!prompt.trim() || enhancing || busy} onClick={enhancePrompt}>
@@ -1950,6 +2003,30 @@ export default function PalNovaaEnginePage() {
       )}
 
       {/* ============ MODAL: API KEY ============ */}
+      {/* ============ MODAL: خيارات المشروع (للجوّال) ============ */}
+      {modal === 'opts' && (
+        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
+          <div className="modal opts-modal">
+            <div className="modal-head"><div><b>خيارات المشروع</b><small>اختر النوع ونظام الإسناد ونمط البناء</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
+            <div className="opts-body">
+              <div className="opts-group">
+                <label>نوع المُخرَج</label>
+                <div className="opts-chips">{MODES.map((m) => <button key={m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)}>{m}</button>)}</div>
+              </div>
+              <div className="opts-group">
+                <label>نظام الإسناد (CRS)</label>
+                <div className="opts-chips">{CRS.map((c) => <button key={c} className={`mono ${crs === c ? 'on' : ''}`} onClick={() => setCrs(c)}>{c}</button>)}</div>
+              </div>
+              <div className="opts-group row" onClick={() => setExpanded((v) => !v)}>
+                <div><label>مشروعٌ موسّع</label><small>عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد</small></div>
+                <span className={`opts-switch ${expanded ? 'on' : ''}`}><i /></span>
+              </div>
+            </div>
+            <div className="modal-foot"><button className="btn accent sp" onClick={() => setModal(null)}>تمّ</button></div>
+          </div>
+        </div>
+      )}
+
       {modal === 'key' && (
         <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
           <div className="modal">

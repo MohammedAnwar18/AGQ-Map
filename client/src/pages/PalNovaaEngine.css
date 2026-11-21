@@ -79,6 +79,15 @@
 .pne-root .crumbs{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;min-width:0}
 .pne-root .crumbs b{color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pne-root .crumbs .sep{color:var(--faint)}
+.pne-root .crumb-home{cursor:pointer}
+.pne-root .crumb-home:hover{color:var(--text-2)}
+/* تسمية المشروع من الأعلى */
+.pne-root .crumb-title{display:inline-flex;align-items:center;gap:7px;min-width:0;border:1px solid transparent;border-radius:7px;padding:3px 8px;transition:background .15s,border-color .15s}
+.pne-root .crumb-title:hover{background:var(--surface-2);border-color:var(--line-2)}
+.pne-root .crumb-title svg{color:var(--faint);flex:none;opacity:0;transition:opacity .15s}
+.pne-root .crumb-title:hover svg{opacity:1}
+.pne-root .crumb-rename{min-width:0;width:min(42vw,260px);background:var(--surface-2);border:1px solid var(--accent-line);border-radius:7px;color:var(--text);font-size:13.5px;font-weight:500;padding:4px 9px;outline:none}
+@media (hover:none){.pne-root .crumb-title svg{opacity:.7}}
 .pne-root .status-pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--text-2);border:1px solid var(--line-2);border-radius:999px;padding:3px 10px 3px 11px;white-space:nowrap}
 .pne-root .status-pill i{width:7px;height:7px;border-radius:50%;background:var(--faint)}
 .pne-root .status-pill.on i{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
@@ -620,6 +629,22 @@
 .pne-root .nav-toggle{display:none}
 .pne-root .nav-scrim{display:none}
 .pne-root .mobile-tabs{display:none}
+.pne-root .only-mob{display:none !important}
+
+/* ===== ورقة خيارات المشروع (للجوّال) ===== */
+.pne-root .opts-body{padding:18px 20px;display:flex;flex-direction:column;gap:20px}
+.pne-root .opts-group{display:flex;flex-direction:column;gap:9px}
+.pne-root .opts-group>label{font-size:12.5px;color:var(--muted);font-weight:500}
+.pne-root .opts-chips{display:flex;flex-wrap:wrap;gap:8px}
+.pne-root .opts-chips button{height:38px;padding:0 15px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--text-2);font-size:13px;font-weight:500}
+.pne-root .opts-chips button.on{background:var(--accent);border-color:var(--accent);color:#170C04;font-weight:600}
+.pne-root .opts-group.row{flex-direction:row;align-items:center;justify-content:space-between;cursor:pointer}
+.pne-root .opts-group.row small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px;font-weight:400}
+.pne-root .opts-switch{width:46px;height:27px;border-radius:999px;background:var(--surface-3);border:1px solid var(--line-2);flex:none;position:relative;transition:background .18s}
+.pne-root .opts-switch i{position:absolute;top:2px;inset-inline-start:2px;width:21px;height:21px;border-radius:50%;background:var(--muted);transition:transform .18s,background .18s}
+.pne-root .opts-switch.on{background:var(--accent);border-color:var(--accent)}
+.pne-root .opts-switch.on i{background:#170C04;transform:translateX(-19px)}
+.pne-root .opt-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);margin-inline-start:2px}
 
 /* لوحيّ: تضييق لوح المحادثة */
 @media (max-width:1100px){.pne-root .workspace{grid-template-columns:360px 1fr}}
@@ -655,6 +680,10 @@
   .pne-root .eyebrow{margin-bottom:16px}
   .pne-root .tpl-header{flex-direction:column}.pne-root .tpl-search{max-width:100%}
   .pne-root .tpl-title{font-size:18px}.pne-root .templates{grid-template-columns:1fr}
+
+  /* الجوّال: أخفِ شرائح النوع/الإسناد/الموسّع وأظهِر زرّ «خيارات» الموحّد */
+  .pne-root .only-desk{display:none !important}
+  .pne-root .only-mob{display:inline-flex !important}
 
   /* المؤلّف: شريط الأدوات يلتفّ بدل الفيض خارج الصندوق */
   .pne-root .composer textarea,.pne-root .chat-composer .composer textarea{font-size:16px}  /* يمنع تكبير iOS */
