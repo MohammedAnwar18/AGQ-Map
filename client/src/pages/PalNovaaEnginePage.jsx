@@ -90,6 +90,9 @@ export default function PalNovaaEnginePage() {
   const [savingProf, setSavingProf] = useState(false);
   const [bgColor, setBgColor] = useState(() => ls('pne-bg'));
   const avatarRef = useRef(null);
+  const homeTaRef = useRef(null);
+  const chatTaRef = useRef(null);
+  const fitTa = (el) => { if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 340) + 'px'; } };
   const acctPic = getImageUrl(user?.profile_picture) || '';
   const displayName = userName || '';
   const avatarUrl = avatarPreview || acctPic;
@@ -141,6 +144,8 @@ export default function PalNovaaEnginePage() {
     { k: '#140F08', c: '#140F08', n: 'كهرمانيّ' },
     { k: '#000000', c: '#000000', n: 'فحميّ' },
   ];
+  useEffect(() => { fitTa(homeTaRef.current); }, [prompt]);
+  useEffect(() => { fitTa(chatTaRef.current); }, [prompt2]);
 
   /* ArcGIS REST connector */
   const ARCGIS_DEFAULT = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
@@ -1391,7 +1396,7 @@ export default function PalNovaaEnginePage() {
                       ))}
                     </div>
                   )}
-                  <textarea value={prompt} maxLength={4000}
+                  <textarea ref={homeTaRef} value={prompt} maxLength={4000}
                     placeholder=""
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
@@ -1537,7 +1542,7 @@ export default function PalNovaaEnginePage() {
               </div>
               <div className="chat-composer">
                 <div className="composer">
-                  <textarea value={prompt2} maxLength={4000} placeholder="اطلب تعديلاً: أضِف مخطّطاً، غيّر الألوان، أضِف جدولاً، صدّر PDF…"
+                  <textarea ref={chatTaRef} value={prompt2} maxLength={4000} placeholder="اطلب تعديلاً: أضِف مخطّطاً، غيّر الألوان، أضِف جدولاً، صدّر PDF…"
                     onChange={(e) => setPrompt2(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendEdit(); } }} rows={2} />
                   <div className="composer-bar">

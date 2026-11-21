@@ -142,7 +142,7 @@
 .pne-root .chip .ct{font-family:var(--mono);font-size:10.5px;color:var(--muted);direction:ltr}
 .pne-root .chip button{color:var(--faint);display:grid;place-items:center;width:18px;height:18px;border-radius:4px}
 .pne-root .chip button:hover{color:var(--text);background:var(--line-2)}
-.pne-root .composer textarea{display:block;width:100%;min-height:92px;max-height:260px;resize:none;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
+.pne-root .composer textarea{display:block;width:100%;min-height:92px;max-height:340px;resize:none;overflow-y:auto;background:transparent;border:0;outline:0;padding:16px 18px 8px;font-size:15px;line-height:1.7}
 .pne-root .composer textarea::placeholder{color:var(--faint)}
 .pne-root .composer-bar{display:flex;align-items:center;gap:7px;padding:9px 10px 11px}
 .pne-root .bar-sp{flex:1}
