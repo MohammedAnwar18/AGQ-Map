@@ -644,17 +644,33 @@
   .pne-root .top-actions{gap:6px}
   .pne-root .top-actions .btn span,.pne-root .status-pill{display:none}
   .pne-root .top-actions .btn{padding:0 11px}
-  .pne-root .crumbs{font-size:12.5px}
+  /* الفتات: اسم المشروع فقط (القائمة بديلٌ للتنقّل) */
+  .pne-root .crumbs{font-size:12.5px;flex:1;min-width:0}
+  .pne-root .crumbs>span:first-child,.pne-root .crumbs .sep{display:none}
+  .pne-root .crumbs b{max-width:100%}
 
   /* الرئيسيّة */
-  .pne-root .sources{grid-template-columns:1fr 1fr}
-  .pne-root .templates{grid-template-columns:1fr}
-  .pne-root h1.hero{font-size:25px}.pne-root .hero-greet{font-size:23px}
-  .pne-root .home-inner{padding:7vh 16px 48px}
+  .pne-root .home-inner{padding:6vh 16px 44px}
+  .pne-root h1.hero{font-size:24px;margin-bottom:20px}.pne-root .hero-greet{font-size:22px}
+  .pne-root .eyebrow{margin-bottom:16px}
   .pne-root .tpl-header{flex-direction:column}.pne-root .tpl-search{max-width:100%}
-  .pne-root .tpl-title{font-size:18px}
-  /* 16px يمنع تكبير iOS التلقائيّ عند التركيز */
-  .pne-root .composer textarea,.pne-root .chat-composer .composer textarea{font-size:16px}
+  .pne-root .tpl-title{font-size:18px}.pne-root .templates{grid-template-columns:1fr}
+
+  /* المؤلّف: شريط الأدوات يلتفّ بدل الفيض خارج الصندوق */
+  .pne-root .composer textarea,.pne-root .chat-composer .composer textarea{font-size:16px}  /* يمنع تكبير iOS */
+  .pne-root .composer-bar{flex-wrap:wrap;gap:6px;padding:8px 10px 12px}
+  .pne-root .composer-bar .bar-sp{flex-basis:100%;height:0}  /* يكسر سطراً: الأدوات أعلى، التحسين والإرسال أسفل */
+  .pne-root .composer-bar .tool{height:32px;font-size:12px;padding:0 10px}
+  .pne-root .composer-bar .send{margin-inline-start:auto}
+  .pne-root .composer-foot{font-size:11px;padding:8px 2px 0}
+
+  /* بطاقات البيانات: عمودٌ واحد نظيف بلا فيض */
+  .pne-root .block-title{margin:26px 0 10px}
+  .pne-root .sources{grid-template-columns:1fr;gap:9px}
+  .pne-root .source .s-act{opacity:1}
+
+  /* شريط الإحداثيّات الزخرفيّ يفيض على الجوّال — نُخفيه */
+  .pne-root .mapbar{display:none}
 
   /* مساحة العمل: لوحٌ واحد في كلّ مرّة + شريط تبديلٍ أسفل */
   .pne-root .workspace.on{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
