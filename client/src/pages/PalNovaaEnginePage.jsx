@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../services/api';
 import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
@@ -10,7 +11,7 @@ import {
 
 export default function PalNovaaEnginePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   useEngineBranding();
   const greeting = (() => {
     const h = new Date().getHours();
@@ -80,20 +81,48 @@ export default function PalNovaaEnginePage() {
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
 
-  /* الملفّ الشخصيّ والمظهر (تُحفظ على الجهاز) */
+  /* الإعدادات: الملفّ الشخصيّ مرتبطٌ بالحساب الأساسيّ؛ لون الخلفية يُحفظ على الجهاز */
   const ls = (k, d = '') => { try { return localStorage.getItem(k) || d; } catch { return d; } };
-  const [profName, setProfName] = useState(() => ls('pne-name'));
-  const [profPic, setProfPic] = useState(() => ls('pne-pic'));
+  const [settSec, setSettSec] = useState('account');
+  const [nameDraft2, setNameDraft2] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);     // صورةٌ قيد الرفع
+  const [avatarPreview, setAvatarPreview] = useState('');  // معاينةٌ فوريّة (dataURL)
+  const [savingProf, setSavingProf] = useState(false);
   const [bgColor, setBgColor] = useState(() => ls('pne-bg'));
   const avatarRef = useRef(null);
-  const displayName = profName || userName || '';
-  const avInitials = (displayName ? displayName.trim().slice(0, 2) : 'PN');
-  const updName = (v) => { setProfName(v); try { v ? localStorage.setItem('pne-name', v) : localStorage.removeItem('pne-name'); } catch { /* */ } };
+  const acctPic = getImageUrl(user?.profile_picture) || '';
+  const displayName = userName || '';
+  const avatarUrl = avatarPreview || acctPic;
+  const avInitials = (displayName ? displayName.trim().slice(0, 2) : (user?.username || 'PN').slice(0, 2));
   const updBg = (v) => { setBgColor(v); try { v ? localStorage.setItem('pne-bg', v) : localStorage.removeItem('pne-bg'); } catch { /* */ } };
+  const openSettings = () => { setNameDraft2(userName || ''); setAvatarFile(null); setAvatarPreview(''); setSettSec('account'); setModal('settings'); };
   const onAvatar = (e) => {
-    const f = e.target.files?.[0]; if (f) { if (f.size > 1.6e6) { showToast('الصورة كبيرة — اختر أصغر من 1.5MB'); }
-      else { const r = new FileReader(); r.onload = () => { const d = String(r.result); setProfPic(d); try { localStorage.setItem('pne-pic', d); } catch { /* */ } showToast('حُدّثت صورة الملفّ'); }; r.readAsDataURL(f); } }
+    const f = e.target.files?.[0];
+    if (f) {
+      if (!/^image\//.test(f.type)) showToast('اختر ملفّ صورة');
+      else if (f.size > 10e6) showToast('الصورة كبيرة — حتى 10MB');
+      else { setAvatarFile(f); const r = new FileReader(); r.onload = () => setAvatarPreview(String(r.result)); r.readAsDataURL(f); }
+    }
     e.target.value = '';
+  };
+  const profDirty = (nameDraft2.trim() && nameDraft2.trim() !== (userName || '')) || !!avatarFile;
+  const saveProfile = async () => {
+    if (!profDirty || savingProf) return;
+    setSavingProf(true);
+    try {
+      const fd = new FormData();
+      if (nameDraft2.trim() && nameDraft2.trim() !== (userName || '')) fd.append('full_name', nameDraft2.trim());
+      if (avatarFile) fd.append('profile_picture', avatarFile);
+      const tok = localStorage.getItem('token');
+      const res = await fetch(`${API}/users/profile`, { method: 'PUT', headers: tok ? { Authorization: `Bearer ${tok}` } : {}, body: fd });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.user) {
+        updateUser({ full_name: d.user.full_name, profile_picture: d.user.profile_picture });
+        setAvatarFile(null); setAvatarPreview('');
+        showToast('حُفظ الملفّ الشخصيّ ✓');
+      } else showToast(d.error || 'تعذّر حفظ الملفّ');
+    } catch { showToast('تعذّر الاتصال بالخادم'); }
+    setSavingProf(false);
   };
   /* عدّاد التوكينز — الحساب المجّانيّ: ميزانيّة 120 ألف توكن (تقديريّة، تُضبط لاحقاً) */
   const FREE_TOKENS = 120000;
@@ -104,11 +133,13 @@ export default function PalNovaaEnginePage() {
   })() : null;
   const BG_PRESETS = [
     { k: '', c: '#0A0B0D', n: 'افتراضيّ' },
+    { k: '#0E1116', c: '#0E1116', n: 'رماديّ داكن' },
+    { k: '#0B1220', c: '#0B1220', n: 'أزرق ليليّ' },
+    { k: '#0A1410', c: '#0A1410', n: 'أخضر غابيّ' },
+    { k: '#140A10', c: '#140A10', n: 'نبيذيّ' },
+    { k: '#0E0A1A', c: '#0E0A1A', n: 'نيليّ' },
+    { k: '#140F08', c: '#140F08', n: 'كهرمانيّ' },
     { k: '#000000', c: '#000000', n: 'فحميّ' },
-    { k: '#0A0E16', c: '#0A0E16', n: 'أزرق ليليّ' },
-    { k: '#0D0A14', c: '#0D0A14', n: 'بنفسجيّ' },
-    { k: '#120D0A', c: '#120D0A', n: 'دافئ' },
-    { k: '#0A0F0D', c: '#0A0F0D', n: 'زيتونيّ' },
   ];
 
   /* ArcGIS REST connector */
@@ -1297,8 +1328,8 @@ export default function PalNovaaEnginePage() {
               </a>
             ))}
           </div>
-          <button className="side-foot" title="الإعدادات والملفّ الشخصيّ" onClick={() => setModal('settings')}>
-            <div className="avatar">{profPic ? <img src={profPic} alt="" /> : avInitials}</div>
+          <button className="side-foot" title="الإعدادات والملفّ الشخصيّ" onClick={openSettings}>
+            <div className="avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avInitials}</div>
             <div className="who">
               <b>{displayName || 'PalNovaa 1.0'}{balance && <span className={`plan-badge ${balance.plan === 'pro' ? 'pro' : ''}`}>{balance.plan === 'pro' ? 'Pro' : 'مجّاني'}</span>}</b>
               {tokMeter && !tokMeter.pro
@@ -2028,69 +2059,115 @@ export default function PalNovaaEnginePage() {
       )}
 
       {modal === 'settings' && (
-        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
-          <div className="modal set-modal">
-            <div className="modal-head"><div><b>الإعدادات</b><small>ملفّك الشخصيّ، الاستهلاك، ومظهر الواجهة</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
-            <div className="set-body">
+        <div className="set-scrim" onClick={(e) => { if (e.target.classList.contains('set-scrim')) setModal(null); }}>
+          <div className="set-shell" role="dialog">
+            <div className="set-shell-head">
+              <b>الإعدادات</b>
+              <button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button>
+            </div>
+            <div className="set-shell-body">
+              <nav className="set-nav">
+                <button className={settSec === 'account' ? 'on' : ''} onClick={() => setSettSec('account')}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
+                  <span>الحساب</span>
+                </button>
+                <button className={settSec === 'usage' ? 'on' : ''} onClick={() => setSettSec('usage')}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><rect x="7" y="11" width="3" height="6" rx="1" /><rect x="12.5" y="7" width="3" height="10" rx="1" /><rect x="18" y="13" width="3" height="4" rx="1" /></svg>
+                  <span>الاستهلاك</span>
+                </button>
+                <button className={settSec === 'appearance' ? 'on' : ''} onClick={() => setSettSec('appearance')}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r="1.3" /><circle cx="17.5" cy="10.5" r="1.3" /><circle cx="8.5" cy="7.5" r="1.3" /><circle cx="6.5" cy="12.5" r="1.3" /><path d="M12 2a10 10 0 1 0 0 20c1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a5 5 0 0 0 5-5c0-4.4-4.5-8-10-8Z" /></svg>
+                  <span>المظهر</span>
+                </button>
+                <div className="set-nav-foot">
+                  <div className="set-nav-user">
+                    <div className="avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avInitials}</div>
+                    <div><b>{displayName || 'مستخدم'}</b>{balance && <small>{balance.plan === 'pro' ? 'خطّة Pro' : 'الخطّة المجّانيّة'}</small>}</div>
+                  </div>
+                </div>
+              </nav>
 
-              {/* الملفّ الشخصيّ */}
-              <div className="set-sec">
-                <div className="set-label">الملفّ الشخصيّ</div>
-                <div className="set-prof">
-                  <button className="set-avatar" onClick={() => avatarRef.current?.click()} title="تغيير الصورة">
-                    {profPic ? <img src={profPic} alt="" /> : <span>{avInitials}</span>}
-                    <span className="set-avatar-cam"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg></span>
-                  </button>
-                  <div className="set-prof-fields">
-                    <label>الاسم المعروض</label>
-                    <input value={profName} placeholder={userName || 'اسمك هنا…'} onChange={(e) => updName(e.target.value)} maxLength={40} />
-                    <div className="set-prof-row">
-                      {profPic && <button className="set-mini" onClick={() => { setProfPic(''); try { localStorage.removeItem('pne-pic'); } catch { /* */ } }}>إزالة الصورة</button>}
-                      <small>يُحفظ على جهازك فقط</small>
+              <div className="set-main">
+                {/* ===== الحساب ===== */}
+                {settSec === 'account' && (
+                  <div className="set-pane">
+                    <h3 className="set-h">الحساب</h3>
+
+                    <div className="set-row">
+                      <div className="set-row-l"><b>صورة الملفّ</b><small>PNG أو JPEG أو WebP، حتى 10MB</small></div>
+                      <div className="set-row-r">
+                        <button className="set-av" onClick={() => avatarRef.current?.click()} title="تغيير الصورة">
+                          {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{avInitials}</span>}
+                        </button>
+                        <button className="set-av-btn" onClick={() => avatarRef.current?.click()}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="3.5" /></svg>
+                          <span>{avatarUrl ? 'تغيير' : 'رفع صورة'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="set-row">
+                      <div className="set-row-l"><b>الاسم الكامل</b><small>يظهر في المحرّك ويُحفظ في حسابك</small></div>
+                      <div className="set-row-r"><input className="set-inp" value={nameDraft2} placeholder={userName || 'اسمك…'} onChange={(e) => setNameDraft2(e.target.value)} maxLength={80} /></div>
+                    </div>
+
+                    <div className="set-row">
+                      <div className="set-row-l"><b>الخطّة</b><small>نوع اشتراكك الحاليّ</small></div>
+                      <div className="set-row-r"><span className={`plan-badge ${balance?.plan === 'pro' ? 'pro' : ''}`}>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : '—'}</span></div>
+                    </div>
+
+                    <div className="set-save">
+                      <small>{profDirty ? 'لديك تغييراتٌ غير محفوظة' : 'كلّ شيءٍ محفوظ'}</small>
+                      <button className="btn accent" disabled={!profDirty || savingProf} onClick={saveProfile}>{savingProf ? 'يحفظ…' : 'حفظ التغييرات'}</button>
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* الاستهلاك */}
-              <div className="set-sec">
-                <div className="set-label">الاستهلاك</div>
-                {tokMeter ? (tokMeter.pro ? (
-                  <div className="set-usage pro">
-                    <div className="set-usage-top"><b>خطّة Pro</b><span className="plan-badge pro">Pro</span></div>
-                    <div className="set-usage-bar"><i style={{ width: `${Math.max(2, Math.round(tokMeter.frac * 100))}%` }} /></div>
-                    <small>استهلاكٌ غير محدود — هذا الخطّ يبيّن ما صُرف هذه الدورة.</small>
+                {/* ===== الاستهلاك ===== */}
+                {settSec === 'usage' && (
+                  <div className="set-pane">
+                    <h3 className="set-h">الاستهلاك</h3>
+                    {tokMeter ? (tokMeter.pro ? (
+                      <div className="set-usage pro">
+                        <div className="set-usage-top"><b>خطّة Pro</b><span className="plan-badge pro">Pro</span></div>
+                        <div className="set-track"><i style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
+                        <p className="set-note">استهلاكٌ غير محدود — هذا الخطّ يبيّن ما صُرف هذه الدورة.</p>
+                      </div>
+                    ) : (
+                      <div className="set-usage">
+                        <div className="set-usage-top"><b>{tokMeter.used.toLocaleString('en')}<span> / {FREE_TOKENS.toLocaleString('en')} توكن</span></b><span className="set-usage-pct">{Math.round(tokMeter.frac * 100)}%</span></div>
+                        <div className="set-track"><i className={tokMeter.frac > 0.85 ? 'hot' : ''} style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
+                        <p className="set-note">ميزانيّة الخطّة المجّانيّة — تكفي لبناء عدّة تطبيقاتٍ مرتّبة. عند النفاد تُتاح الترقية إلى Pro.</p>
+                        <button className="set-pro-cta" onClick={() => { setModal(null); navigate('/palnovaa-engine/pricing'); }}>
+                          <span>الترقية إلى Pro</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                        </button>
+                      </div>
+                    )) : <p className="set-note">يُحمَّل الرصيد…</p>}
                   </div>
-                ) : (
-                  <div className="set-usage">
-                    <div className="set-usage-top"><b>{tokMeter.used.toLocaleString('en')} <span>/ {FREE_TOKENS.toLocaleString('en')} توكن</span></b><span className="set-usage-pct">{Math.round(tokMeter.frac * 100)}%</span></div>
-                    <div className="set-usage-bar"><i className={tokMeter.frac > 0.85 ? 'hot' : ''} style={{ width: `${Math.max(2, Math.round(tokMeter.frac * 100))}%` }} /></div>
-                    <small>ميزانيّة الخطّة المجّانيّة — تكفي لبناء عدّة تطبيقاتٍ مرتّبة. عند النفاد تُتاح الترقية إلى Pro.</small>
+                )}
+
+                {/* ===== المظهر ===== */}
+                {settSec === 'appearance' && (
+                  <div className="set-pane">
+                    <h3 className="set-h">المظهر</h3>
+                    <p className="set-sub">لون خلفيّة واجهة المحرّك. يُطبَّق فوراً ويُحفظ على جهازك.</p>
+                    <div className="set-swatches">
+                      {BG_PRESETS.map((b) => (
+                        <button key={b.n} className={`set-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
+                          <span className="set-sw-tile" style={{ background: b.c }}>{(bgColor || '') === b.k && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}</span>
+                          <small>{b.n}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <label className="set-custom">
+                      <div><b>لونٌ مخصّص</b><small>اختر أيّ لونٍ داكن</small></div>
+                      <input type="color" value={bgColor || '#0A0B0D'} onChange={(e) => updBg(e.target.value)} />
+                    </label>
                   </div>
-                )) : <div className="set-usage"><div className="set-usage-bar"><i style={{ width: '2%' }} /></div><small>يُحمَّل الرصيد…</small></div>}
-                {!tokMeter?.pro && <button className="btn accent sp set-upgrade" onClick={() => { setModal(null); navigate('/palnovaa-engine/pricing'); }}>الترقية إلى Pro</button>}
+                )}
               </div>
-
-              {/* المظهر */}
-              <div className="set-sec">
-                <div className="set-label">لون خلفيّة الواجهة</div>
-                <div className="set-swatches">
-                  {BG_PRESETS.map((b) => (
-                    <button key={b.n} className={`set-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
-                      <span style={{ background: b.c }} />
-                      <small>{b.n}</small>
-                    </button>
-                  ))}
-                </div>
-                <label className="set-custom">
-                  <span>لونٌ مخصّص</span>
-                  <input type="color" value={bgColor || '#0A0B0D'} onChange={(e) => updBg(e.target.value)} />
-                </label>
-                <small className="set-hint">يُفضَّل لونٌ داكن ليبقى النصّ واضحاً. يُطبَّق فوراً ويُحفظ على جهازك.</small>
-              </div>
-
             </div>
-            <div className="modal-foot"><button className="btn accent sp" onClick={() => setModal(null)}>تمّ</button></div>
           </div>
         </div>
       )}
