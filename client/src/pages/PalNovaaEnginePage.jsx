@@ -72,6 +72,8 @@ export default function PalNovaaEnginePage() {
   const [hljsReady, setHljsReady] = useState(false);
   const [pvKey, setPvKey] = useState(0);   // يُجبر المعاينة على التجدّد الفوري مع كلّ تغيير كود
   const [device, setDevice] = useState('desktop');  // معاينة متجاوبة: سطح مكتب/لوحيّ/جوّال
+  const [drawer, setDrawer] = useState(false);       // الجوّال: القائمة الجانبيّة كدُرجٍ منزلق
+  const [mobilePane, setMobilePane] = useState('chat'); // الجوّال: لوحٌ واحد (محادثة | معاينة)
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
   const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
@@ -402,7 +404,7 @@ export default function PalNovaaEnginePage() {
   const finishSuccess = (d, isEdit, bId) => {
     setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
     if (d.files && typeof d.files === 'object') setFiles(d.files); else if (!isEdit) setFiles(null);
-    setDirty(true); if (d.balance) setBalance(d.balance); setTab('app');
+    setDirty(true); if (d.balance) setBalance(d.balance); setTab('app'); setMobilePane('preview');
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage, elapsed: d.elapsed, model: d.model } : x)));
     const diffFailed = isEdit && (d.mode === 'files-noop' || (d.mode === 'diff' && !d.applied));
     const isDiff = d.mode === 'diff' || d.mode === 'files-diff';
@@ -1199,7 +1201,8 @@ export default function PalNovaaEnginePage() {
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
-        <aside className="sidebar">
+        {drawer && <div className="nav-scrim" onClick={() => setDrawer(false)} />}
+        <aside className={`sidebar ${drawer ? 'open' : ''}`}>
           <div className="brand" onClick={() => collapsed && setCollapsed(false)}>
             <span className="brand-mark"><svg viewBox="0 0 512 512" width="26" height="26"><rect width="512" height="512" rx="112" fill="#E07B39" /><g transform="translate(79.2 89.6) scale(5.2)" fill="none" strokeWidth="5" strokeLinecap="round"><path d="M14 58V6h19a20 20 0 0 1 0 40H14" stroke="#1A0D04" strokeLinejoin="round" /><path d="M23 15.5h10a10.5 10.5 0 0 1 0 21H23" stroke="#1A0D04" /><circle cx="33" cy="26" r="2.8" fill="#1A0D04" stroke="none" /></g></svg></span>
             <div className="brand-name">PalNovaa <span>Engine</span></div>
@@ -1207,8 +1210,8 @@ export default function PalNovaaEnginePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
             </button>
           </div>
-          <button className="new-btn" onClick={newProject}>{Ico.plus}<span>مشروع جديد</span><kbd>جديد</kbd></button>
-          <nav className="nav">
+          <button className="new-btn" onClick={() => { setDrawer(false); newProject(); }}>{Ico.plus}<span>مشروع جديد</span><kbd>جديد</kbd></button>
+          <nav className="nav" onClick={() => setDrawer(false)}>
             <a className={view === 'home' ? 'active' : ''} onClick={() => { if (view === 'templates') setView('home'); }}>{Ico.chat}<span>المحادثات</span></a>
             <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
@@ -1218,7 +1221,7 @@ export default function PalNovaaEnginePage() {
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
           <div className="side-section">مشاريعي</div>
-          <div className="history">
+          <div className="history" onClick={() => setDrawer(false)}>
             {projects.length === 0 && <div className="empty">لا مشاريع بعد</div>}
             {projects.map((p) => (
               <a key={p.slug} className={`hist-item ${slug === p.slug ? 'active' : ''}`} title={p.title} onClick={() => openProject(p)}>
@@ -1239,6 +1242,9 @@ export default function PalNovaaEnginePage() {
         {/* ============ MAIN ============ */}
         <main className="main">
           <header className="topbar">
+            <button className="icon-btn nav-toggle" title="القائمة" onClick={() => { setCollapsed(false); setDrawer(true); }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            </button>
             <div className="crumbs"><span style={{ cursor: 'pointer' }} onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span><span className="sep">/</span><b>{view === 'templates' ? 'القوالب الجاهزة' : title}</b></div>
             <span className={`status-pill ${allChips.length ? 'on' : ''}`}><i /><span>{allChips.length ? `${allChips.length} مرفق` : 'لا مصدر بيانات'}</span></span>
             <div className="top-actions">
@@ -1355,7 +1361,7 @@ export default function PalNovaaEnginePage() {
           )}
 
           {/* ===== WORKSPACE ===== */}
-          <section className={`workspace ${view === 'workspace' ? 'on' : ''}`}>
+          <section className={`workspace ${view === 'workspace' ? 'on' : ''} mp-${mobilePane}`}>
             <div className="chat">
               <div className="thread" ref={threadRef}>
                 {messages.map((m) => {
@@ -1551,6 +1557,11 @@ export default function PalNovaaEnginePage() {
                   )}
                 </div>
               </div>
+            </div>
+            {/* شريط تبديلٍ للجوّال: لوحٌ واحد في كلّ مرّة (محادثة ⇄ معاينة) */}
+            <div className="mobile-tabs">
+              <button className={mobilePane === 'chat' ? 'on' : ''} onClick={() => setMobilePane('chat')}>{Ico.chat}<span>المحادثة</span></button>
+              <button className={mobilePane === 'preview' ? 'on' : ''} onClick={() => setMobilePane('preview')}>{Ico.eye}<span>المعاينة</span></button>
             </div>
           </section>
 
