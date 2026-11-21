@@ -80,6 +80,37 @@ export default function PalNovaaEnginePage() {
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
 
+  /* الملفّ الشخصيّ والمظهر (تُحفظ على الجهاز) */
+  const ls = (k, d = '') => { try { return localStorage.getItem(k) || d; } catch { return d; } };
+  const [profName, setProfName] = useState(() => ls('pne-name'));
+  const [profPic, setProfPic] = useState(() => ls('pne-pic'));
+  const [bgColor, setBgColor] = useState(() => ls('pne-bg'));
+  const avatarRef = useRef(null);
+  const displayName = profName || userName || '';
+  const avInitials = (displayName ? displayName.trim().slice(0, 2) : 'PN');
+  const updName = (v) => { setProfName(v); try { v ? localStorage.setItem('pne-name', v) : localStorage.removeItem('pne-name'); } catch { /* */ } };
+  const updBg = (v) => { setBgColor(v); try { v ? localStorage.setItem('pne-bg', v) : localStorage.removeItem('pne-bg'); } catch { /* */ } };
+  const onAvatar = (e) => {
+    const f = e.target.files?.[0]; if (f) { if (f.size > 1.6e6) { showToast('الصورة كبيرة — اختر أصغر من 1.5MB'); }
+      else { const r = new FileReader(); r.onload = () => { const d = String(r.result); setProfPic(d); try { localStorage.setItem('pne-pic', d); } catch { /* */ } showToast('حُدّثت صورة الملفّ'); }; r.readAsDataURL(f); } }
+    e.target.value = '';
+  };
+  /* عدّاد التوكينز — الحساب المجّانيّ: ميزانيّة 120 ألف توكن (تقديريّة، تُضبط لاحقاً) */
+  const FREE_TOKENS = 120000;
+  const tokMeter = balance ? (() => {
+    const pro = balance.plan === 'pro';
+    const frac = balance.allowance_usd > 0 ? Math.min(1, (balance.used_usd || 0) / balance.allowance_usd) : 0;
+    return { pro, frac, used: Math.round(frac * FREE_TOKENS), budget: FREE_TOKENS, usd: balance.used_usd || 0 };
+  })() : null;
+  const BG_PRESETS = [
+    { k: '', c: '#0A0B0D', n: 'افتراضيّ' },
+    { k: '#000000', c: '#000000', n: 'فحميّ' },
+    { k: '#0A0E16', c: '#0A0E16', n: 'أزرق ليليّ' },
+    { k: '#0D0A14', c: '#0D0A14', n: 'بنفسجيّ' },
+    { k: '#120D0A', c: '#120D0A', n: 'دافئ' },
+    { k: '#0A0F0D', c: '#0A0F0D', n: 'زيتونيّ' },
+  ];
+
   /* ArcGIS REST connector */
   const ARCGIS_DEFAULT = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
   const ARCGIS_PRESETS = [
@@ -1232,8 +1263,9 @@ export default function PalNovaaEnginePage() {
 
   /* =========================================================================== */
   return (
-    <div className="pne-root" dir="rtl">
+    <div className="pne-root" dir="rtl" style={bgColor ? { '--bg': bgColor } : undefined}>
       <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg,.dxf,.dwg" hidden onChange={onFile} />
+      <input ref={avatarRef} type="file" accept="image/*" hidden onChange={onAvatar} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
@@ -1246,10 +1278,9 @@ export default function PalNovaaEnginePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
             </button>
           </div>
-          <button className="new-btn" onClick={() => { setDrawer(false); newProject(); }}>{Ico.plus}<span>مشروع جديد</span><kbd>جديد</kbd></button>
+          <button className="new-btn" onClick={() => { setDrawer(false); newProject(); }}>{Ico.plus}<span>مشروع جديد</span></button>
           <nav className="nav" onClick={() => setDrawer(false)}>
-            <a className={view === 'home' ? 'active' : ''} onClick={() => { if (view === 'templates') setView('home'); }}>{Ico.chat}<span>المحادثات</span></a>
-            <a className={view === 'templates' ? 'active' : ''} onClick={() => setView('templates')}>{Ico.tpl}<span>القوالب الجاهزة</span><span className="count">{(templates.length || TPL.length) || ''}</span></a>
+            <a className={view !== 'workspace' ? 'active' : ''} onClick={() => setView('home')}>{Ico.chat}<span>المحادثات</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a className={builderOpen ? 'active' : ''} onClick={openBuilder}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg><span>بناء البيانات</span></a>
@@ -1266,13 +1297,16 @@ export default function PalNovaaEnginePage() {
               </a>
             ))}
           </div>
-          <div className="side-foot">
-            <div className="avatar">PN</div>
+          <button className="side-foot" title="الإعدادات والملفّ الشخصيّ" onClick={() => setModal('settings')}>
+            <div className="avatar">{profPic ? <img src={profPic} alt="" /> : avInitials}</div>
             <div className="who">
-              <b>{userName || 'PalNovaa 1.0'}{balance && <span className={`plan-badge ${balance.plan === 'pro' ? 'pro' : ''}`}>{balance.plan === 'pro' ? 'Pro' : 'مجّاني'}</span>}</b>
-              <small>{balance ? (balance.plan === 'pro' ? 'خطّة Pro' : 'الخطّة المجّانيّة') : 'المحرّك الذكيّ'}</small>
+              <b>{displayName || 'PalNovaa 1.0'}{balance && <span className={`plan-badge ${balance.plan === 'pro' ? 'pro' : ''}`}>{balance.plan === 'pro' ? 'Pro' : 'مجّاني'}</span>}</b>
+              {tokMeter && !tokMeter.pro
+                ? <span className="foot-meter" title={`استُهلك ${tokMeter.used.toLocaleString('en')} من ${FREE_TOKENS.toLocaleString('en')} توكن`}><i style={{ width: `${Math.max(3, Math.round(tokMeter.frac * 100))}%` }} /></span>
+                : <small>{balance ? (balance.plan === 'pro' ? 'خطّة Pro — غير محدودة' : 'الخطّة المجّانيّة') : 'المحرّك الذكيّ'}</small>}
             </div>
-          </div>
+            <span className="foot-gear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg></span>
+          </button>
         </aside>
 
         {/* ============ MAIN ============ */}
@@ -1284,9 +1318,7 @@ export default function PalNovaaEnginePage() {
             <div className="crumbs">
               <span className="crumb-home" onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span>
               <span className="sep">/</span>
-              {view === 'templates'
-                ? <b>القوالب الجاهزة</b>
-                : (renaming
+              {(renaming
                     ? <input className="crumb-rename" autoFocus value={nameDraft} placeholder="اسم المشروع…"
                         onChange={(e) => setNameDraft(e.target.value)} onBlur={commitRename}
                         onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(false); }} />
@@ -1310,7 +1342,7 @@ export default function PalNovaaEnginePage() {
             <section className="home" onMouseMove={onHomeMove}>
               <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
               <div className="home-inner">
-                {userName && <h2 className="hero-greet">{greeting} {userName}</h2>}
+                {displayName && <h2 className="hero-greet">{greeting} {displayName}</h2>}
                 <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
 
                 <div className="composer">
@@ -1381,38 +1413,6 @@ export default function PalNovaaEnginePage() {
           )}
 
           {/* ===== TEMPLATES ===== */}
-          {view === 'templates' && (
-            <section className="home">
-              <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
-              <div className="home-inner" style={{ paddingTop: '5vh' }}>
-                <div className="tpl-header">
-                  <div>
-                    <h2 className="tpl-title">قوالب جاهزة للبدء السريع</h2>
-                    <p className="tpl-subtitle">اختر قالباً وابدأ البناء بنقرة واحدة — أو عدّل الوصف حسب حاجتك</p>
-                  </div>
-                  <div className="tpl-search">
-                    {Ico.search}
-                    <input type="text" placeholder="ابحث في القوالب…" value={tplSearch} onChange={(e) => setTplSearch(e.target.value)} />
-                  </div>
-                </div>
-                <div className="templates">
-                  {(templates.length ? templates : TPL)
-                    .filter((t) => {
-                      if (!tplSearch.trim()) return true;
-                      const q = tplSearch.toLowerCase();
-                      return (t.title || t.t || '').toLowerCase().includes(q) || (t.desc || t.d || '').toLowerCase().includes(q) || (t.tags || []).some((g) => g.toLowerCase().includes(q));
-                    })
-                    .map((t, i) => (
-                    <button className="tpl" key={t.id || i} onClick={() => { setPrompt(t.prompt || t.p); setView('home'); }}>
-                      <div className="tpl-icon">{TICONS[t.id] || <svg width="28" height="28" viewBox="0 0 32 32" fill="none" stroke="#E07B39" strokeWidth="1.3"><path d="M16 4 4 11l12 7 12-7L16 4Z" fill="#E07B39" fillOpacity="0.12"/><path d="m4 16 12 7 12-7"/><path d="m4 21 12 7 12-7"/></svg>}</div>
-                      <div><b>{t.title || t.t}</b><p>{t.desc || t.d}</p>{t.tags && <div className="tags">{t.tags.map((g) => <span className="tag" key={g}>{g}</span>)}</div>}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-
           {/* ===== WORKSPACE ===== */}
           <section className={`workspace ${view === 'workspace' ? 'on' : ''} mp-${mobilePane}`}>
             <div className="chat">
@@ -2021,6 +2021,74 @@ export default function PalNovaaEnginePage() {
                 <div><label>مشروعٌ موسّع</label><small>عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد</small></div>
                 <span className={`opts-switch ${expanded ? 'on' : ''}`}><i /></span>
               </div>
+            </div>
+            <div className="modal-foot"><button className="btn accent sp" onClick={() => setModal(null)}>تمّ</button></div>
+          </div>
+        </div>
+      )}
+
+      {modal === 'settings' && (
+        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
+          <div className="modal set-modal">
+            <div className="modal-head"><div><b>الإعدادات</b><small>ملفّك الشخصيّ، الاستهلاك، ومظهر الواجهة</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
+            <div className="set-body">
+
+              {/* الملفّ الشخصيّ */}
+              <div className="set-sec">
+                <div className="set-label">الملفّ الشخصيّ</div>
+                <div className="set-prof">
+                  <button className="set-avatar" onClick={() => avatarRef.current?.click()} title="تغيير الصورة">
+                    {profPic ? <img src={profPic} alt="" /> : <span>{avInitials}</span>}
+                    <span className="set-avatar-cam"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg></span>
+                  </button>
+                  <div className="set-prof-fields">
+                    <label>الاسم المعروض</label>
+                    <input value={profName} placeholder={userName || 'اسمك هنا…'} onChange={(e) => updName(e.target.value)} maxLength={40} />
+                    <div className="set-prof-row">
+                      {profPic && <button className="set-mini" onClick={() => { setProfPic(''); try { localStorage.removeItem('pne-pic'); } catch { /* */ } }}>إزالة الصورة</button>}
+                      <small>يُحفظ على جهازك فقط</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* الاستهلاك */}
+              <div className="set-sec">
+                <div className="set-label">الاستهلاك</div>
+                {tokMeter ? (tokMeter.pro ? (
+                  <div className="set-usage pro">
+                    <div className="set-usage-top"><b>خطّة Pro</b><span className="plan-badge pro">Pro</span></div>
+                    <div className="set-usage-bar"><i style={{ width: `${Math.max(2, Math.round(tokMeter.frac * 100))}%` }} /></div>
+                    <small>استهلاكٌ غير محدود — هذا الخطّ يبيّن ما صُرف هذه الدورة.</small>
+                  </div>
+                ) : (
+                  <div className="set-usage">
+                    <div className="set-usage-top"><b>{tokMeter.used.toLocaleString('en')} <span>/ {FREE_TOKENS.toLocaleString('en')} توكن</span></b><span className="set-usage-pct">{Math.round(tokMeter.frac * 100)}%</span></div>
+                    <div className="set-usage-bar"><i className={tokMeter.frac > 0.85 ? 'hot' : ''} style={{ width: `${Math.max(2, Math.round(tokMeter.frac * 100))}%` }} /></div>
+                    <small>ميزانيّة الخطّة المجّانيّة — تكفي لبناء عدّة تطبيقاتٍ مرتّبة. عند النفاد تُتاح الترقية إلى Pro.</small>
+                  </div>
+                )) : <div className="set-usage"><div className="set-usage-bar"><i style={{ width: '2%' }} /></div><small>يُحمَّل الرصيد…</small></div>}
+                {!tokMeter?.pro && <button className="btn accent sp set-upgrade" onClick={() => { setModal(null); navigate('/palnovaa-engine/pricing'); }}>الترقية إلى Pro</button>}
+              </div>
+
+              {/* المظهر */}
+              <div className="set-sec">
+                <div className="set-label">لون خلفيّة الواجهة</div>
+                <div className="set-swatches">
+                  {BG_PRESETS.map((b) => (
+                    <button key={b.n} className={`set-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
+                      <span style={{ background: b.c }} />
+                      <small>{b.n}</small>
+                    </button>
+                  ))}
+                </div>
+                <label className="set-custom">
+                  <span>لونٌ مخصّص</span>
+                  <input type="color" value={bgColor || '#0A0B0D'} onChange={(e) => updBg(e.target.value)} />
+                </label>
+                <small className="set-hint">يُفضَّل لونٌ داكن ليبقى النصّ واضحاً. يُطبَّق فوراً ويُحفظ على جهازك.</small>
+              </div>
+
             </div>
             <div className="modal-foot"><button className="btn accent sp" onClick={() => setModal(null)}>تمّ</button></div>
           </div>
