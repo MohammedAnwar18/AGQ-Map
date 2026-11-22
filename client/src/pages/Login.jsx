@@ -35,17 +35,43 @@ const Login = () => {
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
     const [successMessage, setSuccessMessage] = useState('');
 
-    // قسم الفيديو التعريفيّ أسفل واجهة المحرّك (يظهر عند التمرير)
+    // قسم الفيديو والبطاقات التعريفيّة أسفل واجهة المحرّك (تظهر عند التمرير)
     const demoRef = useRef(null);
+    const cardsRef = useRef(null);
     const [demoIn, setDemoIn] = useState(false);
+    const [cardsIn, setCardsIn] = useState(false);
+    const [openCard, setOpenCard] = useState(null);
     const scrollToDemo = () => demoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     useEffect(() => {
-        const el = demoRef.current;
-        if (!el || typeof IntersectionObserver === 'undefined') return;
-        const io = new IntersectionObserver((entries) => { entries.forEach((e) => { if (e.isIntersecting) setDemoIn(true); }); }, { threshold: 0.22 });
-        io.observe(el);
-        return () => io.disconnect();
+        if (typeof IntersectionObserver === 'undefined') return;
+        const mk = (el, set) => { if (!el) return null; const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) set(true); }), { threshold: 0.18 }); io.observe(el); return io; };
+        const a = mk(demoRef.current, setDemoIn);
+        const b = mk(cardsRef.current, setCardsIn);
+        return () => { a?.disconnect(); b?.disconnect(); };
     }, [fromEngine]);
+    const ENG_FEATURES = [
+        {
+            img: '/engine-feat-ai.jpg',
+            kicker: 'الذكاء الاصطناعيّ',
+            title: 'عقلٌ يفهم المكان',
+            teaser: 'محرّكٌ ذكيّ دُرّب على لغة الخرائط والتحليل المكانيّ — يقرأ فكرتك ويحوّلها إلى تطبيقٍ حيّ.',
+            more: 'لا يكتفي بتوليد كودٍ عامّ؛ بل يفهم الطبقات وأنظمة الإسناد والتحليل الجغرافيّ، ويختار الأدوات المناسبة بنفسه. وراء البساطة التي تراها هندسةٌ دقيقة تُترجم جملةً واحدة إلى خريطةٍ تفاعليّة كاملة… والباقي اكتشفه بنفسك.',
+        },
+        {
+            img: '/engine-feat-data.jpg',
+            kicker: 'البيانات المكانيّة',
+            title: 'بياناتٌ يصعب الوصول إليها — بين يديك',
+            teaser: 'جمع البيانات المكانيّة الدقيقة رحلةٌ شاقّة: مسحٌ ميدانيّ، ومصادر مبعثرة، وصيغٌ متضاربة.',
+            more: 'قضينا وقتاً طويلاً في جمع طبقات فلسطين، وتنظيمها، وتوحيد صيغها ومراجع إسنادها، لتصل إليك نظيفةً وجاهزة. ما كان يحتاج فِرَقاً ومعدّاتٍ وأسابيع من العمل الميدانيّ، صار مصدراً تُضيفه إلى مشروعك بنقرةٍ واحدة.',
+        },
+        {
+            img: '/engine-feat-build.jpg',
+            kicker: 'البناء لا الإعداد',
+            title: 'من أمرٍ واحد… إلى أداةٍ مخصّصة',
+            teaser: 'بدل تعلّم ArcGIS أو QGIS وساعاتٍ من الإعداد، تكتب ما تريد — فيُبنى لك.',
+            more: 'يحوّل المحرّك وصفك إلى أدوات تحليلٍ وعرضٍ مُفصّلة على حالتك، ويرشدك خطوةً بخطوة كأنّه خبيرٌ بجانبك. فتنجز وحدك ما كان يتطلّب مختصّين وفريقاً كاملاً — بسرعةٍ وبلغةٍ تفهمها.',
+        },
+    ];
 
     // زائر عائد أم أول مرة؟ (لإخفاء "مرحباً بعودتك" عن المستخدم الجديد)
     const RETURNING_VISITOR_KEY = 'palnovaa_returning_visitor';
@@ -663,15 +689,39 @@ const Login = () => {
                         <p>اكتب فكرتك، وأرفق بياناتك المكانيّة — ويُولّد المحرّك تطبيق GIS متكاملاً في ثوانٍ.</p>
                     </div>
                     <div className="eng-demo-frame">
-                        <video
+                        <iframe
                             className="eng-demo-video"
-                            controls
-                            playsInline
-                            preload="none"
-                            poster="/engine-login-map.jpg"
-                            src="/engine-demo.mp4"
+                            src="https://www.youtube-nocookie.com/embed/rOKIfe3jImc?rel=0&modestbranding=1"
+                            title="PalNovaa Engine"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
                         />
                         <div className="eng-demo-glow" aria-hidden="true" />
+                    </div>
+                </section>
+
+                {/* بطاقاتٌ تعريفيّة */}
+                <section className={`eng-cards ${cardsIn ? 'in' : ''}`} ref={cardsRef}>
+                    <div className="eng-cards-head">
+                        <h2>لماذا PalNovaa Engine؟</h2>
+                        <p>ثلاثة أسسٍ بنينا عليها المحرّك — من العقل الذي يفهمك، إلى البيانات الجاهزة، إلى طريقةٍ جديدةٍ للبناء.</p>
+                    </div>
+                    <div className="eng-cards-grid">
+                        {ENG_FEATURES.map((f, i) => (
+                            <article className={`eng-card-item ${openCard === i ? 'open' : ''}`} key={f.title} style={{ transitionDelay: `${i * 0.12}s` }}>
+                                <div className="eng-ci-media"><img src={f.img} alt={f.title} loading="lazy" /><span className="eng-ci-kicker">{f.kicker}</span></div>
+                                <div className="eng-ci-body">
+                                    <h3>{f.title}</h3>
+                                    <p className="eng-ci-teaser">{f.teaser}</p>
+                                    <p className="eng-ci-more">{f.more}</p>
+                                    <button className="eng-ci-readmore" onClick={() => setOpenCard(openCard === i ? null : i)}>
+                                        {openCard === i ? 'إخفاء' : 'اقرأ المزيد'}
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
                     </div>
                 </section>
             </div>
