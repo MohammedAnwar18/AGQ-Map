@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/api';
@@ -34,6 +34,18 @@ const Login = () => {
     const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP & New Password
     const [successMessage, setSuccessMessage] = useState('');
+
+    // قسم الفيديو التعريفيّ أسفل واجهة المحرّك (يظهر عند التمرير)
+    const demoRef = useRef(null);
+    const [demoIn, setDemoIn] = useState(false);
+    const scrollToDemo = () => demoRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    useEffect(() => {
+        const el = demoRef.current;
+        if (!el || typeof IntersectionObserver === 'undefined') return;
+        const io = new IntersectionObserver((entries) => { entries.forEach((e) => { if (e.isIntersecting) setDemoIn(true); }); }, { threshold: 0.22 });
+        io.observe(el);
+        return () => io.disconnect();
+    }, [fromEngine]);
 
     // زائر عائد أم أول مرة؟ (لإخفاء "مرحباً بعودتك" عن المستخدم الجديد)
     const RETURNING_VISITOR_KEY = 'palnovaa_returning_visitor';
@@ -607,33 +619,61 @@ const Login = () => {
     if (fromEngine) {
         return (
             <div className="eng-login" dir="rtl">
-                <div className="eng-form-side">
-                    <div className="eng-card-wrap">
-                        <div className="eng-card fade-in">
-                            <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
-                            <div className="card-header">
-                                <h2>{cardTitle}</h2>
-                                {!isLogin && !isForgotPassword && <p className="subtitle">انضم إلى المجتمع</p>}
+                <div className="eng-login-split">
+                    <div className="eng-form-side">
+                        <div className="eng-card-wrap">
+                            <div className="eng-card fade-in">
+                                <img className="eng-logo-img" src="/palnovaa-engine-lockup.svg" alt="Palnovaa Engine" />
+                                <div className="card-header">
+                                    <h2>{cardTitle}</h2>
+                                    {!isLogin && !isForgotPassword && <p className="subtitle">انضم إلى المجتمع</p>}
+                                </div>
+                                <form onSubmit={handleSubmit} className="login-form">
+                                    {formBody}
+                                </form>
+                                {footerBody}
                             </div>
-                            <form onSubmit={handleSubmit} className="login-form">
-                                {formBody}
-                            </form>
-                            {footerBody}
+                        </div>
+                        <div className="eng-legal">
+                            <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }}>شروط الخدمة</Link>
+                            <span className="sep">·</span>
+                            <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }}>سياسة الخصوصية</Link>
+                            <span className="sep">·</span>
+                            <span>© {new Date().getFullYear()} PalNovaa</span>
                         </div>
                     </div>
-                    <div className="eng-legal">
-                        <Link to="/terms" state={{ mode: isLogin ? 'login' : 'register' }}>شروط الخدمة</Link>
-                        <span className="sep">·</span>
-                        <Link to="/privacy" state={{ mode: isLogin ? 'login' : 'register' }}>سياسة الخصوصية</Link>
-                        <span className="sep">·</span>
-                        <span>© {new Date().getFullYear()} PalNovaa</span>
+                    <div className="eng-hero-side eng-hero-map-side">
+                        <img className="eng-hero-map" src="/engine-login-map.jpg" alt="PalNovaa Engine — خريطة مكانيّة" />
+                        <div className="eng-hero-glow" aria-hidden="true" />
+                        <div className="eng-hero-vignette" aria-hidden="true" />
                     </div>
+
+                    {/* سهمٌ لطيف للتمرير نحو الفيديو التعريفيّ */}
+                    <button className="eng-scroll-cue" onClick={scrollToDemo} aria-label="شاهد كيف يعمل">
+                        <span>شاهد كيف يعمل</span>
+                        <svg className="eng-cue-arrow" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M6 13l6 6 6-6" /></svg>
+                    </button>
                 </div>
-                <div className="eng-hero-side eng-hero-map-side">
-                    <img className="eng-hero-map" src="/engine-login-map.jpg" alt="PalNovaa Engine — خريطة مكانيّة" />
-                    <div className="eng-hero-glow" aria-hidden="true" />
-                    <div className="eng-hero-vignette" aria-hidden="true" />
-                </div>
+
+                {/* قسم الفيديو التعريفيّ */}
+                <section className={`eng-demo ${demoIn ? 'in' : ''}`} ref={demoRef}>
+                    <div className="eng-demo-head">
+                        <span className="eng-demo-kicker">PalNovaa Engine</span>
+                        <h2>شاهد المحرّك وهو يبني تطبيق خرائط حقيقيّاً</h2>
+                        <p>اكتب فكرتك، وأرفق بياناتك المكانيّة — ويُولّد المحرّك تطبيق GIS متكاملاً في ثوانٍ.</p>
+                    </div>
+                    <div className="eng-demo-frame">
+                        <video
+                            className="eng-demo-video"
+                            controls
+                            playsInline
+                            preload="none"
+                            poster="/engine-login-map.jpg"
+                            src="/engine-demo.mp4"
+                        />
+                        <div className="eng-demo-glow" aria-hidden="true" />
+                    </div>
+                </section>
             </div>
         );
     }
