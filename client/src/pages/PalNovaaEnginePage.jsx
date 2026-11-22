@@ -127,8 +127,8 @@ export default function PalNovaaEnginePage() {
     } catch { showToast('تعذّر الاتصال بالخادم'); }
     setSavingProf(false);
   };
-  /* عدّاد التوكينز — الحساب المجّانيّ: ميزانيّة 120 ألف توكن (تقديريّة، تُضبط لاحقاً) */
-  const FREE_TOKENS = 120000;
+  /* عدّاد التوكينز — الحساب المجّانيّ: ميزانيّة 110 ألف توكن (تقديريّة، تُضبط لاحقاً) */
+  const FREE_TOKENS = 110000;
   const tokMeter = balance ? (() => {
     const pro = balance.plan === 'pro';
     const frac = balance.allowance_usd > 0 ? Math.min(1, (balance.used_usd || 0) / balance.allowance_usd) : 0;
@@ -146,6 +146,15 @@ export default function PalNovaaEnginePage() {
   ];
   useEffect(() => { fitTa(homeTaRef.current); }, [prompt]);
   useEffect(() => { fitTa(chatTaRef.current); }, [prompt2]);
+
+  /* نافذة ترحيبٍ تظهر مرّةً واحدة لكلّ مستخدمٍ عند أوّل دخولٍ للمحرّك */
+  const [showWelcome, setShowWelcome] = useState(false);
+  const welcomeKey = `pne_welcome_${user?.id || user?.userId || user?.username || 'guest'}`;
+  useEffect(() => {
+    if (!user) return;
+    try { if (!localStorage.getItem(welcomeKey)) setShowWelcome(true); } catch { /* */ }
+  }, [user, welcomeKey]);
+  const closeWelcome = () => { setShowWelcome(false); try { localStorage.setItem(welcomeKey, '1'); } catch { /* */ } };
 
   /* ArcGIS REST connector */
   const ARCGIS_DEFAULT = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
@@ -2374,6 +2383,21 @@ export default function PalNovaaEnginePage() {
       )}
 
       <div className={`toast ${toast ? 'show' : ''}`}><i /><span>{toast}</span></div>
+
+      {/* ترحيبٌ لأوّل دخول (مرّةً واحدة) */}
+      {showWelcome && (
+        <div className="pnw-scrim" onClick={(e) => { if (e.target.classList.contains('pnw-scrim')) closeWelcome(); }}>
+          <div className="pnw-card" role="dialog" aria-label="مرحباً بك في PalNovaa Engine">
+            <button className="pnw-x" onClick={closeWelcome} aria-label="إغلاق">{Ico.close}</button>
+            <div className="pnw-media"><img src="/engine-welcome.png" alt="PalNovaa Engine 1.0" /></div>
+            <div className="pnw-body">
+              <h2 className="pnw-title">تستخدم الآن نموذج <span>PalNovaa Engine 1.0</span></h2>
+              <p className="pnw-sub">ولديك رصيد بناءٍ بقيمة <b>110 ألف توكِن</b> — ابدأ ببناء أوّل تطبيقٍ لك الآن.</p>
+              <button className="pnw-cta" onClick={closeWelcome}>لنبدأ البناء</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
