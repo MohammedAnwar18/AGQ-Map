@@ -710,7 +710,8 @@ const Login = () => {
                     <div className="eng-cards-grid">
                         {ENG_FEATURES.map((f, i) => (
                             <article className={`eng-card-item ${openCard === i ? 'open' : ''}`} key={f.title} style={{ transitionDelay: `${i * 0.12}s` }}>
-                                <div className="eng-ci-media"><img src={f.img} alt={f.title} loading="lazy" /><span className="eng-ci-kicker">{f.kicker}</span></div>
+                                <div className="eng-ci-top"><span className="eng-ci-dot" aria-hidden="true" /><span className="eng-ci-kicker">{f.kicker}</span></div>
+                                <div className="eng-ci-media"><img src={f.img} alt={f.title} loading="lazy" /></div>
                                 <div className="eng-ci-body">
                                     <h3>{f.title}</h3>
                                     <p className="eng-ci-teaser">{f.teaser}</p>
