@@ -391,11 +391,16 @@
     --eng-dark: #2A2F37;
     --eng-cream: #E9E2DA;
     --eng-ink: #0B0D10;
-    position: relative;
-    min-height: 100vh;
+    position: fixed;
+    inset: 0;
+    height: 100vh;
+    height: 100dvh;
     background: var(--eng-ink);
     direction: ltr;
+    overflow-y: auto;
     overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
     font-family: 'Tajawal', sans-serif;
 }
 .eng-login .eng-login-split {
@@ -403,6 +408,7 @@
     display: grid;
     grid-template-columns: minmax(420px, 600px) 1fr;
     height: 100vh;
+    height: 100dvh;
     direction: ltr;              /* النموذج يسار، الصورة يمين (مثل Replit) */
     overflow: hidden;
 }
