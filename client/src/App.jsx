@@ -21,6 +21,7 @@ const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
 const PalNovaaLabPage = React.lazy(() => import('./pages/PalNovaaLabPage'));
 const PalNovaaForesightPage = React.lazy(() => import('./pages/PalNovaaForesightPage'));
 const PalNovaaEnginePage = React.lazy(() => import('./pages/PalNovaaEnginePage'));
+const PalNovaaDataBuilderPage = React.lazy(() => import('./pages/PalNovaaDataBuilderPage'));
 const PalNovaaEnginePricing = React.lazy(() => import('./pages/PalNovaaEnginePricing'));
 const PalNovaaEngineView = React.lazy(() => import('./pages/PalNovaaEngineView'));
 const PalNovaaPayments = React.lazy(() => import('./pages/PalNovaaPayments'));
@@ -202,6 +203,7 @@ function App() {
                                 <Route path="/foresight" element={<Navigate to="/palnovaa-foresight" replace />} />
                                 {/* محرّك بالنوفا — يبني تطبيقات GIS من وصفٍ نصّيّ بموديل PalNovaa 1.0 */}
                                 <Route path="/palnovaa-engine" element={<ProtectedRoute><PalNovaaEnginePage /></ProtectedRoute>} />
+                                <Route path="/palnovaa-engine/data" element={<ProtectedRoute><PalNovaaDataBuilderPage /></ProtectedRoute>} />
                                 <Route path="/palnovaa-engine/pricing" element={<PalNovaaEnginePricing />} />
                                 <Route path="/palnovaa-engine/payments" element={<AdminRoute><PalNovaaPayments /></AdminRoute>} />
                                 <Route path="/pricing" element={<Navigate to="/palnovaa-engine/pricing" replace />} />
