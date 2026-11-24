@@ -1167,7 +1167,8 @@ router.post('/enhance', optionalAuth, async (req, res) => {
         const raw = (req.body?.prompt || '').toString().trim().slice(0, 2000);
         if (!raw) return res.json({ ok: false, reason: 'empty' });
         const reqKey = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-        const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('enhance'));
+        const userThink = (typeof req.body?.keyThink === 'string' ? req.body.keyThink.trim() : '') || reqKey;
+        const KEY = userThink || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('enhance'));
         if (!KEY) return res.json({ ok: false, reason: 'missing_key' });
         const out = (await quickComplete(KEY, ENHANCER_SYS, raw, 700) || '').trim().replace(/^```[a-z]*\n?|\n?```$/gi, '').trim();
         if (!out) return res.json({ ok: false, reason: 'empty_result' });
@@ -1183,9 +1184,13 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     const b = req.body || {};
     let prompt = (b.prompt || '').toString().trim().slice(0, 4000);
     const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
+    // مفاتيح المتصفّح: خانةٌ للتفكير (GLM) وخانةٌ للبناء (Gemini). `key` القديم يبقى مقبولاً للتوافق.
     const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));        // الكود والتعديل
-    const KEY_THINK = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
+    const userThink = (typeof b.keyThink === 'string' ? b.keyThink.trim() : '') || reqKey;
+    const userCode = (typeof b.keyCode === 'string' ? b.keyCode.trim() : '') || reqKey;
+    const userKeyAny = userCode || userThink;
+    const KEY = userCode || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));          // الكود والتعديل
+    const KEY_THINK = userThink || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -1202,7 +1207,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     try {
         await ensureTable().catch(() => {});
         const ident = identOf(req);
-        const metered = !reqKey;
+        const metered = !userKeyAny;
         const acct = metered ? await getAccount(ident).catch(() => null) : null;
         if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
             send({ type: 'error', reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct) });
@@ -1254,7 +1259,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const transient = /high demand|overload|unavailable|try again|temporar|503|502|429|rate limit|quota|exhausted/i.test(m);
         if (/ETIMEDOUT|timeout|socket hang|ECONNRESET|ENETUNREACH/i.test(m)) m = 'المزوّد لم يستجب في الوقت المحدّد (بطء/ازدحام في المزوّد المجّاني). جرّب مزوّداً أسرع مثل Groq (gsk_) أو Gemini، أو أعِد المحاولة.';
         else if (/404|not found|does not exist|is not found/i.test(m)) m = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). جرّب مفتاحاً آخر أو أخبِرني بالمزوّد. التفصيل: ${m}`;
-        send({ type: 'error', reason: transient ? 'الموديل مزدحمٌ الآن. جرّب بعد لحظات.' : m });
+        send({ type: 'error', reason: transient ? 'المزوّد رفض الطلب (ازدحامٌ أو تجاوزُ حصّة). التفصيل: ' + m : m });
         return res.end();
     }
 });
@@ -1267,15 +1272,19 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
     if (!prompt) return res.status(400).json({ ok: false, reason: 'empty prompt' });
 
+    // مفاتيح المتصفّح: خانةٌ للتفكير (GLM) وخانةٌ للبناء (Gemini). `key` القديم يبقى مقبولاً للتوافق.
     const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));        // الكود والتعديل
-    const KEY_THINK = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
+    const userThink = (typeof b.keyThink === 'string' ? b.keyThink.trim() : '') || reqKey;
+    const userCode = (typeof b.keyCode === 'string' ? b.keyCode.trim() : '') || reqKey;
+    const userKeyAny = userCode || userThink;
+    const KEY = userCode || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));          // الكود والتعديل
+    const KEY_THINK = userThink || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
     if (!KEY) return res.json({ ok: false, reason: 'missing_key', model: MODEL_NAME });
 
     // التقنين بالكلفة: يُحسَب فقط على المفتاح المشترك (لا على مفتاح المستخدم الخاصّ)
     await ensureTable().catch(() => {});
     const ident = identOf(req);
-    const metered = !reqKey;
+    const metered = !userKeyAny;
     let acct = metered ? await getAccount(ident).catch(() => null) : null;
     if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
         return res.json({ ok: false, reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct), model: MODEL_NAME });
@@ -1327,7 +1336,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
             if (!isTransient(lastErr)) break;
         }
     }
-    let reason = isTransient(lastErr) ? 'الموديل مزدحمٌ الآن (ضغطٌ مؤقّت). جرّب بعد لحظات.' : lastErr;
+    let reason = isTransient(lastErr) ? 'المزوّد رفض الطلب (ازدحامٌ أو تجاوزُ حصّة). التفصيل: ' + lastErr : lastErr;
     if (/ETIMEDOUT|timeout|socket hang|ECONNRESET|ENETUNREACH/i.test(lastErr)) reason = 'المزوّد لم يستجب في الوقت المحدّد (بطء/ازدحام في المزوّد المجّاني). جرّب مزوّداً أسرع مثل Groq (gsk_) أو Gemini، أو أعِد المحاولة.';
     else if (/404|not found|does not exist|is not found/i.test(lastErr)) reason = `الموديل «${pickProvider(KEY).model}» غير متاح لهذا المفتاح/المزوّد (404). التفصيل: ${lastErr}`;
     return res.json({ ok: false, reason, model: MODEL_NAME });

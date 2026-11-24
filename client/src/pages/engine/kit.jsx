@@ -17,7 +17,9 @@ export const APPS_BASE = (() => {
 export const appLink = (slug) => (APPS_BASE ? `https://${slug}.${APPS_BASE}` : `${window.location.origin}/pe/${slug}`);
 
 export const API = (import.meta.env.VITE_API_URL || '/api');
-export const KEY_LS = 'palnovaa_engine_key';
+export const KEY_LS = 'palnovaa_engine_key';              // قديم — يُقرأ للتوافق فقط
+export const KEY_THINK_LS = 'palnovaa_engine_key_think';  // مفتاح التفكير والتخطيط (GLM)
+export const KEY_CODE_LS = 'palnovaa_engine_key_code';    // مفتاح البناء وكتابة الكود (Gemini)
 
 export const authHeaders = () => {
   const h = { 'Content-Type': 'application/json' };

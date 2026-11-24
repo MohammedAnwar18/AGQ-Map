@@ -6,7 +6,7 @@ import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 import {
-  APPS_BASE, appLink, API, KEY_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, STAGES, SICONS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
+  APPS_BASE, appLink, API, KEY_LS, KEY_THINK_LS, KEY_CODE_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, STAGES, SICONS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
 } from './engine/kit';
 
 export default function PalNovaaEnginePage() {
@@ -77,7 +77,8 @@ export default function PalNovaaEnginePage() {
   const [mobilePane, setMobilePane] = useState('chat'); // الجوّال: لوحٌ واحد (محادثة | معاينة)
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
-  const [keyDraft, setKeyDraft] = useState(localStorage.getItem(KEY_LS) || '');
+  const [keyThinkDraft, setKeyThinkDraft] = useState(localStorage.getItem(KEY_THINK_LS) || '');
+  const [keyCodeDraft, setKeyCodeDraft] = useState(localStorage.getItem(KEY_CODE_LS) || '');
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
 
@@ -587,7 +588,8 @@ export default function PalNovaaEnginePage() {
 
   const runBuild = async (rawText, isEdit) => {
     if (busy || !rawText.trim()) return;
-    const key = localStorage.getItem(KEY_LS) || '';
+    const keyThink = localStorage.getItem(KEY_THINK_LS) || '';
+    const keyCode = localStorage.getItem(KEY_CODE_LS) || '';
     setBusy(true); setView('workspace'); setIframeErr('');
     if (!isEdit) setTitle(rawText.trim().slice(0, 48));
 
@@ -609,7 +611,7 @@ export default function PalNovaaEnginePage() {
 
     // الوضع الموسّع: مشروعٌ جديد إن فُعّل، أو تعديلُ مشروعٍ موسّعٍ قائم (نرسل ملفّاته)
     const useExpanded = expanded || (isEdit && !!files);
-    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', key, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', keyThink, keyCode, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
     try {
       const handled = await tryStream(body, bId, isEdit);
       if (!handled) await nonStream(body, bId, isEdit);
@@ -626,8 +628,8 @@ export default function PalNovaaEnginePage() {
     if (enhancing || busy) return;
     setEnhancing(true);
     try {
-      const key = localStorage.getItem(KEY_LS) || '';
-      const d = await jpost('/engine/enhance', { prompt: base, key });
+      const keyThink = localStorage.getItem(KEY_THINK_LS) || '';
+      const d = await jpost('/engine/enhance', { prompt: base, keyThink });
       if (d?.ok && d.prompt) { setPrompt(d.prompt); showToast('حُسّن الوصف ✨ — عدّله أو ابنِ مباشرةً'); }
       else showToast(d?.reason === 'missing_key' ? 'أضِف مفتاح الموديل أولاً' : 'تعذّر التحسين، جرّب مجدّداً');
     } catch { showToast('تعذّر الاتصال بالخادم'); }
@@ -736,7 +738,14 @@ export default function PalNovaaEnginePage() {
     else showToast('تعذّر الاسترجاع');
   };
 
-  const saveKey = () => { const k = keyDraft.trim(); if (k) localStorage.setItem(KEY_LS, k); else localStorage.removeItem(KEY_LS); setModal(null); showToast(k ? 'تمّ حفظ المفتاح على جهازك' : 'أُزيل المفتاح'); };
+  const saveKey = () => {
+    const t = keyThinkDraft.trim(), c = keyCodeDraft.trim();
+    if (t) localStorage.setItem(KEY_THINK_LS, t); else localStorage.removeItem(KEY_THINK_LS);
+    if (c) localStorage.setItem(KEY_CODE_LS, c); else localStorage.removeItem(KEY_CODE_LS);
+    localStorage.removeItem(KEY_LS);   // نتخلّص من المفتاح المفرد القديم فلا يتعارض
+    setModal(null);
+    showToast((t || c) ? 'حُفظت المفاتيح على جهازك' : 'أُزيلت المفاتيح');
+  };
 
   /* ---- ArcGIS REST ---- */
   const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcWhere(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
@@ -1212,7 +1221,7 @@ export default function PalNovaaEnginePage() {
             <div className="top-actions">
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
               <button className="icon-btn" title="نسخ المشروع (fork)" onClick={forkProject} disabled={!slug}>{Ico.fork}</button>
-              <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyDraft(localStorage.getItem(KEY_LS) || ''); setModal('key'); }}>{Ico.key}</button>
+              <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyThinkDraft(localStorage.getItem(KEY_THINK_LS) || ''); setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>{Ico.key}</button>
               <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>حفظ</span></button>
               <button className="btn primary" onClick={onDeploy} disabled={!html || busy}>{Ico.rocket}<span>{slug && !dirty ? 'منشور' : 'نشر التطبيق'}</span></button>
             </div>
@@ -1319,7 +1328,7 @@ export default function PalNovaaEnginePage() {
                         <p>استنفدتَ حصّتك المجّانيّة لهذه الفترة. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح حصّةً أكبر، أو أضِف مفتاحك الخاصّ.</p>
                         <div className="suggests">
                           <button className="suggest" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent-2)' }} onClick={() => navigate('/palnovaa-engine/pricing')}>اشترك في Pro — $5</button>
-                          <button className="suggest" onClick={() => { setKeyDraft(localStorage.getItem(KEY_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
+                          <button className="suggest" onClick={() => { setKeyThinkDraft(localStorage.getItem(KEY_THINK_LS) || ''); setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
                         </div>
                       </div>
                     </div>
@@ -1361,7 +1370,7 @@ export default function PalNovaaEnginePage() {
                                 const isCur = running && !finished && i === curIdx;
                                 return (
                                   <div className={`pn-stage ${isDone ? 'done' : isCur ? 'cur' : 'idle'}`} key={g.id}>
-                                    <span className="pn-stage-ic">{isDone ? Ico.check : isCur ? <span className="pn-stage-spin" /> : SICONS[g.id]}</span>
+                                    <span className="pn-stage-ic">{isCur ? <span className="pn-stage-spin" /> : SICONS[g.id]}</span>
                                     <span className="pn-stage-txt"><b>{g.t}</b><small>{g.m}</small></span>
                                   </div>
                                 );
@@ -1938,9 +1947,20 @@ export default function PalNovaaEnginePage() {
       {modal === 'key' && (
         <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
           <div className="modal">
-            <div className="modal-head"><span className="s-ic">{Ico.key}</span><div><b>مفتاح موديل PalNovaa</b><small>Claude Sonnet (sk-ant-…) موصى به — أو OpenRouter/Groq/Gemini</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
-            <div className="modal-body"><div className="field"><label>المفتاح (يُحفَظ على جهازك، ويُرسَل للخادم عند التوليد فقط)</label><input type="password" value={keyDraft} placeholder="sk-ant-… أو sk-or-… أو AIza…" onChange={(e) => setKeyDraft(e.target.value)} /></div></div>
-            <div className="modal-foot"><span className="note">يُكتشف المزوّد تلقائياً من بادئة المفتاح.</span><button className="btn accent sp" onClick={saveKey}>حفظ المفتاح</button></div>
+            <div className="modal-head"><span className="s-ic">{Ico.key}</span><div><b>مفاتيح الموديل</b><small>مفتاحٌ للتفكير والتخطيط، وآخرُ للبناء وكتابة الكود</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
+            <div className="modal-body">
+              <div className="field">
+                <label>مفتاح التفكير والتخطيط — GLM / Zhipu</label>
+                <input type="password" value={keyThinkDraft} placeholder="‎32 حرفاً ثمّ نقطة ثمّ السرّ" onChange={(e) => setKeyThinkDraft(e.target.value)} />
+                <small className="hint">يرسم الخطّة قبل البناء، ويُشغّل زرّ «تحسين الوصف».</small>
+              </div>
+              <div className="field">
+                <label>مفتاح البناء وكتابة الكود — Gemini</label>
+                <input type="password" value={keyCodeDraft} placeholder="AIza…" onChange={(e) => setKeyCodeDraft(e.target.value)} />
+                <small className="hint">يكتب التطبيق ويُجري التعديلات الجراحيّة.</small>
+              </div>
+            </div>
+            <div className="modal-foot"><span className="note">تُحفَظ على جهازك فقط، وتُرسَل للخادم لحظة التوليد لا غير.</span><button className="btn accent sp" onClick={saveKey}>حفظ المفاتيح</button></div>
           </div>
         </div>
       )}

@@ -296,7 +296,7 @@
 .pne-root .pn-build-row{display:flex;align-items:center;gap:11px}
 .pne-root .pn-build-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none}
 .pne-root .pn-build-mark svg{width:20px;height:20px}
-.pne-root .pn-build.done .pn-build-mark{color:var(--ok)}
+.pne-root .pn-build.done .pn-build-mark{color:var(--accent)}
 .pne-root .pn-build-x{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:rgba(227,100,80,.16);color:#e46;font-weight:700;font-size:13px}
 .pne-root .pn-build-title{font-size:14px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pne-root .pn-build.run .pn-build-title{background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;animation:think-shim 2.2s linear infinite}
@@ -1037,7 +1037,7 @@
 .pne-root .pn-stage-ic{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:none;color:var(--muted)}
 .pne-root .pn-stage-ic svg{width:15px;height:15px}
 .pne-root .pn-stage.cur .pn-stage-ic{color:var(--accent)}
-.pne-root .pn-stage.done .pn-stage-ic{color:var(--ok)}
+.pne-root .pn-stage.done .pn-stage-ic{color:var(--accent);opacity:.75}
 .pne-root .pn-stage-spin{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--accent);border-top-color:transparent;animation:pneSpin .75s linear infinite}
 .pne-root .pn-stage-txt{display:flex;align-items:baseline;gap:8px;min-width:0}
 .pne-root .pn-stage-txt b{font-size:13px;font-weight:600;color:var(--text-2);white-space:nowrap}
@@ -1055,3 +1055,7 @@
   .pne-root .pn-stage-txt{flex-direction:column;gap:0}
   .pne-root .pn-stage-txt small{font-size:11px}
 }
+
+/* تلميح أسفل حقل في نافذة المفاتيح */
+.pne-root .modal .field .hint{display:block;margin-top:5px;color:var(--faint);font-size:11.5px;line-height:1.6}
+.pne-root .modal .field + .field{margin-top:14px}
