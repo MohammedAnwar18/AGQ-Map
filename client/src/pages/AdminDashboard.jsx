@@ -4,18 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { adminService } from '../services/adminApi';
 import { cameraService, shopService, getImageUrl } from '../services/api';
 import { parseYouTubeId, youtubeThumb } from '../utils/youtube';
-const AdminARModels = React.lazy(() => import('./AdminARModels'));
 const AdminRasters = React.lazy(() => import('../components/raster/AdminRasters'));
 
 import './AdminDashboard.css';
-import ARAdminPanel from './ARAdminPanel';
 import AdminDigitalLetters from './AdminDigitalLetters';
 import OrbisControlCenter from '../components/OrbisControlCenter';
 import OrbisMobileLens from '../components/OrbisMobileLens';
 import GeoportalDesigner from './GeoportalDesigner';
-import AdminFaceRecognition from './AdminFaceRecognition';
-import AdminPhoneIntel from './AdminPhoneIntel';
-import AdminKokoBath from './AdminKokoBath';
 
 const OrbisDashboard = ({ setActiveTab }) => {
     const [forceMode, setForceMode] = useState(null);
@@ -419,14 +414,9 @@ const AdminDashboard = () => {
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
                         { id: 'rasters', icon: '🖼️', label: 'راستر — طبقات الخريطة' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
-                        { id: 'ar', icon: '🕶️', label: 'إدارة الواقع المعزز' },
-                        { id: 'ar-models', icon: '🧊', label: 'مجسّمات ورموز QR' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
                         { id: 'event-photos', icon: '📸', label: 'صور الفعاليات/الدعوات' },
-                        { id: 'face-recognition', icon: '🧬', label: 'التعرف على الوجوه' },
                         { id: 'palnovaa-orbis', icon: '🛰️', label: 'PalNovaa Orbis' },
-                        { id: 'phone-intel', icon: '🔍', label: 'Phone Intelligence' },
-                        { id: 'kokobath', icon: '🧭', label: 'كوكوباث (VPS AR)' },
                     ].map(tab => (
                         <a
                             key={tab.id}
@@ -460,13 +450,10 @@ const AdminDashboard = () => {
                                             activeTab === 'data' ? 'إدارة المحتوى والبيانات' :
                                                 activeTab === 'files' ? 'مكتبة الوسائط' :
                                                     activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
-                                                        activeTab === 'ar' ? 'إدارة محتوى الواقع المعزز' : 
                                                             activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' :
                                                                 activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' :
-                                                                    activeTab === 'face-recognition' ? 'نظام التعرف على الوجوه' :
                                                                     activeTab === 'palnovaa-orbis' ? 'نظام PalNovaa Orbis للمراقبة والتحليل بالذكاء الاصطناعي' :
-                                                                    activeTab === 'phone-intel' ? 'Phone Intelligence — استخبارات الهاتف' :
-                                                                    activeTab === 'kokobath' ? 'كوكوباث — نظام تحديد المواقع البصري والملاحة الداخلية (VPS)' : 'خارطة النشاط الموحدة'
+                                                                    'خارطة النشاط الموحدة'
                         }</h2>
                         <p>مرحباً بك يا {user.full_name || user.username} • {new Date().toLocaleDateString('ar-SA', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>
@@ -636,14 +623,6 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* مجسّمات الواقع المعزّز ورموز QR */}
-                {activeTab === 'ar-models' && (
-                    <div className="admin-content-card">
-                        <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
-                            <AdminARModels />
-                        </React.Suspense>
-                    </div>
-                )}
 
                 {/* Shops Management */}
                 {activeTab === 'shops' && (
@@ -1425,10 +1404,6 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* AR Content Management */}
-                {activeTab === 'ar' && (
-                    <ARAdminPanel onClose={() => setActiveTab('overview')} />
-                )}
 
                 {/* Digital Letters Management */}
                 {activeTab === 'letters' && (
@@ -1531,20 +1506,8 @@ const AdminDashboard = () => {
                     <OrbisDashboard setActiveTab={setActiveTab} />
                 )}
 
-                {/* Face Recognition Management */}
-                {activeTab === 'face-recognition' && (
-                    <AdminFaceRecognition />
-                )}
 
-                {/* Phone Intelligence */}
-                {activeTab === 'phone-intel' && (
-                    <AdminPhoneIntel />
-                )}
 
-                {/* KokoBath VPS Navigation & Mapping */}
-                {activeTab === 'kokobath' && (
-                    <AdminKokoBath />
-                )}
             </div>
         </div>
     );

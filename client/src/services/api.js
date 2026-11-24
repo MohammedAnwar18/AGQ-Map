@@ -1020,25 +1020,6 @@ export const cameraService = {
     }
 };
 
-// Spatial AR Services
-export const arService = {
-    getNearby: async (lat, lng, radius = 2000) => {
-        const response = await api.get(`/ar?lat=${lat}&lng=${lng}&radius=${radius}`);
-        return response.data;
-    },
-    create: async (data) => {
-        const response = await api.post('/ar', data);
-        return response.data;
-    },
-    deleteARContent: async (id) => {
-        const response = await api.delete(`/ar/${id}`);
-        return response.data;
-    },
-    uploadSnapshot: async (base64Image) => {
-        const response = await api.post('/ar/upload-snapshot', { image: base64Image });
-        return response.data;
-    }
-};
 
 // Fitness Services
 export const fitnessService = {
@@ -1192,27 +1173,6 @@ export const indoorControlService = {
     }
 };
 
-// ── خدمات المجسمات ثلاثية الأبعاد على الخريطة 3D Map Models ──────────────────
-export const map3DService = {
-    getModels: async () => {
-        const response = await api.get('/map-3d-models');
-        return response.data;
-    },
-    uploadModel: async (formData) => {
-        const response = await api.post('/map-3d-models', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return response.data;
-    },
-    updateModel: async (id, modelData) => {
-        const response = await api.put(`/map-3d-models/${id}`, modelData);
-        return response.data;
-    },
-    deleteModel: async (id) => {
-        const response = await api.delete(`/map-3d-models/${id}`);
-        return response.data;
-    }
-};
 
 // ── خدمات الأظرف والدعوات الرقمية 3D Digital Letters ────────────────────────
 export const digitalLettersService = {

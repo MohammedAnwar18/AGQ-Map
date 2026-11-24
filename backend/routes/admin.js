@@ -1,7 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
 const { authenticateToken } = require('../middleware/auth');
 const { isAdmin } = require('../middleware/adminAuth');
 const {
@@ -27,26 +25,6 @@ const {
 
 const upload = require('../middleware/upload');
 
-const {
-    getAllPeople,
-    getPersonDetails,
-    createPerson,
-    updatePerson,
-    deletePerson,
-    addPersonPhotos,
-    deletePersonPhoto,
-    searchByImage
-} = require('../controllers/faceController');
-
-// صور التعرف على الوجوه: حد 10 ميجابايت لكل صورة كما طُلب
-const faceUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) cb(null, true);
-        else cb(new Error('Only images are allowed'), false);
-    }
-});
 
 // جميع الـ routes محمية بـ authenticateToken و isAdmin
 router.use(authenticateToken);
@@ -84,43 +62,7 @@ router.delete('/event-photos/:photoId', deleteEventPhoto);
 // Admin Notifications
 router.post('/notifications/send', sendAdminNotification);
 
-// Face Recognition — People Registry
-router.get('/face/people', getAllPeople);
-router.get('/face/people/:id', getPersonDetails);
-router.post('/face/people', faceUpload.array('photos', 5), createPerson);
-router.put('/face/people/:id', updatePerson);
-router.delete('/face/people/:id', deletePerson);
-router.post('/face/people/:id/photos', faceUpload.array('photos', 5), addPersonPhotos);
-router.delete('/face/photos/:photoId', deletePersonPhoto);
 
-// Face Recognition — Search by Image
-router.post('/face/search', faceUpload.single('image'), searchByImage);
 
-// Phone Intelligence — تحليل أرقام الهواتف
-const { analyzePhone } = require('../controllers/phoneIntelController');
-router.post('/phone-intel/analyze', analyzePhone);
-
-// KokoBath VPS — نظام الملاحة الداخلية بالواقع المعزز
-const {
-    getStats: getKokoBathStats,
-    listVenues,
-    getVenue,
-    createVenue,
-    updateVenue,
-    deleteVenue,
-    listFingerprints,
-    addFingerprint,
-    deleteFingerprint
-} = require('../controllers/kokoBathController');
-
-router.get('/kokobath/stats', getKokoBathStats);
-router.get('/kokobath/venues', listVenues);
-router.get('/kokobath/venues/:id', getVenue);
-router.post('/kokobath/venues', createVenue);
-router.put('/kokobath/venues/:id', updateVenue);
-router.delete('/kokobath/venues/:id', deleteVenue);
-router.get('/kokobath/venues/:id/fingerprints', listFingerprints);
-router.post('/kokobath/venues/:id/fingerprints', addFingerprint);
-router.delete('/kokobath/fingerprints/:fpId', deleteFingerprint);
 
 module.exports = router;

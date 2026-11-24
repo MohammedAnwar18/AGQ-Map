@@ -106,12 +106,10 @@ app.use('/api/rasters', require('./routes/rasters'));
 app.use('/api/geoportals', geoportalRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/storage', storageRoutes);
-app.use('/api/ar-models', require('./routes/arModels'));
 app.use('/api/helly', require('./routes/helly'));
 app.use('/api/foresight', require('./routes/foresight'));
 app.use('/api/engine', require('./routes/engine'));
 app.use('/api/game', require('./routes/game'));
-app.use('/api/ar-indoor', require('./routes/arIndoor'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/reels', reelsRoutes);
@@ -764,36 +762,6 @@ app.use('/api/cadrev', require('./routes/cadrev'));
 })();
 
 
-// Auto-migrate: ensure face recognition tables exist (person registry + reference photos/descriptors)
-(async () => {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS face_people (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                info TEXT,
-                created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS face_photos (
-                id SERIAL PRIMARY KEY,
-                person_id INTEGER NOT NULL REFERENCES face_people(id) ON DELETE CASCADE,
-                photo_url TEXT NOT NULL,
-                descriptor JSONB NOT NULL,
-                face_box JSONB,
-                detection_score REAL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-        await pool.query(`CREATE INDEX IF NOT EXISTS idx_face_photos_person_id ON face_photos(person_id);`);
-        console.log('✅ face_people / face_photos tables ready');
-    } catch (err) {
-        console.warn('⚠️ face recognition tables migration warning:', err.message);
-    }
-})();
 
 // صفحة البداية
 app.get('/', (req, res) => {

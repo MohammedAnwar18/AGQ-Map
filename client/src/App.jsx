@@ -9,16 +9,10 @@ const AdminUserDetails = React.lazy(() => import('./pages/AdminUserDetails'));
 const LegalPages = React.lazy(() => import('./pages/LegalPages'));
 const Support = React.lazy(() => import('./pages/Support'));
 const PublishedView = React.lazy(() => import('./pages/PublishedView'));
-const ARModelView = React.lazy(() => import('./pages/ARModelView'));
-const IndoorNav   = React.lazy(() => import('./pages/IndoorNav'));
-const ARView = React.lazy(() => import('./pages/ARView'));
-const ARWorkspace = React.lazy(() => import('./pages/ARWorkspace'));
-const VirtualTourMap = React.lazy(() => import('./pages/VirtualTourMap'));
 const DigitalLetterView = React.lazy(() => import('./pages/DigitalLetterView'));
 const GraduationEvent = React.lazy(() => import('./pages/GraduationEvent'));
 const GeoportalDesigner = React.lazy(() => import('./pages/GeoportalDesigner'));
 const GeoportalViewer = React.lazy(() => import('./pages/GeoportalViewer'));
-const PalNovaaLabPage = React.lazy(() => import('./pages/PalNovaaLabPage'));
 const PalNovaaForesightPage = React.lazy(() => import('./pages/PalNovaaForesightPage'));
 const PalNovaaEnginePage = React.lazy(() => import('./pages/PalNovaaEnginePage'));
 const PalNovaaDataBuilderPage = React.lazy(() => import('./pages/PalNovaaDataBuilderPage'));
@@ -166,10 +160,6 @@ function App() {
                         <Route path="/p/:slug" element={<PublishedView />} />
                         {/* عارض مشاريع محرّك بالنوفا — رابطٌ دائم عامّ، بلا حساب */}
                         <Route path="/pe/:slug" element={<PalNovaaEngineView />} />
-                        {/* 🧊 صفحة المجسّم التي يفتحها رمز QR — مستقلّة وبلا حساب */}
-                        <Route path="/m/:slug" element={<ARModelView />} />
-                        {/* دليل داخلي بالكاميرا — يُفتح بالرابط أو بمسح الرمز، بلا حساب */}
-                        <Route path="/nav/:slug" element={<IndoorNav />} />
                         <Route path="/l/:slug" element={<DigitalLetterView />} />
                         <Route path="/enas-graduation" element={<GraduationEvent />} />
                         <Route path="/walid-sheikha" element={<WeddingInvite />} />
@@ -194,9 +184,6 @@ function App() {
                                 <Route path="/privacy" element={<LegalPages type="privacy" />} />
                                 <Route path="/refund" element={<LegalPages type="refund" />} />
                                 <Route path="/support" element={<Support />} />
-                                {/* مختبر بالنوفا — رابطٌ مستقلٌّ مباشرٌ قابلٌ للأرشفة، بلا مرورٍ بالخريطة */}
-                                <Route path="/palnovaa-lab" element={<PalNovaaLabPage />} />
-                                <Route path="/lab" element={<Navigate to="/palnovaa-lab" replace />} />
                                 {/* PalNovaa Foresight — سبلاش البداية ثم الاستوديو، على رابطٍ نظيفٍ واحد
                                     (سبلاش الموقع العامّة مكتومة لهذا المسار عبر pn-foresight في index.html) */}
                                 <Route path="/palnovaa-foresight" element={<PalNovaaForesightPage />} />
@@ -208,9 +195,6 @@ function App() {
                                 <Route path="/palnovaa-engine/payments" element={<AdminRoute><PalNovaaPayments /></AdminRoute>} />
                                 <Route path="/pricing" element={<Navigate to="/palnovaa-engine/pricing" replace />} />
                                 <Route path="/engine" element={<Navigate to="/palnovaa-engine" replace />} />
-                                <Route path="/ar" element={<ProtectedRoute><ARView /></ProtectedRoute>} />
-                                <Route path="/ar-workspace" element={<ProtectedRoute><ARWorkspace /></ProtectedRoute>} />
-                                <Route path="/virtual-tour" element={<ProtectedRoute><VirtualTourMap /></ProtectedRoute>} />
                                 <Route path="/" element={<Navigate to="/map" replace />} />
                                 <Route path="*" element={<OfflinePage />} />
                             </Routes>

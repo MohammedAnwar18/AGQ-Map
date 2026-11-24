@@ -29,8 +29,6 @@ const ManagedShopsModal     = React.lazy(() => import('../components/ManagedShop
 const ShopProfileModal      = React.lazy(() => import('../components/ShopProfileModal'));
 const ShopStorefront        = React.lazy(() => import('../components/ShopStorefront'));
 const HellyAgents           = React.lazy(() => import('../components/HellyAgents'));
-const WorldEditor           = React.lazy(() => import('../components/world/WorldEditor'));
-const WorldGame             = React.lazy(() => import('../components/world/WorldGame'));
 const MedicalCenterProfileModal = React.lazy(() => import('../components/MedicalCenterProfileModal'));
 const UniversityProfileModal    = React.lazy(() => import('../components/UniversityProfileModal'));
 const FacilityProfileModal      = React.lazy(() => import('../components/FacilityProfileModal'));
@@ -38,12 +36,10 @@ const MunicipalitiesModal       = React.lazy(() => import('../components/Municip
 const MunicipalityProfileModal  = React.lazy(() => import('../components/MunicipalityProfileModal'));
 const SpatialReelsModal     = React.lazy(() => import('../components/SpatialReelsModal'));
 const MagazineModal         = React.lazy(() => import('../components/MagazineModal'));
-const PalNovaaLab           = React.lazy(() => import('../components/PalNovaaLab'));
 const PalNovaaRepository    = React.lazy(() => import('../components/PalNovaaRepository'));
 const LiveCameraModal       = React.lazy(() => import('../components/LiveCameraModal'));
 const FitnessPathModal      = React.lazy(() => import('../components/FitnessPathModal'));
 const StudySpace            = React.lazy(() => import('./StudySpace'));
-const IndoorControl         = React.lazy(() => import('./IndoorControl'));
 const PalnovaaNexus         = React.lazy(() => import('../components/PalnovaaNexus'));
 const PostsGallery          = React.lazy(() => import('../components/PostsGallery'));
 
@@ -926,9 +922,7 @@ const MapComponent = () => {
     const [showLocationPrompt, setShowLocationPrompt] = useState(false);
     const [showNews, setShowNews] = useState(false);
     const [showMagazine, setShowMagazine] = useState(false);
-    const [showLabModal, setShowLabModal] = useState(false);
     const [showStudySpace, setShowStudySpace] = useState(false);
-    const [showIndoorControl, setShowIndoorControl] = useState(false);
     const [showNexus, setShowNexus] = useState(false);
 
     /*
@@ -1063,8 +1057,6 @@ const MapComponent = () => {
     // Shop Profile State
     const [showShopProfile, setShowShopProfile] = useState(false);
     const [showHellyAgents, setShowHellyAgents] = useState(false);
-    const [showWorldEditor, setShowWorldEditor] = useState(false);
-    const [showWorldGame, setShowWorldGame] = useState(false);
     const [selectedShopProfile, setSelectedShopProfile] = useState(null);
 
     // Auto-center map on user's active fitness tracking coordinates
@@ -2782,36 +2774,6 @@ const MapComponent = () => {
                 </div>
 
                 <div className="top-bar-right" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    {/* العالم — محصور بالأدمن العام في هذه المرحلة.
-                        طبقة اللاعبين كاملة تحته (رقم تعريفي وزيارة
-                        وحضور)، ويكفي رفع هذا الشرط لفتحه للجميع. */}
-                    {user?.role === 'admin' && (
-                        <button
-                            className={`top-nav-icon ${showWorldGame ? 'active' : ''}`}
-                            onClick={() => setShowWorldGame(true)}
-                            title="ادخل العالم"
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                                <circle cx="12" cy="12" r="9.2" />
-                                <ellipse cx="12" cy="12" rx="4" ry="9.2" />
-                                <path d="M3.2 9.2h17.6M3.2 14.8h17.6" />
-                            </svg>
-                        </button>
-                    )}
-
-                    {/* محرّر العالم ثلاثي الأبعاد — للأدمن العام وحده */}
-                    {user?.role === 'admin' && (
-                        <button
-                            className={`top-nav-icon ${showWorldEditor ? 'active' : ''}`}
-                            onClick={() => setShowWorldEditor(true)}
-                            title="محرّر العالم ثلاثي الأبعاد"
-                        >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="26" height="26">
-                                <path d="M12 2.6 21 7.3v9.4L12 21.4 3 16.7V7.3z" />
-                                <path d="M3 7.3 12 12l9-4.7M12 12v9.4" />
-                            </svg>
-                        </button>
-                    )}
 
                     {/* الإشعارات - ملغاة ومخفية بطلب من المستخدم */}
                     {false && (
@@ -3066,50 +3028,7 @@ const MapComponent = () => {
                             </button>
                         )}
 
-                        {/* الجولة الافتراضية - مخفية مؤقتاً */}
-                        {false && (
-                            <button
-                                onClick={() => { navigate('/virtual-tour'); setShowMoreMenu(false); }}
-                            >
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <circle cx="12" cy="12" r="10"/>
-                                            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
-                                            <path d="M2 12h20"/>
-                                        </svg>
-                                    </div>
-                                    <span>الجولة الافتراضية</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-                            </button>
-                        )}
 
-                        {/* مختبر بالنوفا — صار صفحةً مستقلّة على /palnovaa-lab، فأُزيل من القائمة */}
-                        {false && (
-                            <button
-                                onClick={() => {
-                                    setShowLabModal(true);
-                                    setShowMoreMenu(false);
-                                }}
-                            >
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#fbab15' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <path d="M10 2v7.31"></path>
-                                            <path d="M14 9.3V1.99"></path>
-                                            <path d="M8.5 2h7"></path>
-                                            <path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path>
-                                            <path d="M5.52 16h12.96"></path>
-                                        </svg>
-                                    </div>
-                                    <span>مختبر بالنوفا</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                            </button>
-                        )}
 
                         {/* مساحة دراسة - مخفي بطلب من المستخدم */}
                         {false && (
@@ -3136,29 +3055,6 @@ const MapComponent = () => {
 
 
 
-                        {/* لوحة التحكم الداخلي ثلاثي الأبعاد */}
-                        {user?.email === 'mohammed2003anwar@gmail.com' && (
-                            <button
-                                onClick={() => {
-                                    setShowIndoorControl(true);
-                                    setShowMoreMenu(false);
-                                }}
-                            >
-                                <div className="menu-item-content">
-                                    <div className="menu-icon-wrapper" style={{ color: '#10b981' }}>
-                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" className="menu-icon-svg">
-                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                                            <line x1="12" y1="22.08" x2="12" y2="12"/>
-                                        </svg>
-                                    </div>
-                                    <span style={{ color: '#f1f5f9', fontWeight: 'bold' }}>لوحة التحكم الداخلي 3D</span>
-                                </div>
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" strokeWidth="2.5">
-                                    <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                            </button>
-                        )}
 
 
 
@@ -4342,7 +4238,6 @@ const MapComponent = () => {
 
             {/* Modals */}
             <React.Suspense fallback={null}>
-            {showLabModal && <PalNovaaLab onClose={() => setShowLabModal(false)} />}
             {showStudySpace && (
                 <StudySpace user={user} onClose={() => setShowStudySpace(false)} />
             )}
@@ -4350,9 +4245,6 @@ const MapComponent = () => {
                 <React.Suspense fallback={null}>
                     <PalnovaaNexus user={user} onClose={() => setShowNexus(false)} />
                 </React.Suspense>
-            )}
-            {showIndoorControl && (
-                <IndoorControl user={user} onClose={() => setShowIndoorControl(false)} />
             )}
 
 
@@ -4433,16 +4325,6 @@ const MapComponent = () => {
             {showHellyAgents && user?.role === 'admin' && (
                 <React.Suspense fallback={null}>
                     <HellyAgents onClose={() => setShowHellyAgents(false)} />
-                </React.Suspense>
-            )}
-            {showWorldEditor && user?.role === 'admin' && (
-                <React.Suspense fallback={null}>
-                    <WorldEditor onClose={() => setShowWorldEditor(false)} />
-                </React.Suspense>
-            )}
-            {showWorldGame && user?.role === 'admin' && (
-                <React.Suspense fallback={null}>
-                    <WorldGame onClose={() => setShowWorldGame(false)} />
                 </React.Suspense>
             )}
             {showFriends && <FriendsModal
