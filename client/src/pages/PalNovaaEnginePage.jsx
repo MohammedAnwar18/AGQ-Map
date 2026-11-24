@@ -181,6 +181,8 @@ export default function PalNovaaEnginePage() {
   const [arcCnt, setArcCnt] = useState(null);        // { id, n } نتيجة آخر عدّ
   const [arcVals, setArcVals] = useState(null);      // { field, values }
   const [arcField, setArcField] = useState('');      // الحقل المختار لجلب قيمه
+  const [arcPick, setArcPick] = useState([]);        // القيم المحدَّدة من الحقل
+  const [arcVFilter, setArcVFilter] = useState('');  // بحثٌ داخل القيم
 
   /* HDX (Humanitarian Data Exchange) connector */
   const [hdxQ, setHdxQ] = useState('');
@@ -770,7 +772,7 @@ export default function PalNovaaEnginePage() {
 
   const openArcQ = async (layer) => {
     if (arcQL === layer.id) { setArcQL(null); return; }
-    setArcQL(layer.id); setArcCnt(null); setArcVals(null); setArcField('');
+    setArcQL(layer.id); setArcCnt(null); setArcVals(null); setArcField(''); setArcPick([]); setArcVFilter('');
     if (arcMeta[layer.id]) return;
     setArcQBusy('meta');
     try {
@@ -786,8 +788,7 @@ export default function PalNovaaEnginePage() {
   const arcCountNow = async (layer) => {
     setArcQBusy('count'); setArcCnt(null);
     try {
-      const w = (arcWhere || '').trim() || '1=1';
-      const d = await jget(`/engine/arcgis/count?${arcQParams(layer)}&where=${encodeURIComponent(w)}`);
+      const d = await jget(`/engine/arcgis/count?${arcQParams(layer)}&where=${encodeURIComponent(arcEffWhere())}`);
       if (d?.ok) setArcCnt({ id: layer.id, n: d.count });
       else showToast(d?.reason || 'استعلامٌ غير صالح');
     } catch { showToast('تعذّر الاتصال بالخادم'); }
@@ -805,8 +806,23 @@ export default function PalNovaaEnginePage() {
     setArcQBusy('');
   };
 
-  // إدراجٌ بالنقر: اسمُ حقلٍ أو شرطُ مساواةٍ جاهز (مع تهريب الفواصل العليا)
+  // إدراجٌ بالنقر: اسمُ حقلٍ في صندوق الفلتر اليدويّ
   const arcInsert = (txt) => setArcWhere((w) => (w.trim() ? `${w.trim()} AND ${txt}` : txt));
+
+  /* الفلتر الفعّال = ما كتبتَه يدويّاً + شرطُ القيم التي حدّدتَها.
+     يُستعمل في العدّ والتنزيل والعرض، ويُعرَض للمستخدم كما سيُرسَل تماماً. */
+  const arcValClause = () => {
+    if (!arcVals || !arcPick.length) return '';
+    const esc = (v) => String(v).replace(/'/g, "''");
+    return arcPick.length === 1
+      ? `${arcVals.field}='${esc(arcPick[0])}'`
+      : `${arcVals.field} IN (${arcPick.map((v) => `'${esc(v)}'`).join(', ')})`;
+  };
+  const arcEffWhere = () => {
+    const parts = [(arcWhere || '').trim(), arcValClause()].filter(Boolean);
+    return parts.length ? parts.map((p) => (parts.length > 1 ? `(${p})` : p)).join(' AND ') : '1=1';
+  };
+  const togglePick = (v) => setArcPick((a) => (a.includes(v) ? a.filter((x) => x !== v) : [...a, v]));
 
   const downloadArcLayer = async (layer) => {
     if (!arcData || arcDl !== null) return;
@@ -815,7 +831,7 @@ export default function PalNovaaEnginePage() {
     try {
       let offset = 0, all = [], guard = 0;
       while (guard++ < 120) {
-        const u = `${base}?where=${encodeURIComponent((arcWhere || '').trim() || '1=1')}&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
+        const u = `${base}?where=${encodeURIComponent(arcEffWhere())}&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
         const r = await fetch(u);
         const j = await r.json();
         if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
@@ -838,10 +854,10 @@ export default function PalNovaaEnginePage() {
     setArcDl(null);
   };
   // «اسحب وخزّن عندي»: نفس الترقيم المُثبَت، لكن بدل التنزيل نخزّن الطبقة مملوكةً كـGeoJSON (تقطيعٌ تلقائيّ للكبير)
-  const ingestArcLayer = async (layer) => {
+  const ingestArcLayer = async (layer, arcShow) => {
     if (!arcData || arcIng !== null || arcDl !== null) return;
     const base = `${arcData.url}/${layer.id}/query`;
-    const whereRaw = (arcWhere || '').trim() || '1=1';
+    const whereRaw = arcEffWhere();
     const whereEnc = encodeURIComponent(whereRaw);
     setArcIng(layer.id); showToast(`جارٍ سحب «${layer.name}» وتخزينها عندك…`);
     try {
@@ -868,6 +884,7 @@ export default function PalNovaaEnginePage() {
       if (res?.ok) {
         setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset);
         showToast(`خُزّنت «${layer.name}» عندك (${all.length} معلم${res.tiled ? ' · تايلز ذكيّة' : ''})`);
+        if (arcShow) { setModal(null); openExplorer(res.dataset); }
       } else showToast(res?.reason || 'تعذّر التخزين');
     } catch (e) { showToast(`تعذّر السحب: ${String(e.message || e).slice(0, 70)}`); }
     setArcIng(null);
@@ -2116,36 +2133,69 @@ export default function PalNovaaEnginePage() {
                           </div>
 
                           <div className="arc-qp-sec">
-                            <label>القيم الفريدة لحقل — لبناء الفلتر بالنقر</label>
-                            <div className="arc-qp-row">
-                              <select value={arcField} onChange={(e) => { setArcField(e.target.value); setArcVals(null); }}>
-                                <option value="">اختر حقلاً…</option>
-                                {meta.fields.filter((f) => /String|SmallInteger|Integer/i.test(f.type)).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
-                              </select>
-                              <button className="btn" disabled={!arcField || arcQBusy === 'values'} onClick={() => arcLoadVals(l, arcField)}>
-                                {arcQBusy === 'values' ? <span className="ring" /> : 'اجلب القيم'}
-                              </button>
-                            </div>
-                            {arcVals && (
-                              <div className="arc-chips vals">
-                                {arcVals.values.length === 0 && <span className="arc-qp-note">لا قيم.</span>}
-                                {arcVals.values.map((v, i) => (
-                                  <button key={i} className="arc-chip val" onClick={() => arcInsert(`${arcVals.field}='${String(v).replace(/'/g, "''")}'`)}>{String(v)}</button>
-                                ))}
-                              </div>
-                            )}
+                            <label>اختر حقلاً ثمّ حدّد ما تريده منه</label>
+                            <select className="arc-qp-sel" value={arcField} onChange={(e) => {
+                              const v = e.target.value;
+                              setArcField(v); setArcPick([]); setArcVals(null); setArcVFilter('');
+                              if (v) arcLoadVals(l, v);
+                            }}>
+                              <option value="">— اختر حقلاً —</option>
+                              {meta.fields.filter((f) => /String|SmallInteger|Integer|Double/i.test(f.type)).map((f) => (
+                                <option key={f.name} value={f.name}>{f.name}{f.alias && f.alias !== f.name ? ` — ${f.alias}` : ''}</option>
+                              ))}
+                            </select>
+
+                            {arcQBusy === 'values' && <div className="arc-qp-load"><span className="ring" /> جارٍ جلب القيم… (قد تستغرق نصف دقيقة للطبقات الضخمة)</div>}
+
+                            {arcVals && arcVals.values.length > 0 && (() => {
+                              const q = arcVFilter.trim().toLowerCase();
+                              const shown = q ? arcVals.values.filter((v) => String(v).toLowerCase().includes(q)) : arcVals.values;
+                              return (
+                                <div className="arc-pick">
+                                  <div className="arc-pick-bar">
+                                    <input type="text" value={arcVFilter} onChange={(e) => setArcVFilter(e.target.value)} placeholder="ابحث في القيم…" />
+                                    <button className="arc-pick-all" onClick={() => setArcPick(shown.map(String))}>تحديد الظاهر</button>
+                                    <button className="arc-pick-all" onClick={() => setArcPick([])}>مسح</button>
+                                  </div>
+                                  <div className="arc-pick-list">
+                                    {shown.length === 0 && <span className="arc-qp-note">لا نتائج للبحث.</span>}
+                                    {shown.map((v, i) => {
+                                      const sv = String(v);
+                                      return (
+                                        <label className={`arc-pick-row ${arcPick.includes(sv) ? 'on' : ''}`} key={i}>
+                                          <input type="checkbox" checked={arcPick.includes(sv)} onChange={() => togglePick(sv)} />
+                                          <span>{sv}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="arc-pick-sum">محدَّد: <b>{arcPick.length}</b> من {arcVals.values.length}</div>
+                                </div>
+                              );
+                            })()}
+                            {arcVals && arcVals.values.length === 0 && <span className="arc-qp-note">لا قيم في هذا الحقل.</span>}
                           </div>
 
                           <div className="arc-qp-sec">
-                            <div className="arc-qp-row">
+                            <label>الاستعلام الذي سيُنفَّذ</label>
+                            <code className="arc-qp-where">{arcEffWhere()}</code>
+                            <div className="arc-qp-row" style={{ marginTop: 9 }}>
                               <button className="btn" disabled={arcQBusy === 'count'} onClick={() => arcCountNow(l)}>
-                                {arcQBusy === 'count' ? <span className="ring" /> : 'احسب عدد النتائج'}
+                                {arcQBusy === 'count' ? <span className="ring" /> : 'احسب العدد'}
                               </button>
                               {arcCnt && arcCnt.id === l.id && (
                                 <span className="arc-qp-count">المطابق: <b className="mono">{arcCnt.n.toLocaleString('en')}</b> معلم</span>
                               )}
                             </div>
-                            <span className="arc-qp-note">اكتب الفلتر في الحقل أعلى القائمة. ثمّ نزّل أو خزّن — الفلتر يُطبَّق على الاثنين.</span>
+                            <div className="arc-qp-row" style={{ marginTop: 9 }}>
+                              <button className="btn accent" disabled={arcDl !== null || arcIng !== null} onClick={() => downloadArcLayer(l)}>
+                                {arcDl === l.id ? <span className="ring" /> : 'نزّل GeoJSON'}
+                              </button>
+                              <button className="btn" disabled={arcIng !== null || arcDl !== null} onClick={() => ingestArcLayer(l, true)}>
+                                {arcIng === l.id ? <span className="ring" /> : 'اعرض على الخريطة'}
+                              </button>
+                            </div>
+                            <span className="arc-qp-note">«نزّل» يحفظ الطبقة الناتجة على جهازك. «اعرض» يخزّنها في بياناتك ويفتحها في العارض.</span>
                           </div>
                         </>)}
                       </div>

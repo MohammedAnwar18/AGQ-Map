@@ -1582,8 +1582,10 @@ async function arcLayerUrl(rawUrl, layerId) {
     await assertPublicHttpUrl(u);
     return u;
 }
-async function arcJSON(url) {
-    const { status, body } = await httpGetText(url);
+async function arcJSON(url, timeoutMs) {
+    // القيم الفريدة على طبقةٍ ضخمة تستغرق 16–26 ثانية (مُقاسة على Parcels_04
+    // ذات 474 ألف معلم)، ومهلة httpGetText الافتراضيّة 15 ثانية — فنمرّر مهلةً أطول.
+    const { status, body } = await httpGetText(url, timeoutMs || 15000);
     if (status >= 400) throw new Error('الخادم أعاد ' + status);
     let j; try { j = JSON.parse(body); } catch { throw new Error('استجابةٌ غير صالحة من الخادم'); }
     if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
@@ -1609,7 +1611,7 @@ router.get('/arcgis/count', optionalAuth, async (req, res) => {
     try {
         const u = await arcLayerUrl(req.query.url, req.query.layer);
         const where = ((req.query.where || '').toString().trim() || '1=1').slice(0, 1200);
-        const j = await arcJSON(u + '/query?where=' + encodeURIComponent(where) + '&returnCountOnly=true&f=json');
+        const j = await arcJSON(u + '/query?where=' + encodeURIComponent(where) + '&returnCountOnly=true&f=json', 40000);
         const count = (j.count != null) ? j.count : ((j.properties && j.properties.count) || 0);
         return res.json({ ok: true, count });
     } catch (err) { return res.status(400).json({ ok: false, reason: String(err.message || 'error') }); }
@@ -1624,7 +1626,7 @@ router.get('/arcgis/values', optionalAuth, async (req, res) => {
         const q = u + '/query?where=1%3D1&outFields=' + encodeURIComponent(field)
             + '&returnDistinctValues=true&returnGeometry=false&orderByFields=' + encodeURIComponent(field)
             + '&resultRecordCount=300&f=json';
-        const j = await arcJSON(q);
+        const j = await arcJSON(q, 60000);
         const vals = (j.features || []).map((f) => (f.attributes || {})[field])
             .filter((v) => v !== null && v !== undefined && String(v).trim() !== '');
         return res.json({ ok: true, values: Array.from(new Set(vals)).slice(0, 300) });
