@@ -35,7 +35,7 @@ const router = express.Router();
      • حدود استخدام يوميّة وتتبّع توكِنات
 
    المزوّد يُكتشف من بادئة المفتاح: sk-ant-→Claude (مع prompt caching)،
-   sk-or-→OpenRouter، gsk_→Groq، nvapi-→NVIDIA، وإلّا Gemini.
+   sk-or-→OpenRouter، gsk_→Groq، nvapi-→NVIDIA، hex32.xxx→Zhipu GLM، وإلّا Gemini.
    ============================================================================ */
 
 const MODEL_NAME = 'PalNovaa 1.0';
@@ -789,6 +789,7 @@ function pickProvider(KEY) {
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'openai/gpt-oss-120b') };
     if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v4.1-flash') };
+    if (/^[0-9a-f]{32}\./i.test(k)) return { kind: 'oai', url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: pick(/glm/i, 'glm-5.3-flash') };  // Zhipu AI (BigModel) — مفاتيحهم بصيغة hex32.secret
     return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-flash-latest') };  // 2.0/2.5-flash أوقفتهما Google؛ -latest يتبع الأحدث (حاليّاً 3.8-flash) فلا يتعطّل
 }
 
