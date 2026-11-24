@@ -62,6 +62,9 @@ const keyForTask = (task, userKey) => (userKey || CODE_KEY || SERVER_KEY);
    الكود فتبدأ دوراتُ إكمالٍ متتالية، وكلّ دورةٍ تُعيد إرسال المحادثة كاملةً —
    تعليمات النظام وحدها ~15 ألف حرف. سقفٌ عالٍ ⇒ جولةٌ واحدة ⇒ ثلثُ الزمن والكلفة. */
 const MAX_OUT = parseInt(process.env.PALNOVAA_MAX_OUT, 10) || 32768;
+/* المخطّط وموجزُ التصميم مهمّتان قصيرتان: موديلٌ خفيفٌ ينهيهما أسرع بكثيرٍ وأرخص.
+   يُضبَط بـ PALNOVAA_FAST_MODEL، وإن لم يتوفّر رجَعَا للموديل الرئيس. */
+const FAST_MODEL = (process.env.PALNOVAA_FAST_MODEL || 'gemini-flash-lite-latest').trim();
 
 /* التقنين بالكلفة الفعليّة (µ$ لكلّ توكِن) — افتراض Claude Sonnet 5.5، قابلٌ للضبط بالبيئة.
    الفكرة: كلّ مستخدمٍ على المفتاح المشترك يستهلك حتى FREE_USD مجّاناً، ثمّ يُطلَب Pro
@@ -1085,7 +1088,7 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design,
 }
 
 /* ---- نداءٌ خفيفٌ أحاديّ (لمحسّن الوصف ونحوه) عبر أيّ مزوّد ---- */
-async function quickComplete(KEY, system, user, maxTokens) {
+async function quickComplete(KEY, system, user, maxTokens, fastModel) {
     const prov = pickProvider(KEY);
     if (prov.kind === 'anthropic') {
         const data = await postJSON(prov.url, { model: prov.model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }, { 'x-api-key': KEY, 'anthropic-version': '2023-06-01' }, UPSTREAM_TIMEOUT);
@@ -1099,9 +1102,14 @@ async function quickComplete(KEY, system, user, maxTokens) {
         const msg = data?.choices?.[0]?.message;
         return (typeof msg?.content === 'string' ? msg.content : (Array.isArray(msg?.content) ? msg.content.map((c) => c?.text || '').join('') : '')) || '';
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:generateContent`;
-    const data = await postJSON(url, { systemInstruction: { role: 'system', parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } } }, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
-    return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('');
+    const gm = fastModel || prov.model;
+    const call = async (model) => {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        const data = await postJSON(url, { systemInstruction: { role: 'system', parts: [{ text: system }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } } }, { 'x-goog-api-key': KEY }, UPSTREAM_TIMEOUT);
+        return (data?.candidates?.[0]?.content?.parts || []).map((p) => p?.text || '').join('');
+    };
+    try { return await call(gm); }
+    catch (e) { if (gm === prov.model) throw e; return call(prov.model); }   // الموديل الخفيف غير متاح ← الرئيس
 }
 const ENHANCER_SYS = 'أنت خبيرٌ في صياغة أوصاف تطبيقات الويب لمحرّك بناءٍ بالذكاء الاصطناعيّ متخصّص بالخرائط وGIS. خذ وصف المستخدم المختصر ووسّعه إلى مواصفةٍ غنيّةٍ واضحةٍ قابلةٍ للتنفيذ، محافظاً على نيّته تماماً دون تغيير الفكرة. غطِّ: الأقسام/الصفحات، الميزات الرئيسة، نوع البيانات (أو بيانات تجريبيّة واقعيّة)، عناصر الخريطة إن لزمت، لوحات المؤشّرات والفلاتر والتفاعلات، ولمسات تجربة المستخدم. اكتب بالعربيّة بإيجازٍ منظّم (جملة تمهيديّة ثمّ نقاط)، بلا أيّ كودٍ وبلا ماركداون ثقيل، وبما لا يتجاوز ~170 كلمة. أخرِج الوصف المحسّن فقط.';
 
@@ -1119,7 +1127,7 @@ const DESIGNER_SYS = 'أنت مديرُ تصميمٍ بصريّ لتطبيقات
 
 /* مرحلة التصميم: موجزٌ بصريٌّ يُحقَن قبل البناء فتخرج الواجهة متناسقةً لا عشوائيّة */
 async function designBrief(KEY, prompt) {
-    try { const d = (await quickComplete(KEY, DESIGNER_SYS, prompt, 420) || '').trim(); return d || null; }
+    try { const d = (await quickComplete(KEY, DESIGNER_SYS, prompt, 420, FAST_MODEL) || '').trim(); return d || null; }
     catch { return null; }
 }
 
@@ -1137,7 +1145,7 @@ function auditHtml(html) {
 }
 
 async function silentPlan(KEY, prompt) {
-    try { const plan = (await quickComplete(KEY, PLANNER_SYS, prompt, 450) || '').trim(); return plan || null; }
+    try { const plan = (await quickComplete(KEY, PLANNER_SYS, prompt, 450, FAST_MODEL) || '').trim(); return plan || null; }
     catch { return null; }
 }
 
@@ -1205,11 +1213,18 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
-        // ـــ خطّ الإنتاج ـــ المخطّط والتصميم للبناء الجديد فقط؛ التعديلُ يتخطّاهما توفيراً للتوكِنز
+        // ـــ خطّ الإنتاج ـــ المخطّط والتصميم للبناء الجديد فقط؛ التعديل يتخطّاهما توفيراً للتوكِنز.
+        // وهما مستقلّان ⇒ ننفّذهما بالتوازي فنكلّف أطولَهما لا مجموعَهما. والمخطّط
+        // للطلبات المعقّدة وحدها، فلا يدفع الطلبُ البسيط ثمنَ نداءٍ لا يحتاجه.
         const fresh = !currentHtml;
+        let brief = null;
         if (fresh) {
             send({ type: 'stage', id: 'plan' });
-            const plan = await silentPlan(KEY, prompt);
+            const [plan, d] = await Promise.all([
+                isComplexPrompt(prompt) ? silentPlan(KEY, prompt) : Promise.resolve(null),
+                designBrief(KEY, prompt),
+            ]);
+            brief = d;
             if (plan) { prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan; send({ type: 'think', text: plan }); }
         }
         send({ type: 'stage', id: 'skills' });
@@ -1218,8 +1233,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const skillsCtx = buildSkillsContext(skillIds);
         send({ type: 'skills', ids: skillIds });
         if (fresh) {
-            send({ type: 'stage', id: 'design' });
-            const brief = await designBrief(KEY, prompt);
+            send({ type: 'stage', id: 'design' });   // أُنجز بالتوازي أعلاه — يُعرَض هنا بترتيبه
             if (brief) { prompt += '\n\n[موجزُ التصميم — التزِم به حرفيّاً:]\n' + brief; send({ type: 'think', text: brief }); }
         }
         const expanded = b.expanded === true;
