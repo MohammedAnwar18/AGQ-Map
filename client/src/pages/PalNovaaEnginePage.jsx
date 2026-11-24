@@ -50,7 +50,7 @@ export default function PalNovaaEnginePage() {
 
   const [html, setHtml] = useState('');
   const [files, setFiles] = useState(null);        // مشروعٌ موسّع: خريطة ملفّات {path: content} أو null (ملفٌّ واحد)
-  const [expanded, setExpanded] = useState(false); // وضع المشروع الموسّع (اختياريّ)
+  const expanded = true;   // الوضع الموسّع صار أساس العمل: مشروعٌ متعدّد الملفّات دائماً
   const [title, setTitle] = useState('محادثة جديدة');
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
@@ -65,6 +65,8 @@ export default function PalNovaaEnginePage() {
   const [balance, setBalance] = useState(null);
   const [iframeErr, setIframeErr] = useState('');
   const [streamCode, setStreamCode] = useState('');
+  const [liveDoc, setLiveDoc] = useState('');      // معاينةٌ تدريجيّة أثناء الكتابة
+  const liveAt = useRef(0);
   const streamBufRef = useRef('');
   const flushSched = useRef(false);
 
@@ -77,7 +79,6 @@ export default function PalNovaaEnginePage() {
   const [mobilePane, setMobilePane] = useState('chat'); // الجوّال: لوحٌ واحد (محادثة | معاينة)
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
-  const [keyCodeDraft, setKeyCodeDraft] = useState(localStorage.getItem(KEY_CODE_LS) || '');
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
 
@@ -505,11 +506,10 @@ export default function PalNovaaEnginePage() {
   };
   const finishError = (reason, isEdit, bId) => {
     const text = reason === '__missing'
-      ? 'لا يوجد مفتاح موديل. أضِف مفتاح PalNovaa من زرّ المفتاح، أو اضبط PALNOVAA_MODEL_KEY في الخادم.'
+      ? 'لا يوجد مفتاح موديل على الخادم. اضبط PALNOVAA_CLAUDE_KEY أو PALNOVAA_GEMINI_KEY في بيئة النشر.'
       : (reason || 'تعذّر التوليد.');
     setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, state: 'error' } : x)));
     setMessages((m) => [...m, { id: `e${bId}${Math.random().toString(36).slice(2, 5)}`, role: 'err', text }]);
-    if (reason === '__missing') setModal('key');
   };
   const finishLimit = (bId, bal, plan) => {
     if (bal) setBalance(bal);
@@ -555,11 +555,7 @@ export default function PalNovaaEnginePage() {
               return { ...x, stage: ev.id, done };
             }));
           }
-          else if (ev.type === 'think') {
-            // تفكيرُ الموديل الحقيقيّ — نُبقي آخر ~1200 حرفٍ فقط فلا تثقل الواجهة
-            setMessages((m) => m.map((x) => (x.id === `b${bId}`
-              ? { ...x, think: ((x.think || '') + (ev.text || '')).slice(-1200) } : x)));
-          }
+          else if (ev.type === 'think') { /* إشارةُ تفكيرٍ فقط — لا يُعرَض نصّه */ }
           else if (ev.type === 'plan') {
             setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, plan: ev.text || '' } : x)));
           }
@@ -587,7 +583,6 @@ export default function PalNovaaEnginePage() {
 
   const runBuild = async (rawText, isEdit) => {
     if (busy || !rawText.trim()) return;
-    const keyCode = localStorage.getItem(KEY_CODE_LS) || '';
     setBusy(true); setView('workspace'); setIframeErr('');
     if (!isEdit) setTitle(rawText.trim().slice(0, 48));
 
@@ -609,13 +604,13 @@ export default function PalNovaaEnginePage() {
 
     // الوضع الموسّع: مشروعٌ جديد إن فُعّل، أو تعديلُ مشروعٍ موسّعٍ قائم (نرسل ملفّاته)
     const useExpanded = expanded || (isEdit && !!files);
-    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', keyCode, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
     try {
       const handled = await tryStream(body, bId, isEdit);
       if (!handled) await nonStream(body, bId, isEdit);
     } finally {
       clearTimeout(timerRef.current);
-      setBusy(false); setStreamCode(''); streamBufRef.current = '';
+      setBusy(false); setStreamCode(''); streamBufRef.current = ''; setLiveDoc(''); liveAt.current = 0;
     }
   };
 
@@ -626,10 +621,9 @@ export default function PalNovaaEnginePage() {
     if (enhancing || busy) return;
     setEnhancing(true);
     try {
-      const keyCode = localStorage.getItem(KEY_CODE_LS) || '';
-      const d = await jpost('/engine/enhance', { prompt: base, keyCode });
+      const d = await jpost('/engine/enhance', { prompt: base });
       if (d?.ok && d.prompt) { setPrompt(d.prompt); showToast('حُسّن الوصف ✨ — عدّله أو ابنِ مباشرةً'); }
-      else showToast(d?.reason === 'missing_key' ? 'أضِف مفتاح الموديل أولاً' : 'تعذّر التحسين، جرّب مجدّداً');
+      else showToast(d?.reason === 'missing_key' ? 'لا يوجد مفتاح موديل على الخادم' : 'تعذّر التحسين، جرّب مجدّداً');
     } catch { showToast('تعذّر الاتصال بالخادم'); }
     finally { setEnhancing(false); }
   };
@@ -707,7 +701,7 @@ export default function PalNovaaEnginePage() {
       const d = await jget(`/engine/projects/${p.slug}`);
       if (d?.ok) {
         setHtml(d.project.html); setTitle(d.project.title); setSummary(d.project.summary || '');
-        const pf = d.project.files && typeof d.project.files === 'object' ? d.project.files : null; setFiles(pf); if (pf) setExpanded(true);
+        const pf = d.project.files && typeof d.project.files === 'object' ? d.project.files : null; setFiles(pf);
         setPublicUrl(d.project.public_url || '');
         const thread = Array.isArray(d.project.thread) ? d.project.thread : null;
         setMessages(thread && thread.length ? thread : [{ id: `open${p.slug}`, role: 'ai', kind: 'note', text: `فُتح المشروع: ${d.project.title}. تابع التعديل أو افتح الرابط الدائم.`, suggests: [] }]);
@@ -736,13 +730,6 @@ export default function PalNovaaEnginePage() {
     else showToast('تعذّر الاسترجاع');
   };
 
-  const saveKey = () => {
-    const c = keyCodeDraft.trim();
-    if (c) localStorage.setItem(KEY_CODE_LS, c); else localStorage.removeItem(KEY_CODE_LS);
-    localStorage.removeItem(KEY_LS); localStorage.removeItem(KEY_THINK_LS);   // تنظيف المفاتيح القديمة
-    setModal(null);
-    showToast(c ? 'حُفظ المفتاح على جهازك' : 'أُزيل المفتاح');
-  };
 
   /* ---- ArcGIS REST ---- */
   const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcWhere(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
@@ -1110,6 +1097,41 @@ export default function PalNovaaEnginePage() {
 
   const urlText = slug ? (APPS_BASE ? `${slug}.${APPS_BASE}` : `${window.location.host}/pe/${slug}`) : (html ? 'معاينة محليّة — انشر للحصول على رابط' : 'بانتظار التوليد…');
   const previewDoc = html ? injectCatcher(html) : '';
+
+  // المفاتيح صارت على الخادم حصراً — نمسح أيّ مفتاحٍ قديمٍ بقي على الجهاز
+  useEffect(() => {
+    try { [KEY_LS, KEY_THINK_LS, KEY_CODE_LS].forEach((k) => localStorage.removeItem(k)); } catch { /* */ }
+  }, []);
+
+  /* المعاينة التدريجيّة: المشروع يصل بصيغة أقسامٍ «===FILE: path===»، فنُجمّعه
+     لحظةً بلحظة — ندمج ما وصل من CSS/JS داخل index.html (مع إبقاء روابط CDN كما
+     هي)، ثمّ نُغلق المستند الجزئيّ إغلاقاً آمناً كي يرسمه المتصفّح وهو يُكتَب. */
+  useEffect(() => {
+    if (!busy || streamCode.length < 400) return;
+    if (Date.now() - liveAt.current < 700) return;   // إعادة رسمٍ كلّ 0.7s لا كلّ إطار
+    liveAt.current = Date.now();
+
+    const parts = streamCode.split(/^===FILE:\s*(.+?)\s*===\s*$/m);
+    const files = {};
+    for (let i = 1; i < parts.length; i += 2) files[parts[i].trim()] = parts[i + 1] || '';
+
+    let h = files['index.html'];
+    if (!h) h = /<html|<!doctype/i.test(streamCode) ? streamCode : '';
+    if (!h) return;
+
+    // ادمج الملفّات المحلّيّة التي وصلت؛ وما لم يصل بعد يبقى وسمُه كما هو
+    h = h.replace(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi, (mm, p) => (files[p] ? '<style>\n' + files[p] + '\n</style>' : mm));
+    h = h.replace(/<script[^>]+src=["']([^"']+\.js)["'][^>]*><\/script>/gi, (mm, p) => (files[p] ? '<script>\n' + files[p] + '\n</script>' : mm));
+
+    const lt = h.lastIndexOf('<');
+    if (lt > h.lastIndexOf('>')) h = h.slice(0, lt);   // اقطع آخر وسمٍ ناقص
+    const cnt = (re) => (h.match(re) || []).length;
+    if (cnt(/<script\b/gi) > cnt(/<\/script\s*>/gi)) h += '\n</script>';
+    if (cnt(/<style\b/gi) > cnt(/<\/style\s*>/gi)) h += '\n</style>';
+    if (!/<\/body\s*>/i.test(h)) h += '\n</body>';
+    if (!/<\/html\s*>/i.test(h)) h += '\n</html>';
+    setLiveDoc(h);
+  }, [streamCode, busy]);
   const dsLabel = (k) => (k === 'arcgis' ? 'ESRI' : k === 'geotiff' ? 'TIF' : (k || 'DATA').toUpperCase());
   const dsIcon = (k) => (k === 'arcgis' ? 'GIS' : k === 'geotiff' ? 'TIF' : (k || 'D').slice(0, 4).toUpperCase());
   const LAYER_COLOR = (d) => ({ geojson: '#E07B39', csv: '#F0954F', arcgis: '#5B9BD5', geotiff: '#7BC67E' }[d.kind] || '#E07B39');
@@ -1218,7 +1240,6 @@ export default function PalNovaaEnginePage() {
             <div className="top-actions">
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
               <button className="icon-btn" title="نسخ المشروع (fork)" onClick={forkProject} disabled={!slug}>{Ico.fork}</button>
-              <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>{Ico.key}</button>
               <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>حفظ</span></button>
               <button className="btn primary" onClick={onDeploy} disabled={!html || busy}>{Ico.rocket}<span>{slug && !dirty ? 'منشور' : 'نشر التطبيق'}</span></button>
             </div>
@@ -1255,13 +1276,9 @@ export default function PalNovaaEnginePage() {
                     <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>البيانات</span></button>
                     <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
                     <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
-                    <button className={`tool chip expand only-desk ${expanded ? 'on' : ''}`} title="مشروعٌ موسّع: عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد" onClick={() => setExpanded((v) => !v)}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg>
-                      <span>موسّع</span>
-                    </button>
                     <button className="tool chip only-mob" title="خيارات المشروع" onClick={() => setModal('opts')}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></svg>
-                      <span>خيارات</span>{expanded && <span className="opt-dot" />}
+                      <span>خيارات</span>
                     </button>
                     <span className="bar-sp" />
                     <button className={`tool enhance ${enhancing ? 'busy' : ''}`} title="حسّن الوصف تلقائياً قبل البناء" disabled={!prompt.trim() || enhancing || busy} onClick={enhancePrompt}>
@@ -1325,7 +1342,6 @@ export default function PalNovaaEnginePage() {
                         <p>استنفدتَ حصّتك المجّانيّة لهذه الفترة. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح حصّةً أكبر، أو أضِف مفتاحك الخاصّ.</p>
                         <div className="suggests">
                           <button className="suggest" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent-2)' }} onClick={() => navigate('/palnovaa-engine/pricing')}>اشترك في Pro — $5</button>
-                          <button className="suggest" onClick={() => { setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
                         </div>
                       </div>
                     </div>
@@ -1362,24 +1378,18 @@ export default function PalNovaaEnginePage() {
                           {/* المراحل الحقيقيّة — أيقونةٌ واسمٌ لكلّ مرحلة (مدفوعةٌ بأحداث الخادم) */}
                           {!errored && (
                             <div className="pn-stages">
-                              {STAGES.map((g, i) => {
-                                const isDone = doneSet.includes(g.id) || finished;
+                              {/* كشفٌ تدريجيّ: لا تظهر المرحلة قبل أن يبلغها البناء */}
+                              {STAGES.slice(0, finished ? STAGES.length : curIdx + 1).map((g, i) => {
+                                const isDone = finished || i < curIdx || doneSet.includes(g.id);
                                 const isCur = running && !finished && i === curIdx;
                                 return (
                                   <div className={`pn-stage ${isDone ? 'done' : isCur ? 'cur' : 'idle'}`} key={g.id}>
                                     <span className="pn-stage-ic">{isCur ? <span className="pn-stage-spin" /> : SICONS[g.id]}</span>
                                     <span className="pn-stage-txt"><b>{g.t}</b><small>{g.m}</small></span>
+                                    {isCur && <span className="pn-stage-dots" aria-label="يفكّر"><i /><i /><i /></span>}
                                   </div>
                                 );
                               })}
-                            </div>
-                          )}
-
-                          {/* تفكير الموديل الحقيقيّ أثناء التخطيط */}
-                          {running && m.think && (
-                            <div className="pn-think">
-                              <span className="pn-think-tag">{SICONS.plan}<span>تفكير</span></span>
-                              <p className="pn-think-txt">{m.think}</p>
                             </div>
                           )}
                         </div>
@@ -1450,8 +1460,8 @@ export default function PalNovaaEnginePage() {
               </div>
               <div className="pv-body">
                 <div className={`pane ${tab === 'app' ? 'on' : ''}`}>
-                  {!html && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يكتب PalNovaa 1.0 تطبيقك مباشرةً… (شاهد الكود في تبويب «الكود»)</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
-                  {html && <div className={`pv-stage dev-${device}`}><iframe key={pvKey} className="pv-frame" title="preview" srcDoc={previewDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" /></div>}
+                  {!html && !liveDoc && (<div className="pv-empty">{busy ? <div className="ld"><div className="ring" /><span>يكتب PalNovaa تطبيقك مباشرةً… ستظهر المعاينة هنا وهي تُبنى</span></div> : <span>اكتب وصفاً وابدأ البناء لتظهر المعاينة هنا.</span>}</div>)}
+                  {(html || liveDoc) && <div className={`pv-stage dev-${device}`}><iframe key={html ? pvKey : 'live'} className="pv-frame" title="preview" srcDoc={html ? previewDoc : liveDoc} sandbox="allow-scripts allow-popups allow-forms allow-modals" /></div>}
                   {html && iframeErr && !busy && (
                     <div style={{ position: 'absolute', left: 14, right: 14, bottom: 14, background: 'rgba(227,100,80,.14)', border: '1px solid rgba(227,100,80,.45)', borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, zIndex: 3, backdropFilter: 'blur(4px)' }}>
                       <span style={{ fontSize: 12.5, color: '#f0b3a8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr' }}>⚠ خطأ تشغيل (تعذّر الإصلاح التلقائيّ): {iframeErr}</span>
@@ -1817,10 +1827,6 @@ export default function PalNovaaEnginePage() {
                 <label>نظام الإسناد (CRS)</label>
                 <div className="opts-chips">{CRS.map((c) => <button key={c} className={`mono ${crs === c ? 'on' : ''}`} onClick={() => setCrs(c)}>{c}</button>)}</div>
               </div>
-              <div className="opts-group row" onClick={() => setExpanded((v) => !v)}>
-                <div><label>مشروعٌ موسّع</label><small>عدّة ملفّات وصفحات مترابطة بدل ملفٍّ واحد</small></div>
-                <span className={`opts-switch ${expanded ? 'on' : ''}`}><i /></span>
-              </div>
             </div>
             <div className="modal-foot"><button className="btn accent sp" onClick={() => setModal(null)}>تمّ</button></div>
           </div>
@@ -1937,22 +1943,6 @@ export default function PalNovaaEnginePage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {modal === 'key' && (
-        <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
-          <div className="modal">
-            <div className="modal-head"><span className="s-ic">{Ico.key}</span><div><b>مفتاح Gemini</b><small>مفتاحٌ واحدٌ يُشغّل كلّ المراحل</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
-            <div className="modal-body">
-              <div className="field">
-                <label>مفتاح Gemini</label>
-                <input type="password" value={keyCodeDraft} placeholder="AIza…" onChange={(e) => setKeyCodeDraft(e.target.value)} />
-                <small className="hint">يُشغّل المخطّط والتصميم وبناء الكود والتحسين. اتركه فارغاً لاستخدام مفتاح الخادم.</small>
-              </div>
-            </div>
-            <div className="modal-foot"><span className="note">يُحفَظ على جهازك فقط، ويُرسَل للخادم لحظة التوليد لا غير.</span><button className="btn accent sp" onClick={saveKey}>حفظ المفتاح</button></div>
           </div>
         </div>
       )}

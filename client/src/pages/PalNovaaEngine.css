@@ -1029,33 +1029,41 @@
   .pne-root .gb-map-wrap{min-height:300px;flex:1}
 }
 
-/* ===== مراحل البناء الحقيقية (مدفوعة بأحداث SSE) + بث التفكير ===== */
-.pne-root .pn-stages{display:flex;flex-direction:column;gap:2px;margin-top:10px}
-.pne-root .pn-stage{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:9px;transition:background .2s,opacity .2s}
-.pne-root .pn-stage.cur{background:rgba(224,123,57,.08)}
-.pne-root .pn-stage.idle{opacity:.42}
-.pne-root .pn-stage-ic{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:none;color:var(--muted)}
-.pne-root .pn-stage-ic svg{width:15px;height:15px}
-.pne-root .pn-stage.cur .pn-stage-ic{color:var(--accent)}
-.pne-root .pn-stage.done .pn-stage-ic{color:var(--accent);opacity:.75}
-.pne-root .pn-stage-spin{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--accent);border-top-color:transparent;animation:pneSpin .75s linear infinite}
-.pne-root .pn-stage-txt{display:flex;align-items:baseline;gap:8px;min-width:0}
-.pne-root .pn-stage-txt b{font-size:13px;font-weight:600;color:var(--text-2);white-space:nowrap}
-.pne-root .pn-stage.cur .pn-stage-txt b{color:var(--text)}
-.pne-root .pn-stage.done .pn-stage-txt b{color:var(--text-2)}
-.pne-root .pn-stage-txt small{font-size:11.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ===== ستيبر البناء — كشفٌ تدريجيّ، خطُّ ربط، ونبضُ تفكير ===== */
+.pne-root .pn-stages{position:relative;display:flex;flex-direction:column;gap:1px;margin-top:12px;padding-inline-start:3px}
+/* خطُّ الربط الرأسيّ بين الأيقونات */
+.pne-root .pn-stages::before{content:"";position:absolute;inset-block:14px;inset-inline-start:13px;width:1.5px;background:linear-gradient(var(--line-2),transparent);border-radius:2px}
 
-.pne-root .pn-think{margin-top:9px;padding:9px 11px;border:1px solid var(--line-2);border-radius:11px;background:var(--surface-2);animation:think-in .25s ease both}
-.pne-root .pn-think-tag{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:11.5px;font-weight:700;letter-spacing:.2px}
-.pne-root .pn-think-tag svg{width:13px;height:13px}
-.pne-root .pn-think-txt{margin:5px 0 0;font-size:12px;line-height:1.75;color:var(--faint);max-height:88px;overflow:hidden;direction:ltr;text-align:start;white-space:pre-wrap;word-break:break-word;
-  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px);mask-image:linear-gradient(to bottom,transparent 0,#000 22px)}
+.pne-root .pn-stage{position:relative;display:flex;align-items:center;gap:11px;padding:7px 9px;border-radius:10px;
+  animation:stageIn .32s cubic-bezier(.22,1,.36,1) both;transition:background .25s}
+@keyframes stageIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.pne-root .pn-stage.cur{background:linear-gradient(90deg,rgba(224,123,57,.13),rgba(224,123,57,0))}
+.pne-root .pn-stage.done{opacity:.55}
+
+.pne-root .pn-stage-ic{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;flex:none;
+  border-radius:50%;background:var(--panel);color:var(--muted);transition:color .25s,box-shadow .25s}
+.pne-root .pn-stage-ic svg{width:14px;height:14px}
+.pne-root .pn-stage.cur .pn-stage-ic{color:var(--accent);box-shadow:0 0 0 3px rgba(224,123,57,.12)}
+.pne-root .pn-stage.done .pn-stage-ic{color:var(--accent);opacity:.8}
+.pne-root .pn-stage-spin{width:13px;height:13px;border-radius:50%;border:1.6px solid var(--accent);border-top-color:transparent;animation:pneSpin .7s linear infinite}
+
+.pne-root .pn-stage-txt{display:flex;align-items:baseline;gap:9px;min-width:0;flex:1}
+.pne-root .pn-stage-txt b{font-size:13px;font-weight:600;color:var(--text-2);white-space:nowrap;transition:color .25s}
+.pne-root .pn-stage.cur .pn-stage-txt b{color:var(--text)}
+.pne-root .pn-stage-txt small{font-size:11.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pne-root .pn-stage.done .pn-stage-txt small{opacity:0;transition:opacity .3s}
+
+/* نبضُ تفكير — إشارةٌ بلا نصّ */
+.pne-root .pn-stage-dots{display:inline-flex;gap:3px;flex:none;padding-inline-end:2px}
+.pne-root .pn-stage-dots i{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.3;animation:think-dot 1.25s ease-in-out infinite}
+.pne-root .pn-stage-dots i:nth-child(2){animation-delay:.16s}
+.pne-root .pn-stage-dots i:nth-child(3){animation-delay:.32s}
 
 @media(max-width:560px){
   .pne-root .pn-stage-txt{flex-direction:column;gap:0}
   .pne-root .pn-stage-txt small{font-size:11px}
 }
 
-/* تلميح أسفل حقل في نافذة المفاتيح */
+/* تلميح أسفل حقل */
 .pne-root .modal .field .hint{display:block;margin-top:5px;color:var(--faint);font-size:11.5px;line-height:1.6}
 .pne-root .modal .field + .field{margin-top:14px}

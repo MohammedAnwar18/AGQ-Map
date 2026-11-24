@@ -56,8 +56,16 @@ const UPSTREAM_TIMEOUT = Math.min(parseInt(process.env.PALNOVAA_TIMEOUT_MS, 10) 
    خطّ الإنتاج: تفكيرٌ ومخطّط ← مهارات ← تصميم ← بناء الكود ← اختبار ← معاينة.
    مفتاحٌ واحد: من المتصفّح إن وُجد، وإلّا من بيئة الخادم.
    ============================================================================ */
-const CODE_KEY = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || SERVER_KEY).trim();
-const keyForTask = (task, userKey) => (userKey || CODE_KEY || SERVER_KEY);
+const isClaudeKey = (k) => /^sk-ant-/.test((k || '').trim());
+const CLAUDE_KEY = (process.env.PALNOVAA_CLAUDE_KEY || (isClaudeKey(SERVER_KEY) ? SERVER_KEY : '')).trim();
+const CODE_KEY = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || (isClaudeKey(SERVER_KEY) ? '' : SERVER_KEY)).trim();
+/* الجودة (التصميم وكتابة الكود) ← Claude إن توفّر: واجهاتٌ أرقى، ومع التخزين
+   المؤقّت للتعليمات تصير إعادةُ إرسالها شبه مجّانيّة. السرعة والرخص (المخطّط
+   والتحسين) ← Gemini الخفيف. وكلاهما يتدرّج لأيّ مفتاحٍ متاح. */
+const QUALITY_TASKS = new Set(['code', 'design']);
+const keyForTask = (task) => (QUALITY_TASKS.has(task)
+    ? (CLAUDE_KEY || CODE_KEY || SERVER_KEY)
+    : (CODE_KEY || CLAUDE_KEY || SERVER_KEY));
 /* سقف الإخراج لكلّ جولة. هذا أهمّ موفّرٍ للتوكِنز: السقف المنخفض (8192) كان يقطع
    الكود فتبدأ دوراتُ إكمالٍ متتالية، وكلّ دورةٍ تُعيد إرسال المحادثة كاملةً —
    تعليمات النظام وحدها ~15 ألف حرف. سقفٌ عالٍ ⇒ جولةٌ واحدة ⇒ ثلثُ الزمن والكلفة. */
@@ -1127,7 +1135,7 @@ const DESIGNER_SYS = 'أنت مديرُ تصميمٍ بصريّ لتطبيقات
 
 /* مرحلة التصميم: موجزٌ بصريٌّ يُحقَن قبل البناء فتخرج الواجهة متناسقةً لا عشوائيّة */
 async function designBrief(KEY, prompt) {
-    try { const d = (await quickComplete(KEY, DESIGNER_SYS, prompt, 420, FAST_MODEL) || '').trim(); return d || null; }
+    try { const d = (await quickComplete(KEY, DESIGNER_SYS, prompt, 420) || '').trim(); return d || null; }
     catch { return null; }
 }
 
@@ -1155,10 +1163,7 @@ router.post('/enhance', optionalAuth, async (req, res) => {
     try {
         const raw = (req.body?.prompt || '').toString().trim().slice(0, 2000);
         if (!raw) return res.json({ ok: false, reason: 'empty' });
-        const reqKey = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-        const userK = (typeof req.body?.keyCode === 'string' ? req.body.keyCode.trim() : '')
-            || (typeof req.body?.keyThink === 'string' ? req.body.keyThink.trim() : '') || reqKey;
-        const KEY = userK || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('enhance'));
+        const KEY = USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('enhance');
         if (!KEY) return res.json({ ok: false, reason: 'missing_key' });
         const out = (await quickComplete(KEY, ENHANCER_SYS, raw, 700) || '').trim().replace(/^```[a-z]*\n?|\n?```$/gi, '').trim();
         if (!out) return res.json({ ok: false, reason: 'empty_result' });
@@ -1174,11 +1179,9 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     const b = req.body || {};
     let prompt = (b.prompt || '').toString().trim().slice(0, 4000);
     const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
-    // مفتاحٌ واحد (Gemini): من المتصفّح إن وُجد، وإلّا من البيئة. الأسماء القديمة مقبولةٌ للتوافق.
-    const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const userKeyAny = (typeof b.keyCode === 'string' ? b.keyCode.trim() : '')
-        || (typeof b.keyThink === 'string' ? b.keyThink.trim() : '') || reqKey;
-    const KEY = userKeyAny || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));
+    // المفاتيح من الخادم حصراً — لا يُقبل أيّ مفتاحٍ من المتصفّح.
+    const KEY = USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code');        // التصميم وكتابة الكود
+    const KEY_FAST = USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('plan');   // المخطّط
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -1195,7 +1198,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     try {
         await ensureTable().catch(() => {});
         const ident = identOf(req);
-        const metered = !userKeyAny;
+        const metered = true;
         const acct = metered ? await getAccount(ident).catch(() => null) : null;
         if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
             send({ type: 'error', reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct) });
@@ -1221,7 +1224,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         if (fresh) {
             send({ type: 'stage', id: 'plan' });
             const [plan, d] = await Promise.all([
-                isComplexPrompt(prompt) ? silentPlan(KEY, prompt) : Promise.resolve(null),
+                isComplexPrompt(prompt) ? silentPlan(KEY_FAST, prompt) : Promise.resolve(null),
                 designBrief(KEY, prompt),
             ]);
             brief = d;
@@ -1277,17 +1280,15 @@ router.post('/generate', optionalAuth, async (req, res) => {
     const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
     if (!prompt) return res.status(400).json({ ok: false, reason: 'empty prompt' });
 
-    // مفتاحٌ واحد (Gemini): من المتصفّح إن وُجد، وإلّا من البيئة. الأسماء القديمة مقبولةٌ للتوافق.
-    const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const userKeyAny = (typeof b.keyCode === 'string' ? b.keyCode.trim() : '')
-        || (typeof b.keyThink === 'string' ? b.keyThink.trim() : '') || reqKey;
-    const KEY = userKeyAny || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));
+    // المفاتيح من الخادم حصراً — لا يُقبل أيّ مفتاحٍ من المتصفّح.
+    const KEY = USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code');        // التصميم وكتابة الكود
+    const KEY_FAST = USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('plan');   // المخطّط
     if (!KEY) return res.json({ ok: false, reason: 'missing_key', model: MODEL_NAME });
 
     // التقنين بالكلفة: يُحسَب فقط على المفتاح المشترك (لا على مفتاح المستخدم الخاصّ)
     await ensureTable().catch(() => {});
     const ident = identOf(req);
-    const metered = !userKeyAny;
+    const metered = true;
     let acct = metered ? await getAccount(ident).catch(() => null) : null;
     if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
         return res.json({ ok: false, reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct), model: MODEL_NAME });
@@ -1306,7 +1307,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
     }
 
     if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
-        const plan = await silentPlan(KEY, prompt);
+        const plan = await silentPlan(KEY_FAST, prompt);
         if (plan) prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan;
     }
     const design = validDesign(b.design);
