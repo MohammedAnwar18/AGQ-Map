@@ -90,6 +90,19 @@ export const ensureGeoraster = async () => {
 
 /* ====== محوّلات صيغ خفيفة إلى GeoJSON (بالمتصفّح) ====== */
 export const SHP_URL = 'https://unpkg.com/shpjs@6.1.0/dist/shp.min.js';
+/* GDAL مُترجَماً إلى WebAssembly — يقرأ ما لا تقرؤه المكتبات الخفيفة:
+   File Geodatabase (OpenFileGDB) وKML وGML وMapInfo وFlatGeobuf وغيرها.
+   ثقيل (~39MB: wasm 27.5 + data 11.3) فلا يُحمَّل إلّا عند الحاجة إليه فعلاً،
+   ويبقى في ذاكرة المتصفّح بعدها. الشيب فايل يظلّ على shpjs الخفيف. */
+export const GDAL_BASE = 'https://cdn.jsdelivr.net/npm/gdal3.js@2.8.1/dist/package';
+let _gdal = null;
+export const ensureGdal = async () => {
+  if (_gdal) return _gdal;
+  if (!window.initGdalJs) await loadScript(GDAL_BASE + '/gdal3.js');
+  if (!window.initGdalJs) throw new Error('تعذّر تحميل GDAL');
+  _gdal = await window.initGdalJs({ path: GDAL_BASE, useWorker: false });
+  return _gdal;
+};
 export const SQLJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/';
 export const ensureShp = async () => { if (!window.shp && !window.shpjs) await loadScript(SHP_URL); return window.shp || window.shpjs; };
 let _sqlPromise = null;

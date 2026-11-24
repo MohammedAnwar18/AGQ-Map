@@ -6,7 +6,7 @@ import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 import {
-  APPS_BASE, appLink, API, KEY_LS, KEY_THINK_LS, KEY_CODE_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, STAGES, SICONS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
+  APPS_BASE, appLink, API, KEY_LS, KEY_THINK_LS, KEY_CODE_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, ensureGdal, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, STAGES, SICONS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
 } from './engine/kit';
 
 export default function PalNovaaEnginePage() {
@@ -394,6 +394,50 @@ export default function PalNovaaEnginePage() {
     if (!n) throw new Error('لا طبقات صالحة في الملفّ');
     showToast(n === 1 ? `أُضيفت «${last.name}» (${last.feature_count} عنصر)` : `أُضيفت ${n} طبقات من Shapefile`);
   };
+  /* File Geodatabase وغيرها → GeoJSON داخل المتصفّح عبر GDAL/WASM.
+     التحويل كلّه على جهاز المستخدم: لا يُرفَع الملفّ الخام إطلاقاً، بل الطبقات
+     الناتجة فقط — وهذا هو مصدر السرعة مع الملفّات الضخمة. */
+  const handleGdal = async (f, name) => {
+    showToast('جارٍ تحضير محرّك GDAL (تحميلٌ لمرّةٍ واحدة)…');
+    const Gdal = await ensureGdal();
+    showToast('جارٍ قراءة الملفّ…');
+    const res = await Gdal.open(f);
+    const datasets = res?.datasets || [];
+    if (!datasets.length) throw new Error('لم يتعرّف GDAL على أيّ بيانات في الملفّ');
+
+    const emit = async (ds, layerName, label) => {
+      const opts = ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326'];
+      if (layerName) opts.push(layerName);
+      const out = await Gdal.ogr2ogr(ds, opts);
+      const bytes = await Gdal.getFileBytes(out);
+      const txt = new TextDecoder('utf-8').decode(bytes);
+      let fc = null; try { fc = JSON.parse(txt); } catch { return null; }
+      if (!fc || !Array.isArray(fc.features) || !fc.features.length) return null;
+      return addDatasetResult(await uploadText(String(label).slice(0, 120), 'geojson', JSON.stringify(fc)));
+    };
+
+    let count = 0, last = null;
+    for (const ds of datasets) {
+      let layers = [];
+      try { const info = await Gdal.getInfo(ds); layers = (info && info.layers) || []; } catch { /* */ }
+      if (layers.length > 1) {
+        for (const ly of layers) {
+          const ln = ly && (ly.name || ly.layerName);
+          if (!ln) continue;
+          const d = await emit(ds, ln, `${name} · ${ln}`);
+          if (d) { last = d; count++; }
+        }
+      } else {
+        const ln = layers[0] && (layers[0].name || layers[0].layerName);
+        const d = await emit(ds, null, ln ? `${name} · ${ln}` : name);
+        if (d) { last = d; count++; }
+      }
+    }
+    try { await Gdal.close(); } catch { /* */ }
+    if (!count) throw new Error('لا طبقاتٍ متجهيّةً صالحةً في الملفّ');
+    showToast(count === 1 ? `أُضيفت «${last.name}» (${last.feature_count} عنصر)` : `أُضيفت ${count} طبقات من الملفّ`);
+  };
+
   // GeoPackage (.gpkg) → GeoJSON عبر sql.js
   const handleGeopackage = async (f, name) => {
     showToast('جارٍ قراءة GeoPackage…');
@@ -447,8 +491,19 @@ export default function PalNovaaEnginePage() {
         const d = await uploadLargeFile(f, name, 'geotiff');
         const ds = addDatasetResult(d); const m = ds.meta || {};
         showToast(`أُرفقت «${ds.name}» (${m.width}×${m.height}، ${m.bands} نطاق)`);
+      } else if (ext === 'gdb') {
+        await handleGdal(f, name);               // File Geodatabase (مضغوطة)
+      } else if (ext === 'kml' || ext === 'kmz' || ext === 'gml' || ext === 'tab' || ext === 'fgb') {
+        await handleGdal(f, name);               // صيغٌ يقرؤها GDAL وحده
       } else if (ext === 'zip' || ext === 'shp') {
-        await handleShapefile(f, name);
+        // الشيب فايل أوّلاً بالمكتبة الخفيفة؛ وإن لم يكن شيب فايل (قد يكون
+        // Geodatabase مضغوطة) نتراجع إلى GDAL بدل أن نفشل.
+        try { await handleShapefile(f, name); }
+        catch (shpErr) {
+          if (ext === 'shp') throw shpErr;
+          showToast('ليس Shapefile — أُجرّب قراءته بـGDAL…');
+          await handleGdal(f, name);
+        }
       } else if (ext === 'gpkg') {
         await handleGeopackage(f, name);
       } else if (ext === 'dxf') {
@@ -1240,7 +1295,7 @@ export default function PalNovaaEnginePage() {
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl" style={bgColor ? { '--bg': bgColor } : undefined}>
-      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gpkg,.dxf,.dwg" hidden onChange={onFile} />
+      <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gdb,.gpkg,.kml,.kmz,.gml,.tab,.fgb,.dxf,.dwg" hidden onChange={onFile} />
       <input ref={avatarRef} type="file" accept="image/*" hidden onChange={onAvatar} />
       <div className={`app ${collapsed ? 'collapsed' : ''}`}>
 
