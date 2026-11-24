@@ -1569,6 +1569,68 @@ router.get('/arcgis/browse', optionalAuth, async (req, res) => {
     }
 });
 
+/* ============ استعلامُ طبقةٍ قبل سحبها (للخوادم الثقيلة مثل GeoMOLG) ============
+   ثلاث نقاطٍ عبر البروكسي الآمن نفسه: حقولُ الطبقة، عددُ المطابق لفلتر، والقيمُ
+   الفريدة لحقل. الغرض: أن ترى ماذا ستسحب قبل أن تسحبه، فتُنزّل الجزء لا الكلّ. */
+async function arcLayerUrl(rawUrl, layerId) {
+    let r = String(rawUrl || '').trim().slice(0, 1000);
+    if (!/\/rest\/services/i.test(r)) throw new Error('رابط ArcGIS REST غير صالح');
+    r = r.replace(/[?#].*$/, '').replace(/\/+$/, '');
+    const id = String(layerId == null ? '' : layerId).replace(/[^0-9]/g, '');
+    if (id === '') throw new Error('رقم الطبقة مطلوب');
+    const u = r + '/' + id;
+    await assertPublicHttpUrl(u);
+    return u;
+}
+async function arcJSON(url) {
+    const { status, body } = await httpGetText(url);
+    if (status >= 400) throw new Error('الخادم أعاد ' + status);
+    let j; try { j = JSON.parse(body); } catch { throw new Error('استجابةٌ غير صالحة من الخادم'); }
+    if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
+    return j;
+}
+
+// GET /arcgis/layer?url=&layer=  → حقول الطبقة ونوع هندستها
+router.get('/arcgis/layer', optionalAuth, async (req, res) => {
+    try {
+        const u = await arcLayerUrl(req.query.url, req.query.layer);
+        const j = await arcJSON(u + '?f=json');
+        const fields = (j.fields || [])
+            .filter((f) => f && f.name && !/^(shape|st_area|st_length|shape_)/i.test(f.name))
+            .slice(0, 200)
+            .map((f) => ({ name: f.name, alias: f.alias || f.name, type: String(f.type || '').replace('esriFieldType', '') }));
+        return res.json({ ok: true, name: j.name || '', geometryType: j.geometryType || null,
+            objectIdField: j.objectIdField || 'OBJECTID', maxRecordCount: j.maxRecordCount || null, fields });
+    } catch (err) { return res.status(400).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// GET /arcgis/count?url=&layer=&where=  → عدد المعالم المطابقة قبل السحب
+router.get('/arcgis/count', optionalAuth, async (req, res) => {
+    try {
+        const u = await arcLayerUrl(req.query.url, req.query.layer);
+        const where = ((req.query.where || '').toString().trim() || '1=1').slice(0, 1200);
+        const j = await arcJSON(u + '/query?where=' + encodeURIComponent(where) + '&returnCountOnly=true&f=json');
+        const count = (j.count != null) ? j.count : ((j.properties && j.properties.count) || 0);
+        return res.json({ ok: true, count });
+    } catch (err) { return res.status(400).json({ ok: false, reason: String(err.message || 'error') }); }
+});
+
+// GET /arcgis/values?url=&layer=&field=  → القيم الفريدة لحقلٍ (لبناء الفلتر بالنقر)
+router.get('/arcgis/values', optionalAuth, async (req, res) => {
+    try {
+        const u = await arcLayerUrl(req.query.url, req.query.layer);
+        const field = (req.query.field || '').toString().replace(/[^\w.]/g, '').slice(0, 80);
+        if (!field) return res.status(400).json({ ok: false, reason: 'اسم الحقل مطلوب' });
+        const q = u + '/query?where=1%3D1&outFields=' + encodeURIComponent(field)
+            + '&returnDistinctValues=true&returnGeometry=false&orderByFields=' + encodeURIComponent(field)
+            + '&resultRecordCount=300&f=json';
+        const j = await arcJSON(q);
+        const vals = (j.features || []).map((f) => (f.attributes || {})[field])
+            .filter((v) => v !== null && v !== undefined && String(v).trim() !== '');
+        return res.json({ ok: true, values: Array.from(new Set(vals)).slice(0, 300) });
+    } catch (err) { return res.status(400).json({ ok: false, reason: 'تعذّر جلب القيم الفريدة: ' + String(err.message || '') }); }
+});
+
 // POST /api/engine/arcgis/save  { name, url, serviceType, layers:[{id,name,geometryType}] }
 router.post('/arcgis/save', optionalAuth, async (req, res) => {
     try {

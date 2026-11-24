@@ -174,6 +174,13 @@ export default function PalNovaaEnginePage() {
   const [arcDl, setArcDl] = useState(null);         // معرّف الطبقة قيد التنزيل
   const [arcIng, setArcIng] = useState(null);       // معرّف الطبقة قيد السحب والتخزين عندي
   const [arcWhere, setArcWhere] = useState('');      // فلتر اختياريّ (where) للسحب الجزئيّ
+  /* لوحة الاستعلام: نرى ماذا سنسحب قبل أن نسحبه — حقولٌ وعدٌّ وقيمٌ فريدة */
+  const [arcQL, setArcQL] = useState(null);          // رقم الطبقة التي فُتحت لوحتُها
+  const [arcMeta, setArcMeta] = useState({});        // layerId → { fields, geometryType, total }
+  const [arcQBusy, setArcQBusy] = useState('');      // 'meta' | 'count' | 'values'
+  const [arcCnt, setArcCnt] = useState(null);        // { id, n } نتيجة آخر عدّ
+  const [arcVals, setArcVals] = useState(null);      // { field, values }
+  const [arcField, setArcField] = useState('');      // الحقل المختار لجلب قيمه
 
   /* HDX (Humanitarian Data Exchange) connector */
   const [hdxQ, setHdxQ] = useState('');
@@ -732,7 +739,7 @@ export default function PalNovaaEnginePage() {
 
 
   /* ---- ArcGIS REST ---- */
-  const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcWhere(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
+  const openArcgis = () => { setMenu(null); setArcData(null); setArcSel([]); setArcStack([]); setArcErr(''); setArcFilter(''); setArcWhere(''); setArcQL(null); setArcCnt(null); setArcVals(null); setArcField(''); setArcUrl(ARCGIS_DEFAULT); setModal('arcgis'); };
   const browseArc = async (url, push = true) => {
     const target = (url || arcUrl || '').trim(); if (!target) return;
     setArcBusy(true); setArcErr(''); setArcFilter('');
@@ -758,6 +765,49 @@ export default function PalNovaaEnginePage() {
     if (res?.ok) { setMyDatasets((a) => [res.dataset, ...a]); attachDataset(res.dataset); setModal(null); showToast(`أُرفق «${name}» (${chosen.length || 'كلّ'} طبقة)`); }
     else showToast(res?.reason || 'تعذّر الحفظ');
   };
+  /* ---- لوحة الاستعلام على طبقة ArcGIS ---- */
+  const arcQParams = (layer) => `url=${encodeURIComponent(arcData.url)}&layer=${layer.id}`;
+
+  const openArcQ = async (layer) => {
+    if (arcQL === layer.id) { setArcQL(null); return; }
+    setArcQL(layer.id); setArcCnt(null); setArcVals(null); setArcField('');
+    if (arcMeta[layer.id]) return;
+    setArcQBusy('meta');
+    try {
+      const d = await jget(`/engine/arcgis/layer?${arcQParams(layer)}`);
+      if (d?.ok) {
+        const c = await jget(`/engine/arcgis/count?${arcQParams(layer)}&where=1%3D1`).catch(() => null);
+        setArcMeta((m) => ({ ...m, [layer.id]: { fields: d.fields || [], geometryType: d.geometryType, total: c?.ok ? c.count : null } }));
+      } else showToast(d?.reason || 'تعذّر قراءة حقول الطبقة');
+    } catch { showToast('تعذّر الاتصال بالخادم'); }
+    setArcQBusy('');
+  };
+
+  const arcCountNow = async (layer) => {
+    setArcQBusy('count'); setArcCnt(null);
+    try {
+      const w = (arcWhere || '').trim() || '1=1';
+      const d = await jget(`/engine/arcgis/count?${arcQParams(layer)}&where=${encodeURIComponent(w)}`);
+      if (d?.ok) setArcCnt({ id: layer.id, n: d.count });
+      else showToast(d?.reason || 'استعلامٌ غير صالح');
+    } catch { showToast('تعذّر الاتصال بالخادم'); }
+    setArcQBusy('');
+  };
+
+  const arcLoadVals = async (layer, field) => {
+    if (!field) return;
+    setArcQBusy('values'); setArcVals(null);
+    try {
+      const d = await jget(`/engine/arcgis/values?${arcQParams(layer)}&field=${encodeURIComponent(field)}`);
+      if (d?.ok) setArcVals({ field, values: d.values || [] });
+      else showToast(d?.reason || 'تعذّر جلب القيم');
+    } catch { showToast('تعذّر الاتصال بالخادم'); }
+    setArcQBusy('');
+  };
+
+  // إدراجٌ بالنقر: اسمُ حقلٍ أو شرطُ مساواةٍ جاهز (مع تهريب الفواصل العليا)
+  const arcInsert = (txt) => setArcWhere((w) => (w.trim() ? `${w.trim()} AND ${txt}` : txt));
+
   const downloadArcLayer = async (layer) => {
     if (!arcData || arcDl !== null) return;
     const base = `${arcData.url}/${layer.id}/query`;
@@ -765,7 +815,7 @@ export default function PalNovaaEnginePage() {
     try {
       let offset = 0, all = [], guard = 0;
       while (guard++ < 120) {
-        const u = `${base}?where=1%3D1&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
+        const u = `${base}?where=${encodeURIComponent((arcWhere || '').trim() || '1=1')}&outFields=*&outSR=4326&f=geojson&returnGeometry=true&resultOffset=${offset}&resultRecordCount=2000`;
         const r = await fetch(u);
         const j = await r.json();
         if (j.error) throw new Error(j.error.message || 'خطأ من الخادم');
@@ -2025,21 +2075,84 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                   {(arcData.layers || []).length === 0 && <div className="arc-empty">لا طبقات في هذه الخدمة.</div>}
-                  {(arcData.layers || []).map((l) => (
-                    <div className="arc-layer" key={l.id}>
+                  {(arcData.layers || []).map((l) => {
+                    const meta = arcMeta[l.id];
+                    const open = arcQL === l.id;
+                    return (
+                    <React.Fragment key={l.id}>
+                    <div className={`arc-layer ${open ? 'q-open' : ''}`}>
                       <label className="arc-lcheck">
                         <input type="checkbox" checked={arcSel.includes(l.id)} onChange={() => toggleArcLayer(l.id)} />
                         <span className="arc-lname"><b>{l.name}</b>{l.geometryType && <span className="arc-geom mono">{l.geometryType.replace('esriGeometry', '')}</span>}</span>
                       </label>
                       <span className="arc-lid mono">#{l.id}</span>
-                      <button className="arc-store" title="اسحب الطبقة وخزّنها عندك (تُعرَض بذكاء — تايلز للكبير)" disabled={arcIng !== null || arcDl !== null} onClick={() => ingestArcLayer(l)}>
+                      <button className={`arc-q ${open ? 'on' : ''}`} title="استعلام: اعرف الحقول واعدد النتائج قبل السحب" onClick={() => openArcQ(l)}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" /></svg>
+                      </button>
+                      <button className="arc-store" title="اسحب الطبقة (بالفلتر إن وُجد) وخزّنها عندك" disabled={arcIng !== null || arcDl !== null} onClick={() => ingestArcLayer(l)}>
                         {arcIng === l.id ? <span className="ring" /> : Ico.db}
                       </button>
-                      <button className="arc-dl" title="تنزيل الطبقة GeoJSON" disabled={arcDl !== null || arcIng !== null} onClick={() => downloadArcLayer(l)}>
+                      <button className="arc-dl" title="تنزيل GeoJSON (بالفلتر إن وُجد)" disabled={arcDl !== null || arcIng !== null} onClick={() => downloadArcLayer(l)}>
                         {arcDl === l.id ? <span className="ring" /> : Ico.down}
                       </button>
                     </div>
-                  ))}
+
+                    {open && (
+                      <div className="arc-qp">
+                        {arcQBusy === 'meta' && !meta && <div className="arc-qp-load"><span className="ring" /> جارٍ قراءة الحقول…</div>}
+                        {meta && (<>
+                          <div className="arc-qp-head">
+                            <span>إجماليّ المعالم في الطبقة</span>
+                            <b className="mono">{meta.total != null ? meta.total.toLocaleString('en') : '—'}</b>
+                          </div>
+
+                          <div className="arc-qp-sec">
+                            <label>الحقول — انقر لإدراج اسم الحقل في الفلتر</label>
+                            <div className="arc-chips">
+                              {meta.fields.map((f) => (
+                                <button key={f.name} className="arc-chip" title={`${f.alias} · ${f.type}`} onClick={() => arcInsert(f.name)}>{f.name}</button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="arc-qp-sec">
+                            <label>القيم الفريدة لحقل — لبناء الفلتر بالنقر</label>
+                            <div className="arc-qp-row">
+                              <select value={arcField} onChange={(e) => { setArcField(e.target.value); setArcVals(null); }}>
+                                <option value="">اختر حقلاً…</option>
+                                {meta.fields.filter((f) => /String|SmallInteger|Integer/i.test(f.type)).map((f) => <option key={f.name} value={f.name}>{f.name}</option>)}
+                              </select>
+                              <button className="btn" disabled={!arcField || arcQBusy === 'values'} onClick={() => arcLoadVals(l, arcField)}>
+                                {arcQBusy === 'values' ? <span className="ring" /> : 'اجلب القيم'}
+                              </button>
+                            </div>
+                            {arcVals && (
+                              <div className="arc-chips vals">
+                                {arcVals.values.length === 0 && <span className="arc-qp-note">لا قيم.</span>}
+                                {arcVals.values.map((v, i) => (
+                                  <button key={i} className="arc-chip val" onClick={() => arcInsert(`${arcVals.field}='${String(v).replace(/'/g, "''")}'`)}>{String(v)}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="arc-qp-sec">
+                            <div className="arc-qp-row">
+                              <button className="btn" disabled={arcQBusy === 'count'} onClick={() => arcCountNow(l)}>
+                                {arcQBusy === 'count' ? <span className="ring" /> : 'احسب عدد النتائج'}
+                              </button>
+                              {arcCnt && arcCnt.id === l.id && (
+                                <span className="arc-qp-count">المطابق: <b className="mono">{arcCnt.n.toLocaleString('en')}</b> معلم</span>
+                              )}
+                            </div>
+                            <span className="arc-qp-note">اكتب الفلتر في الحقل أعلى القائمة. ثمّ نزّل أو خزّن — الفلتر يُطبَّق على الاثنين.</span>
+                          </div>
+                        </>)}
+                      </div>
+                    )}
+                    </React.Fragment>
+                    );
+                  })}
                 </div>
               )}
             </div>

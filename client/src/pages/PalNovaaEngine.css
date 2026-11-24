@@ -1067,3 +1067,34 @@
 /* تلميح أسفل حقل */
 .pne-root .modal .field .hint{display:block;margin-top:5px;color:var(--faint);font-size:11.5px;line-height:1.6}
 .pne-root .modal .field + .field{margin-top:14px}
+
+/* ===== لوحة استعلام طبقة ArcGIS — اعرف ماذا تسحب قبل أن تسحبه ===== */
+.pne-root .arc-layer.q-open{background:rgba(224,123,57,.07);border-radius:9px 9px 0 0}
+.pne-root .arc-q{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:none;
+  border:1px solid var(--line-2);border-radius:8px;background:var(--surface-2);color:var(--text-2);cursor:pointer;transition:.18s}
+.pne-root .arc-q:hover{border-color:var(--accent);color:var(--accent)}
+.pne-root .arc-q.on{background:var(--accent);border-color:var(--accent);color:#1A0D04}
+
+.pne-root .arc-qp{margin:0 0 10px;padding:12px 13px;border:1px solid var(--line-2);border-top:none;
+  border-radius:0 0 10px 10px;background:var(--surface-2);animation:stageIn .22s ease both}
+.pne-root .arc-qp-load{display:flex;align-items:center;gap:8px;color:var(--faint);font-size:12.5px}
+.pne-root .arc-qp-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:9px;
+  margin-bottom:10px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--text-2)}
+.pne-root .arc-qp-head b{color:var(--accent);font-size:14px}
+.pne-root .arc-qp-sec{margin-bottom:12px}
+.pne-root .arc-qp-sec:last-child{margin-bottom:0}
+.pne-root .arc-qp-sec > label{display:block;margin-bottom:6px;color:var(--faint);font-size:11.5px}
+.pne-root .arc-qp-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pne-root .arc-qp-row select{flex:1;min-width:140px;height:32px;padding:0 9px;border:1px solid var(--line-2);
+  border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;font-size:12.5px}
+.pne-root .arc-qp-row .btn{height:32px;font-size:12.5px;white-space:nowrap}
+.pne-root .arc-qp-count{font-size:12.5px;color:var(--text-2)}
+.pne-root .arc-qp-count b{color:var(--accent);font-size:14px}
+.pne-root .arc-qp-note{display:block;margin-top:7px;color:var(--faint);font-size:11px;line-height:1.6}
+
+.pne-root .arc-chips{display:flex;flex-wrap:wrap;gap:5px;max-height:132px;overflow-y:auto;padding:2px}
+.pne-root .arc-chips.vals{margin-top:8px}
+.pne-root .arc-chip{padding:4px 9px;border:1px solid var(--line-2);border-radius:999px;background:var(--surface);
+  color:var(--text-2);font-family:var(--mono);font-size:11px;cursor:pointer;transition:.15s;white-space:nowrap}
+.pne-root .arc-chip:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.pne-root .arc-chip.val{font-family:inherit;font-size:11.5px}
