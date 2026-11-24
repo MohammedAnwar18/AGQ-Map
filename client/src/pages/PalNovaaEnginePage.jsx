@@ -77,7 +77,6 @@ export default function PalNovaaEnginePage() {
   const [mobilePane, setMobilePane] = useState('chat'); // الجوّال: لوحٌ واحد (محادثة | معاينة)
   const [menu, setMenu] = useState(null);
   const [modal, setModal] = useState(null);
-  const [keyThinkDraft, setKeyThinkDraft] = useState(localStorage.getItem(KEY_THINK_LS) || '');
   const [keyCodeDraft, setKeyCodeDraft] = useState(localStorage.getItem(KEY_CODE_LS) || '');
   const [pg, setPg] = useState({ host: '', db: '' });
   const [toast, setToast] = useState('');
@@ -588,7 +587,6 @@ export default function PalNovaaEnginePage() {
 
   const runBuild = async (rawText, isEdit) => {
     if (busy || !rawText.trim()) return;
-    const keyThink = localStorage.getItem(KEY_THINK_LS) || '';
     const keyCode = localStorage.getItem(KEY_CODE_LS) || '';
     setBusy(true); setView('workspace'); setIframeErr('');
     if (!isEdit) setTitle(rawText.trim().slice(0, 48));
@@ -611,7 +609,7 @@ export default function PalNovaaEnginePage() {
 
     // الوضع الموسّع: مشروعٌ جديد إن فُعّل، أو تعديلُ مشروعٍ موسّعٍ قائم (نرسل ملفّاته)
     const useExpanded = expanded || (isEdit && !!files);
-    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', keyThink, keyCode, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
+    const body = { prompt: withContext(rawText), currentHtml: isEdit ? html : '', keyCode, datasets: datasets.map((x) => x.slug), origin: window.location.origin, expanded: useExpanded, files: (isEdit && files) ? files : undefined };
     try {
       const handled = await tryStream(body, bId, isEdit);
       if (!handled) await nonStream(body, bId, isEdit);
@@ -628,8 +626,8 @@ export default function PalNovaaEnginePage() {
     if (enhancing || busy) return;
     setEnhancing(true);
     try {
-      const keyThink = localStorage.getItem(KEY_THINK_LS) || '';
-      const d = await jpost('/engine/enhance', { prompt: base, keyThink });
+      const keyCode = localStorage.getItem(KEY_CODE_LS) || '';
+      const d = await jpost('/engine/enhance', { prompt: base, keyCode });
       if (d?.ok && d.prompt) { setPrompt(d.prompt); showToast('حُسّن الوصف ✨ — عدّله أو ابنِ مباشرةً'); }
       else showToast(d?.reason === 'missing_key' ? 'أضِف مفتاح الموديل أولاً' : 'تعذّر التحسين، جرّب مجدّداً');
     } catch { showToast('تعذّر الاتصال بالخادم'); }
@@ -739,12 +737,11 @@ export default function PalNovaaEnginePage() {
   };
 
   const saveKey = () => {
-    const t = keyThinkDraft.trim(), c = keyCodeDraft.trim();
-    if (t) localStorage.setItem(KEY_THINK_LS, t); else localStorage.removeItem(KEY_THINK_LS);
+    const c = keyCodeDraft.trim();
     if (c) localStorage.setItem(KEY_CODE_LS, c); else localStorage.removeItem(KEY_CODE_LS);
-    localStorage.removeItem(KEY_LS);   // نتخلّص من المفتاح المفرد القديم فلا يتعارض
+    localStorage.removeItem(KEY_LS); localStorage.removeItem(KEY_THINK_LS);   // تنظيف المفاتيح القديمة
     setModal(null);
-    showToast((t || c) ? 'حُفظت المفاتيح على جهازك' : 'أُزيلت المفاتيح');
+    showToast(c ? 'حُفظ المفتاح على جهازك' : 'أُزيل المفتاح');
   };
 
   /* ---- ArcGIS REST ---- */
@@ -1221,7 +1218,7 @@ export default function PalNovaaEnginePage() {
             <div className="top-actions">
               <button className="icon-btn" title="النُّسَخ والتراجع" data-menu-anchor onClick={(e) => openMenu('versions', e)} disabled={!slug}>{Ico.history}</button>
               <button className="icon-btn" title="نسخ المشروع (fork)" onClick={forkProject} disabled={!slug}>{Ico.fork}</button>
-              <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyThinkDraft(localStorage.getItem(KEY_THINK_LS) || ''); setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>{Ico.key}</button>
+              <button className="icon-btn" title="مفتاح الموديل" onClick={() => { setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>{Ico.key}</button>
               <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>حفظ</span></button>
               <button className="btn primary" onClick={onDeploy} disabled={!html || busy}>{Ico.rocket}<span>{slug && !dirty ? 'منشور' : 'نشر التطبيق'}</span></button>
             </div>
@@ -1328,7 +1325,7 @@ export default function PalNovaaEnginePage() {
                         <p>استنفدتَ حصّتك المجّانيّة لهذه الفترة. للمتابعة اشترك في <b>Pro</b> بـ<b>$5</b> وتفتح حصّةً أكبر، أو أضِف مفتاحك الخاصّ.</p>
                         <div className="suggests">
                           <button className="suggest" style={{ borderColor: 'var(--accent-line)', color: 'var(--accent-2)' }} onClick={() => navigate('/palnovaa-engine/pricing')}>اشترك في Pro — $5</button>
-                          <button className="suggest" onClick={() => { setKeyThinkDraft(localStorage.getItem(KEY_THINK_LS) || ''); setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
+                          <button className="suggest" onClick={() => { setKeyCodeDraft(localStorage.getItem(KEY_CODE_LS) || ''); setModal('key'); }}>استخدم مفتاحي الخاصّ</button>
                         </div>
                       </div>
                     </div>
@@ -1381,7 +1378,7 @@ export default function PalNovaaEnginePage() {
                           {/* تفكير الموديل الحقيقيّ أثناء التخطيط */}
                           {running && m.think && (
                             <div className="pn-think">
-                              <span className="pn-think-tag">{SICONS.think}<span>تفكير</span></span>
+                              <span className="pn-think-tag">{SICONS.plan}<span>تفكير</span></span>
                               <p className="pn-think-txt">{m.think}</p>
                             </div>
                           )}
@@ -1947,20 +1944,15 @@ export default function PalNovaaEnginePage() {
       {modal === 'key' && (
         <div className="scrim" onClick={(e) => { if (e.target.classList.contains('scrim')) setModal(null); }}>
           <div className="modal">
-            <div className="modal-head"><span className="s-ic">{Ico.key}</span><div><b>مفاتيح الموديل</b><small>مفتاحٌ للتفكير والتخطيط، وآخرُ للبناء وكتابة الكود</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
+            <div className="modal-head"><span className="s-ic">{Ico.key}</span><div><b>مفتاح Gemini</b><small>مفتاحٌ واحدٌ يُشغّل كلّ المراحل</small></div><button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button></div>
             <div className="modal-body">
               <div className="field">
-                <label>مفتاح التفكير والتخطيط — GLM / Zhipu</label>
-                <input type="password" value={keyThinkDraft} placeholder="‎32 حرفاً ثمّ نقطة ثمّ السرّ" onChange={(e) => setKeyThinkDraft(e.target.value)} />
-                <small className="hint">يرسم الخطّة قبل البناء، ويُشغّل زرّ «تحسين الوصف».</small>
-              </div>
-              <div className="field">
-                <label>مفتاح البناء وكتابة الكود — Gemini</label>
+                <label>مفتاح Gemini</label>
                 <input type="password" value={keyCodeDraft} placeholder="AIza…" onChange={(e) => setKeyCodeDraft(e.target.value)} />
-                <small className="hint">يكتب التطبيق ويُجري التعديلات الجراحيّة.</small>
+                <small className="hint">يُشغّل المخطّط والتصميم وبناء الكود والتحسين. اتركه فارغاً لاستخدام مفتاح الخادم.</small>
               </div>
             </div>
-            <div className="modal-foot"><span className="note">تُحفَظ على جهازك فقط، وتُرسَل للخادم لحظة التوليد لا غير.</span><button className="btn accent sp" onClick={saveKey}>حفظ المفاتيح</button></div>
+            <div className="modal-foot"><span className="note">يُحفَظ على جهازك فقط، ويُرسَل للخادم لحظة التوليد لا غير.</span><button className="btn accent sp" onClick={saveKey}>حفظ المفتاح</button></div>
           </div>
         </div>
       )}

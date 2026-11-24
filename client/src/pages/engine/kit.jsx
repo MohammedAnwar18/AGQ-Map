@@ -225,14 +225,19 @@ export const STEPS = [
 /* مراحلُ البناء الحقيقيّة — مدفوعةٌ بأحداث SSE من الخادم (لا مؤقّتٌ وهميّ).
    كلٌّ منها يطابق id يُرسله الباكند: think | skills | code | review */
 export const STAGES = [
-  { id: 'think',  t: 'تفكير',          m: 'تحليل الطلب ورسم الخطّة' },
-  { id: 'skills', t: 'تفعيل المهارات', m: 'اختيار الأدوات والمكتبات' },
-  { id: 'code',   t: 'كتابة الكود',    m: 'بناء الواجهة والمنطق' },
-  { id: 'review', t: 'المراجعة',       m: 'تحقّقٌ وتشغيل المعاينة' },
+  { id: 'plan',    t: 'تفكيرٌ ومخطّط', m: 'تحليل الطلب ورسم البنية' },
+  { id: 'skills',  t: 'المهارات',      m: 'اختيار الأدوات والمكتبات' },
+  { id: 'design',  t: 'التصميم',       m: 'الألوان والخطّ والتخطيط' },
+  { id: 'code',    t: 'بناء الكود',    m: 'كتابة الواجهة والمنطق' },
+  { id: 'test',    t: 'الاختبار',      m: 'فحص بنية المستند وسلامته' },
+  { id: 'preview', t: 'المعاينة',      m: 'تشغيل التطبيق' },
 ];
 
 export const SICONS = {
-  think: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a5 5 0 0 0-5 5c0 1.4.6 2.6 1.5 3.5V15a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.5A5 5 0 0 0 12 3Z" /><path d="M10 19h4M10.5 21.5h3" /></svg>,
+  design: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9.2" /><circle cx="8.5" cy="9.5" r="1.3" fill="currentColor" stroke="none" /><circle cx="14" cy="8.2" r="1.3" fill="currentColor" stroke="none" /><circle cx="16.4" cy="13" r="1.3" fill="currentColor" stroke="none" /><path d="M12 21.2c-1.6 0-2.3-1-1.7-2 .7-1.3.2-2.4-1.3-2.4H7.4" /></svg>,
+  test: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2.5v6.2L4.8 17a2.4 2.4 0 0 0 2.1 3.6h10.2a2.4 2.4 0 0 0 2.1-3.6l-4.7-8.3V2.5" /><path d="M8.2 2.5h7.6M7.4 14.4h9.2" /></svg>,
+  preview: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1.8 12S5.5 5.2 12 5.2 22.2 12 22.2 12 18.5 18.8 12 18.8 1.8 12 1.8 12Z" /><circle cx="12" cy="12" r="3" /></svg>,
+  plan: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a5 5 0 0 0-5 5c0 1.4.6 2.6 1.5 3.5V15a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.5A5 5 0 0 0 12 3Z" /><path d="M10 19h4M10.5 21.5h3" /></svg>,
   skills: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5" /><circle cx="15" cy="9" r="3.2" /></svg>,
   code: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="m8 17-5-5 5-5M16 7l5 5-5 5" /></svg>,
   review: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.6 20 6v6c0 4.4-3.3 8.3-8 9.4-4.7-1.1-8-5-8-9.4V6l8-3.4Z" /><path d="m9 12 2 2 4-4" /></svg>,
