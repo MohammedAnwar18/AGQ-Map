@@ -220,6 +220,22 @@ export const STEPS = [
   { t: 'التصميم والتجاوب', m: 'RTL · responsive · dark theme' },
   { t: 'التحقّق وتشغيل المعاينة', m: 'validate · preview ready' },
 ];
+/* مراحلُ البناء الحقيقيّة — مدفوعةٌ بأحداث SSE من الخادم (لا مؤقّتٌ وهميّ).
+   كلٌّ منها يطابق id يُرسله الباكند: think | skills | code | review */
+export const STAGES = [
+  { id: 'think',  t: 'تفكير',          m: 'تحليل الطلب ورسم الخطّة' },
+  { id: 'skills', t: 'تفعيل المهارات', m: 'اختيار الأدوات والمكتبات' },
+  { id: 'code',   t: 'كتابة الكود',    m: 'بناء الواجهة والمنطق' },
+  { id: 'review', t: 'المراجعة',       m: 'تحقّقٌ وتشغيل المعاينة' },
+];
+
+export const SICONS = {
+  think: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a5 5 0 0 0-5 5c0 1.4.6 2.6 1.5 3.5V15a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.5A5 5 0 0 0 12 3Z" /><path d="M10 19h4M10.5 21.5h3" /></svg>,
+  skills: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5" /><circle cx="15" cy="9" r="3.2" /></svg>,
+  code: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="m8 17-5-5 5-5M16 7l5 5-5 5" /></svg>,
+  review: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2.6 20 6v6c0 4.4-3.3 8.3-8 9.4-4.7-1.1-8-5-8-9.4V6l8-3.4Z" /><path d="m9 12 2 2 4-4" /></svg>,
+};
+
 export const TPL = [
   { t: 'مؤشر خطر الفيضان', d: 'تلوين القطع حسب درجة الخطر مع لوحات لكلّ حي.', tags: ['Choropleth', 'Turf'], p: 'ابنِ تطبيق ويب يعرض قطع الأراضي في نابلس ملوّنة حسب مؤشر خطر الفيضان، مع لوحة جانبيّة للطبقات، ومؤشّرات لعدد القطع عالية الخطورة والمساحة المعرّضة، وإمكانيّة الضغط على أيّ قطعة لعرض بياناتها.' },
   { t: 'إدارة شبكات المياه', d: 'خطوط الشبكة، الأعطال، وأقرب صمّام إغلاق.', tags: ['Network', 'Routing'], p: 'أريد لوحة لإدارة شبكة المياه: عرض الأنابيب حسب القطر والعمر، تسجيل الأعطال كنقاط على الخريطة، وإيجاد أقرب صمّام إغلاق لأيّ عطل.' },

@@ -6,7 +6,7 @@ import useEngineBranding from '../hooks/useEngineBranding';
 import './PalNovaaEngine.css';
 
 import {
-  APPS_BASE, appLink, API, KEY_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
+  APPS_BASE, appLink, API, KEY_LS, authHeaders, jpost, jput, jget, jdel, MAPLIBS, ESRI_IMAGERY, GOOGLE_SAT, GOOGLE_SAT_SUBS, loadScript, loadCss, PROJ_DEFS, ensureProj4, ensureLeaflet, ensureGeoman, geoDist, lineLen, ringArea, fmtArea, fmtLen, ensureEsri, ensureVectorGrid, ensureGeoraster, SHP_URL, SQLJS_BASE, ensureShp, ensureSqlJs, wkbToGeoJSON, gpkgGeom, dxfToGeoJSON, makeArcgisImageLayer, SRC, MODES, CRS, STEPS, STAGES, SICONS, TPL, Ico, TICONS, escapeHtml, mdToHtml, splitProjectFiles, FileIcon, HLJS_CSS, HLJS_JS, ensureHljs, injectCatcher, serializeThread
 } from './engine/kit';
 
 export default function PalNovaaEnginePage() {
@@ -492,7 +492,7 @@ export default function PalNovaaEnginePage() {
     setHtml(d.html); if (d.title) setTitle(d.title); if (d.summary) setSummary(d.summary);
     if (d.files && typeof d.files === 'object') setFiles(d.files); else if (!isEdit) setFiles(null);
     setDirty(true); if (d.balance) setBalance(d.balance); setTab('app'); setMobilePane('preview');
-    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', usage: d.usage, elapsed: d.elapsed, model: d.model } : x)));
+    setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, progress: STEPS.length, state: 'done', stage: null, done: STAGES.map((g) => g.id), usage: d.usage, elapsed: d.elapsed, model: d.model } : x)));
     const diffFailed = isEdit && (d.mode === 'files-noop' || (d.mode === 'diff' && !d.applied));
     const isDiff = d.mode === 'diff' || d.mode === 'files-diff';
     setMessages((m) => [...m, {
@@ -546,6 +546,23 @@ export default function PalNovaaEnginePage() {
           const pl = dl.slice(5).trim(); if (!pl) continue;
           let ev; try { ev = JSON.parse(pl); } catch { continue; }
           if (ev.type === 'delta') { acc += ev.text || ''; scheduleStreamFlush(acc); }
+          else if (ev.type === 'stage') {
+            // مرحلةٌ حقيقيّة من الخادم: تُعلَّم السابقةُ منتهيةً وتُفتَح الحاليّة
+            setMessages((m) => m.map((x) => {
+              if (x.id !== `b${bId}`) return x;
+              const i = STAGES.findIndex((g) => g.id === ev.id);
+              const done = i > 0 ? STAGES.slice(0, i).map((g) => g.id) : [];
+              return { ...x, stage: ev.id, done };
+            }));
+          }
+          else if (ev.type === 'think') {
+            // تفكيرُ الموديل الحقيقيّ — نُبقي آخر ~1200 حرفٍ فقط فلا تثقل الواجهة
+            setMessages((m) => m.map((x) => (x.id === `b${bId}`
+              ? { ...x, think: ((x.think || '') + (ev.text || '')).slice(-1200) } : x)));
+          }
+          else if (ev.type === 'plan') {
+            setMessages((m) => m.map((x) => (x.id === `b${bId}` ? { ...x, plan: ev.text || '' } : x)));
+          }
           else if (ev.type === 'done') { clearTimeout(timerRef.current); setStreamCode(acc); finishSuccess(ev, isEdit, bId); return true; }
           else if (ev.type === 'error') {
             clearTimeout(timerRef.current);
@@ -579,15 +596,16 @@ export default function PalNovaaEnginePage() {
     const bId = ++buildIdRef.current;
     setMessages((m) => [...m,
       { id: `u${bId}`, role: 'user', text: rawText.trim(), chips: chipsSnap, ds: dsSnap },
-      { id: `b${bId}`, role: 'ai', kind: 'build', progress: 0, state: 'running' },
+      { id: `b${bId}`, role: 'ai', kind: 'build', progress: 0, state: 'running', stage: 'think', done: [], think: '' },
     ]);
     setTab('app');
 
-    const tick = () => {
-      setMessages((m) => m.map((x) => (x.id === `b${bId}` && x.state === 'running' && x.progress < STEPS.length - 1 ? { ...x, progress: x.progress + 1 } : x)));
-      timerRef.current = setTimeout(tick, 1400);
-    };
-    timerRef.current = setTimeout(tick, 1100);
+    // لا مؤقّتٌ وهميّ: المراحل تُدفَع من الخادم عبر أحداث SSE (stage/think).
+    // يبقى مؤقّتٌ احتياطيٌّ واحدٌ فقط لمسار عدم البثّ، ينقل المرحلة إلى «كتابة الكود».
+    timerRef.current = setTimeout(() => {
+      setMessages((m) => m.map((x) => (x.id === `b${bId}` && x.state === 'running' && x.stage === 'think'
+        ? { ...x, stage: 'code', done: ['think', 'skills'] } : x)));
+    }, 2600);
 
     // الوضع الموسّع: مشروعٌ جديد إن فُعّل، أو تعديلُ مشروعٍ موسّعٍ قائم (نرسل ملفّاته)
     const useExpanded = expanded || (isEdit && !!files);
@@ -1317,8 +1335,10 @@ export default function PalNovaaEnginePage() {
                     );
                     const errored = m.state === 'error';
                     const running = m.state === 'running';
-                    const curStep = Math.max(0, Math.min(m.progress, STEPS.length - 1));
-                    const pct = Math.round((Math.min(m.progress, STEPS.length) / STEPS.length) * 100);
+                    const doneSet = m.done || [];
+                    const curIdx = Math.max(0, STAGES.findIndex((g) => g.id === m.stage));
+                    const pct = Math.round(((finished ? STAGES.length : doneSet.length) / STAGES.length) * 100);
+                    const curStage = STAGES[curIdx] || STAGES[0];
                     return (
                     <div className="msg-ai fade-in" key={m.id}>
                       <div className="ai-av">{Ico.cube}</div>
@@ -1326,12 +1346,36 @@ export default function PalNovaaEnginePage() {
                         <div className={`pn-build ${errored ? 'err' : finished ? 'done' : 'run'}`}>
                           <div className="pn-build-row">
                             <span className="pn-build-mark">{errored ? <span className="pn-build-x">!</span> : finished ? Ico.check : mark}</span>
-                            <span className="pn-build-title">{errored ? 'توقّف البناء' : finished ? 'تمّ البناء بنجاح' : (STEPS[curStep]?.t || 'أُحلّل وأبني')}</span>
+                            <span className="pn-build-title">{errored ? 'توقّف البناء' : finished ? 'تمّ البناء بنجاح' : (curStage?.t || 'أُحلّل وأبني')}</span>
                             <span className="pn-build-seg" aria-hidden="true">
-                              {STEPS.map((s, i) => <i key={i} className={i < m.progress ? 'on' : (running && i === m.progress ? 'cur' : '')} />)}
+                              {STAGES.map((g, i) => <i key={g.id} className={doneSet.includes(g.id) ? 'on' : (running && i === curIdx ? 'cur' : '')} />)}
                             </span>
                           </div>
                           {!finished && !errored && <div className="pn-build-bar"><span style={{ width: `${Math.max(6, pct)}%` }} /></div>}
+
+                          {/* المراحل الحقيقيّة — أيقونةٌ واسمٌ لكلّ مرحلة (مدفوعةٌ بأحداث الخادم) */}
+                          {!errored && (
+                            <div className="pn-stages">
+                              {STAGES.map((g, i) => {
+                                const isDone = doneSet.includes(g.id) || finished;
+                                const isCur = running && !finished && i === curIdx;
+                                return (
+                                  <div className={`pn-stage ${isDone ? 'done' : isCur ? 'cur' : 'idle'}`} key={g.id}>
+                                    <span className="pn-stage-ic">{isDone ? Ico.check : isCur ? <span className="pn-stage-spin" /> : SICONS[g.id]}</span>
+                                    <span className="pn-stage-txt"><b>{g.t}</b><small>{g.m}</small></span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* تفكير الموديل الحقيقيّ أثناء التخطيط */}
+                          {running && m.think && (
+                            <div className="pn-think">
+                              <span className="pn-think-tag">{SICONS.think}<span>تفكير</span></span>
+                              <p className="pn-think-txt">{m.think}</p>
+                            </div>
+                          )}
                         </div>
                         {isAdmin && m.usage && (() => {
                           const tin = (m.usage.input || 0) + (m.usage.cacheRead || 0) + (m.usage.cacheWrite || 0);

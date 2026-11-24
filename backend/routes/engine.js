@@ -51,6 +51,32 @@ const MAXTOK = parseInt(process.env.PALNOVAA_MAX_TOKENS, 10) || 16000;
 // مهلة الاتّصال بالمزوّد (ms). السقف الصلب هو maxDuration في vercel.json (300s)، فنبقى تحته.
 const UPSTREAM_TIMEOUT = Math.min(parseInt(process.env.PALNOVAA_TIMEOUT_MS, 10) || 280000, 295000);
 
+/* ============================================================================
+   توجيهٌ حسب الوظيفة (Task Routing) — كلّ موديلٍ في ما يتفوّق فيه:
+   • GLM-5.3-Flash (Zhipu): نموذجُ تفكيرٍ إلزاميّ — تفكيرُه لا يُطفَأ، يُضبَط فقط
+     بـ reasoning_effort: low|high|max. فهو ممتازٌ للتخطيط وتحسين الوصف، ومُكلفٌ
+     للـHTML الطويل لأنّ التفكير يستهلك ميزانيّة التوكِنز قبل أن يكتب الكود.
+   • Gemini flash (thinkingBudget: 0): بلا تفكيرٍ داخليّ، ناتجٌ طويلٌ سريع →
+     فهو الأنسب لتوليد الكود وللتعديلات الجراحيّة.
+   التوزيع: تفكير/تحسين ← GLM، كود/إصلاح ← Gemini.
+   مفتاحُ المستخدم (إن أحضر مفتاحه الخاصّ) يتجاوز التوزيع ويخدم كلّ المهامّ.
+   ============================================================================ */
+const isGlmKey = (k) => /^[0-9a-f]{32}[.]/i.test((k || '').trim());
+const GLM_KEY = (process.env.PALNOVAA_GLM_KEY || (isGlmKey(SERVER_KEY) ? SERVER_KEY : '')).trim();
+const CODE_KEY = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || (isGlmKey(SERVER_KEY) ? '' : SERVER_KEY)).trim();
+const GLM_EFFORT = (process.env.PALNOVAA_GLM_EFFORT || 'low').trim();   // low | high | max
+const THINK_TASKS = new Set(['think', 'enhance']);
+// task: think | enhance | code | repair — ويتدرّج لأيّ مفتاحٍ متاح، فيعمل بمفتاحٍ واحدٍ أيضاً
+function keyForTask(task, userKey) {
+    if (userKey) return userKey;
+    if (THINK_TASKS.has(task)) return GLM_KEY || CODE_KEY || SERVER_KEY;
+    return CODE_KEY || GLM_KEY || SERVER_KEY;
+}
+// هل التوزيع فعّالٌ حقّاً (مفتاحان مختلفان)؟ تستفيد منه الواجهة لعرض موديل كلّ مرحلة
+const DUAL_ROUTING = !!(GLM_KEY && CODE_KEY && GLM_KEY !== CODE_KEY);
+// بارامترات GLM الخاصّة — تُضاف فقط حين يكون المزوّد Zhipu
+const glmOpts = (prov) => (prov && prov.glm ? { reasoning_effort: GLM_EFFORT } : {});
+
 /* التقنين بالكلفة الفعليّة (µ$ لكلّ توكِن) — افتراض Claude Sonnet 5.5، قابلٌ للضبط بالبيئة.
    الفكرة: كلّ مستخدمٍ على المفتاح المشترك يستهلك حتى FREE_USD مجّاناً، ثمّ يُطلَب Pro
    الذي يفتح PRO_USD. من يُحضر مفتاحه الخاصّ لا يُحسَب عليه (يستهلك من رصيده). */
@@ -789,7 +815,7 @@ function pickProvider(KEY) {
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'openai/gpt-oss-120b') };
     if (k.startsWith('nvapi-')) return { kind: 'oai', url: 'https://integrate.api.nvidia.com/v1/chat/completions', model: pick(/\//, 'deepseek-ai/deepseek-v4.1-flash') };
-    if (/^[0-9a-f]{32}\./i.test(k)) return { kind: 'oai', url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: pick(/glm/i, 'glm-5.3-flash') };  // Zhipu AI (BigModel) — مفاتيحهم بصيغة hex32.secret
+    if (/^[0-9a-f]{32}\./i.test(k)) return { kind: 'oai', glm: true, url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions', model: pick(/glm/i, 'glm-5.3-flash') };  // Zhipu AI (BigModel) — مفاتيحهم بصيغة hex32.secret
     return { kind: 'gemini', url: '', model: pick(/gemini/i, 'gemini-flash-latest') };  // 2.0/2.5-flash أوقفتهما Google؛ -latest يتبع الأحدث (حاليّاً 3.8-flash) فلا يتعطّل
 }
 
@@ -890,7 +916,7 @@ async function callModel(KEY, prompt, currentHtml, skillsCtx, design) {
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         let full = '';
         for (let i = 0; i < 5; i++) {
-            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK }, headers, UPSTREAM_TIMEOUT);
+            const data = await postJSON(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK, ...glmOpts(prov) }, headers, UPSTREAM_TIMEOUT);
             const choice = data?.choices?.[0]; const msg = choice?.message;
             const piece = ((msg && (typeof msg.content === 'string' ? msg.content : (Array.isArray(msg.content) ? msg.content.map((c) => c?.text || '').join('') : ''))) || '');
             full += piece;
@@ -966,7 +992,7 @@ function streamHTTPS(url, body, headers, onEvent, timeoutMs = UPSTREAM_TIMEOUT) 
 }
 
 /* ---- بثّ الموديل: يستدعي onDelta لكلّ قطعة نصّ، ويعيد {text, usage} ---- */
-async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design) {
+async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design, onThink) {
     const prov = pickProvider(KEY);
     const usage = blankUsage();
     const fullSys = skillsCtx ? SYSTEM_INSTRUCTION + skillsCtx : SYSTEM_INSTRUCTION;
@@ -1015,12 +1041,15 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design)
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
         for (let round = 0; round < 5; round++) {
             let piece = '', finish = '';
-            await streamHTTPS(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK, stream: true, stream_options: { include_usage: true } }, headers, (ev, data) => {
+            await streamHTTPS(prov.url, { model: prov.model, messages, temperature: 0.4, top_p: 0.9, frequency_penalty: 0.3, max_tokens: MAXTOK, stream: true, stream_options: { include_usage: true }, ...glmOpts(prov) }, headers, (ev, data) => {
                 if (data === '[DONE]') return;
                 let j; try { j = JSON.parse(data); } catch { return; }
                 const ch = j.choices?.[0];
                 const txt = ch?.delta?.content;
                 if (txt) { piece += txt; onDelta(txt); }
+                // موديلات التفكير (GLM) تبثّ تفكيرها في حقلٍ منفصل — يُمرَّر للواجهة ولا يُخلَط بالكود
+                const think = ch?.delta?.reasoning_content;
+                if (think && onThink) { try { onThink(think); } catch { /* */ } }
                 if (ch?.finish_reason) finish = ch.finish_reason;
                 if (j.usage) { usage.input += j.usage.prompt_tokens || 0; usage.output += j.usage.completion_tokens || 0; usage.cacheRead += j.usage.prompt_tokens_details?.cached_tokens || 0; }
             });
@@ -1032,7 +1061,39 @@ async function streamModel(KEY, prompt, currentHtml, onDelta, skillsCtx, design)
         return { text: full.trim(), usage };
     }
 
-    // Gemini: لا بثّ تدريجيّ هنا — نستدعي النسخة المخزّنة ونرسلها دفعةً كـِدلتا واحدة
+    // Gemini: بثٌّ حقيقيٌّ تدريجيّ عبر streamGenerateContent?alt=sse.
+    // عند أيّ فشلٍ أو ناتجٍ فارغ نتراجع للنداء المخزَّن (callModel) فلا ينكسر مسار البناء.
+    const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(prov.model)}:streamGenerateContent?alt=sse`;
+    const gContents = [];
+    if (currentHtml) {
+        gContents.push({ role: 'user', parts: [{ text: 'هذا هو التطبيق الحاليّ:\n```html\n' + currentHtml + '\n```' + EDIT_HINT }] });
+        gContents.push({ role: 'model', parts: [{ text: 'تمام، ما التعديل المطلوب؟' }] });
+    }
+    gContents.push({ role: 'user', parts: geminiParts(prompt, design) });
+    try {
+        for (let round = 0; round < 5; round++) {
+            let piece = '', finish = '', uRound = null;
+            await streamHTTPS(gUrl, {
+                systemInstruction: { role: 'system', parts: [{ text: fullSys }] },
+                contents: gContents,
+                generationConfig: { temperature: 0.3, maxOutputTokens: 8192, topP: 0.95, thinkingConfig: { thinkingBudget: 0 } }
+            }, { 'x-goog-api-key': KEY }, (ev, data) => {
+                if (data === '[DONE]') return;
+                let j; try { j = JSON.parse(data); } catch { return; }
+                const cand = j?.candidates?.[0];
+                const t = (cand?.content?.parts || []).map((p) => p?.text || '').join('');
+                if (t) { piece += t; onDelta(t); }
+                if (cand?.finishReason) finish = cand.finishReason;
+                if (j?.usageMetadata) uRound = j.usageMetadata;   // تراكميّةٌ داخل الجولة — نأخذ الأخيرة
+            });
+            if (uRound) { usage.input += uRound.promptTokenCount || 0; usage.output += uRound.candidatesTokenCount || 0; usage.cacheRead += uRound.cachedContentTokenCount || 0; }
+            full += piece;
+            if (finish !== 'MAX_TOKENS' || looksComplete(full)) break;
+            gContents.push({ role: 'model', parts: [{ text: piece }] });
+            gContents.push({ role: 'user', parts: [{ text: CONTINUE_MSG }] });
+        }
+        if (full.trim()) return { text: full.trim(), usage };
+    } catch { /* نتراجع أدناه */ }
     const r = await callModel(KEY, prompt, currentHtml, skillsCtx, design);
     if (r.text) onDelta(r.text);
     return r;
@@ -1049,7 +1110,7 @@ async function quickComplete(KEY, system, user, maxTokens) {
     if (prov.kind === 'oai') {
         const headers = { Authorization: `Bearer ${KEY}` };
         if (/openrouter/i.test(prov.url)) { headers['HTTP-Referer'] = 'https://palnovaa.com'; headers['X-Title'] = 'PalNovaa Engine'; }
-        const data = await postJSON(prov.url, { model: prov.model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.6, max_tokens: maxTokens }, headers, UPSTREAM_TIMEOUT);
+        const data = await postJSON(prov.url, { model: prov.model, messages: [{ role: 'system', content: system }, { role: 'user', content: user }], temperature: 0.6, max_tokens: maxTokens, ...glmOpts(prov) }, headers, UPSTREAM_TIMEOUT);
         const msg = data?.choices?.[0]?.message;
         return (typeof msg?.content === 'string' ? msg.content : (Array.isArray(msg?.content) ? msg.content.map((c) => c?.text || '').join('') : '')) || '';
     }
@@ -1069,6 +1130,31 @@ function isComplexPrompt(p) {
     const hints = /(نظام|منصّ[ةه]|لوح[ةه]|تبويب|تقرير|إدار[ةه]|متعدّد|عدّ[ةه]|صفحات|فلات[رى]|مؤشّر|dashboard|CRUD|تحليل|مقارن[ةه]|خطوات|workflow)/i.test(s);
     return words >= 40 || (words >= 22 && hints);
 }
+/* مخطِّطٌ باثّ: يُمرّر تفكير الموديل الحقيقيّ (reasoning_content) للواجهة لحظةً بلحظة
+   ثمّ يُعيد الخطّة. المزوّد غير المتوافق مع OpenAI يعود للطريق الصامت. */
+async function streamPlan(KEY, prompt, onThink) {
+    const prov = pickProvider(KEY);
+    if (prov.kind !== 'oai') return silentPlan(KEY, prompt);
+    let plan = '';
+    try {
+        await streamHTTPS(prov.url, {
+            model: prov.model,
+            messages: [{ role: 'system', content: PLANNER_SYS }, { role: 'user', content: prompt }],
+            // مقصودٌ: لا نُرسل reasoning_effort هنا. وجودُه (بأيّ قيمة) يكتم بثّ
+            // reasoning_content في GLM، ونحن نريد تفكيره ظاهراً في مرحلة «تفكير».
+            // مُقاس: بلا البارامتر ← أوّل دلتا تفكيرٍ بعد ~1.5s و88 دلتا؛ ومعه ← صفر.
+            temperature: 0.5, max_tokens: 1200, stream: true
+        }, { Authorization: `Bearer ${KEY}` }, (ev, data) => {
+            if (data === '[DONE]') return;
+            let j; try { j = JSON.parse(data); } catch { return; }
+            const d = j.choices?.[0]?.delta;
+            if (d?.reasoning_content && onThink) { try { onThink(d.reasoning_content); } catch { /* */ } }
+            if (d?.content) plan += d.content;
+        });
+    } catch { return silentPlan(KEY, prompt).catch(() => null); }
+    return plan.trim() || null;
+}
+
 async function silentPlan(KEY, prompt) {
     try { const plan = (await quickComplete(KEY, PLANNER_SYS, prompt, 450) || '').trim(); return plan || null; }
     catch { return null; }
@@ -1081,7 +1167,7 @@ router.post('/enhance', optionalAuth, async (req, res) => {
         const raw = (req.body?.prompt || '').toString().trim().slice(0, 2000);
         if (!raw) return res.json({ ok: false, reason: 'empty' });
         const reqKey = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-        const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
+        const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('enhance'));
         if (!KEY) return res.json({ ok: false, reason: 'missing_key' });
         const out = (await quickComplete(KEY, ENHANCER_SYS, raw, 700) || '').trim().replace(/^```[a-z]*\n?|\n?```$/gi, '').trim();
         if (!out) return res.json({ ok: false, reason: 'empty_result' });
@@ -1098,7 +1184,8 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     let prompt = (b.prompt || '').toString().trim().slice(0, 4000);
     const currentHtml = typeof b.currentHtml === 'string' ? b.currentHtml.slice(0, 160000) : '';
     const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
+    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));        // الكود والتعديل
+    const KEY_THINK = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
 
     res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -1107,7 +1194,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         'X-Accel-Buffering': 'no'
     });
     const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch { /* */ } };
-    send({ type: 'start' });
+    send({ type: 'start', dual: DUAL_ROUTING });
 
     if (!prompt) { send({ type: 'error', reason: 'empty prompt' }); return res.end(); }
     if (!KEY) { send({ type: 'error', reason: 'missing_key' }); return res.end(); }
@@ -1133,10 +1220,13 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
-        if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
-            const plan = await silentPlan(KEY, prompt);
-            if (plan) prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan;
+        // مرحلة «تفكير»: تفكيرُ الموديل الحقيقيّ يُبثّ للواجهة (GLM) ثمّ تُحقَن الخطّة
+        if (!currentHtml && isComplexPrompt(prompt)) {
+            send({ type: 'stage', id: 'think' });
+            const plan = await streamPlan(KEY_THINK, prompt, (t) => send({ type: 'think', text: t }));
+            if (plan) { prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan; send({ type: 'plan', text: plan }); }
         }
+        send({ type: 'stage', id: 'skills' });
         const design = validDesign(b.design);
         const skillIds = detectSkills(prompt);
         const skillsCtx = buildSkillsContext(skillIds);
@@ -1145,7 +1235,9 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
         const curHtml = expanded ? '' : currentHtml;   // الوضع الموسّع يُولّد مجموعة ملفّات، لا فروقات ملفٍّ واحد
         if (expanded) { prompt += injectCurrentFiles(b.files) + (editingExpanded ? MULTIFILE_EDIT_HINT : MULTIFILE_HINT); }
         const t0 = Date.now();
-        const { text, usage } = await streamModel(KEY, prompt, curHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design);
+        send({ type: 'stage', id: 'code' });
+        const { text, usage } = await streamModel(KEY, prompt, curHtml, (t) => send({ type: 'delta', text: t }), skillsCtx, design, (t) => send({ type: 'think', text: t }));
+        send({ type: 'stage', id: 'review' });
         const elapsed = Date.now() - t0;
         if (looksLooped(text)) { send({ type: 'error', reason: 'دخل الموديل في حلقة تكرار (شائع في الموديلات المجّانيّة). أعِد المحاولة، أو استخدم موديلاً أقوى مثل Claude.' }); return res.end(); }
         const out = expanded
@@ -1176,7 +1268,8 @@ router.post('/generate', optionalAuth, async (req, res) => {
     if (!prompt) return res.status(400).json({ ok: false, reason: 'empty prompt' });
 
     const reqKey = typeof b.key === 'string' ? b.key.trim() : '';
-    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : SERVER_KEY);
+    const KEY = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('code'));        // الكود والتعديل
+    const KEY_THINK = reqKey || (USE_OAI ? (OAI_KEY || SERVER_KEY) : keyForTask('think'));  // التفكير والتخطيط
     if (!KEY) return res.json({ ok: false, reason: 'missing_key', model: MODEL_NAME });
 
     // التقنين بالكلفة: يُحسَب فقط على المفتاح المشترك (لا على مفتاح المستخدم الخاصّ)
@@ -1201,7 +1294,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
     }
 
     if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
-        const plan = await silentPlan(KEY, prompt);
+        const plan = await silentPlan(KEY_THINK, prompt);
         if (plan) prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan;
     }
     const design = validDesign(b.design);
