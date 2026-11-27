@@ -1239,7 +1239,11 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
            ذُكرت، ونحقن وصفَها وروابطَ جلبها — لا بياناتها. فالتوكِنز تبقى ثابتةً
            مهما كبرت الطبقة، ويخرج التطبيق ببياناتٍ حقيقيّةٍ بلا رفعٍ من المستخدم.
            اختياريّةٌ بالكامل: أيُّ فشلٍ يُتجاهَل ولا يُعطّل البناء. */
-        if (!currentHtml) {
+        /* تُستعلَم في التعديل أيضاً، لا في البناء الجديد وحده: طلبٌ مثل
+           «أضِف حدود البيرة» يأتي على مشروعٍ قائم، وبلا هذا السياق لا يعرف
+           النموذج أنّ طبقة الحدود موجودةٌ أصلاً فيرتجل شكلاً تقريبيّاً.
+           والكلفة صفرٌ حين لا تطابُق — resolveLibrary تُعيد null فلا يُحقَن شيء. */
+        {
             const lib = await resolveLibrary(prompt);
             if (lib) {
                 prompt += buildLibraryInjection(lib);
@@ -1339,7 +1343,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
         } catch (e) { /* ignore dataset errors */ }
     }
 
-    if (!currentHtml) {   // مكتبة البيانات المركزيّة — انظر الشرح في مسار البثّ
+    {   // مكتبة البيانات المركزيّة (في البناء والتعديل) — انظر الشرح في مسار البثّ
         const lib = await resolveLibrary(prompt).catch(() => null);
         if (lib) prompt += buildLibraryInjection(lib);
     }
