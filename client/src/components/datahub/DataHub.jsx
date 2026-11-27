@@ -39,6 +39,8 @@ export default function DataHub() {
 
     const [jobs, setJobs] = useState([]);
     const [layers, setLayers] = useState([]);
+    const [edit, setEdit] = useState(null);          // { slug, ...draft }
+    const [stats, setStats] = useState(null);        // تمايز حقول الطبقة المحرَّرة
     const poll = useRef(null);
 
     const toast = (text, kind = 'ok') => { setMsg({ text, kind }); setTimeout(() => setMsg(null), 4500); };
@@ -72,8 +74,23 @@ export default function DataHub() {
             if (!data.ok) throw new Error(data.reason);
             const d = data.layer;
             setSel({ ...layer, ...d });
-            // تخمينٌ ذكيّ لحقل الاسم: أوّل حقلٍ نصّيّ يحوي Name أو اسم
-            const nf = (d.fields || []).find((f) => /name|اسم/i.test(f.name) && /string/i.test(f.type));
+            /* تخمينُ حقل الاسم — الدرس المستفاد: LayerName_Arabic يحمل القيمة
+               نفسها لكلّ الصفوف فيُفسد البحث. نستبعد حقول الوصف العامّ ونفضّل
+               أسماءَ الكيان (تجمّع/قرية/موقع)، والعربيّة على الإنجليزيّة. */
+            const strs = (d.fields || []).filter((f) => /string|text/i.test(f.type || ''));
+            const BAN = /^(layer|source|service|dataset|category|class|type|status|created|last_edited|molg|permit)/i;
+            const GOOD = /(community|village|town|city|locality|site|place|school|mosque|facility|اسم)/i;
+            const score = (f) => {
+                if (BAN.test(f.name)) return -10;
+                let v = 0;
+                if (GOOD.test(f.name)) v += 4;
+                if (/name/i.test(f.name)) v += 2;
+                if (/_arabic$|_ar$/i.test(f.name)) v += 2;
+                if (/_english$|_en$/i.test(f.name)) v -= 1;
+                return v;
+            };
+            const ranked = strs.map((f) => ({ f, v: score(f) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+            const nf = ranked.length ? ranked[0].f : null;
             const svc = String(node.name || '').split('/').pop();
             setForm({
                 slug: `${svc}_${layer.id}`.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 50),
@@ -127,6 +144,33 @@ export default function DataHub() {
     const cancelJob = async (id) => {
         try { await api.post(`/data/jobs/${id}/cancel`); loadJobs(); } catch (e) { toast(err(e), 'err'); }
     };
+    /* فتحُ التحرير مع جلب تمايز الحقول — الرقم يكشف الحقل عديم الفائدة فوراً */
+    const openEdit = async (l) => {
+        setEdit({ slug: l.slug, name_ar: l.name_ar, category: l.category || '',
+            name_field: l.name_field || '', is_boundary: !!l.is_boundary, minzoom: l.minzoom ?? 10,
+            fields: l.fields || [] });
+        setStats(null);
+        try {
+            const { data } = await api.get(`/data/layers/${l.slug}/field-stats`, { timeout: 60000 });
+            if (data.ok) setStats(data);
+        } catch { /* اختياريّ */ }
+    };
+
+    const saveEdit = async () => {
+        setBusy('edit');
+        try {
+            const { data } = await api.patch(`/data/layers/${edit.slug}`, {
+                name_ar: edit.name_ar, category: edit.category || null,
+                name_field: edit.name_field || null, is_boundary: edit.is_boundary,
+                minzoom: Number(edit.minzoom) || 10,
+            });
+            if (!data.ok) throw new Error(data.reason);
+            toast(data.renamed ? `حُفظ — وأُعيد اشتقاق الاسم لـ${fmt(data.renamed)} معلماً` : 'حُفظ');
+            setEdit(null); setStats(null); loadLayers();
+        } catch (e) { toast(err(e), 'err'); }
+        setBusy('');
+    };
+
     const delLayer = async (slug) => {
         if (!window.confirm(`حذف الطبقة «${slug}» وكلّ معالمها نهائيّاً؟`)) return;
         try { await api.delete(`/data/layers/${slug}`); toast('حُذفت'); loadLayers(); } catch (e) { toast(err(e), 'err'); }
@@ -326,6 +370,70 @@ export default function DataHub() {
                 )}
             </>)}
 
+            {/* نافذة تصحيح وصف الطبقة */}
+            {edit && (
+                <div className="dh-modal" onClick={(e) => e.target.classList.contains('dh-modal') && setEdit(null)}>
+                    <div className="dh-dlg">
+                        <h3>تعديل «{edit.name_ar}»<code>{edit.slug}</code></h3>
+
+                        <div className="dh-f">
+                            <label>الاسم بالعربيّة</label>
+                            <input value={edit.name_ar} onChange={(e) => setEdit({ ...edit, name_ar: e.target.value })} />
+                        </div>
+
+                        <div className="dh-f">
+                            <label>حقل الاسم — المستعمَل للبحث عن المواقع</label>
+                            <select value={edit.name_field} onChange={(e) => setEdit({ ...edit, name_field: e.target.value })}>
+                                <option value="">—</option>
+                                {(stats?.fields || edit.fields.map((f) => ({ name: f.name }))).map((f) => (
+                                    <option key={f.name} value={f.name}>
+                                        {f.name}{f.distinct != null ? ` — ${f.distinct} قيمة مختلفة` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            {stats && (() => {
+                                const cur = stats.fields.find((f) => f.name === edit.name_field);
+                                if (!cur) return <small className="dh-hint">اختر حقلاً يحمل اسم كلّ معلم.</small>;
+                                if (cur.distinct <= 1) return <small className="dh-hint bad">⚠ هذا الحقل قيمته واحدةٌ لكلّ المعالم — لا يصلح للبحث.</small>;
+                                if (cur.ratio < 0.1) return <small className="dh-hint warn">تمايزٌ ضعيف ({cur.distinct} من {fmt(cur.total)}) — تأكّد أنّه المقصود.</small>;
+                                return <small className="dh-hint good">✓ {cur.distinct} قيمة مختلفة من {fmt(cur.total)} — مناسب.</small>;
+                            })()}
+                        </div>
+
+                        <div className="dh-f2">
+                            <div className="dh-f">
+                                <label>التصنيف</label>
+                                <select value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })}>
+                                    <option value="">—</option>
+                                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className="dh-f">
+                                <label>أقلّ تكبير</label>
+                                <input type="number" min="0" max="18" value={edit.minzoom}
+                                    onChange={(e) => setEdit({ ...edit, minzoom: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <label className="dh-check">
+                            <input type="checkbox" checked={edit.is_boundary}
+                                onChange={(e) => setEdit({ ...edit, is_boundary: e.target.checked })} />
+                            <span>
+                                <b>طبقةُ حدود</b>
+                                <small>للمضلّعات فقط. النقاط لا تحتوي شيئاً، فتفعيلها عليها يُفسد نتائج البحث.</small>
+                            </span>
+                        </label>
+
+                        <div className="dh-dlg-foot">
+                            <button className="dh-btn" onClick={() => setEdit(null)}>إلغاء</button>
+                            <button className="dh-btn primary" disabled={busy === 'edit'} onClick={saveEdit}>
+                                {busy === 'edit' ? <span className="dh-spin" /> : 'حفظ'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ============ المكتبة ============ */}
             {tab === 'catalog' && (
                 <section className="dh-cat">
@@ -344,6 +452,7 @@ export default function DataHub() {
                                 <span>{(l.fields || []).length} حقل</span>
                                 {l.name_field && <span>اسم: {l.name_field}</span>}
                             </div>
+                            <button className="dh-x edit" onClick={() => openEdit(l)}>تعديل</button>
                             <button className="dh-x" onClick={() => delLayer(l.slug)}>حذف</button>
                         </div>
                     ))}

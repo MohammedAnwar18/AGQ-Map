@@ -128,3 +128,15 @@
 .dh-badge{font-size:10.5px;padding:2px 8px;border-radius:99px;background:rgba(224,123,57,.16);
   border:1px solid rgba(224,123,57,.4);color:var(--accent)}
 .dh-cat-meta{display:flex;gap:14px;color:var(--faint);font-size:11.5px;flex-wrap:wrap}
+
+/* نافذة تصحيح وصف الطبقة */
+.dh-modal{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:20px;animation:dhIn .18s ease}
+.dh-dlg{width:min(480px,100%);max-height:88vh;overflow-y:auto;background:var(--panel);
+  border:1px solid var(--line2);border-radius:14px;padding:18px}
+.dh-dlg h3{margin:0 0 16px;font-size:15px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.dh-dlg h3 code{font-size:11px;color:var(--faint);font-family:ui-monospace,monospace;font-weight:400}
+.dh-dlg-foot{display:flex;gap:9px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.dh-hint{display:block;margin-top:5px;font-size:11px;line-height:1.6;color:var(--faint)}
+.dh-hint.good{color:var(--ok)} .dh-hint.warn{color:#e0a33e} .dh-hint.bad{color:var(--err)}
+.dh-x.edit:hover{border-color:var(--accent);color:var(--accent)}

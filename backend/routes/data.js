@@ -359,6 +359,71 @@ router.post('/layers/:slug/features', authenticateToken, isAdmin, async (req, re
     } finally { client.release(); }
 });
 
+/* PATCH /api/data/layers/:slug — تصحيحُ وصف طبقةٍ مرحَّلةٍ بلا إعادة سحب.
+   الأهمّ: تغييرُ name_field يُعيد اشتقاق عمود name لكلّ المعالم فوراً بأمرٍ
+   واحد — وهذا ما يُصلح البحث المكانيّ حين يُختار الحقل الخطأ عند الترحيل
+   (مثل LayerName_Arabic الذي يحمل القيمة نفسها لكلّ الصفوف). */
+router.patch('/layers/:slug', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await ensureSchema();
+        const lr = await pool.query('SELECT id, fields FROM geo_layers WHERE slug = $1', [req.params.slug]);
+        if (!lr.rows.length) return bad(res, 404, 'الطبقة غير موجودة');
+        const { id, fields } = lr.rows[0];
+        const b = req.body || {};
+
+        const sets = [], vals = [];
+        const put = (col, v) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
+        if (b.name_ar !== undefined) put('name_ar', b.name_ar);
+        if (b.category !== undefined) put('category', b.category || null);
+        if (b.license !== undefined) put('license', b.license || null);
+        if (b.is_boundary !== undefined) put('is_boundary', !!b.is_boundary);
+        if (b.minzoom !== undefined) put('minzoom', num(b.minzoom, 10));
+        if (Array.isArray(b.keywords)) put('keywords', b.keywords);
+
+        let renamed = 0;
+        if (b.name_field !== undefined) {
+            const nf = b.name_field || null;
+            // نقبل أسماء الحقول المعروفة فقط — لا نبني SQL من مدخلٍ حرّ
+            if (nf && !(fields || []).some((f) => f.name === nf)) return bad(res, 400, 'حقلٌ غير موجود في هذه الطبقة');
+            put('name_field', nf);
+            const up = nf
+                ? await pool.query('UPDATE geo_features SET name = props->>$2 WHERE layer_id = $1', [id, nf])
+                : await pool.query('UPDATE geo_features SET name = NULL WHERE layer_id = $1', [id]);
+            renamed = up.rowCount || 0;
+        }
+
+        if (!sets.length) return bad(res, 400, 'لا تغييرات');
+        vals.push(id);
+        const r = await pool.query(
+            `UPDATE geo_layers SET ${sets.join(', ')}, updated_at = now() WHERE id = $${vals.length}
+             RETURNING slug, name_ar, category, is_boundary, name_field, minzoom, feature_count`, vals);
+        return res.json({ ok: true, layer: r.rows[0], renamed });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
+/* GET /api/data/layers/:slug/field-stats — تمييزُ الحقول الصالحة للاسم:
+   حقلٌ قيمتُه واحدةٌ لكلّ الصفوف لا يصلح، وحقلٌ قيمُه فريدةٌ غالباً يصلح. */
+router.get('/layers/:slug/field-stats', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await ensureSchema();
+        const lr = await pool.query('SELECT id, fields, feature_count FROM geo_layers WHERE slug = $1', [req.params.slug]);
+        if (!lr.rows.length) return bad(res, 404, 'الطبقة غير موجودة');
+        const { id, fields, feature_count } = lr.rows[0];
+        const out = [];
+        for (const f of (fields || []).filter((x) => /string|text/i.test(x.type || '')).slice(0, 40)) {
+            try {
+                const r = await pool.query(
+                    `SELECT count(DISTINCT props->>$2)::int d, count(*)::int n FROM geo_features WHERE layer_id = $1`,
+                    [id, f.name]);
+                const { d, n } = r.rows[0];
+                out.push({ name: f.name, distinct: d, total: n, ratio: n ? +(d / n).toFixed(3) : 0 });
+            } catch { /* */ }
+        }
+        out.sort((a, b2) => b2.distinct - a.distinct);
+        return res.json({ ok: true, total: feature_count, fields: out });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
 // DELETE /api/data/layers/:slug
 router.delete('/layers/:slug', authenticateToken, isAdmin, async (req, res) => {
     try {
