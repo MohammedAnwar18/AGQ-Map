@@ -56,9 +56,23 @@ const UPSTREAM_TIMEOUT = Math.min(parseInt(process.env.PALNOVAA_TIMEOUT_MS, 10) 
    خطّ الإنتاج: تفكيرٌ ومخطّط ← مهارات ← تصميم ← بناء الكود ← اختبار ← معاينة.
    مفتاحٌ واحد: من المتصفّح إن وُجد، وإلّا من بيئة الخادم.
    ============================================================================ */
-const isClaudeKey = (k) => /^sk-ant-/.test((k || '').trim());
-const CLAUDE_KEY = (process.env.PALNOVAA_CLAUDE_KEY || (isClaudeKey(SERVER_KEY) ? SERVER_KEY : '')).trim();
-const CODE_KEY = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || (isClaudeKey(SERVER_KEY) ? '' : SERVER_KEY)).trim();
+const isClaudeKey = (k) => /^sk-ant-api/i.test((k || '').trim());
+// رمزُ claude.ai (sk-ant-usr / sk-ant-sid) ليس مفتاح API — نكشفه لنشرح الخطأ بوضوح
+const isClaudeNonApiToken = (k) => /^sk-ant-(?!api)/i.test((k || '').trim());
+/* نقبل مفتاح Claude فقط إن كان مفتاح API حقيقيّاً (sk-ant-api…).
+   رمزٌ آخر (sk-ant-usr/sid) يُتجاهَل بصمتٍ فيتراجع النظام إلى Gemini بدل أن يتعطّل. */
+const CLAUDE_KEY = (() => {
+    const k = (process.env.PALNOVAA_CLAUDE_KEY || SERVER_KEY || '').trim();
+    if (isClaudeKey(k)) return k;
+    if (isClaudeNonApiToken(k)) console.warn('⚠️ PALNOVAA_CLAUDE_KEY ليس مفتاح API (sk-ant-usr/sid) — سيُتجاهَل. أنشئ مفتاحاً من console.anthropic.com.');
+    return '';
+})();
+/* مفتاح المزوّد غير‑Claude (Gemini وغيره). نستبعد أيّ رمزٍ يبدأ بـ sk-ant
+   — صالحاً كان أو لا — حتى لا يُرسَل رمزُ Claude إلى مزوّدٍ آخر. */
+const CODE_KEY = (() => {
+    const k = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || SERVER_KEY || '').trim();
+    return (isClaudeKey(k) || isClaudeNonApiToken(k)) ? '' : k;
+})();
 /* الجودة (التصميم وكتابة الكود) ← Claude إن توفّر: واجهاتٌ أرقى، ومع التخزين
    المؤقّت للتعليمات تصير إعادةُ إرسالها شبه مجّانيّة. السرعة والرخص (المخطّط
    والتحسين) ← Gemini الخفيف. وكلاهما يتدرّج لأيّ مفتاحٍ متاح. */
@@ -807,7 +821,8 @@ function pickProvider(KEY) {
     const envM = (process.env.PALNOVAA_MODEL || '').trim();
     // يُستخدَم موديل البيئة فقط إن ناسب المزوّد، وإلّا موديلٌ افتراضيٌّ صالح — فيعمل أيّ مفتاحٍ مجّانيّ بمجرّد لصقه
     const pick = (re, def) => (envM && re.test(envM) ? envM : def);
-    if (k.startsWith('sk-ant-')) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-5-5') };
+    if (isClaudeNonApiToken(k)) throw new Error('هذا رمزُ حسابِ claude.ai (sk-ant-usr/sid) وليس مفتاح API. أنشئ مفتاحاً من console.anthropic.com ← API Keys، ويبدأ بـ sk-ant-api.');
+    if (isClaudeKey(k)) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-5-5') };
     if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
     if (k.startsWith('gsk_')) return { kind: 'oai', url: 'https://api.groq.com/openai/v1/chat/completions', model: pick(/llama|mixtral|gemma|qwen|deepseek|gpt-oss/i, 'openai/gpt-oss-120b') };
