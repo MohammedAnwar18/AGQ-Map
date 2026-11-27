@@ -465,24 +465,30 @@ router.get('/resolve', async (req, res) => {
 
         /* ١) الطبقات: نُطابق كلمات الطلب باسم الطبقة ووصفها وكلماتها المفتاحيّة.
               نستعمل أعلى تشابهٍ لأيّ كلمةٍ بدل جمعها، فلا تطغى الطبقاتُ طويلةُ الاسم. */
+        /* المطابقة بـword_similarity لا similarity: الثانية تُقسَم على طول النصّ
+           كلّه، فكلمةٌ قصيرة («حدود») داخل اسمٍ طويل تحصل على درجةٍ ضئيلة.
+           وword_similarity مصمّمةٌ لمطابقة كلمةٍ داخل عبارة. والاحتواء الحرفيّ
+           يأخذ الدرجة الكاملة. */
         const lr = await pool.query(
-            `SELECT slug, name_ar, name_en, description, category, geometry_type, feature_count,
-                    fields, is_boundary, name_field, minzoom,
-                    GREATEST(
-                      MAX(similarity(name_ar, w)),
-                      COALESCE(MAX(similarity(COALESCE(name_en,''), w)), 0),
-                      COALESCE(MAX(CASE WHEN keywords && ARRAY[w] THEN 1 ELSE 0 END), 0),
-                      COALESCE(MAX(CASE WHEN category = w THEN 0.9 ELSE 0 END), 0)
-                    ) AS score
-             FROM geo_layers, unnest($1::text[]) AS w
-             WHERE status = 'ready'
+            `WITH m AS (
+               SELECT l.*, GREATEST(
+                   CASE WHEN l.name_ar ILIKE '%' || w || '%' THEN 1.0 ELSE 0 END,
+                   CASE WHEN COALESCE(l.name_en,'') ILIKE '%' || w || '%' THEN 0.95 ELSE 0 END,
+                   CASE WHEN l.keywords && ARRAY[w] THEN 1.0 ELSE 0 END,
+                   CASE WHEN l.category = w THEN 0.9 ELSE 0 END,
+                   word_similarity(w, l.name_ar),
+                   word_similarity(w, COALESCE(l.name_en,'')) * 0.9,
+                   word_similarity(w, COALESCE(l.description,'')) * 0.6
+                 ) AS sc
+               FROM geo_layers l, unnest($1::text[]) AS w
+               WHERE l.status = 'ready'
+             )
+             SELECT slug, name_ar, name_en, description, category, geometry_type, feature_count,
+                    fields, is_boundary, name_field, minzoom, MAX(sc) AS score
+             FROM m
              GROUP BY slug, name_ar, name_en, description, category, geometry_type,
                       feature_count, fields, is_boundary, name_field, minzoom
-             HAVING GREATEST(
-                      MAX(similarity(name_ar, w)),
-                      COALESCE(MAX(similarity(COALESCE(name_en,''), w)), 0),
-                      COALESCE(MAX(CASE WHEN keywords && ARRAY[w] THEN 1 ELSE 0 END), 0)
-                    ) > 0.22
+             HAVING MAX(sc) >= 0.45
              ORDER BY score DESC, feature_count DESC
              LIMIT $2`, [words, max]);
 
