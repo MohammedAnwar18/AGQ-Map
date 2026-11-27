@@ -5,7 +5,17 @@
    تضيف المهمّة وتراقبها فقط — لا تنتظرها.
    ============================================================================ */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import api from '../../services/api';
+import axios from 'axios';
+
+/* خادم البيانات منفصل (Hetzner) لأنّ PostGIS يعيش بجواره. يُضبَط بـVITE_DATA_API،
+   وإن غاب عدنا للمسار المحلّيّ فتعمل التطوير والنشر الموحّد كما هما. */
+const DATA_API = import.meta.env.VITE_DATA_API || '/api';
+const api = axios.create({ baseURL: DATA_API, timeout: 25000 });
+api.interceptors.request.use((c) => {
+    const t = localStorage.getItem('token');
+    if (t) c.headers.Authorization = `Bearer ${t}`;
+    return c;
+});
 import './DataHub.css';
 
 const GEOMOLG = 'https://orthophotos.geomolg.ps/adaptor/rest/services';
