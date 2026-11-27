@@ -109,6 +109,7 @@ app.use('/api/storage', storageRoutes);
 app.use('/api/helly', require('./routes/helly'));
 app.use('/api/foresight', require('./routes/foresight'));
 app.use('/api/engine', require('./routes/engine'));
+app.use('/api/data', require('./routes/data'));   // PalNovaa Data Engine — مكتبة البيانات المركزيّة
 app.use('/api/game', require('./routes/game'));
 app.use('/api/regional-events', regionalEventsRoutes);
 app.use('/api/cameras', cameraRoutes);
