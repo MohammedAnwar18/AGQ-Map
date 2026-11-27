@@ -511,9 +511,12 @@ router.get('/resolve', async (req, res) => {
                 slug: l.slug, name: l.name_ar, name_en: l.name_en, category: l.category,
                 geometry: l.geometry_type, count: l.feature_count,
                 is_boundary: l.is_boundary, name_field: l.name_field, minzoom: l.minzoom,
-                // الحقول المفيدة فقط — لا نُغرق الموديل
-                fields: (l.fields || []).filter((x) => /string|text|integer|double|small/i.test(x.type || ''))
-                    .slice(0, 14).map((x) => x.name),
+                // الحقول المفيدة فقط: نستبعد حقول النظام والتحرير — تُضلّل
+                // النموذج وتستهلك توكِنز بلا فائدة
+                fields: (l.fields || [])
+                    .filter((x) => /string|text|integer|double|small/i.test(x.type || ''))
+                    .filter((x) => !/^(objectid|globalid|shape|se_anno|created_|last_edited_|editor|layername|.*_image_name|ref_c_)/i.test(x.name))
+                    .slice(0, 12).map((x) => x.name),
                 score: Number(l.score).toFixed(2),
             })),
         });

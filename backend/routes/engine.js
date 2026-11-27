@@ -6,6 +6,7 @@ const net = require('net');
 const crypto = require('crypto');
 const pool = require('../config/database');
 const { optionalAuth, authenticateToken, isAdmin } = require('../middleware/auth');
+const { resolveLibrary, buildLibraryInjection } = require('../dataengine/library');
 const { PutObjectCommand, DeleteObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2Client } = require('../config/r2');
@@ -1231,6 +1232,19 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             } catch { /* */ }
         }
 
+        /* مكتبة البيانات المركزيّة: نسأل أيُّ طبقاتٍ تناسب الطلب وأيُّ منطقةٍ
+           ذُكرت، ونحقن وصفَها وروابطَ جلبها — لا بياناتها. فالتوكِنز تبقى ثابتةً
+           مهما كبرت الطبقة، ويخرج التطبيق ببياناتٍ حقيقيّةٍ بلا رفعٍ من المستخدم.
+           اختياريّةٌ بالكامل: أيُّ فشلٍ يُتجاهَل ولا يُعطّل البناء. */
+        if (!currentHtml) {
+            const lib = await resolveLibrary(prompt);
+            if (lib) {
+                prompt += buildLibraryInjection(lib);
+                send({ type: 'library', place: lib.place ? lib.place.name : null,
+                    layers: (lib.layers || []).map((l) => ({ slug: l.slug, name: l.name, count: l.count })) });
+            }
+        }
+
         // ـــ خطّ الإنتاج ـــ المخطّط والتصميم للبناء الجديد فقط؛ التعديل يتخطّاهما توفيراً للتوكِنز.
         // وهما مستقلّان ⇒ ننفّذهما بالتوازي فنكلّف أطولَهما لا مجموعَهما. والمخطّط
         // للطلبات المعقّدة وحدها، فلا يدفع الطلبُ البسيط ثمنَ نداءٍ لا يحتاجه.
@@ -1319,6 +1333,11 @@ router.post('/generate', optionalAuth, async (req, res) => {
                 prompt += buildDatasetInjection(r.rows, origin);
             }
         } catch (e) { /* ignore dataset errors */ }
+    }
+
+    if (!currentHtml) {   // مكتبة البيانات المركزيّة — انظر الشرح في مسار البثّ
+        const lib = await resolveLibrary(prompt).catch(() => null);
+        if (lib) prompt += buildLibraryInjection(lib);
     }
 
     if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
