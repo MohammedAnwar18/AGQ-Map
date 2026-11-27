@@ -5,6 +5,7 @@ import { adminService } from '../services/adminApi';
 import { cameraService, shopService, getImageUrl } from '../services/api';
 import { parseYouTubeId, youtubeThumb } from '../utils/youtube';
 const AdminRasters = React.lazy(() => import('../components/raster/AdminRasters'));
+const DataHub = React.lazy(() => import('../components/datahub/DataHub'));
 
 import './AdminDashboard.css';
 import AdminDigitalLetters from './AdminDigitalLetters';
@@ -412,6 +413,7 @@ const AdminDashboard = () => {
                         { id: 'data', icon: '📝', label: 'كل البيانات' },
                         { id: 'files', icon: '📁', label: 'ملفات الوسائط' },
                         { id: 'map', icon: '🌏', label: 'خارطة النشاط' },
+                        { id: 'datahub', icon: '🧭', label: 'مكتبة البيانات الجغرافيّة' },
                         { id: 'rasters', icon: '🖼️', label: 'راستر — طبقات الخريطة' },
                         { id: 'notifications', icon: '📢', label: 'إرسال إشعارات' },
                         { id: 'letters', icon: '✉️', label: 'أظرف ودعوات 3D' },
@@ -452,6 +454,7 @@ const AdminDashboard = () => {
                                                     activeTab === 'notifications' ? 'إرسال التنبيهات والبرودكاست' :
                                                             activeTab === 'letters' ? 'إدارة الأظرف والدعوات الرقمية' :
                                                                 activeTab === 'event-photos' ? 'إدارة صور ألبوم الفعاليات والدعوات' :
+                                                                    activeTab === 'datahub' ? 'مكتبة البيانات الجغرافيّة — ترحيل وفهرسة' :
                                                                     activeTab === 'palnovaa-orbis' ? 'نظام PalNovaa Orbis للمراقبة والتحليل بالذكاء الاصطناعي' :
                                                                     'خارطة النشاط الموحدة'
                         }</h2>
@@ -615,6 +618,14 @@ const AdminDashboard = () => {
                 )}
 
                 {/* طبقات الراستر — GeoTIFF يُقطَّع إلى بلاطات */}
+                {activeTab === 'datahub' && (
+                    <div className="admin-content-card">
+                        <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
+                            <DataHub />
+                        </React.Suspense>
+                    </div>
+                )}
+
                 {activeTab === 'rasters' && (
                     <div className="admin-content-card">
                         <React.Suspense fallback={<div className="loading-container"><div className="spinner"></div></div>}>
