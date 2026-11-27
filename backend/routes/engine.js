@@ -57,28 +57,31 @@ const UPSTREAM_TIMEOUT = Math.min(parseInt(process.env.PALNOVAA_TIMEOUT_MS, 10) 
    خطّ الإنتاج: تفكيرٌ ومخطّط ← مهارات ← تصميم ← بناء الكود ← اختبار ← معاينة.
    مفتاحٌ واحد: من المتصفّح إن وُجد، وإلّا من بيئة الخادم.
    ============================================================================ */
-const isClaudeKey = (k) => /^sk-ant-api/i.test((k || '').trim());
-// رمزُ claude.ai (sk-ant-usr / sk-ant-sid) ليس مفتاح API — نكشفه لنشرح الخطأ بوضوح
-const isClaudeNonApiToken = (k) => /^sk-ant-(?!api)/i.test((k || '').trim());
+/* كلّ مفتاحٍ يبدأ بـsk-ant- يُقبَل. اختُبرت صيغة sk-ant-usr- حيّاً على
+   Messages API فردّت 200 — فرفضُها سابقاً كان خطأً منّي، وسببُ العطل الأوّل
+   أنّ ذلك المفتاح بعينه كان ميّتاً لا أنّ نوعه غير صالح. */
+const isClaudeKey = (k) => /^sk-ant-/i.test((k || '').trim());
 /* نقبل مفتاح Claude فقط إن كان مفتاح API حقيقيّاً (sk-ant-api…).
    رمزٌ آخر (sk-ant-usr/sid) يُتجاهَل بصمتٍ فيتراجع النظام إلى Gemini بدل أن يتعطّل. */
 const CLAUDE_KEY = (() => {
     const k = (process.env.PALNOVAA_CLAUDE_KEY || SERVER_KEY || '').trim();
-    if (isClaudeKey(k)) return k;
-    if (isClaudeNonApiToken(k)) console.warn('⚠️ PALNOVAA_CLAUDE_KEY ليس مفتاح API (sk-ant-usr/sid) — سيُتجاهَل. أنشئ مفتاحاً من console.anthropic.com.');
-    return '';
+    return isClaudeKey(k) ? k : '';
 })();
 /* مفتاح المزوّد غير‑Claude (Gemini وغيره). نستبعد أيّ رمزٍ يبدأ بـ sk-ant
    — صالحاً كان أو لا — حتى لا يُرسَل رمزُ Claude إلى مزوّدٍ آخر. */
 const CODE_KEY = (() => {
     const k = (process.env.PALNOVAA_GEMINI_KEY || process.env.GEMINI_API_KEY || SERVER_KEY || '').trim();
-    return (isClaudeKey(k) || isClaudeNonApiToken(k)) ? '' : k;
+    return isClaudeKey(k) ? '' : k;   // لا نُرسل مفتاح Claude لمزوّدٍ آخر
 })();
-/* الجودة (التصميم وكتابة الكود) ← Claude إن توفّر: واجهاتٌ أرقى، ومع التخزين
-   المؤقّت للتعليمات تصير إعادةُ إرسالها شبه مجّانيّة. السرعة والرخص (المخطّط
-   والتحسين) ← Gemini الخفيف. وكلاهما يتدرّج لأيّ مفتاحٍ متاح. */
-const QUALITY_TASKS = new Set(['code', 'design']);
-const keyForTask = (task) => (QUALITY_TASKS.has(task)
+/* توزيعُ العمل بين الموديلين — كلٌّ في ما يتفوّق فيه:
+   • Claude ← التفكير والتخطيط وموجزُ التصميم. مُخرجاتٌ قصيرةٌ كثيفةُ الحُكم،
+     وهنا تظهر جودتُه، وكلفتُها زهيدةٌ لقصرها.
+   • Gemini ← كتابةُ الكود وتحسينُ الوصف. مُخرجاتٌ طويلة، وهو أسرع لكلّ توكِن،
+     وعنده مسارُ البثّ الحقيقيّ وسقفُ الإخراج العالي اللذان بنيناهما.
+   الحُكمُ ينتقل من Claude إلى Gemini عبر موجز التصميم والمخطّط، فتُجمَع
+   جودةُ الأوّل وسرعةُ الثاني. وكلٌّ يتدرّج للآخر إن غاب مفتاحُه. */
+const CLAUDE_TASKS = new Set(['plan', 'design', 'think']);
+const keyForTask = (task) => (CLAUDE_TASKS.has(task)
     ? (CLAUDE_KEY || CODE_KEY || SERVER_KEY)
     : (CODE_KEY || CLAUDE_KEY || SERVER_KEY));
 /* سقف الإخراج لكلّ جولة. هذا أهمّ موفّرٍ للتوكِنز: السقف المنخفض (8192) كان يقطع
@@ -822,7 +825,6 @@ function pickProvider(KEY) {
     const envM = (process.env.PALNOVAA_MODEL || '').trim();
     // يُستخدَم موديل البيئة فقط إن ناسب المزوّد، وإلّا موديلٌ افتراضيٌّ صالح — فيعمل أيّ مفتاحٍ مجّانيّ بمجرّد لصقه
     const pick = (re, def) => (envM && re.test(envM) ? envM : def);
-    if (isClaudeNonApiToken(k)) throw new Error('هذا رمزُ حسابِ claude.ai (sk-ant-usr/sid) وليس مفتاح API. أنشئ مفتاحاً من console.anthropic.com ← API Keys، ويبدأ بـ sk-ant-api.');
     if (isClaudeKey(k)) return { kind: 'anthropic', url: 'https://api.anthropic.com/v1/messages', model: pick(/claude/i, 'claude-sonnet-5-5') };
     if (USE_OAI) return { kind: 'oai', url: OAI_URL, model: OAI_MODEL };
     if (k.startsWith('sk-or-')) return { kind: 'oai', url: 'https://openrouter.ai/api/v1/chat/completions', model: pick(/\//, 'deepseek/deepseek-chat-v3-0324:free') };
@@ -1254,7 +1256,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
             send({ type: 'stage', id: 'plan' });
             const [plan, d] = await Promise.all([
                 isComplexPrompt(prompt) ? silentPlan(KEY_FAST, prompt) : Promise.resolve(null),
-                designBrief(KEY, prompt),
+                designBrief(KEY_FAST, prompt),   // التصميم حُكمٌ ← مفتاح التفكير
             ]);
             brief = d;
             if (plan) { prompt += '\n\n[مخطّطٌ تنفيذيّ التزِم به عند البناء:]\n' + plan; send({ type: 'think', text: plan }); }
