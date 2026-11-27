@@ -50,19 +50,27 @@ echo "   PostGIS: ${PG_VER}"
 # ----------------------------------------------------- 4) ضبط Postgres للجهاز
 say "ضبط Postgres حسب ذاكرة الجهاز"
 MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+CPUS=$(nproc)
+# work_mem يُضرَب في عدد الاستعلامات المتزامنة، فنحدّه حتى لا تنفد الذاكرة
+WORK_MEM=$(( MEM_MB / 64 )); [ "$WORK_MEM" -gt 64 ] && WORK_MEM=64; [ "$WORK_MEM" -lt 8 ] && WORK_MEM=8
+# صندوقٌ صغير لا يحتمل 100 اتّصال
+MAXCONN=50; [ "$MEM_MB" -ge 8000 ] && MAXCONN=100
+PARALLEL=$(( CPUS / 2 )); [ "$PARALLEL" -lt 1 ] && PARALLEL=1
 CONF="/etc/postgresql/17/main/conf.d/palnovaa.conf"
 mkdir -p "$(dirname "$CONF")"
 cat > "$CONF" <<EOF
-# ضبطٌ موجّهٌ لأحمال PostGIS (قراءةٌ مكانيّةٌ كثيفة)
+# ضبطٌ موجّهٌ لأحمال PostGIS — محسوبٌ من عتاد هذا الجهاز
 shared_buffers = $(( MEM_MB / 4 ))MB
 effective_cache_size = $(( MEM_MB * 3 / 4 ))MB
-work_mem = $(( MEM_MB / 32 ))MB
+work_mem = ${WORK_MEM}MB
 maintenance_work_mem = $(( MEM_MB / 8 ))MB
+max_connections = $MAXCONN
 random_page_cost = 1.1              # SSD
 effective_io_concurrency = 200
-max_parallel_workers_per_gather = 2
+max_parallel_workers_per_gather = $PARALLEL
 jit = off                            # يضرّ باستعلامات MVT القصيرة
 EOF
+echo "   ذاكرة ${MEM_MB}MB · ${CPUS} نواة → work_mem=${WORK_MEM}MB · max_connections=${MAXCONN}"
 systemctl restart postgresql
 
 # ------------------------------------------------------------- 5) Node.js 22
@@ -143,8 +151,12 @@ cat > /usr/local/bin/palnovaa-backup <<EOF
 #!/usr/bin/env bash
 set -e
 F="/var/backups/palnovaa/${DB_NAME}-\$(date +%F).dump"
+# لا ننسخ إن تجاوز القرص 85% — النسخة لا تستحقّ إسقاط الخدمة
+USE=\$(df --output=pcent /var | tail -1 | tr -dc "0-9")
+if [ "\$USE" -ge 85 ]; then echo "تخطّي النسخ: القرص ممتلئ \${USE}%"; exit 0; fi
 sudo -u postgres pg_dump -Fc "${DB_NAME}" > "\$F"
-find /var/backups/palnovaa -name '*.dump' -mtime +7 -delete
+# قرصٌ صغير ⇒ ثلاث نسخٍ فقط
+find /var/backups/palnovaa -name '*.dump' -mtime +3 -delete
 EOF
 chmod +x /usr/local/bin/palnovaa-backup
 echo "15 3 * * * root /usr/local/bin/palnovaa-backup" > /etc/cron.d/palnovaa-backup
@@ -162,7 +174,8 @@ cat <<EOF
 
  العامل      : systemctl status palnovaa-worker
  السجلّ       : journalctl -u palnovaa-worker -f
- نسخٌ احتياطيّ: يوميّاً 03:15 → /var/backups/palnovaa
+ نسخٌ احتياطيّ: يوميّاً 03:15 → /var/backups/palnovaa (3 أيّام)
+ راقب المساحة : df -h /   — القرص الصغير يمتلئ بالبيانات الجغرافيّة بسرعة
 
  التالي: افتح Postgres للوصول الخارجيّ فقط إن لزم، والأفضل تشغيل
          واجهة البيانات على هذا الخادم نفسه خلف Caddy.
