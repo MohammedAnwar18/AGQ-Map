@@ -434,6 +434,86 @@ router.delete('/layers/:slug', authenticateToken, isAdmin, async (req, res) => {
     } catch (e) { return bad(res, 500, String(e.message || e)); }
 });
 
+/* ===================== ٥ب) الاسترجاع الذكيّ لنموذج الذكاء =====================
+   نقطةٌ واحدة يستدعيها المحرّك قبل التوليد: يُرسل نصّ طلب المستخدم، فتُعيد
+   سياقاً مضغوطاً — أيُّ طبقاتٍ تناسبه، وأيُّ منطقةٍ ذُكرت فيه — بلا أيّ
+   بيانات. فيبني النموذج تطبيقاً يجلب الحقيقيَّ بنفسه، ولا نُحمّله توكِنزاً.
+   ============================================================================ */
+
+// كلماتٌ شائعةٌ لا تدلّ على مكانٍ ولا موضوع — تُستبعَد قبل المطابقة
+const STOP = new Set(['أريد','اريد','ابن','ابنِ','بناء','تطبيق','موقع','خريطة','خارطة','صفحة','نظام','لوحة',
+    'عرض','يعرض','يُظهر','اظهر','مع','في','على','من','الى','إلى','عن','كل','جميع','التي','الذي','هذه','هذا',
+    'يكون','يمكن','أن','ان','ثم','و','أو','او','بحث','فلترة','تحليل','إحصاءات','احصاءات','بيانات','طبقة','طبقات',
+    'map','app','build','want','with','the','and','for','all','show','data','layer','layers','gis']);
+
+const tokens = (t) => String(t || '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 3 && !STOP.has(w) && !STOP.has(w.replace(/^(ال)/, '')));
+
+// GET /api/data/resolve?text=...&max=4
+router.get('/resolve', async (req, res) => {
+    try {
+        await ensureSchema();
+        const text = (req.query.text || '').toString().slice(0, 1200);
+        if (!text.trim()) return bad(res, 400, 'أرسِل text');
+        const max = Math.min(num(req.query.max, 4), 8);
+        const words = tokens(text).slice(0, 24);
+        res.set('Access-Control-Allow-Origin', '*');
+        if (!words.length) return res.json({ ok: true, layers: [], place: null, words: [] });
+
+        /* ١) الطبقات: نُطابق كلمات الطلب باسم الطبقة ووصفها وكلماتها المفتاحيّة.
+              نستعمل أعلى تشابهٍ لأيّ كلمةٍ بدل جمعها، فلا تطغى الطبقاتُ طويلةُ الاسم. */
+        const lr = await pool.query(
+            `SELECT slug, name_ar, name_en, description, category, geometry_type, feature_count,
+                    fields, is_boundary, name_field, minzoom,
+                    GREATEST(
+                      MAX(similarity(name_ar, w)),
+                      COALESCE(MAX(similarity(COALESCE(name_en,''), w)), 0),
+                      COALESCE(MAX(CASE WHEN keywords && ARRAY[w] THEN 1 ELSE 0 END), 0),
+                      COALESCE(MAX(CASE WHEN category = w THEN 0.9 ELSE 0 END), 0)
+                    ) AS score
+             FROM geo_layers, unnest($1::text[]) AS w
+             WHERE status = 'ready'
+             GROUP BY slug, name_ar, name_en, description, category, geometry_type,
+                      feature_count, fields, is_boundary, name_field, minzoom
+             HAVING GREATEST(
+                      MAX(similarity(name_ar, w)),
+                      COALESCE(MAX(similarity(COALESCE(name_en,''), w)), 0),
+                      COALESCE(MAX(CASE WHEN keywords && ARRAY[w] THEN 1 ELSE 0 END), 0)
+                    ) > 0.22
+             ORDER BY score DESC, feature_count DESC
+             LIMIT $2`, [words, max]);
+
+        /* ٢) المكان: نجرّب كلمات الطلب على المعالم الحدوديّة ونأخذ أقواها.
+              الأصغر مساحةً يفوز عند التعادل — «بيتا» أدقّ من «نابلس». */
+        const pr = await pool.query(
+            `SELECT f.id, f.name, l.slug AS layer, similarity(f.name, w) AS score,
+                    round(ST_Area(f.geom::geography)/1000000.0)::int AS area_km2
+             FROM geo_features f
+             JOIN geo_layers l ON l.id = f.layer_id, unnest($1::text[]) AS w
+             WHERE l.is_boundary = TRUE AND f.name IS NOT NULL AND similarity(f.name, w) > 0.55
+             ORDER BY score DESC, area_km2 ASC
+             LIMIT 1`, [words]);
+
+        return res.json({
+            ok: true,
+            words,
+            place: pr.rows[0] || null,
+            layers: lr.rows.map((l) => ({
+                slug: l.slug, name: l.name_ar, name_en: l.name_en, category: l.category,
+                geometry: l.geometry_type, count: l.feature_count,
+                is_boundary: l.is_boundary, name_field: l.name_field, minzoom: l.minzoom,
+                // الحقول المفيدة فقط — لا نُغرق الموديل
+                fields: (l.fields || []).filter((x) => /string|text|integer|double|small/i.test(x.type || ''))
+                    .slice(0, 14).map((x) => x.name),
+                score: Number(l.score).toFixed(2),
+            })),
+        });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
 /* ============== ٦) Data Hub: الاكتشاف والترحيل (أدمن) ==============
    الاكتشاف خفيفٌ فيبقى هنا؛ أمّا السحب فيُنفّذه العامل المستقلّ
    (backend/dataengine/worker.js) لأنّه قد يمتدّ دقائق — ودوالّ Vercel لا تصلح له. */

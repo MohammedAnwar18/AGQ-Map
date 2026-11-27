@@ -49,8 +49,11 @@ async function discover(rawUrl) {
             kind: 'directory', url,
             folders: (j.folders || []).map((f) => ({ name: f, url: `${url}/${f}` })),
             services: (j.services || []).map((s) => {
-                const short = String(s.name).split('/').pop();
-                return { name: short, type: s.type, url: `${url}/${short}/${s.type}` };
+                // من الجذر يُعيد ArcGIS الاسم «مجلّد/خدمة»؛ فقصُّ المجلّد يبني
+                // رابطاً لا وجود له. نبني من جذر services بالاسم كاملاً.
+                const full = String(s.name);
+                const root = url.replace(/(\/rest\/services).*$/i, '$1');
+                return { name: full.split('/').pop(), type: s.type, url: `${root}/${full}/${s.type}` };
             }),
         };
     }
@@ -59,8 +62,14 @@ async function discover(rawUrl) {
 
 /* ---- وصفُ طبقة: الحقول والهندسة والعدد ---- */
 async function describeLayer(serviceUrl, layerId) {
-    const base = `${clean(serviceUrl)}/${String(layerId).replace(/\D/g, '')}`;
-    const j = await getJSON(base + '?f=json');
+    const sv = clean(serviceUrl);
+    if (!/\/(MapServer|FeatureServer|ImageServer)$/i.test(sv)) {
+        throw new Error(`رابطُ خدمةٍ غير صالح: «${sv}» — يجب أن ينتهي بـMapServer أو FeatureServer`);
+    }
+    const base = `${sv}/${String(layerId).replace(/\D/g, '')}`;
+    let j;
+    try { j = await getJSON(base + '?f=json'); }
+    catch (e) { throw new Error(`${e.message} — عند قراءة ${base}`); }
     const fields = (j.fields || [])
         .filter((f) => f && f.name && !/^(shape|st_area|st_length|shape_)/i.test(f.name))
         .map((f) => ({ name: f.name, alias: f.alias || f.name, type: String(f.type || '').replace('esriFieldType', '') }));

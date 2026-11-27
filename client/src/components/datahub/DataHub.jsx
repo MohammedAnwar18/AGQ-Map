@@ -63,6 +63,7 @@ export default function DataHub() {
         const s = [...stack]; s.pop();
         const prev = s[s.length - 1];
         setStack(s);
+        setSel(null); setForm(null);
         if (prev) browse(prev, false); else { setNode(null); setUrl(GEOMOLG); }
     };
 
@@ -93,6 +94,9 @@ export default function DataHub() {
             const nf = ranked.length ? ranked[0].f : null;
             const svc = String(node.name || '').split('/').pop();
             setForm({
+                // نُثبّت رابط الخدمة الآن. قراءتُه لاحقاً من node كانت تُرسل رابطاً
+                // خاطئاً إن تصفّح المستخدم لمكانٍ آخر قبل الضغط على «رحّل».
+                serviceUrl: node.url,
                 slug: `${svc}_${layer.id}`.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 50),
                 name_ar: layer.name || d.name, category: '', name_field: nf ? nf.name : '',
                 is_boundary: false, where: '', minzoom: 10, license: '', maxFeatures: '',
@@ -107,7 +111,7 @@ export default function DataHub() {
         setBusy('migrate');
         try {
             const body = {
-                slug: form.slug, serviceUrl: node.url, layerId: sel.id,
+                slug: form.slug, serviceUrl: form.serviceUrl, layerId: sel.id,
                 name_ar: form.name_ar, category: form.category || null,
                 name_field: form.name_field || null, is_boundary: form.is_boundary,
                 where: form.where || '1=1', license: form.license || null,
@@ -262,6 +266,7 @@ export default function DataHub() {
                         {!sel && busy !== 'describe' && <div className="dh-empty">اختر طبقةً لتظهر تفاصيلها هنا.</div>}
 
                         {sel && form && (<>
+                            <code className="dh-src" title={form.serviceUrl}>{form.serviceUrl.split('/rest/services')[1] || form.serviceUrl}</code>
                             <div className="dh-stats">
                                 <div><b>{fmt(sel.count)}</b><span>معلم</span></div>
                                 <div><b>{sel.geometryType || '—'}</b><span>الهندسة</span></div>

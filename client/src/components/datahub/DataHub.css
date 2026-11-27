@@ -140,3 +140,6 @@
 .dh-hint{display:block;margin-top:5px;font-size:11px;line-height:1.6;color:var(--faint)}
 .dh-hint.good{color:var(--ok)} .dh-hint.warn{color:#e0a33e} .dh-hint.bad{color:var(--err)}
 .dh-x.edit:hover{border-color:var(--accent);color:var(--accent)}
+.dh-src{display:block;margin-bottom:10px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;
+  background:var(--surface);color:var(--faint);font-family:ui-monospace,monospace;font-size:10.5px;
+  direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
