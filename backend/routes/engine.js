@@ -1216,7 +1216,8 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
     try {
         await ensureTable().catch(() => {});
         const ident = identOf(req);
-        const metered = true;
+        // الأدمن بلا حدود — التقنين للمستخدمين العاديّين على المفتاح المشترك
+        const metered = !(req.user && req.user.role === 'admin');
         const acct = metered ? await getAccount(ident).catch(() => null) : null;
         if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
             send({ type: 'error', reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct) });
@@ -1319,7 +1320,8 @@ router.post('/generate', optionalAuth, async (req, res) => {
     // التقنين بالكلفة: يُحسَب فقط على المفتاح المشترك (لا على مفتاح المستخدم الخاصّ)
     await ensureTable().catch(() => {});
     const ident = identOf(req);
-    const metered = true;
+    // الأدمن بلا حدود — التقنين للمستخدمين العاديّين على المفتاح المشترك
+    const metered = !(req.user && req.user.role === 'admin');
     let acct = metered ? await getAccount(ident).catch(() => null) : null;
     if (metered && acct && (acct.used_micro || 0) >= (acct.allowance_micro || 0)) {
         return res.json({ ok: false, reason: 'limit_reached', plan: acct.plan, balance: balanceOf(acct), model: MODEL_NAME });
