@@ -369,4 +369,80 @@ router.delete('/layers/:slug', authenticateToken, isAdmin, async (req, res) => {
     } catch (e) { return bad(res, 500, String(e.message || e)); }
 });
 
+/* ============== ٦) Data Hub: الاكتشاف والترحيل (أدمن) ==============
+   الاكتشاف خفيفٌ فيبقى هنا؛ أمّا السحب فيُنفّذه العامل المستقلّ
+   (backend/dataengine/worker.js) لأنّه قد يمتدّ دقائق — ودوالّ Vercel لا تصلح له. */
+const arc = require('../dataengine/arcgis');
+const jobs = require('../dataengine/migrate');
+
+// GET /api/data/discover?url=...  — تصفّح دليل خدماتٍ أو خدمةٍ مفردة
+router.get('/discover', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const out = await arc.discover((req.query.url || '').toString());
+        return res.json({ ok: true, ...out });
+    } catch (e) { return bad(res, 400, String(e.message || e)); }
+});
+
+// GET /api/data/describe?url=<serviceUrl>&layer=<id>  — حقولٌ وعددٌ قبل الترحيل
+router.get('/describe', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const d = await arc.describeLayer((req.query.url || '').toString(), req.query.layer);
+        return res.json({ ok: true, layer: d });
+    } catch (e) { return bad(res, 400, String(e.message || e)); }
+});
+
+/* POST /api/data/migrate — إضافةُ مهمّةِ ترحيلٍ إلى الطابور
+   { slug, serviceUrl, layerId, name_ar?, category?, name_field?, is_boundary?,
+     where?, license?, minzoom?, maxFeatures? }                                   */
+router.post('/migrate', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await ensureSchema();
+        await jobs.ensureJobs();
+        const b = req.body || {};
+        const slug = String(b.slug || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+        if (!slug) return bad(res, 400, 'slug مطلوب');
+        if (!b.serviceUrl || b.layerId == null) return bad(res, 400, 'serviceUrl و layerId مطلوبان');
+
+        const dup = await pool.query(`SELECT id FROM geo_jobs WHERE layer_slug=$1 AND status IN ('queued','running')`, [slug]);
+        if (dup.rows.length) return bad(res, 409, 'توجد مهمّةٌ جاريةٌ لهذه الطبقة');
+
+        const source = {
+            kind: 'arcgis', serviceUrl: String(b.serviceUrl), layerId: b.layerId,
+            where: b.where || '1=1', name_ar: b.name_ar || null, category: b.category || null,
+            name_field: b.name_field || null, is_boundary: !!b.is_boundary,
+            license: b.license || null, minzoom: Number.isFinite(b.minzoom) ? b.minzoom : 10,
+            maxFeatures: Number.isFinite(b.maxFeatures) ? b.maxFeatures : undefined,
+        };
+        const r = await pool.query(
+            `INSERT INTO geo_jobs (layer_slug, source, created_by) VALUES ($1,$2::jsonb,$3)
+             RETURNING id, layer_slug, status, created_at`,
+            [slug, JSON.stringify(source), req.user?.id || null]);
+        return res.json({ ok: true, job: r.rows[0], note: 'أُضيفت للطابور — يلتقطها العامل' });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
+// GET /api/data/jobs  — حالةُ المهامّ لعرض التقدّم
+router.get('/jobs', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await jobs.ensureJobs();
+        const r = await pool.query(
+            `SELECT id, layer_slug, status, total, done, message, created_at, started_at, finished_at,
+                    source->>'serviceUrl' AS service_url, source->>'layerId' AS layer_id
+             FROM geo_jobs ORDER BY id DESC LIMIT 50`);
+        return res.json({ ok: true, jobs: r.rows });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
+// POST /api/data/jobs/:id/cancel  — العامل يفحص الحالة بين الدفعات فيتوقّف
+router.post('/jobs/:id/cancel', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        await jobs.ensureJobs();
+        const r = await pool.query(
+            `UPDATE geo_jobs SET status='canceled', finished_at=now(), message='أُلغيت يدويّاً'
+             WHERE id=$1 AND status IN ('queued','running') RETURNING id, status`, [req.params.id]);
+        if (!r.rows.length) return bad(res, 404, 'لا توجد مهمّةٌ قابلةٌ للإلغاء بهذا الرقم');
+        return res.json({ ok: true, job: r.rows[0] });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
 module.exports = router;
