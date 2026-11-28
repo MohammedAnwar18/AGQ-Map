@@ -53,6 +53,31 @@ Areas: governorate city village water basin parcel (prefix pg-)
 Never redraw icons, legends or popups by hand; never inline the sprite's paths.
 ```
 
+## قالب البوّابة الجغرافيّة (الافتراضيّ للجيوبورتال)
+
+`kit/templates/geoportal/` — ثلاث صفحات متكاملة بهوية واحدة:
+
+| الملف | ما فيه |
+|---|---|
+| `gp-1.0.css` | نظام تصميم البوابة: اللوحة (#0E7C66) والمكوّنات `.gp-*` `.ib` `.seg` `.sw` `.lrow` `.ctl` — RTL بخصائص منطقية |
+| `gp-1.0.js` | `window.GP`: الخريطة، الطبقات، البحث، القياس (مسافة/مساحة)، شريط المقياس، وتحويل الإحداثيات إلى فلسطين 1923 |
+| `gp-data-1.0.js` | 12 طبقة توضيحية مصطنعة في أربع مجموعات — للقالب فقط، لا تُشحن في مُخرَج نهائي |
+| `index.html` | الخريطة: ترويسة ببحث وأدوات قياس وإعدادات، لوح طبقات بمجموعات، تذييل بالإحداثيات الحية ونظام الإسناد وشريط المقياس |
+| `login.html` | دخول المشرفين |
+| `admin.html` | لوحة الإدارة: مؤشرات، جدول طبقات بإجراءات، جدول معالم، نموذج طبقة برفع ملف وتحويل إسناد |
+
+**الهوية** (لا تُغيَّر): التمييز `#0E7C66` (داكن `#0A5E4D`، فاتح `#EAF5F1`، ساطع `#3FD1AE`) · الحبر `#0B1220` · الخافت `#56645F` · الأسطح `#FFFFFF` `#F6F8F7` `#F1F5F3` · الحدود `#E2E8E5` · خطّ IBM Plex Sans Arabic وMono · زوايا 9–11px.
+
+**ألوان فئات الطبقات:** `#7A5AC0` `#E07B39` `#2563EB` `#D63A3A` `#6E9D5A` `#3A80C2` `#B07A2A`.
+
+**الإسناد:** WGS 84 · فلسطين 1923 Grid (EPSG:28191) · Belt (EPSG:28192) — بتعريفات Cassini نفسها التي يستعملها المحرّك في `PROJ_DEFS`، لا بتعريفات Transverse Mercator التي تنتشر خطأً.
+
+**الواجهة البرمجية:** `GP.init(el,{center,zoom,basemap})` · `GP.addLayers(defs)` · `GP.toggle(id,on)` · `GP.toggleAll(on)` · `GP.search(q)` · `GP.goTo(hit)` · `GP.measure('dist'|'area')` · `GP.measureValue()` · `GP.setCrs('wgs'|'grid'|'belt')` · `GP.readout(latlng)` · `GP.scaleBar()` · `GP.setBasemap('light'|'satellite'|'hybrid')` · `GP.fit()`.
+
+**شكل الطبقة:** `{id,name,group,geom:'point'|'line'|'polygon',color,on,count,published,data:GeoJSON}` — والمجموعات الأربع: الحدود الإدارية · البنية التحتية · الخدمات العامة · البيئة والموارد.
+
+المحرّك يحقن كتلة هذا القالب (≈620 رمزاً) **فقط** حين يطابق الطلب `جيوبورتال` أو `بوابة جغرافية` أو `geoportal`؛ وإلّا فكلفتها صفر.
+
 ## القياس
 
 خذ نفس الطلب قبل الطقم وبعده وقارن «رموز الإخراج» في مقياس الأدمن. الهدف انخفاض ≥40%. إن لم يحدث: قلّص الكتلة أعلاه، لا توسّعها.

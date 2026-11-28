@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>الجيوبورتال — البوابة الجغرافية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="gp-1.0.css">
+</head>
+<body>
+
+<div class="gp">
+
+  <!-- ══════════ الترويسة ══════════ -->
+  <header class="gp-head">
+    <button class="ib" id="btnSide" aria-label="طبقات الخريطة" aria-pressed="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".5"/></svg>
+    </button>
+
+    <a class="gp-brand" href="index.html">
+      <span class="gp-brand__mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </span>
+      <span class="gp-brand__txt"><b>البوابة الجغرافية</b><small>Geoportal · نظام المعلومات الجغرافية</small></span>
+    </a>
+
+    <div class="srch-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input class="srch" id="srch" type="search" placeholder="بحث في الخريطة" autocomplete="off" aria-label="بحث في الخريطة">
+      <div class="srch-pop" id="srchPop" hidden></div>
+    </div>
+
+    <span class="gp-sp"></span>
+
+    <div class="seg-group" role="group" aria-label="أدوات القياس">
+      <button class="seg" id="mDist" aria-pressed="false">مسافة</button>
+      <button class="seg" id="mArea" aria-pressed="false">مساحة</button>
+    </div>
+
+    <div style="position:relative">
+      <button class="ib" id="btnSet" aria-label="الإعدادات" aria-expanded="false">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 7.26 19.4l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 3 12.74H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 7.26l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 10.26 3H10a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 2.82 1.18l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 21 10.26V10a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+      </button>
+
+      <div class="gp-menu" id="setMenu" hidden>
+        <h6>العرض</h6>
+        <div class="gp-menu__row">
+          <span>الخريطة الأساسية</span>
+          <div class="seg-group">
+            <button class="seg" data-bm="light" aria-pressed="true">شارع</button>
+            <button class="seg" data-bm="satellite" aria-pressed="false">صورة</button>
+            <button class="seg" data-bm="hybrid" aria-pressed="false">مُركّبة</button>
+          </div>
+        </div>
+        <div class="gp-menu__row">
+          <span>أسماء المدن</span>
+          <input class="sw" type="checkbox" id="swLabels" checked aria-label="أسماء المدن">
+        </div>
+        <div class="gp-menu__row">
+          <span>وحدات القياس</span>
+          <em class="mono" style="font-style:normal;font-size:11.5px;color:var(--gp-faint)">متري · دونم</em>
+        </div>
+        <div class="gp-menu__sep"></div>
+        <h6>النظام</h6>
+        <a class="mi" href="login.html">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+          <span>دخول لوحة الإدارة</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════ الجسم ══════════ -->
+  <div class="gp-body">
+
+    <aside class="gp-side is-open" id="side" aria-label="طبقات الخريطة">
+      <div class="gp-side__head">
+        <div class="gp-side__title">
+          <b>طبقات الخريطة</b>
+          <span class="gp-side__meta"><span class="mono" id="visN">0</span> من <span class="mono" id="totN">0</span></span>
+        </div>
+        <div class="gp-side__meta">طبقات ظاهرة</div>
+        <div class="gp-side__acts">
+          <button class="gp-btn gp-btn--ghost gp-btn--sm" id="allOn">إظهار الكل</button>
+          <button class="gp-btn gp-btn--ghost gp-btn--sm" id="allOff">إخفاء الكل</button>
+        </div>
+      </div>
+      <div class="gp-side__body" id="layerList"></div>
+      <div class="gp-side__foot">
+        <span>آخر تحديث للبيانات</span>
+        <span class="mono" id="updated">—</span>
+      </div>
+    </aside>
+
+    <main class="gp-main">
+      <div class="gp-map" id="map"></div>
+
+      <div class="gp-float gp-float--te">
+        <div class="ctl-stack">
+          <button class="ctl" id="zIn" aria-label="تكبير">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <button class="ctl" id="zOut" aria-label="تصغير">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+          </button>
+          <button class="ctl" id="zFit" aria-label="ملء الشاشة بالطبقات">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="gp-float gp-float--ts gp-card" id="mPanel" hidden>
+        <div class="gp-card__t"><b id="mTitle">قياس المسافة</b><em><span id="mCount">0</span> نقاط</em></div>
+        <div class="gp-read" id="mMain">—</div>
+        <p class="gp-hint" id="mSub">انقر على الخريطة لإضافة نقطة</p>
+        <div class="gp-card__acts">
+          <button class="gp-btn gp-btn--sm" id="mDone">إنهاء</button>
+          <button class="gp-btn gp-btn--ghost gp-btn--sm" id="mClear">مسح</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ══════════ التذييل ══════════ -->
+  <footer class="gp-foot">
+    <div class="seg-group" role="group" aria-label="نظام الإحداثيات">
+      <button class="seg" data-crs="wgs" aria-pressed="true">WGS 84</button>
+      <button class="seg" data-crs="grid" aria-pressed="false">فلسطين 1923 · Grid</button>
+      <button class="seg" data-crs="belt" aria-pressed="false">فلسطين 1923 · Belt</button>
+    </div>
+    <span class="gp-sep"></span>
+    <div class="gp-xy">
+      <span><b id="l1">LAT</b> <span class="mono" id="v1">—</span></span>
+      <span><b id="l2">LON</b> <span class="mono" id="v2">—</span></span>
+    </div>
+    <span class="gp-sep"></span>
+    <span class="mono" id="epsg" style="font-size:11px;color:var(--gp-faint)">EPSG:4326</span>
+    <span class="gp-sp"></span>
+    <div class="gp-scale"><i id="sbBar" style="width:90px"></i><span id="sbLabel">—</span></div>
+    <span class="gp-sep"></span>
+    <span>تكبير <span class="mono" id="zLabel">12</span></span>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
+<script src="gp-1.0.js"></script>
+<script src="gp-data-1.0.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var D = window.GP_DATA;
+
+  var map = GP.init('map', { center: D.center, zoom: D.zoom, basemap: 'light' });
+  GP.addLayers(D.layers);
+  $('#updated').textContent = D.updated;
+
+  /* ───── اللوح الجانبيّ ───── */
+  function renderLayers() {
+    var box = $('#layerList'), html = '';
+    Object.keys(GP.state.groups).forEach(function (g) {
+      html += '<div class="lgroup"><h4>' + GP.esc(g) + '</h4>';
+      GP.state.groups[g].forEach(function (l) {
+        html += '<label class="lrow">'
+          + '<input class="sw" type="checkbox" data-id="' + l.id + '"' + (l.on ? ' checked' : '') + ' aria-label="' + GP.esc(l.name) + '">'
+          + '<span class="lrow__dot" style="background:' + l.color + '"></span>'
+          + '<span class="lrow__txt"><b>' + GP.esc(l.name) + '</b><small>' + GP.esc(l.kind) + ' · ' + GP.num(l.count) + ' معلم</small></span>'
+          + '</label>';
+      });
+      html += '</div>';
+    });
+    box.innerHTML = html;
+    counts();
+  }
+  function counts() {
+    $('#visN').textContent = GP.visibleCount();
+    $('#totN').textContent = GP.state.layers.length;
+  }
+  GP.state.onChange = function () {
+    counts();
+    document.querySelectorAll('#layerList .sw').forEach(function (i) {
+      var l = GP.state.layers.filter(function (x) { return x.id === i.dataset.id; })[0];
+      if (l) i.checked = l.on;
+    });
+    updMeasure();
+  };
+  renderLayers();
+
+  $('#layerList').addEventListener('change', function (e) {
+    if (e.target.matches('.sw[data-id]')) GP.toggle(e.target.dataset.id, e.target.checked);
+  });
+  $('#allOn').onclick = function () { GP.toggleAll(true); };
+  $('#allOff').onclick = function () { GP.toggleAll(false); };
+  $('#btnSide').onclick = function () {
+    var open = $('#side').classList.toggle('is-open');
+    this.setAttribute('aria-pressed', open);
+    setTimeout(function () { map.invalidateSize(); }, 220);
+  };
+
+  /* ───── الإعدادات ───── */
+  var menu = $('#setMenu');
+  $('#btnSet').onclick = function (e) {
+    e.stopPropagation();
+    var open = menu.hidden;
+    menu.hidden = !open;
+    this.setAttribute('aria-expanded', open);
+  };
+  document.addEventListener('click', function (e) {
+    if (!menu.hidden && !menu.contains(e.target)) { menu.hidden = true; $('#btnSet').setAttribute('aria-expanded', 'false'); }
+    if (!$('#srchPop').hidden && !$('.srch-wrap').contains(e.target)) $('#srchPop').hidden = true;
+  });
+  menu.querySelectorAll('[data-bm]').forEach(function (b) {
+    b.onclick = function () {
+      GP.setBasemap(b.dataset.bm);
+      menu.querySelectorAll('[data-bm]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+    };
+  });
+  $('#swLabels').onchange = function () { GP.setLabels(this.checked); };
+
+  /* ───── البحث ───── */
+  var pop = $('#srchPop');
+  $('#srch').addEventListener('input', function () {
+    var hits = GP.search(this.value);
+    if (!this.value.trim() || this.value.trim().length < 2) { pop.hidden = true; return; }
+    pop.hidden = false;
+    pop.innerHTML = hits.length
+      ? hits.map(function (h, i) {
+          return '<button class="res" data-i="' + i + '">'
+            + '<span style="display:flex;align-items:center;gap:8px"><span class="gp-dot" style="background:' + h.color + '"></span>' + GP.esc(h.name) + '</span>'
+            + '<em>' + GP.esc(h.kind) + '</em></button>';
+        }).join('')
+      : '<div class="srch-empty">لا توجد نتائج مطابقة</div>';
+    pop._hits = hits;
+  });
+  pop.addEventListener('click', function (e) {
+    var b = e.target.closest('.res'); if (!b) return;
+    GP.goTo(pop._hits[+b.dataset.i]);
+    pop.hidden = true;
+  });
+
+  /* ───── القياس ───── */
+  function setMeasure(mode) {
+    var cur = GP.state.measure === mode ? null : mode;
+    GP.measure(cur);
+    $('#mDist').setAttribute('aria-pressed', cur === 'dist');
+    $('#mArea').setAttribute('aria-pressed', cur === 'area');
+    $('#mPanel').hidden = !cur;
+    $('#mTitle').textContent = cur === 'area' ? 'قياس المساحة' : 'قياس المسافة';
+    updMeasure();
+  }
+  function updMeasure() {
+    var v = GP.measureValue(); if (!v) return;
+    $('#mCount').textContent = v.count;
+    $('#mMain').textContent = v.main;
+    $('#mSub').textContent = v.sub;
+  }
+  $('#mDist').onclick = function () { setMeasure('dist'); };
+  $('#mArea').onclick = function () { setMeasure('area'); };
+  $('#mDone').onclick = function () { GP.stopMeasure(); setMeasure(null); };
+  $('#mClear').onclick = function () { GP.clearMeasure(); updMeasure(); };
+
+  /* ───── الإحداثيّات والمقياس ───── */
+  var last = null;
+  function readout() {
+    var r = GP.readout(last);
+    $('#l1').textContent = r.l1; $('#v1').textContent = r.v1;
+    $('#l2').textContent = r.l2; $('#v2').textContent = r.v2;
+    $('#epsg').textContent = r.epsg;
+  }
+  document.querySelectorAll('[data-crs]').forEach(function (b) {
+    b.onclick = function () {
+      GP.setCrs(b.dataset.crs);
+      document.querySelectorAll('[data-crs]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      readout();
+    };
+  });
+  map.on('mousemove', function (e) { last = e.latlng; readout(); });
+  function scale() {
+    var s = GP.scaleBar();
+    $('#sbBar').style.width = s.px + 'px';
+    $('#sbLabel').textContent = s.label;
+    $('#zLabel').textContent = map.getZoom();
+  }
+  map.on('zoomend moveend', scale);
+  scale(); readout();
+
+  $('#zIn').onclick = function () { map.zoomIn(); };
+  $('#zOut').onclick = function () { map.zoomOut(); };
+  $('#zFit').onclick = function () { GP.fit(); };
+
+  if (window.matchMedia('(max-width:860px)').matches) {
+    $('#side').classList.remove('is-open');
+    $('#btnSide').setAttribute('aria-pressed', 'false');
+  }
+})();
+</script>
+</body>
+</html>

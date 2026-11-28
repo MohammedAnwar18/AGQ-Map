@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>لوحة الإدارة — البوابة الجغرافية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="gp-1.0.css">
+<style>
+  .ad-body{flex:1;display:flex;min-height:0}
+  .ad-side{width:252px;flex:none;background:var(--gp-surface);border-inline-end:1px solid var(--gp-line);
+    padding:12px;overflow:auto;display:flex;flex-direction:column;gap:2px}
+  .ad-side h6{margin:14px 10px 6px;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--gp-faint)}
+  .ad-side h6:first-child{margin-top:4px}
+  .ad-main{flex:1;overflow:auto;padding:24px 28px 40px;min-width:0}
+  .ad-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}
+  .ad-head h1{margin:0 0 6px;font-size:22px;font-weight:700;color:var(--gp-ink);letter-spacing:-.2px}
+  .ad-head p{margin:0;font-size:13px;color:var(--gp-muted);max-width:58ch;line-height:1.75}
+  .ad-user{display:flex;align-items:center;gap:9px}
+  .ad-user__av{width:32px;height:32px;border-radius:9px;flex:none;display:grid;place-items:center;
+    background:var(--gp-accent);color:#fff;font-size:13px;font-weight:600}
+  .ad-user__t b{display:block;font-size:12.5px;font-weight:600;color:var(--gp-ink);line-height:1.3}
+  .ad-user__t small{display:block;font-family:var(--gp-mono);font-size:10.5px;color:var(--gp-faint);direction:ltr}
+  .ad-sec{margin-top:22px}
+  .ad-empty{padding:34px 18px;text-align:center;color:var(--gp-faint);font-size:13px}
+  @media (max-width:860px){ .ad-side{display:none} .ad-main{padding:18px 14px 32px} }
+</style>
+</head>
+<body>
+<div class="gp">
+
+  <header class="gp-head">
+    <a class="gp-brand" href="index.html">
+      <span class="gp-brand__mark">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </span>
+      <span class="gp-brand__txt"><b>البوابة الجغرافية</b><small>Geoportal · نظام المعلومات الجغرافية</small></span>
+    </a>
+    <span class="gp-sp"></span>
+    <a class="ib" href="index.html">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15M9 3.236v15"/></svg>
+      <span>عرض الخريطة</span>
+    </a>
+    <span class="gp-sep"></span>
+    <div class="ad-user">
+      <span class="ad-user__av">م</span>
+      <span class="ad-user__t"><b>المشرف</b><small>admin@example.ps</small></span>
+    </div>
+  </header>
+
+  <div class="ad-body">
+    <nav class="ad-side">
+      <h6>البيانات المكانية</h6>
+      <button class="mi is-on" data-view="layers">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".5"/></svg>
+        <span style="flex:1">الطبقات</span><span class="gp-tag mono" id="navLayerN">0</span>
+      </button>
+      <button class="mi" data-view="features">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>
+        <span>جدول المعالم</span>
+      </button>
+      <h6>النظام</h6>
+      <button class="mi" data-view="admins">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span>المشرفون</span>
+      </button>
+      <button class="mi" data-view="audit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+        <span>سجل التعديلات</span>
+      </button>
+    </nav>
+
+    <main class="ad-main">
+
+      <!-- ═════ الطبقات ═════ -->
+      <section data-pane="layers">
+        <div class="ad-head">
+          <div>
+            <h1>الطبقات</h1>
+            <p>أضف الطبقات وعدّل خصائصها وحدد ما يظهر للزوار على الخريطة.</p>
+          </div>
+          <button class="gp-btn" id="btnAdd">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span>إضافة طبقة</span>
+          </button>
+        </div>
+
+        <div class="gp-kpis">
+          <div class="gp-kpi"><div class="gp-kpi__l">إجمالي الطبقات</div><div class="gp-kpi__v" id="kLayers">0</div></div>
+          <div class="gp-kpi"><div class="gp-kpi__l">منشورة على الخريطة</div><div class="gp-kpi__v" id="kPub">0</div></div>
+          <div class="gp-kpi"><div class="gp-kpi__l">إجمالي المعالم</div><div class="gp-kpi__v" id="kFeat">0</div></div>
+        </div>
+
+        <div class="gp-panel ad-sec">
+          <div class="gp-panel__head"><b>جدول الطبقات</b><span class="gp-side__meta" id="layersMeta">—</span></div>
+          <div style="overflow-x:auto">
+            <table class="gp-table">
+              <thead><tr>
+                <th>الطبقة</th><th>المجموعة</th><th>النوع</th><th>المعالم</th><th>منشورة</th><th></th>
+              </tr></thead>
+              <tbody id="layersBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═════ جدول المعالم ═════ -->
+      <section data-pane="features" hidden>
+        <div class="ad-head">
+          <div>
+            <h1>جدول المعالم</h1>
+            <p>معالمُ الطبقة المختارة بإحداثيّاتها على شبكة فلسطين 1923.</p>
+          </div>
+          <button class="gp-btn" id="btnAddF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span>إضافة معلم</span>
+          </button>
+        </div>
+
+        <div class="gp-panel">
+          <div class="gp-panel__head">
+            <b>المعالم</b>
+            <select class="gp-select" id="fLayer" style="width:auto;height:34px;font-size:12.5px"></select>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="gp-table">
+              <thead><tr><th>الرقم</th><th>الاسم</th><th>البلدية</th><th>E (م)</th><th>N (م)</th><th></th></tr></thead>
+              <tbody id="featBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section data-pane="admins" hidden>
+        <div class="ad-head"><div><h1>المشرفون</h1><p>من يملك صلاحيّة تعديل الطبقات والبيانات.</p></div></div>
+        <div class="gp-panel"><div class="ad-empty">اربط هذه الصفحة بجدول المستخدمين في خادمك.</div></div>
+      </section>
+
+      <section data-pane="audit" hidden>
+        <div class="ad-head"><div><h1>سجل التعديلات</h1><p>كلُّ إضافةٍ أو تعديلٍ أو حذفٍ مع وقته وصاحبه.</p></div></div>
+        <div class="gp-panel"><div class="ad-empty">اربط هذه الصفحة بسجلّ التدقيق في خادمك.</div></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ═════ نافذةُ الطبقة ═════ -->
+<div class="gp-scrim" id="scrim" hidden>
+  <form class="gp-modal" id="layerForm" novalidate>
+    <div class="gp-modal__head">
+      <b id="formTitle">إضافة طبقة</b>
+      <button class="ib" type="button" id="btnX" aria-label="إغلاق">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="gp-modal__body">
+      <label class="gp-field">
+        <span>اسم الطبقة</span>
+        <input class="gp-input" id="fName" placeholder="مثال: حدود البلديات" required>
+      </label>
+
+      <div class="gp-grid2">
+        <label class="gp-field">
+          <span>المجموعة</span>
+          <select class="gp-select" id="fGroup">
+            <option>الحدود الإدارية</option><option>البنية التحتية</option>
+            <option>الخدمات العامة</option><option>البيئة والموارد</option>
+          </select>
+        </label>
+        <label class="gp-field">
+          <span>نوع الهندسة</span>
+          <select class="gp-select" id="fGeom">
+            <option value="point">نقطة</option><option value="line">خط</option><option value="polygon">مضلّع</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="gp-field">
+        <span>لون الرمز</span>
+        <span style="display:flex;align-items:center;gap:10px">
+          <input type="color" id="fColor" value="#0E7C66"
+                 style="width:52px;height:40px;padding:3px;border:1px solid var(--gp-line-2);border-radius:9px;background:#fff;cursor:pointer">
+          <span class="mono" id="fColorTxt" style="font-size:12.5px;color:var(--gp-muted)">#0E7C66</span>
+        </span>
+      </label>
+
+      <div class="gp-field">
+        <span>ملف البيانات</span>
+        <label class="gp-drop" id="drop">
+          <input type="file" id="fFile" hidden accept=".geojson,.json,.zip,.kml,.csv">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="color:var(--gp-muted)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v13"/></svg>
+          <b id="dropName">اسحب الملف هنا أو اختر من جهازك</b>
+          <small>GeoJSON · Shapefile (.zip) · KML · CSV</small>
+        </label>
+      </div>
+
+      <label class="gp-field">
+        <span>نظام إحداثيات الملف</span>
+        <select class="gp-select" id="fCrs">
+          <option value="4326">WGS 84 — EPSG:4326</option>
+          <option value="28191">Palestine 1923 / Palestine Grid — EPSG:28191</option>
+          <option value="28192">Palestine 1923 / Palestine Belt — EPSG:28192</option>
+        </select>
+        <small>يُحوَّل الملفُّ إلى WGS 84 عند الحفظ.</small>
+      </label>
+
+      <div class="gp-menu__row" style="padding:10px 0 0;border-block-start:1px solid var(--gp-line);margin-top:4px">
+        <span>
+          <b style="display:block;font-size:13px;color:var(--gp-ink-1)">نشر على الخريطة العامة</b>
+          <small style="font-size:11.5px;color:var(--gp-faint)">تظهر الطبقة للزوار في قائمة الطبقات</small>
+        </span>
+        <input class="sw" type="checkbox" id="fPub" checked aria-label="نشر على الخريطة العامة">
+      </div>
+    </div>
+
+    <div class="gp-modal__foot">
+      <button class="gp-btn gp-btn--ghost" type="button" id="btnCancel">إلغاء</button>
+      <button class="gp-btn" type="submit" id="btnSave">حفظ</button>
+    </div>
+  </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.2/proj4.js"></script>
+<script src="gp-data-1.0.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var num = function (n, d) { return Number(n).toLocaleString('en-US',
+    { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); };
+
+  /* ⚠ بياناتٌ توضيحيّة. استبدلها بنداءِ خادمك: GET /api/layers */
+  var layers = window.GP_DATA.layers.map(function (l) {
+    return { id: l.id, name: l.name, group: l.group, geom: l.geom, kind: l.kind,
+             color: l.color, count: l.count, published: l.published, data: l.data };
+  });
+
+  var GRID = '+proj=cass +lat_0=31.73409694444445 +lon_0=35.21208055555556 +x_0=170251.555 +y_0=126867.909 +ellps=clrk80 +towgs84=-275.722,94.7824,340.894,-8.001,-4.42,-11.821,1 +units=m +no_defs';
+  if (window.proj4) proj4.defs('EPSG:28191', GRID);
+
+  /* ───── التنقّل ───── */
+  document.querySelectorAll('[data-view]').forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll('[data-view]').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+      document.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== b.dataset.view; });
+      if (b.dataset.view === 'features') renderFeatures();
+    };
+  });
+
+  /* ───── الطبقات ───── */
+  function renderLayers() {
+    $('#kLayers').textContent = num(layers.length);
+    $('#kPub').textContent = num(layers.filter(function (l) { return l.published; }).length);
+    $('#kFeat').textContent = num(layers.reduce(function (a, l) { return a + l.count; }, 0));
+    $('#navLayerN').textContent = layers.length;
+    $('#layersMeta').textContent = layers.length + ' طبقة';
+
+    $('#layersBody').innerHTML = layers.map(function (l, i) {
+      return '<tr>'
+        + '<td><span style="display:flex;align-items:center;gap:9px"><span class="gp-dot" style="background:' + l.color + '"></span><b style="font-weight:500;color:var(--gp-ink-1)">' + esc(l.name) + '</b></span></td>'
+        + '<td>' + esc(l.group) + '</td>'
+        + '<td>' + esc(l.kind) + '</td>'
+        + '<td class="num">' + num(l.count) + '</td>'
+        + '<td><span class="gp-tag ' + (l.published ? 'gp-tag--on' : '') + '">' + (l.published ? 'منشورة' : 'مخفيّة') + '</span></td>'
+        + '<td><span class="acts">'
+        + '<button class="ib" data-edit="' + i + '" aria-label="تعديل"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'
+        + '<button class="ib" data-pub="' + i + '" aria-label="تبديل النشر"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (l.published ? '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>' : '<path d="m2 2 20 20"/><path d="M6.7 6.7A11 11 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.3-1.5"/><path d="M9.9 4.2A11 11 0 0 1 12 4c6.5 0 10 7 10 7a18 18 0 0 1-2.4 3.3"/>') + '</svg></button>'
+        + '<button class="ib" data-del="' + i + '" aria-label="حذف" style="color:#C0392B"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>'
+        + '</span></td></tr>';
+    }).join('');
+  }
+
+  $('#layersBody').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.pub != null) { var l = layers[+b.dataset.pub]; l.published = !l.published; renderLayers(); }
+    if (b.dataset.del != null) {
+      var d = layers[+b.dataset.del];
+      if (window.confirm('حذف طبقة «' + d.name + '»؟')) { layers.splice(+b.dataset.del, 1); renderLayers(); renderFeatures(); }
+    }
+    if (b.dataset.edit != null) openForm(+b.dataset.edit);
+  });
+
+  /* ───── جدول المعالم ───── */
+  function renderFeatures() {
+    var sel = $('#fLayer');
+    var cur = sel.value;
+    sel.innerHTML = layers.map(function (l, i) { return '<option value="' + i + '">' + esc(l.name) + '</option>'; }).join('');
+    if (cur && layers[+cur]) sel.value = cur;
+    var l = layers[+sel.value || 0];
+    if (!l) { $('#featBody').innerHTML = '<tr><td colspan="6" class="ad-empty">لا طبقات</td></tr>'; return; }
+
+    $('#featBody').innerHTML = l.data.features.map(function (f, i) {
+      var p = f.properties || {}, g = f.geometry, e = '—', n = '—';
+      var c = g.type === 'Point' ? g.coordinates
+        : g.type === 'LineString' ? g.coordinates[0] : g.coordinates[0][0];
+      if (window.proj4 && c) {
+        try { var xy = proj4('EPSG:4326', 'EPSG:28191', [c[0], c[1]]); e = num(xy[0], 1); n = num(xy[1], 1); } catch (x) { /* */ }
+      }
+      return '<tr>'
+        + '<td class="num">' + (i + 1) + '</td>'
+        + '<td style="font-weight:500;color:var(--gp-ink-1)">' + esc(p.name || '—') + '</td>'
+        + '<td>' + esc(p.town || p.group || '—') + '</td>'
+        + '<td class="num">' + e + '</td><td class="num">' + n + '</td>'
+        + '<td><span class="acts"><button class="ib" aria-label="تعديل"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></span></td></tr>';
+    }).join('') || '<tr><td colspan="6" class="ad-empty">لا معالم في هذه الطبقة</td></tr>';
+  }
+  $('#fLayer').onchange = renderFeatures;
+  $('#btnAddF').onclick = function () { window.alert('اربط هذا الزرّ بنموذج إضافة معلم في خادمك.'); };
+
+  /* ───── نافذةُ الطبقة ───── */
+  var editing = null;
+  function openForm(i) {
+    editing = i == null ? null : i;
+    var l = editing == null ? null : layers[editing];
+    $('#formTitle').textContent = l ? 'تعديل الطبقة' : 'إضافة طبقة';
+    $('#btnSave').textContent = l ? 'حفظ التعديلات' : 'حفظ';
+    $('#fName').value = l ? l.name : '';
+    $('#fGroup').value = l ? l.group : 'الحدود الإدارية';
+    $('#fGeom').value = l ? l.geom : 'point';
+    $('#fColor').value = l ? l.color : '#0E7C66';
+    $('#fColorTxt').textContent = $('#fColor').value.toUpperCase();
+    $('#fPub').checked = l ? l.published : true;
+    $('#dropName').textContent = 'اسحب الملف هنا أو اختر من جهازك';
+    $('#scrim').hidden = false;
+    $('#fName').focus();
+  }
+  function closeForm() { $('#scrim').hidden = true; editing = null; }
+
+  $('#btnAdd').onclick = function () { openForm(null); };
+  $('#btnX').onclick = closeForm;
+  $('#btnCancel').onclick = closeForm;
+  $('#scrim').addEventListener('click', function (e) { if (e.target === this) closeForm(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#scrim').hidden) closeForm(); });
+  $('#fColor').oninput = function () { $('#fColorTxt').textContent = this.value.toUpperCase(); };
+
+  var drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { $('#fFile').files = e.dataTransfer.files; $('#dropName').textContent = f.name; }
+  });
+  $('#fFile').onchange = function () { if (this.files[0]) $('#dropName').textContent = this.files[0].name; };
+
+  $('#layerForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('#fName').value.trim();
+    if (!name) { $('#fName').focus(); return; }
+    var kindMap = { point: 'نقطة', line: 'خطّ', polygon: 'مضلّع' };
+    /* ⚠ هنا يُرفَع الملفُّ إلى خادمك ويُحوَّل الإسناد. هذا عرضٌ محلّيٌّ فقط. */
+    if (editing == null) {
+      layers.push({ id: 'l' + Date.now(), name: name, group: $('#fGroup').value,
+        geom: $('#fGeom').value, kind: kindMap[$('#fGeom').value], color: $('#fColor').value,
+        count: 0, published: $('#fPub').checked, data: { type: 'FeatureCollection', features: [] } });
+    } else {
+      var l = layers[editing];
+      l.name = name; l.group = $('#fGroup').value; l.geom = $('#fGeom').value;
+      l.kind = kindMap[l.geom]; l.color = $('#fColor').value; l.published = $('#fPub').checked;
+    }
+    closeForm(); renderLayers(); renderFeatures();
+  });
+
+  renderLayers(); renderFeatures();
+})();
+</script>
+</body>
+</html>

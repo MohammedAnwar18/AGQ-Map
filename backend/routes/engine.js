@@ -96,6 +96,25 @@ const MAX_OUT = parseInt(process.env.PALNOVAA_MAX_OUT, 10) || 32768;
    PALNOVAA_KIT=0 يُعيد الإرشادَ النثريَّ القديم فوراً إن تعطّل المسار. */
 const KIT_BASE = ((process.env.PALNOVAA_KIT_BASE || 'https://palnovaa.com/kit').trim()).replace(/\/+$/, '') + '/';
 const KIT_ON = String(process.env.PALNOVAA_KIT || '1') !== '0';
+
+/* ---- القالبُ الافتراضيُّ للبوّابات الجغرافيّة ----
+   طلبُ «جيوبورتال» له تصميمٌ مُقرَّرٌ سلفاً: لا يخترعه النموذجُ في كلّ مرّة،
+   بل يبني عليه. الكتلةُ تُحقَن فقط عند التطابق، فكلفتُها صفرٌ لبقيّة الطلبات. */
+const GEO_RE = /جيوبورتال|جيوبرتال|بوّ?ابة\s*جغراف|بوابات\s*جغراف|geoportal|geo-portal|بوابة\s*الخرائط|منصّ?ة\s*جغراف/i;
+const isGeoportal = (t) => GEO_RE.test(String(t || ''));
+const GEO_LINES = [
+    '— قالبُ البوّابة الجغرافيّة (الطلبُ جيوبورتال: ابنِ عليه، ولا تخترع تصميماً آخر) —',
+    `GEO=${KIT_BASE}templates/geoportal/ — في <head>: leaflet 1.9.4 (css+js) ثمّ GEO+'gp-1.0.css'، وفي آخر <body>: proj4 2.9.2 ثمّ GEO+'gp-1.0.js'.`,
+    '• ثلاثُ صفحات: index.html الخريطة · login.html دخول المشرفين · admin.html لوحة الإدارة. اربطها ببعضها بروابطَ نسبيّة.',
+    '• الهويّة (لا تُغيّرها): التمييز #0E7C66 (داكن #0A5E4D، فاتح #EAF5F1، ساطع #3FD1AE) · الحبر #0B1220 · الخافت #56645F · الأسطح #FFFFFF/#F6F8F7/#F1F5F3 · الحدود #E2E8E5 · خطّ IBM Plex Sans Arabic وMono · RTL · زوايا 9–11px.',
+    '• ألوانُ الفئات للطبقات: #7A5AC0 #E07B39 #2563EB #D63A3A #6E9D5A #3A80C2 #B07A2A.',
+    '• بنيةُ الخريطة: .gp>.gp-head+.gp-body(aside.gp-side+main.gp-main>.gp-map)+.gp-foot — ترويسةٌ فيها العلامةُ والبحثُ وأدواتُ القياس والإعدادات، لوحُ طبقاتٍ بمجموعاتٍ ومفاتيحَ، وتذييلٌ فيه نظامُ الإسناد والإحداثيّاتُ الحيّة وشريطُ المقياس والتكبير.',
+    '• الأصناف: .ib .gp-btn(--ghost|--sm|--block) .mi .seg-group>.seg .sw .gp-input .gp-select .gp-field .srch .srch-pop>.res .gp-side .lgroup>.lrow .gp-float(--ts|te|bs|be) .ctl-stack>.ctl .gp-card .gp-read .gp-kpis>.gp-kpi .gp-panel .gp-table .gp-tag .gp-dot .gp-drop .gp-scrim>.gp-modal .gp-grid2 .mono.',
+    "• الواجهة البرمجيّة: GP.init(el,{center,zoom,basemap}) · GP.addLayers(defs) · GP.toggle(id,on) · GP.toggleAll(on) · GP.search(q) · GP.goTo(hit) · GP.measure('dist'|'area') · GP.measureValue() · GP.setCrs('wgs'|'grid'|'belt') · GP.readout(latlng) · GP.scaleBar() · GP.setBasemap('light'|'satellite'|'hybrid') · GP.fit().",
+    "• الطبقة: {id,name,group,geom:'point'|'line'|'polygon',color,on,count,published,data:GeoJSON}. المجموعات: الحدود الإدارية · البنية التحتية · الخدمات العامة · البيئة والموارد.",
+    '• الإسناد: WGS 84 وفلسطين 1923 Grid (EPSG:28191) وBelt (EPSG:28192) — التحويلُ جاهزٌ في GP، لا تُعِد كتابته.',
+    '• gp-data-1.0.js بياناتٌ توضيحيّةٌ للقالب وحده: إن توفّرت طبقاتٌ حقيقيّةٌ من المكتبة فاجلبها بدلها، ولا تشحن التوضيحيّة في مُخرَجٍ نهائيّ.',
+];
 /* المخطّط وموجزُ التصميم مهمّتان قصيرتان: موديلٌ خفيفٌ ينهيهما أسرع بكثيرٍ وأرخص.
    يُضبَط بـ PALNOVAA_FAST_MODEL، وإن لم يتوفّر رجَعَا للموديل الرئيس. */
 const FAST_MODEL = (process.env.PALNOVAA_FAST_MODEL || 'gemini-flash-lite-latest').trim();
@@ -1275,6 +1294,7 @@ router.post('/generate-stream', optionalAuth, async (req, res) => {
                     layers: (lib.layers || []).map((l) => ({ slug: l.slug, name: l.name, count: l.count })) });
             }
         }
+        if (KIT_ON && isGeoportal(prompt)) { prompt += '\n\n' + GEO_LINES.join('\n'); send({ type: 'template', name: 'geoportal' }); }
 
         // ـــ خطّ الإنتاج ـــ المخطّط والتصميم للبناء الجديد فقط؛ التعديل يتخطّاهما توفيراً للتوكِنز.
         // وهما مستقلّان ⇒ ننفّذهما بالتوازي فنكلّف أطولَهما لا مجموعَهما. والمخطّط
@@ -1371,6 +1391,7 @@ router.post('/generate', optionalAuth, async (req, res) => {
         const lib = await resolveLibrary(prompt).catch(() => null);
         if (lib) prompt += buildLibraryInjection(lib);
     }
+    if (KIT_ON && isGeoportal(prompt)) prompt += '\n\n' + GEO_LINES.join('\n');
 
     if (!currentHtml && isComplexPrompt(prompt)) {   // تخطيطٌ صامت للطلبات المعقّدة ثمّ بناء
         const plan = await silentPlan(KEY_FAST, prompt);
