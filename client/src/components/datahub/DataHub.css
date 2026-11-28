@@ -171,3 +171,25 @@
 .dh-adv-api{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--faint,#5A616B)}
 .dh-adv-api code{direction:ltr;font-size:11px;padding:3px 8px;border-radius:6px;
   background:var(--surface-2,#191C21);border:1px solid var(--line,#1F2329);color:var(--accent-2,#F0954F)}
+/* ═══ منتقي الفلتر: حقلٌ ثمّ قيمٌ تُقرأ من الخدمة ═══ */
+.dh-fv-wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint,#5A616B);padding:4px 0}
+.dh-fv{border:1px solid var(--line,#1F2329);border-radius:9px;background:var(--surface,#13161A);
+  padding:10px;display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.dh-fv-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted,#858C96)}
+.dh-fv-h b{color:var(--text-2,#B9BEC6);font-weight:600}
+.dh-fv-h .dh-warn{font-style:normal;font-size:11.5px;color:#E0A33E}
+.dh-fv-clr{margin-inline-start:auto;border:0;background:none;cursor:pointer;
+  font-size:11.5px;color:var(--accent-2,#F0954F);padding:2px 4px}
+.dh-fv-clr:hover{text-decoration:underline}
+.dh-fv-q{height:32px;padding:0 10px;border:1px solid var(--line-2,#2A2F36);border-radius:7px;
+  background:var(--surface-2,#191C21);color:var(--text,#E7E9EC);font-size:12.5px;outline:0}
+.dh-fv-q:focus{border-color:var(--accent,#E07B39)}
+.dh-fv-list{max-height:220px;overflow:auto;border:1px solid var(--line,#1F2329);border-radius:7px}
+.dh-fv-row{display:flex;align-items:center;gap:9px;padding:7px 10px;cursor:pointer;
+  font-size:12.5px;color:var(--text-2,#B9BEC6)}
+.dh-fv-row:hover{background:var(--surface-2,#191C21)}
+.dh-fv-row.on{background:rgba(224,123,57,.10);color:var(--text,#E7E9EC)}
+.dh-fv-row input{accent-color:var(--accent,#E07B39);width:15px;height:15px;margin:0;flex:none}
+.dh-fv-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dh-fv-row code{font-size:11px;color:var(--faint,#5A616B);font-variant-numeric:tabular-nums}
+.dh-fv-row.on code{color:var(--accent-2,#F0954F)}

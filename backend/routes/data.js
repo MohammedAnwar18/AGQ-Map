@@ -658,6 +658,17 @@ router.get('/describe', authenticateToken, isAdmin, async (req, res) => {
 /* POST /api/data/migrate — إضافةُ مهمّةِ ترحيلٍ إلى الطابور
    { slug, serviceUrl, layerId, name_ar?, category?, name_field?, is_boundary?,
      where?, license?, minzoom?, maxFeatures? }                                   */
+/* قيمُ حقلٍ في خدمةٍ خارجيّة — ليبني المستخدمُ الفلترَ بالاختيار لا بالكتابة */
+router.get('/field-values', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const url = (req.query.url || '').toString().trim();
+        const field = (req.query.field || '').toString().trim();
+        if (!url || !field) return bad(res, 400, 'أرسِل url وfield');
+        const out = await arc.fieldValues(url, field, { limit: Math.min(num(req.query.limit, 500), 2000) });
+        return res.json({ ok: true, ...out });
+    } catch (e) { return bad(res, 502, String(e.message || e)); }
+});
+
 router.post('/migrate', authenticateToken, isAdmin, async (req, res) => {
     try {
         await ensureSchema();

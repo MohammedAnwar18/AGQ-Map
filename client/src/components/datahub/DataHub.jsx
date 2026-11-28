@@ -43,6 +43,11 @@ export default function DataHub() {
     const [adv, setAdv] = useState(false);           // «الإعدادات المتقدّمة» مطويّةٌ افتراضاً
     const [areaIx, setAreaIx] = useState(null);      // { indexed, area_layer, areas[], unassigned }
     const [areaBoundary, setAreaBoundary] = useState('');
+    /* منتقي الفلتر: حقلٌ ثمّ قيمٌ تُقرأ من الخدمة نفسِها — لا كتابةَ SQL */
+    const [fvField, setFvField] = useState('');
+    const [fvList, setFvList] = useState(null);     // { values:[{value,count}], method, exact }
+    const [fvPick, setFvPick] = useState([]);
+    const [fvQ, setFvQ] = useState('');
     const [stats, setStats] = useState(null);        // تمايز حقول الطبقة المحرَّرة
     const poll = useRef(null);
 
@@ -73,6 +78,7 @@ export default function DataHub() {
     /* ---------------- وصفُ طبقة ---------------- */
     const pick = async (layer) => {
         setBusy('describe'); setSel(null); setForm(null);
+        setFvField(''); setFvList(null); setFvPick([]); setFvQ('');
         try {
             const { data } = await api.get('/data/describe', { params: { url: node.url, layer: layer.id }, timeout: 120000 });
             if (!data.ok) throw new Error(data.reason);
@@ -107,6 +113,41 @@ export default function DataHub() {
         } catch (e) { toast(err(e), 'err'); }
         setBusy('');
     };
+
+    /* ───── منتقي الفلتر ───── */
+    const loadFieldValues = async (fieldName) => {
+        setFvField(fieldName); setFvList(null); setFvPick([]); setFvQ('');
+        if (!fieldName || !sel?.url) return;
+        setBusy('fv');
+        try {
+            const { data } = await api.get('/data/field-values',
+                { params: { url: sel.url, field: fieldName }, timeout: 150000 });
+            if (!data.ok) throw new Error(data.reason);
+            setFvList(data);
+            if (!data.values.length) toast('الحقل بلا قيمٍ قابلةٍ للاختيار', 'err');
+        } catch (e) { toast(err(e), 'err'); setFvField(''); }
+        setBusy('');
+    };
+
+    /* SQL للخدمات الخارجيّة: الاقتباسُ المفرد يُضاعَف، فلا ينكسر «بيت لحم's»
+       ولا يُحقَن شيء. والأرقامُ بلا اقتباسٍ وإلّا رفضتها بعضُ الخوادم. */
+    const buildWhere = (field, picks) => {
+        if (!field || !picks.length) return '';
+        const f = (sel?.fields || []).find((x) => x.name === field);
+        const isNum = /integer|double|single|smallinteger|oid/i.test(f?.type || '');
+        const lit = (v) => (isNum && Number.isFinite(Number(v))
+            ? String(Number(v))
+            : "'" + String(v).replace(/'/g, "''") + "'");
+        return picks.length === 1
+            ? `${field}=${lit(picks[0])}`
+            : `${field} IN (${picks.map(lit).join(',')})`;
+    };
+    const togglePick = (v) => {
+        const next = fvPick.includes(v) ? fvPick.filter((x) => x !== v) : [...fvPick, v];
+        setFvPick(next);
+        setForm((p) => ({ ...p, where: buildWhere(fvField, next) }));
+    };
+    const clearPick = () => { setFvPick([]); setForm((p) => ({ ...p, where: '' })); };
 
     /* ---------------- بدء الترحيل ---------------- */
     const migrate = async () => {
@@ -343,10 +384,54 @@ export default function DataHub() {
 
                             <details className="dh-adv">
                                 <summary>خياراتٌ متقدّمة</summary>
+                                {/* ═══ ترحيلُ جزءٍ: اختر الحقلَ ثمّ القيم ═══ */}
                                 <div className="dh-f">
-                                    <label>فلتر SQL (where) — لترحيل جزءٍ فقط</label>
+                                    <label>ترحيلُ جزءٍ فقط — اختر حقلَ التصفية</label>
+                                    <select value={fvField} onChange={(e) => loadFieldValues(e.target.value)}>
+                                        <option value="">— الكلّ بلا تصفية —</option>
+                                        {(sel?.fields || []).map((f) => (
+                                            <option key={f.name} value={f.name}>{f.name} · {f.type}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {busy === 'fv' && (
+                                    <div className="dh-fv-wait"><span className="dh-spin" /> يقرأ قيمَ الحقل من الخدمة…</div>
+                                )}
+
+                                {fvField && fvList && (
+                                    <div className="dh-fv">
+                                        <div className="dh-fv-h">
+                                            <b>{fvList.values.length} قيمة</b>
+                                            {!fvList.exact && <em className="dh-warn">تقريبيّة — من عيّنةٍ لا من كلّ الصفوف</em>}
+                                            {fvPick.length > 0 && (
+                                                <button className="dh-fv-clr" onClick={clearPick}>مسح الاختيار ({fvPick.length})</button>
+                                            )}
+                                        </div>
+                                        {fvList.values.length > 8 && (
+                                            <input className="dh-fv-q" value={fvQ} onChange={(e) => setFvQ(e.target.value)}
+                                                placeholder="ابحث في القيم…" />
+                                        )}
+                                        <div className="dh-fv-list">
+                                            {fvList.values
+                                                .filter((v) => !fvQ.trim() || String(v.value).includes(fvQ.trim()))
+                                                .slice(0, 300)
+                                                .map((v) => (
+                                                    <label className={`dh-fv-row ${fvPick.includes(v.value) ? 'on' : ''}`} key={String(v.value)}>
+                                                        <input type="checkbox" checked={fvPick.includes(v.value)}
+                                                            onChange={() => togglePick(v.value)} />
+                                                        <span>{String(v.value)}</span>
+                                                        {v.count != null && <code>{v.count.toLocaleString('en')}</code>}
+                                                    </label>
+                                                ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="dh-f">
+                                    <label>فلتر SQL (where) — يُبنى تلقائيّاً، ويمكن تعديلُه</label>
                                     <input value={form.where} onChange={(e) => setForm({ ...form, where: e.target.value })}
-                                        dir="ltr" placeholder="GOV='نابلس'" />
+                                        dir="ltr" placeholder="GOV_A='نابلس'" />
                                 </div>
                                 <div className="dh-f2">
                                     <div className="dh-f">

@@ -112,4 +112,61 @@ async function* fetchFeatures(layerUrl, { where = '1=1', pageSize = 2000, maxFea
     }
 }
 
-module.exports = { discover, describeLayer, fetchFeatures, getJSON };
+/* قيمُ حقلٍ مع أعدادها — ليختار المستخدمَ منها بدل كتابة SQL.
+   ثلاثُ محاولاتٍ متدرّجة، لأنّ خوادم ArcGIS تختلف في ما تدعمه:
+     ١) إحصاءٌ مجمّع (groupBy + count) — الأفضل: قيمةٌ وعددُها.
+     ٢) returnDistinctValues — قيمٌ بلا أعداد.
+     ٣) مسحُ صفحةٍ وتفريدٌ محلّيّ — تقريبيٌّ، ويُعلَّم بذلك صراحةً. */
+async function fieldValues(layerUrl, field, { limit = 500, sample = 4000 } = {}) {
+    const u = clean(layerUrl).replace(/\/query.*$/i, '');
+    const f = String(field || '').trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(f)) throw new Error('اسمُ حقلٍ غير صالح');
+    const q = (p) => `${u}/query?${p}&f=json`;
+    const oops = (j) => { if (j && j.error) throw new Error(j.error.message || 'خطأٌ من الخادم'); return j; };
+
+    // ١) مجمّعٌ بالعدد
+    try {
+        const stats = encodeURIComponent(JSON.stringify([
+            { statisticType: 'count', onStatisticField: f, outStatisticFieldName: 'n' }]));
+        const j = oops(await getJSON(q(
+            `where=1%3D1&groupByFieldsForStatistics=${encodeURIComponent(f)}&outStatistics=${stats}`
+            + `&orderByFields=n%20DESC&returnGeometry=false&resultRecordCount=${limit}`), { timeoutMs: 90000 }));
+        const rows = (j.features || []).map((x) => x.attributes || {});
+        const vals = rows.map((a) => ({ value: a[f], count: Number(a.n) || 0 }))
+            .filter((v) => v.value != null && String(v.value).trim() !== '');
+        if (vals.length) return { field: f, values: vals, method: 'count', exact: true };
+    } catch { /* نُجرّب التالي */ }
+
+    // ٢) قيمٌ مميّزةٌ بلا أعداد
+    try {
+        const j = oops(await getJSON(q(
+            `where=1%3D1&outFields=${encodeURIComponent(f)}&returnDistinctValues=true`
+            + `&returnGeometry=false&orderByFields=${encodeURIComponent(f)}&resultRecordCount=${limit}`),
+            { timeoutMs: 90000 }));
+        const seen = new Set();
+        (j.features || []).forEach((x) => {
+            const v = (x.attributes || {})[f];
+            if (v != null && String(v).trim() !== '') seen.add(v);
+        });
+        if (seen.size) {
+            return { field: f, values: [...seen].map((value) => ({ value, count: null })),
+                method: 'distinct', exact: true };
+        }
+    } catch { /* نُجرّب التالي */ }
+
+    // ٣) عيّنةٌ وتفريدٌ محلّيّ — تقريبيّ
+    const j = oops(await getJSON(q(
+        `where=1%3D1&outFields=${encodeURIComponent(f)}&returnGeometry=false&resultRecordCount=${sample}`),
+        { timeoutMs: 120000 }));
+    const m = new Map();
+    (j.features || []).forEach((x) => {
+        const v = (x.attributes || {})[f];
+        if (v == null || String(v).trim() === '') return;
+        m.set(v, (m.get(v) || 0) + 1);
+    });
+    const values = [...m.entries()].map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count).slice(0, limit);
+    return { field: f, values, method: 'sample', exact: false, sampled: (j.features || []).length };
+}
+
+module.exports = { discover, describeLayer, fetchFeatures, fieldValues, getJSON };
