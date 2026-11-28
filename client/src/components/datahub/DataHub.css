@@ -143,3 +143,31 @@
 .dh-src{display:block;margin-bottom:10px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;
   background:var(--surface);color:var(--faint);font-family:ui-monospace,monospace;font-size:10.5px;
   direction:ltr;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ═══ الإعدادات المتقدّمة: الفهرسة المكانيّة بالمناطق ═══ */
+.dh-adv-t{display:flex;align-items:center;gap:8px;width:100%;margin-top:14px;padding:9px 11px;
+  border:1px solid var(--line,#1F2329);border-radius:9px;background:transparent;
+  color:var(--text-2,#B9BEC6);font-size:12.5px;font-weight:500;cursor:pointer;text-align:start}
+.dh-adv-t:hover{background:var(--surface-2,#191C21);color:var(--text,#E7E9EC)}
+.dh-adv-t svg{color:var(--muted,#858C96);flex:none}
+.dh-adv-b{margin-inline-start:auto;font-style:normal;font-size:10.5px;font-weight:600;
+  padding:2px 8px;border-radius:999px;background:rgba(61,179,126,.14);color:#3DB37E}
+
+.dh-adv{margin-top:10px;padding:14px;border:1px solid var(--line,#1F2329);border-radius:10px;
+  background:var(--surface,#13161A);display:flex;flex-direction:column;gap:12px}
+.dh-adv-h b{display:block;font-size:13px;color:var(--text,#E7E9EC);margin-bottom:4px}
+.dh-adv-h small{display:block;font-size:11.5px;line-height:1.75;color:var(--faint,#5A616B)}
+.dh-adv-wait{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--faint,#5A616B);padding:6px 0}
+.dh-adv .dh-warn{display:block;margin-top:6px;font-size:11.5px;line-height:1.7;color:#E0A33E}
+
+.dh-adv-res{border-top:1px solid var(--line,#1F2329);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.dh-adv-sum{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted,#858C96)}
+.dh-adv-sum b{color:var(--accent-2,#F0954F);font-weight:600}
+.dh-adv-list{max-height:188px;overflow:auto;border:1px solid var(--line,#1F2329);border-radius:8px}
+.dh-adv-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:7px 11px;font-size:12.5px;color:var(--text-2,#B9BEC6)}
+.dh-adv-row:nth-child(odd){background:rgba(255,255,255,.018)}
+.dh-adv-row code{font-size:11.5px;color:var(--text,#E7E9EC);font-variant-numeric:tabular-nums}
+.dh-adv-api{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--faint,#5A616B)}
+.dh-adv-api code{direction:ltr;font-size:11px;padding:3px 8px;border-radius:6px;
+  background:var(--surface-2,#191C21);border:1px solid var(--line,#1F2329);color:var(--accent-2,#F0954F)}

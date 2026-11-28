@@ -40,6 +40,9 @@ export default function DataHub() {
     const [jobs, setJobs] = useState([]);
     const [layers, setLayers] = useState([]);
     const [edit, setEdit] = useState(null);          // { slug, ...draft }
+    const [adv, setAdv] = useState(false);           // «الإعدادات المتقدّمة» مطويّةٌ افتراضاً
+    const [areaIx, setAreaIx] = useState(null);      // { indexed, area_layer, areas[], unassigned }
+    const [areaBoundary, setAreaBoundary] = useState('');
     const [stats, setStats] = useState(null);        // تمايز حقول الطبقة المحرَّرة
     const poll = useRef(null);
 
@@ -149,7 +152,31 @@ export default function DataHub() {
         try { await api.post(`/data/jobs/${id}/cancel`); loadJobs(); } catch (e) { toast(err(e), 'err'); }
     };
     /* فتحُ التحرير مع جلب تمايز الحقول — الرقم يكشف الحقل عديم الفائدة فوراً */
+    /* فهرسةُ المناطق: تُحسَب مرّةً، ثمّ يصير «قطعُ أراضي محافظةٍ ما»
+       مساواةً على فهرسٍ بدل ST_Intersects على مئات الآلاف من المضلّعات. */
+    const loadAreas = async (slug) => {
+        setAreaIx(null);
+        try { const { data } = await api.get(`/data/layers/${slug}/areas`); if (data?.ok) setAreaIx(data); }
+        catch { setAreaIx({ indexed: false, areas: [] }); }
+    };
+    const runIndex = async () => {
+        if (!areaBoundary) return;
+        setBusy('index');
+        try {
+            const { data } = await api.post(`/data/layers/${edit.slug}/index-areas`,
+                { boundary: areaBoundary }, { timeout: 15 * 60 * 1000 });
+            if (data?.ok) {
+                setAreaIx({ indexed: true, area_layer: data.area_layer, areas: data.areas,
+                    unassigned: data.unassigned, indexed_at: new Date().toISOString() });
+                toast(`فُهرِست ${data.matched.toLocaleString('en')} معلماً على ${data.areas.length} منطقة في ${(data.elapsed_ms / 1000).toFixed(1)}ث`);
+            } else toast(data?.reason || 'تعذّرت الفهرسة', 'err');
+        } catch (e) { toast(e?.response?.data?.reason || 'تعذّرت الفهرسة', 'err'); }
+        finally { setBusy(''); }
+    };
+
     const openEdit = async (l) => {
+        setAdv(false); setAreaBoundary('');
+        loadAreas(l.slug);
         setEdit({ slug: l.slug, name_ar: l.name_ar, category: l.category || '',
             name_field: l.name_field || '', is_boundary: !!l.is_boundary, minzoom: l.minzoom ?? 10,
             fields: l.fields || [] });
@@ -428,6 +455,78 @@ export default function DataHub() {
                                 <small>للمضلّعات فقط. النقاط لا تحتوي شيئاً، فتفعيلها عليها يُفسد نتائج البحث.</small>
                             </span>
                         </label>
+
+                        {/* ══ الإعدادات المتقدّمة: الفهرسة المكانيّة بالمناطق ══ */}
+                        <button className="dh-adv-t" onClick={() => setAdv(!adv)} aria-expanded={adv}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                                style={{ transform: adv ? 'rotate(90deg)' : 'rotate(180deg)', transition: 'transform .15s' }}>
+                                <path d="m15 18-6-6 6-6" />
+                            </svg>
+                            <span>الإعدادات المتقدّمة</span>
+                            {areaIx?.indexed && <em className="dh-adv-b">مفهرسة</em>}
+                        </button>
+
+                        {adv && (
+                            <div className="dh-adv">
+                                <div className="dh-adv-h">
+                                    <b>الفهرسة المكانيّة بالمناطق</b>
+                                    <small>
+                                        انسُب كلّ معلمٍ إلى المنطقة الإداريّة التي يقع فيها — فتصير «قطعُ أراضي
+                                        محافظة رام الله» استعلاماً فوريّاً بدل تقاطعٍ هندسيٍّ على كامل الطبقة.
+                                    </small>
+                                </div>
+
+                                {areaIx === null ? <div className="dh-adv-wait"><span className="dh-spin" /> يقرأ الحالة…</div> : (
+                                    <>
+                                        <div className="dh-f">
+                                            <label>طبقةُ الحدود المرجعيّة</label>
+                                            <select value={areaBoundary} onChange={(e) => setAreaBoundary(e.target.value)}>
+                                                <option value="">— اختر —</option>
+                                                {layers.filter((x) => x.is_boundary && x.slug !== edit.slug)
+                                                    .map((x) => <option key={x.slug} value={x.slug}>{x.name_ar}</option>)}
+                                            </select>
+                                            {!layers.some((x) => x.is_boundary && x.slug !== edit.slug) && (
+                                                <small className="dh-warn">
+                                                    لا طبقةَ حدودٍ مُعلَّمةٌ بعد. علّم طبقةَ المحافظات أو البلديّات
+                                                    بـ«طبقةُ حدود» أوّلاً، وتأكّد أنّ «حقل الاسم» فيها صحيح.
+                                                </small>
+                                            )}
+                                        </div>
+
+                                        <button className="dh-btn primary" disabled={!areaBoundary || busy === 'index'}
+                                            onClick={runIndex}>
+                                            {busy === 'index' ? <><span className="dh-spin" /> يفهرس…</>
+                                                : areaIx.indexed ? 'إعادة الفهرسة' : 'ابدأ الفهرسة'}
+                                        </button>
+
+                                        {areaIx.indexed && (
+                                            <div className="dh-adv-res">
+                                                <div className="dh-adv-sum">
+                                                    <span>مفهرسةٌ على <b>{areaIx.area_layer}</b></span>
+                                                    <span>{areaIx.areas.length} منطقة</span>
+                                                    {areaIx.unassigned > 0 && (
+                                                        <span className="dh-warn">{areaIx.unassigned.toLocaleString('en')} بلا منطقة</span>
+                                                    )}
+                                                </div>
+                                                <div className="dh-adv-list">
+                                                    {areaIx.areas.slice(0, 40).map((a) => (
+                                                        <div className="dh-adv-row" key={a.name}>
+                                                            <span>{a.name}</span>
+                                                            <code>{a.count.toLocaleString('en')}</code>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="dh-adv-api">
+                                                    <span>الاستعلام:</span>
+                                                    <code>/api/data/query?layer={edit.slug}&amp;area=الاسم</code>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         <div className="dh-dlg-foot">
                             <button className="dh-btn" onClick={() => setEdit(null)}>إلغاء</button>

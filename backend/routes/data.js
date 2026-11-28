@@ -62,6 +62,16 @@ function ensureSchema() {
                     geom     geometry(Geometry, 4326) NOT NULL
                 )`);
 
+            /* فهرسةُ المناطق: أيُّ منطقةٍ إداريّةٍ يقع فيها كلُّ معلم.
+               تُحسَب مرّةً واحدةً عند الترحيل بدل تقاطعٍ هندسيٍّ في كلّ استعلام —
+               سؤالُ «قطعُ أراضي محافظة رام الله» يصير مساواةً على فهرسٍ لا
+               ST_Intersects على نصف مليون مضلّع. */
+            await pool.query(`ALTER TABLE geo_features ADD COLUMN IF NOT EXISTS area_id BIGINT`);
+            await pool.query(`ALTER TABLE geo_features ADD COLUMN IF NOT EXISTS area_name TEXT`);
+            await pool.query(`ALTER TABLE geo_layers   ADD COLUMN IF NOT EXISTS area_layer TEXT`);
+            await pool.query(`ALTER TABLE geo_layers   ADD COLUMN IF NOT EXISTS area_indexed_at TIMESTAMPTZ`);
+            await pool.query(`CREATE INDEX IF NOT EXISTS geo_features_area_idx ON geo_features (layer_id, area_name)`);
+
             // الفهارس: المكانيّ أوّلاً، ثمّ الطبقة، ثمّ الخصائص، ثمّ الاسم (بحثٌ تقريبيّ)
             await pool.query(`CREATE INDEX IF NOT EXISTS geo_features_geom_gix ON geo_features USING GIST (geom)`);
             await pool.query(`CREATE INDEX IF NOT EXISTS geo_features_layer_idx ON geo_features (layer_id)`);
@@ -199,6 +209,20 @@ router.get('/query', async (req, res) => {
                 const nm = await pool.query('SELECT name FROM geo_features WHERE id = $1', [areaId]);
                 clippedBy = nm.rows[0]?.name || null;
             }
+        }
+
+        /* &area=<اسم> — مساواةٌ على الفهرس، لا تقاطعٌ هندسيّ. يحتاج فهرسةً
+           مسبقة؛ وإن لم تُفهرَس الطبقةُ بعد فالنتيجةُ فارغةٌ لا خاطئة، لذا
+           نُخبر الطالبَ صراحةً بدل أن نُرجع صفراً صامتاً. */
+        if (req.query.area) {
+            const a = req.query.area.toString().slice(0, 160).trim();
+            const ix = await pool.query('SELECT area_layer FROM geo_layers WHERE id = $1', [layerId]);
+            if (!ix.rows[0] || !ix.rows[0].area_layer) {
+                return bad(res, 409, 'هذه الطبقة غير مفهرسةٍ بالمناطق بعد — افهرسها من «الإعدادات المتقدّمة»، أو استعمل place= للقصّ الهندسيّ.');
+            }
+            vals.push(a);
+            where.push(`f.area_name = $${vals.length}`);
+            clippedBy = a;
         }
 
         if (req.query.bbox) {
@@ -425,6 +449,92 @@ router.get('/layers/:slug/field-stats', authenticateToken, isAdmin, async (req, 
 });
 
 // DELETE /api/data/layers/:slug
+/* ===================== الفهرسةُ المكانيّة بالمناطق =====================
+   أيُّ طبقةٍ (قطعُ أراضٍ، مدارس، آبار…) تُنسَب معالمُها إلى طبقةِ حدودٍ
+   (محافظات، بلديّات، قرى) مرّةً واحدة. بعدها:
+     /query?layer=parcels&area=رام الله      ← مساواةٌ على فهرس
+     /layers/parcels/areas                   ← التوزيعُ بالأعداد
+   نستعمل ST_PointOnSurface لا ST_Centroid: مركزُ المضلّع المقعّر قد يقع
+   خارجه فيُنسَب للجار الخطأ، ونقطةُ السطح مضمونةٌ داخله. */
+
+/* توزيعُ المعالم على المناطق */
+router.get('/layers/:slug/areas', async (req, res) => {
+    try {
+        await ensureSchema();
+        const lr = await pool.query('SELECT id, name_ar, area_layer, area_indexed_at FROM geo_layers WHERE slug = $1', [req.params.slug]);
+        if (!lr.rows.length) return bad(res, 404, 'الطبقة غير موجودة');
+        const L = lr.rows[0];
+        res.set('Access-Control-Allow-Origin', '*');
+        if (!L.area_layer) return res.json({ ok: true, indexed: false, areas: [] });
+        const r = await pool.query(
+            `SELECT area_name AS name, COUNT(*)::int AS count FROM geo_features
+             WHERE layer_id = $1 AND area_name IS NOT NULL
+             GROUP BY area_name ORDER BY count DESC`, [L.id]);
+        const un = await pool.query(
+            'SELECT COUNT(*)::int AS c FROM geo_features WHERE layer_id = $1 AND area_name IS NULL', [L.id]);
+        return res.json({ ok: true, indexed: true, area_layer: L.area_layer,
+            indexed_at: L.area_indexed_at, unassigned: un.rows[0].c, areas: r.rows });
+    } catch (e) { return bad(res, 500, String(e.message || e)); }
+});
+
+/* تشغيلُ الفهرسة — الأدمن وحده */
+router.post('/layers/:slug/index-areas', authenticateToken, isAdmin, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await ensureSchema();
+        const boundary = (req.body && req.body.boundary || '').toString().trim();
+        if (!boundary) return bad(res, 400, 'حدّد طبقةَ الحدود (boundary)');
+
+        const lr = await client.query('SELECT id, name_ar FROM geo_layers WHERE slug = $1', [req.params.slug]);
+        if (!lr.rows.length) return bad(res, 404, 'الطبقة غير موجودة');
+        const br = await client.query('SELECT id, name_ar, is_boundary FROM geo_layers WHERE slug = $1', [boundary]);
+        if (!br.rows.length) return bad(res, 404, 'طبقةُ الحدود غير موجودة');
+        if (lr.rows[0].id === br.rows[0].id) return bad(res, 400, 'لا تُفهرَس الطبقةُ بنفسها');
+        if (!br.rows[0].is_boundary) return bad(res, 400, `«${br.rows[0].name_ar}» ليست مُعلَّمةً كطبقةِ حدود`);
+
+        const bn = await client.query(
+            'SELECT COUNT(*)::int AS c FROM geo_features WHERE layer_id = $1 AND name IS NOT NULL', [br.rows[0].id]);
+        if (!bn.rows[0].c) return bad(res, 400, 'طبقةُ الحدود بلا أسماء — صحّح «حقل الاسم» أوّلاً');
+
+        const t0 = Date.now();
+        await client.query('BEGIN');
+        /* تصفيرٌ أوّلاً: إعادةُ الفهرسة بطبقةِ حدودٍ أخرى يجب ألّا تُبقي
+           نسبةً قديمةً لمعلمٍ لم يعد يقع في أيّ منطقة. */
+        await client.query('UPDATE geo_features SET area_id = NULL, area_name = NULL WHERE layer_id = $1 AND area_id IS NOT NULL', [lr.rows[0].id]);
+        /* نقطةُ السطح مرّةً واحدةً في CTE، ثمّ تقاطعٌ على فهرس GiST */
+        const up = await client.query(
+            `WITH rep AS (
+                 SELECT id, ST_PointOnSurface(geom) AS p FROM geo_features WHERE layer_id = $1
+             ), hit AS (
+                 SELECT DISTINCT ON (r.id) r.id, b.id AS bid, b.name AS bname
+                 FROM rep r JOIN geo_features b
+                   ON b.layer_id = $2 AND b.geom && r.p AND ST_Intersects(b.geom, r.p)
+                 ORDER BY r.id, ST_Area(b.geom) ASC
+             )
+             UPDATE geo_features f SET area_id = h.bid, area_name = h.bname
+             FROM hit h WHERE f.id = h.id`,
+            [lr.rows[0].id, br.rows[0].id]);
+
+        await client.query(
+            'UPDATE geo_layers SET area_layer = $1, area_indexed_at = now(), updated_at = now() WHERE id = $2',
+            [boundary, lr.rows[0].id]);
+        await client.query('COMMIT');
+
+        const dist = await client.query(
+            `SELECT area_name AS name, COUNT(*)::int AS count FROM geo_features
+             WHERE layer_id = $1 AND area_name IS NOT NULL
+             GROUP BY area_name ORDER BY count DESC LIMIT 40`, [lr.rows[0].id]);
+        const un = await client.query(
+            'SELECT COUNT(*)::int AS c FROM geo_features WHERE layer_id = $1 AND area_name IS NULL', [lr.rows[0].id]);
+
+        return res.json({ ok: true, matched: up.rowCount, unassigned: un.rows[0].c,
+            areas: dist.rows, area_layer: boundary, elapsed_ms: Date.now() - t0 });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        return bad(res, 500, String(e.message || e));
+    } finally { client.release(); }
+});
+
 router.delete('/layers/:slug', authenticateToken, isAdmin, async (req, res) => {
     try {
         await ensureSchema();
