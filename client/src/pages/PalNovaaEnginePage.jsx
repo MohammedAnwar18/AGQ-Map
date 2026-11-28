@@ -1292,18 +1292,45 @@ export default function PalNovaaEnginePage() {
   })();
   const fmtDocDate = (d) => { try { return new Date(d).toLocaleDateString('ar', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
 
+  /* عرضٌ فقط — لا يمسّ أيّ منطق: زمنٌ نسبيّ مختصر، ومجموعُ معالم الطبقات. */
+  const sinceTxt = (d) => {
+    const ms = Date.now() - new Date(d).getTime();
+    if (!isFinite(ms) || ms < 0) return '';
+    const mi = Math.floor(ms / 60000);
+    if (mi < 1) return 'الآن';
+    if (mi < 60) return `قبل ${mi} دقيقة`;
+    const h = Math.floor(mi / 60);
+    if (h < 24) return `قبل ${h} ساعة`;
+    const dd = Math.floor(h / 24);
+    if (dd < 30) return `قبل ${dd} يوم`;
+    return `قبل ${Math.floor(dd / 30)} شهر`;
+  };
+  const totalFeatures = myDatasets.reduce((a, d) => a + (Number(d.feature_count) || 0), 0);
+  const nfmt = (v) => (Number(v) || 0).toLocaleString('en-US');
+
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl" style={bgColor ? { '--bg': bgColor } : undefined}>
       <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gdb,.gpkg,.kml,.kmz,.gml,.tab,.fgb,.dxf,.dwg" hidden onChange={onFile} />
       <input ref={avatarRef} type="file" accept="image/*" hidden onChange={onAvatar} />
-      <div className={`app ${collapsed ? 'collapsed' : ''}`}>
+      <div className={`app ${collapsed ? 'collapsed' : ''} ${view === 'home' ? 'lite' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
         {drawer && <div className="nav-scrim" onClick={() => setDrawer(false)} />}
         <aside className={`sidebar ${drawer ? 'open' : ''}`}>
           <div className="brand" onClick={() => collapsed && setCollapsed(false)}>
-            <span className="brand-mark"><svg viewBox="0 0 512 512" width="26" height="26"><rect width="512" height="512" rx="112" fill="#E07B39" /><g transform="translate(79.2 89.6) scale(5.2)" fill="none" strokeWidth="5" strokeLinecap="round"><path d="M14 58V6h19a20 20 0 0 1 0 40H14" stroke="#1A0D04" strokeLinejoin="round" /><path d="M23 15.5h10a10.5 10.5 0 0 1 0 21H23" stroke="#1A0D04" /><circle cx="33" cy="26" r="2.8" fill="#1A0D04" stroke="none" /></g></svg></span>
+            <span className="brand-mark">
+              <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+                <defs><linearGradient id="pnMark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#F2A163" /><stop offset=".55" stopColor="#E07B39" /><stop offset="1" stopColor="#C4601F" /></linearGradient></defs>
+                <rect width="32" height="32" rx="9.5" fill="url(#pnMark)" />
+                <circle cx="16" cy="16" r="9.6" fill="none" stroke="#2A1505" strokeOpacity=".26" strokeWidth="1" />
+                <path d="M16 6.1 19.7 16 16 16Z" fill="#FFF6EE" />
+                <path d="M16 6.1 12.3 16 16 16Z" fill="#FFF6EE" fillOpacity=".58" />
+                <path d="M16 25.9 12.3 16 16 16Z" fill="#2A1505" fillOpacity=".8" />
+                <path d="M16 25.9 19.7 16 16 16Z" fill="#2A1505" fillOpacity=".5" />
+                <circle cx="16" cy="16" r="1.55" fill="#FFF6EE" />
+              </svg>
+            </span>
             <div className="brand-name">PalNovaa <span>Engine</span></div>
             <button className="collapse-btn" title="طيّ القائمة" onClick={(e) => { e.stopPropagation(); setCollapsed(true); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
@@ -1311,10 +1338,15 @@ export default function PalNovaaEnginePage() {
           </div>
           <button className="new-btn" onClick={() => { setDrawer(false); newProject(); }}>{Ico.plus}<span>مشروع جديد</span></button>
           <nav className="nav" onClick={() => setDrawer(false)}>
+            <div className="nav-sec">البناء</div>
             <a className={view !== 'workspace' ? 'active' : ''} onClick={() => setView('home')}>{Ico.chat}<span>المحادثات</span></a>
             <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
+
+            <div className="nav-sec">البيانات</div>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/data')} title="يفتح في صفحةٍ مستقلّة أسرع — مشبوكة ببياناتك"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg><span>بناء البيانات</span></a>
+
+            <div className="nav-sec">الحساب</div>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
           </nav>
@@ -1372,10 +1404,16 @@ export default function PalNovaaEnginePage() {
             <section className="home" onMouseMove={onHomeMove}>
               <svg className="contours" ref={contoursRef} preserveAspectRatio="xMidYMid slice" />
               <div className="home-inner">
-                {displayName && <h2 className="hero-greet">{greeting} {displayName}</h2>}
-                <h1 className="hero">ماذا تريد أن تبني اليوم؟</h1>
+                <div className="hm-head">
+                  <div className="hm-eyebrow">{greeting}{displayName ? ` · ${displayName}` : ''}</div>
+                  <h1 className="hero">ماذا نبني اليوم؟</h1>
+                </div>
 
                 <div className="composer">
+                  <div className="cmp-head">
+                    <span className="cmp-file"><i />وصف المشروع</span>
+                    <span className="cmp-state"><i />{balance ? (balance.plan === 'pro' ? 'المحرّك جاهز · Pro' : 'المحرّك جاهز · مجّاني') : 'المحرّك جاهز'}</span>
+                  </div>
                   {(allChips.length > 0 || attachedExts.length > 0) && (
                     <div className="chips">
                       {allChips.map((c) => (
@@ -1391,7 +1429,7 @@ export default function PalNovaaEnginePage() {
                     </div>
                   )}
                   <textarea ref={homeTaRef} value={prompt} maxLength={4000}
-                    placeholder=""
+                    placeholder="صِف التطبيق الذي تريده… مثال: خريطةٌ لمساجد محافظة رام الله والبيرة، مع لوحة إحصاءاتٍ وفلترةٍ بالبلدة وتصدير CSV."
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
@@ -1407,22 +1445,66 @@ export default function PalNovaaEnginePage() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.4 2.4M15.3 15.3l2.4 2.4M17.7 6.3l-2.4 2.4M8.7 15.3l-2.4 2.4" /></svg>
                       {enhancing ? 'يحسّن…' : 'تحسين'}
                     </button>
-                    <button className="send" disabled={!prompt.trim() || busy} title="إرسال" onClick={sendHome}>{Ico.send}</button>
+                    <span className="cmp-count">{prompt.length}/4000 · Enter</span>
+                    <button className="send build" disabled={!prompt.trim() || busy} title="ابنِ التطبيق" onClick={sendHome}>{Ico.send}<span>ابنِ التطبيق</span></button>
                   </div>
                 </div>
-                <div className="composer-foot"><span>Enter للإرسال · Shift+Enter لسطر جديد{prompt.length > 0 ? ` · ${prompt.length}/4000` : ''}</span><span>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : 'Leaflet · Turf · Chart.js · Papa Parse'}</span></div>
+                {/* القوالبُ كانت مُحمَّلةً بلا واجهة — هنا تظهر، وضغطُها يملأ الوصف فقط. */}
+                {templates.length > 0 && (
+                  <div className="tpl-row">
+                    <span className="tpl-lbl">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="9" height="7" rx="1.5" /><rect x="16" y="14" width="5" height="7" rx="1.5" /></svg>
+                      <span>ابدأ من قالب</span>
+                    </span>
+                    {templates.slice(0, 6).map((t) => (
+                      <button className="tpl-chip" key={t.id} title={t.desc} onClick={() => { setPrompt(t.prompt); homeTaRef.current?.focus(); }}>
+                        {TICONS[t.id] ? <span className="tpl-ic">{TICONS[t.id]}</span> : null}
+                        <span>{t.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                <div className="block-title"><h3>بياناتك{myDatasets.length > 0 && <span className="bt-count">{myDatasets.length}</span>}</h3><a onClick={() => fileRef.current?.click()}>رفع ملفّ</a></div>
-                <div className="sources">
-                  {myDatasets.map((d) => (
-                    <div className="source" key={d.slug}>
-                      <span className="s-ic">{dsIcon(d.kind)}</span>
-                      <span className="s-txt" title="أضِفها كمصدرٍ للبناء" onClick={() => attachDataset(d)}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
-                      <button className="s-act" title="معاينة على الخريطة" onClick={() => openExplorer(d)}>{Ico.eye}</button>
-                      <button className="s-act danger" title="حذف الطبقة" onClick={() => removeDataset(d)}>{Ico.trash}</button>
+                <div className="hm-stats">
+                  <div className="hm-stat"><div className="hs-top"><span>المشاريع</span>{Ico.folder}</div><b>{nfmt(projects.length)}</b></div>
+                  <div className="hm-stat"><div className="hs-top"><span>الطبقات</span>{Ico.db}</div><b>{nfmt(myDatasets.length)}</b></div>
+                  <div className="hm-stat"><div className="hs-top"><span>المعالم</span>{Ico.mapIco}</div><b>{nfmt(totalFeatures)}</b></div>
+                  <div className="hm-stat">
+                    <div className="hs-top"><span>الخطّة</span>{Ico.cube}</div>
+                    <b className="hs-plan">{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : '—'}</b>
+                    {tokMeter && !tokMeter.pro && <span className="hs-meter" title={`استُهلك ${nfmt(tokMeter.used)} من ${nfmt(FREE_TOKENS)} توكن`}><i style={{ width: `${Math.max(3, Math.round(tokMeter.frac * 100))}%` }} /></span>}
+                  </div>
+                </div>
+
+                <div className="hm-cols">
+                  <section className="hm-col">
+                    <div className="block-title"><h3>آخر المشاريع{projects.length > 0 && <span className="bt-count">{projects.length}</span>}</h3><a onClick={() => newProject()}>مشروع جديد</a></div>
+                    <div className="hm-list">
+                      {projects.slice(0, 5).map((p) => (
+                        <div className="hm-proj" key={p.slug} title={p.title} onClick={() => openProject(p)}>
+                          <span className="hp-bar" />
+                          <span className="hp-txt"><b>{p.title}</b><small>{sinceTxt(p.updated_at)}</small></span>
+                          <span className="hp-go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7" /></svg></span>
+                        </div>
+                      ))}
+                      {projects.length === 0 && <div className="hm-empty">لا مشاريع بعد — اكتب وصفك بالأعلى واضغط «ابنِ التطبيق».</div>}
                     </div>
-                  ))}
-                  {myDatasets.length === 0 && <div style={{ gridColumn: '1/-1', padding: '14px 4px', color: 'var(--faint)', fontSize: 13 }}>لا طبقات محفوظة بعد — أضِف مصادرك من زرّ «البيانات» بالأعلى، وتُخزَّن هنا.</div>}
+                  </section>
+
+                  <section className="hm-col">
+                    <div className="block-title"><h3>بياناتك{myDatasets.length > 0 && <span className="bt-count">{myDatasets.length}</span>}</h3><a onClick={() => fileRef.current?.click()}>رفع ملفّ</a></div>
+                    <div className="sources">
+                      {myDatasets.map((d) => (
+                        <div className="source" key={d.slug}>
+                          <span className="s-ic">{dsIcon(d.kind)}</span>
+                          <span className="s-txt" title="أضِفها كمصدرٍ للبناء" onClick={() => attachDataset(d)}><b>{d.name}</b><small>{dsMeta(d)}</small></span>
+                          <button className="s-act" title="معاينة على الخريطة" onClick={() => openExplorer(d)}>{Ico.eye}</button>
+                          <button className="s-act danger" title="حذف الطبقة" onClick={() => removeDataset(d)}>{Ico.trash}</button>
+                        </div>
+                      ))}
+                      {myDatasets.length === 0 && <div className="hm-empty">لا طبقات محفوظة بعد — أضِف مصادرك من زرّ «البيانات»، وتُخزَّن هنا.</div>}
+                    </div>
+                  </section>
                 </div>
               </div>
             </section>
