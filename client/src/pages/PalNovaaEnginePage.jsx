@@ -239,6 +239,8 @@ export default function PalNovaaEnginePage() {
 
   const [templates, setTemplates] = useState([]);
   const [dragOver, setDragOver] = useState(false);   // مكتبة البيانات: إبرازُ منطقة الإفلات
+  const [docSec, setDocSec] = useState('overview');  // المستندات: القسمُ المقروء
+  const docsScrollRef = useRef(null);
   const loadProjects = useCallback(() => { jget('/engine/projects').then((d) => { if (d?.ok) setProjects(d.projects || []); }).catch(() => {}); }, []);
   const loadDatasets = useCallback(() => { jget('/engine/datasets').then((d) => { if (d?.ok) setMyDatasets(d.datasets || []); }).catch(() => {}); }, []);
   const loadBalance = useCallback(() => { jget('/engine/balance').then((d) => { if (d?.ok) setBalance(d.balance); }).catch(() => {}); }, []);
@@ -1318,6 +1320,110 @@ export default function PalNovaaEnginePage() {
   const totalBytes = myDatasets.reduce((a, d) => a + (Number(d.meta && d.meta.bytes) || 0), 0);
   const nfmt = (v) => (Number(v) || 0).toLocaleString('en-US');
 
+  /* ───────── محتوى المستندات ─────────
+     كلُّ رقمٍ وصيغةٍ هنا مأخوذةٌ من سلوك المحرّك الفعليّ، لا من تصوّرٍ عنه. */
+  const DOC_SECS = [
+    { id: 'overview', t: 'نظرة عامّة', body: (<>
+      <p>محرّك بالنوفا يبني تطبيقات نُظُم معلوماتٍ جغرافيّةٍ كاملةً من وصفٍ تكتبه بالعربيّة: ملفّاتٌ حقيقيّةٌ (HTML وCSS وJavaScript) تُعرَض وهي تُكتَب، ومعاينةٌ حيّةٌ تتجمّع تدريجيّاً، ونُسَخٌ محفوظةٌ لكلّ تعديل، ونشرٌ بضغطةٍ واحدة.</p>
+      <p>التطبيقاتُ المولَّدة تقوم على <b>Leaflet</b> للخرائط، و<b>Turf</b> للتحليل المكانيّ، و<b>Chart.js</b> للمخطّطات، و<b>Papa&nbsp;Parse</b> لقراءة CSV. أمّا البياناتُ الجغرافيّة فمصدرُها إمّا مكتبةُ بالنوفا المركزيّة، وإمّا ملفّاتُك التي ترفعها.</p>
+    </>) },
+
+    { id: 'workflow', t: 'سيرُ العمل', body: (<>
+      <ol>
+        <li>تكتب وصفاً في مساحة البدء، وتختار <b>نوع المُخرَج</b> (تطبيق ويب · لوحة مؤشّرات · أداة تحليل · خريطة قصّة) و<b>نظام الإسناد</b>.</li>
+        <li>قبل التوليد تُستعلَم المكتبةُ المركزيّة: أيّ طبقاتٍ تناسب طلبك، وأيّ منطقةٍ ذُكرت فيه. تُحقَن <b>أوصافُ الطبقات وروابطُ جلبها</b> في التعليمات — لا البياناتُ نفسها.</li>
+        <li>يمرّ البناء بستّ مراحلَ معروضةٍ لحظةً بلحظة: التخطيط، المهارات، التصميم، الكود، الاختبار، المعاينة.</li>
+        <li>كلُّ طلبِ تعديلٍ لاحقٍ يُحفَظ كنسخةٍ يمكن الرجوع إليها من قائمة النُّسَخ.</li>
+        <li>«نشرُ التطبيق» يرفعه على رابطٍ عامٍّ خاصٍّ به.</li>
+      </ol>
+    </>) },
+
+    { id: 'models', t: 'النماذج وتوزيعُ العمل', body: (<>
+      <p>العملُ موزّعٌ بين نموذجين، كلٌّ في ما يتفوّق فيه:</p>
+      <ul>
+        <li><b>Claude</b> — التفكيرُ والتخطيطُ وموجزُ التصميم. مُخرجاتٌ قصيرةٌ كثيفةُ الحُكم، وهنا تظهر جودتُه وكلفتُها زهيدةٌ لقِصَرها.</li>
+        <li><b>Gemini</b> — كتابةُ الكود وتحسينُ الوصف. مُخرجاتٌ طويلة، وهو أسرعُ لكلّ رمزٍ وعنده سقفُ إخراجٍ أعلى ومسارُ بثٍّ حقيقيّ.</li>
+      </ul>
+      <p>ينتقل الحُكمُ من الأوّل إلى الثاني عبر المخطّط وموجز التصميم، فتُجمَع جودةُ الأوّل وسرعةُ الثاني. وإن غاب أحدُ المفتاحين تدرّج العملُ كلُّه إلى الآخر دون توقّف.</p>
+    </>) },
+
+    { id: 'diff', t: 'التعديلات التفاضليّة', body: (<>
+      <p>حين تطلب تعديلاً على تطبيقٍ مبنيٍّ لا يُعاد توليدُه من الصفر. يُخرج النموذج كتلَ <code>SEARCH/REPLACE</code> فقط، فتُطبَّق على الخادم بمطابقةٍ حرفيّةٍ أوّلاً، ثمّ بمطابقةٍ متسامحةٍ مع فروق المسافات إن لزم.</p>
+      <p>الكتلُ مستقلّةٌ: نجاحُ بعضها لا يتوقّف على بعضها الآخر. وإن فشلت كلُّها، <b>يبقى الملفّ كما هو تماماً</b> وتُخبَر بأنّ التعديل لم يُطبَّق — فأسوأُ الحالات «لم يتغيّر شيء» لا «ضاع كلُّ شيء».</p>
+      <p>الأثرُ العمليّ: تعديلٌ موضعيٌّ يكلّف مئاتِ الرموز بدل آلافٍ، وينتهي في ثوانٍ بدل دقيقة.</p>
+    </>) },
+
+    { id: 'library', t: 'مكتبةُ البيانات المركزيّة', body: (<>
+      <p>طبقاتٌ جغرافيّةٌ حقيقيّةٌ مهاجرةٌ إلى قاعدة PostGIS، تُستعلَم بالاسم العربيّ. الواجهةُ مفتوحةٌ بلا مفاتيح وتدعم CORS، وتُعيد GeoJSON مباشرةً.</p>
+      <ul>
+        <li><b>القصُّ بالمنطقة</b> — «مساجد محافظة رام الله» تُعيد المساجدَ الواقعةَ داخل حدود المحافظة وحدها، لا كلَّ المساجد.</li>
+        <li><b>التصفيةُ بالخصائص</b> وبمستطيلٍ جغرافيّ.</li>
+        <li><b>البلاطاتُ المتّجهة</b> للطبقات الضخمة بدل جلبها كاملةً.</li>
+      </ul>
+      <p>التطبيقُ المولَّد يجلب بياناته بنفسه وقتَ التشغيل. لذلك لا تدخل البياناتُ في التعليمات، وتبقى الكلفةُ ثابتةً مهما كبرت الطبقة. وإن لم تُغطِّ المكتبةُ ما طلبتَه، يُصرَّح بذلك في الواجهة ولا تُختلَق بياناتٌ جغرافيّة.</p>
+    </>) },
+
+    { id: 'formats', t: 'صيغُ البيانات', body: (<>
+      <p>تُقرَأ هذه الصيغ وتُحوَّل إلى GeoJSON <b>داخل المتصفّح</b> قبل الرفع، فلا تنتظر الخادم:</p>
+      <ul>
+        <li><b>متّجه:</b> GeoJSON · JSON · CSV (بأعمدة إحداثيّات) · KML و KMZ · Shapefile مضغوط · GeoPackage · File Geodatabase · GML · MapInfo TAB · FlatGeobuf · AutoCAD DXF</li>
+        <li><b>راستر:</b> GeoTIFF / COG</li>
+        <li><b>خدماتٌ حيّة:</b> ArcGIS REST و WMS و PostGIS</li>
+      </ul>
+    </>) },
+
+    { id: 'storage', t: 'الرفعُ والتخزين', body: (<>
+      <p>الحدُّ لكلّ ملفّ: <b>40MB</b> للطبقات المتّجهة، و<b>500MB</b> لصور GeoTIFF التي تُرفَع مباشرةً إلى التخزين الكائنيّ دون المرور بالخادم. لا سقفَ على مجموع مساحة عملك.</p>
+      <p>الطبقاتُ التي تتجاوز حدّاً معيّناً تُقطَّع إلى بلاطاتٍ متّجهةٍ تلقائيّاً، فتُعرَض بسلاسةٍ مهما كثُرت معالمُها. كلُّ ما ترفعه يظهر في <b>مكتبة البيانات</b> حيث تُعاينه وتُنزّله وتُرفقه بأيّ مشروع.</p>
+    </>) },
+
+    { id: 'publish', t: 'النشر', body: (<>
+      <p>«حفظ» يُثبّت المشروع ويسجّل نسخةً. «نشرُ التطبيق» يجعله متاحاً على رابطٍ عامٍّ خاصٍّ به يمكنك مشاركتُه مباشرةً.</p>
+      <p>كلُّ نشرةٍ تُسجَّل، ويمكنك العودةُ إلى أيّ نسخةٍ سابقةٍ من قائمة النُّسَخ في الشريط العلويّ، أو نسخُ المشروع كاملاً لتجريب اتّجاهٍ آخرَ دون المساس بالأصل.</p>
+    </>) },
+
+    { id: 'security', t: 'نموذجُ الأمان', body: (<>
+      <ul>
+        <li><b>مفاتيحُ النماذج على الخادم وحده.</b> لا مفتاحَ في المتصفّح ولا في التخزين المحلّيّ.</li>
+        <li><b>بياناتُ اعتماد قواعد البيانات لا تُخزَّن ولا تُرسَل إلى النموذج</b> — تُستعمَل للاتّصال وحسب.</li>
+        <li><b>كلُّ مشروعٍ معزولٌ بمالكه.</b> المشاريعُ والطبقاتُ مرتبطةٌ بحسابك ولا تظهر لغيرك.</li>
+      </ul>
+    </>) },
+
+    { id: 'crs', t: 'الإسنادُ والخرائطُ الأساسيّة', body: (<>
+      <p>أنظمةُ الإسناد المتاحة:</p>
+      <ul>
+        <li><code>EPSG:4326</code> — الإحداثيّات الجغرافيّة (الافتراضيّ)</li>
+        <li><code>EPSG:3857</code> — مِرْكاتور الكرويّ، إسنادُ خرائط الويب</li>
+        <li><code>EPSG:28191</code> — فلسطين 1923 / شبكة القدس</li>
+        <li><code>EPSG:32636</code> — UTM المنطقة 36 شمال</li>
+      </ul>
+      <p>والخرائطُ الأساسيّة: OpenStreetMap، وصورُ Esri العالميّة، وصورُ Google الفضائيّة. حقوقُ كلِّ مصدرٍ تظهر على الخريطة تلقائيّاً.</p>
+    </>) },
+
+    { id: 'quota', t: 'الحصّةُ والخطط', body: (<>
+      <p>الخطّةُ المجّانيّة تمنحك <b>{nfmt(FREE_TOKENS)} رمزٍ</b> لكلّ دورة، وتكفي لبناء عدّة تطبيقاتٍ مرتّبة. ترى ما استُهلك منها في صفحة <b>الإعدادات</b> وفي مؤشّرات مساحة البدء.</p>
+      <p>خطّةُ <b>Pro</b> بـ<b>$5</b> تفتح حصّةً أكبر. التفاصيلُ والترقيةُ في صفحة الأسعار.</p>
+    </>) },
+  ];
+
+  const goDoc = (id) => {
+    setDocSec(id);
+    const sc = docsScrollRef.current, el = document.getElementById('doc-' + id);
+    if (sc && el) sc.scrollTo({ top: sc.scrollTop + el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 14, behavior: 'smooth' });
+  };
+  const onDocsScroll = () => {
+    const sc = docsScrollRef.current; if (!sc) return;
+    const top = sc.getBoundingClientRect().top + 90;
+    let cur = DOC_SECS[0].id;
+    for (const d of DOC_SECS) { const el = document.getElementById('doc-' + d.id); if (el && el.getBoundingClientRect().top <= top) cur = d.id; }
+    setDocSec((p) => (p === cur ? p : cur));
+  };
+
+  /* الصفحاتُ ذاتُ الوجه الفاتح، وعناوينُها في شريط الفتات. */
+  const LIGHT_VIEWS = new Set(['home', 'data', 'settings', 'docs']);
+  const PAGE_TITLES = { data: 'مكتبة البيانات', settings: 'الإعدادات', docs: 'المستندات' };
+
   /* أيقوناتُ اللوح الجانبيّ — مسارات lucide الأصليّة بمقاس 16 وسماكة 2
      وأطرافٍ مستديرة، كما في المرجع تماماً. منفصلةٌ عن Ico المشتركة عمداً. */
   const NAVI = (() => {
@@ -1349,7 +1455,7 @@ export default function PalNovaaEnginePage() {
     <div className="pne-root" dir="rtl" style={bgColor ? { '--bg': bgColor } : undefined}>
       <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gdb,.gpkg,.kml,.kmz,.gml,.tab,.fgb,.dxf,.dwg" hidden onChange={onFile} />
       <input ref={avatarRef} type="file" accept="image/*" hidden onChange={onAvatar} />
-      <div className={`app ${collapsed ? 'collapsed' : ''} ${view === 'home' || view === 'data' || view === 'settings' ? 'lite' : ''}`}>
+      <div className={`app ${collapsed ? 'collapsed' : ''} ${LIGHT_VIEWS.has(view) ? 'lite' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
         {drawer && <div className="nav-scrim" onClick={() => setDrawer(false)} />}
@@ -1382,12 +1488,12 @@ export default function PalNovaaEnginePage() {
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{NAVI.map}<span>معاينة البيانات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/data')} title="يفتح في صفحةٍ مستقلّة أسرع — مشبوكة ببياناتك">{NAVI.layers}<span>بناء البيانات</span></a>
 
-            <div className="nav-sec">الحساب</div>
+            <div className="nav-sec">السعر</div>
             <a onClick={() => navigate('/palnovaa-engine/pricing')}>{NAVI.dollar}<span>الأسعار والترقية</span></a>
             {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{NAVI.card}<span>إدارة الدفع</span></a>}
 
             <div className="nav-sec">المرجع</div>
-            <a onClick={openDocsCenter}>{NAVI.book}<span>المستندات</span></a>
+            <a className={view === 'docs' ? 'active' : ''} onClick={() => { setDrawer(false); setView('docs'); }}>{NAVI.book}<span>المستندات</span></a>
             <a className={view === 'settings' ? 'active' : ''} onClick={openSettings}>{NAVI.gear}<span>الإعدادات</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
@@ -1418,13 +1524,13 @@ export default function PalNovaaEnginePage() {
             <button className="icon-btn nav-toggle" title="القائمة" onClick={() => { setCollapsed(false); setDrawer(true); }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
             </button>
-            {(view === 'data' || view === 'settings') && (
+            {view !== 'home' && view !== 'workspace' && (
               <div className="crumbs">
                 <span className="crumb-home" onClick={() => setView('home')}>مساحة العمل</span>
-                <span className="sep">/</span><b className="crumb-flat">{view === 'data' ? 'مكتبة البيانات' : 'الإعدادات'}</b>
+                <span className="sep">/</span><b className="crumb-flat">{PAGE_TITLES[view] || ''}</b>
               </div>
             )}
-            {view !== 'data' && view !== 'settings' && (<>
+            {(view === 'home' || view === 'workspace') && (<>
             <div className="crumbs">
               <span className="crumb-home" onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span>
               <span className="sep">/</span>
@@ -1688,7 +1794,7 @@ export default function PalNovaaEnginePage() {
                       {BG_PRESETS.map((b) => (
                         <button key={b.n} className={`sp-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
                           <span className="sp-tile" style={{ background: b.c }}>{(bgColor || '') === b.k && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}</span>
-                          <small>{b.n}</small>
+                          <small>{b.n}</small><em className="sp-hex">{b.c}</em>
                         </button>
                       ))}
                     </div>
@@ -1698,6 +1804,31 @@ export default function PalNovaaEnginePage() {
                     </label>
                   </div>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {/* ===== المستندات ===== */}
+          {view === 'docs' && (
+            <section className="docspage" ref={docsScrollRef} onScroll={onDocsScroll}>
+              <div className="dp-inner">
+                <nav className="dp-toc">
+                  {DOC_SECS.map((d) => (
+                    <button key={d.id} className={docSec === d.id ? 'on' : ''} onClick={() => goDoc(d.id)}>{d.t}</button>
+                  ))}
+                </nav>
+                <article className="dp-body">
+                  <div className="hm-eyebrow">المرجع</div>
+                  <h1 className="dl-title">المستندات</h1>
+                  <p className="dl-sub">كيف يعمل محرّك بالنوفا اليوم: ما يفعله، وما يخزّنه، وما لا يفعله بعد.</p>
+                  <div className="dp-rule" />
+                  {DOC_SECS.map((d) => (
+                    <section className="dp-sec" id={'doc-' + d.id} key={d.id}>
+                      <h2>{d.t}</h2>
+                      {d.body}
+                    </section>
+                  ))}
+                </article>
               </div>
             </section>
           )}
@@ -2167,7 +2298,7 @@ export default function PalNovaaEnginePage() {
 
       {/* ============ MENUS ============ */}
       {menu && (
-        <div className="menu" style={{ top: menu.top, bottom: menu.bottom, left: menu.left, maxHeight: menu.maxH }}>
+        <div className={`menu ${LIGHT_VIEWS.has(view) ? 'lite' : ''}`} style={{ top: menu.top, bottom: menu.bottom, left: menu.left, maxHeight: menu.maxH }}>
           {menu.name === 'attach' && (<>
             <h6>رفع بياناتك</h6>
             <button className="menu-item" onClick={() => { setMenu(null); fileRef.current?.click(); }}><span className="mi-ic">UP</span><span><b>رفع ملفّ بيانات</b><small>GeoJSON·CSV·Shapefile·GeoPackage·GeoTIFF·AutoCAD DXF</small></span></button>

@@ -1135,9 +1135,13 @@
    =========================================================================== */
 
 /* ───────────────────────── القائمة الجانبيّة ───────────────────────── */
+/* ألوانُ اللوح = رموزُ المنصّة نفسُها، لا لوحٌ مستقلّ.
+   المرجعُ كان مائلاً إلى الأزرق (#1C2127 فيه +11 أزرقَ فوق الأحمر) فظهر
+   كُحليّاً بجانب الوجه الداكن للمحرّك. هذه القيمُ هي surface/panel/line
+   حرفيّاً، فيتّسق اللوحُ مع مساحة العمل والمعاينة بلا انحرافِ لون. */
 .pne-root{
-  --sb:#1C2127; --sb-deep:#191D23; --sb-line:#282F3A;
-  --sb-hover:#222832; --sb-act:#282F3A; --sb-txt:#9AA4B2; --sb-mut:#717B8C;
+  --sb:var(--surface); --sb-deep:var(--panel); --sb-line:var(--line);
+  --sb-hover:var(--surface-2); --sb-act:#23272D; --sb-txt:var(--text-2); --sb-mut:var(--muted);
 }
 /* شبكةٌ خرائطيّةٌ خافتةٌ على اللوح — الملمسُ نفسُه الذي في المرجع */
 .pne-root .sidebar{
@@ -1149,7 +1153,7 @@
 }
 .pne-root .app{grid-template-columns:240px 1fr}
 
-.pne-root .brand{height:56px;padding:0 16px;gap:10px;border-bottom:1px solid rgba(40,47,58,.8);flex:none}
+.pne-root .brand{height:56px;padding:0 16px;gap:10px;border-bottom:1px solid var(--sb-line);flex:none}
 .pne-root .brand-mark{width:26px;height:26px;border-radius:8px}
 .pne-root .brand-mark svg{width:26px;height:26px;border-radius:8px}
 .pne-root .brand-name{font-size:17px;font-weight:600;color:#fff;letter-spacing:-.25px}
@@ -1192,8 +1196,8 @@
 .pne-root .history .hist-item:hover{background:var(--sb-hover);color:#fff}
 .pne-root .history .hist-item.active{background:var(--sb-act);color:#fff}
 
-.pne-root .side-foot{border-top:1px solid rgba(40,47,58,.8);background:var(--sb-deep);padding:12px}
-.pne-root .side-foot:hover{background:#1C2127}
+.pne-root .side-foot{border-top:1px solid var(--sb-line);background:var(--sb-deep);padding:12px}
+.pne-root .side-foot:hover{background:var(--sb)}
 .pne-root .side-foot .avatar{
   width:32px;height:32px;border-radius:4px;background:var(--accent);color:#fff;
   font-size:12px;font-weight:600;letter-spacing:.5px;flex:none;
@@ -1552,11 +1556,20 @@
 .pne-root .sp-track i.hot{background:linear-gradient(90deg,#D9534F,#E0804B)}
 .pne-root .sp-note{margin:12px 0 0;font-size:13px;line-height:1.8;color:var(--lt-mut)}
 
-.pne-root .sp-swatches{display:flex;flex-wrap:wrap;gap:12px}
+.pne-root .sp-swatches{display:flex;flex-wrap:wrap;gap:14px}
 .pne-root .sp-swatch{display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;
   background:none;border:0;padding:0}
-.pne-root .sp-tile{width:52px;height:38px;border-radius:7px;display:grid;place-items:center;
-  border:1px solid var(--lt-line-2);transition:box-shadow .14s,border-color .14s}
+/* كلُّ السوابق داكنةٌ جدّاً، فعلى بطاقةٍ بيضاءَ تبدو ثمانيَ مربّعاتٍ سوداء.
+   تدرّجٌ أبيضُ شفّافٌ فوق اللون يكشف الدرجةَ الحقيقيّة دون تزييفها،
+   والبلاطةُ أكبرُ والسداسيُّ مكتوبٌ تحتها ليُحسَم أيُّ التباس. */
+.pne-root .sp-tile{position:relative;width:66px;height:46px;border-radius:8px;display:grid;place-items:center;
+  border:1px solid var(--lt-line-2);overflow:hidden;transition:box-shadow .14s,border-color .14s}
+.pne-root .sp-tile::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,transparent 38%,rgba(255,255,255,.46));}
+.pne-root .sp-tile svg{position:relative;z-index:1}
+.pne-root .sp-hex{display:block;font-family:var(--mono);font-size:9.5px;color:var(--lt-faint);
+  direction:ltr;letter-spacing:.02em;margin-top:1px}
+.pne-root .sp-swatch.on .sp-hex{color:var(--lt-accent)}
 .pne-root .sp-swatch:hover .sp-tile{border-color:var(--lt-mut)}
 .pne-root .sp-swatch.on .sp-tile{border-color:var(--accent);box-shadow:0 0 0 2.5px rgba(224,123,57,.26)}
 .pne-root .sp-swatch small{font-size:11.5px;color:var(--lt-mut)}
@@ -1577,6 +1590,54 @@
   .pne-root .sp-card{padding:16px}
   .pne-root .sp-cardfoot{flex-direction:column;align-items:stretch}
   .pne-root .sp-save{justify-content:center}
+}
+
+/* ───────── القوائمُ المنبثقة فوق صفحةٍ فاتحة ─────────
+   القوائمُ تُرسَم خارج .app فلا يصلها .lite — فتُوسَم من الحالة مباشرةً. */
+.pne-root .menu.lite{background:#FFFFFF;border-color:#D5D0C5;
+  box-shadow:0 2px 6px rgba(28,34,43,.06),0 18px 46px -18px rgba(28,34,43,.34)}
+.pne-root .menu.lite h6{color:#8D96A5}
+.pne-root .menu.lite .menu-item{color:#49515C}
+.pne-root .menu.lite .menu-item:hover{background:#F2F0ED}
+.pne-root .menu.lite .menu-item b{color:#1C222B}
+.pne-root .menu.lite .menu-item small{color:#8D96A5}
+.pne-root .menu.lite .menu-item .mi-ic{background:#F7F6F2;border-color:#E4E0D7;color:#49515C}
+.pne-root .menu.lite .menu-item.sel{background:rgba(224,123,57,.09)}
+.pne-root .menu.lite .menu-item.sel b{color:#C2661F}
+
+/* ───────────────────── المستندات ───────────────────── */
+.pne-root .docspage{flex:1;overflow-y:auto;position:relative;z-index:2}
+.pne-root .dp-inner{max-width:1180px;margin:0 auto;padding:40px 32px 90px;
+  display:grid;grid-template-columns:230px 1fr;gap:44px;align-items:start}
+
+.pne-root .dp-toc{position:sticky;top:24px;display:flex;flex-direction:column;gap:2px}
+.pne-root .dp-toc button{text-align:start;padding:8px 13px;border-radius:7px;border:0;background:none;
+  color:var(--lt-text-2);font-size:13.5px;font-family:var(--sans);cursor:pointer;
+  transition:background .13s,color .13s}
+.pne-root .dp-toc button:hover{background:rgba(28,34,43,.05);color:var(--lt-text)}
+.pne-root .dp-toc button.on{background:rgba(224,123,57,.13);color:var(--lt-accent);font-weight:600}
+
+.pne-root .dp-body{min-width:0}
+.pne-root .dp-body .dl-title{margin:2px 0 8px}
+.pne-root .dp-rule{height:1px;background:var(--lt-line);margin:26px 0 8px}
+.pne-root .dp-sec{padding-top:30px;scroll-margin-top:20px}
+.pne-root .dp-sec h2{font-size:21px;font-weight:700;color:var(--lt-text);letter-spacing:-.25px;margin:0 0 14px}
+.pne-root .dp-sec p{margin:0 0 14px;color:var(--lt-text-2);font-size:14.5px;line-height:1.95;max-width:70ch}
+.pne-root .dp-sec p:last-child,.pne-root .dp-sec ul:last-child,.pne-root .dp-sec ol:last-child{margin-bottom:0}
+.pne-root .dp-sec b{color:var(--lt-text);font-weight:600}
+.pne-root .dp-sec ul,.pne-root .dp-sec ol{margin:0 0 14px;padding-inline-start:22px;max-width:70ch}
+.pne-root .dp-sec li{color:var(--lt-text-2);font-size:14.5px;line-height:1.95;margin-bottom:8px}
+.pne-root .dp-sec li::marker{color:var(--accent)}
+.pne-root .dp-sec ol{list-style:decimal}
+.pne-root .dp-sec code{font-family:var(--mono);font-size:12.5px;background:#F2F0ED;border:1px solid var(--lt-line);
+  border-radius:5px;padding:1px 6px;color:var(--lt-accent);direction:ltr;display:inline-block}
+
+@media (max-width:900px){
+  .pne-root .dp-inner{grid-template-columns:1fr;gap:18px;padding:26px 16px 70px}
+  .pne-root .dp-toc{position:static;flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:6px;
+    border-bottom:1px solid var(--lt-line)}
+  .pne-root .dp-toc button{white-space:nowrap;flex:none;font-size:13px}
+  .pne-root .dp-sec h2{font-size:18px}
 }
 
 /* ───────────────────────── الجوّال ───────────────────────── */
