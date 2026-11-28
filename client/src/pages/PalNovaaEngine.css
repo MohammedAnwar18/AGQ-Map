@@ -1136,40 +1136,45 @@
 
 /* ───────────────────────── القائمة الجانبيّة ───────────────────────── */
 .pne-root{
-  --sb:#171B21; --sb-deep:#12161B; --sb-line:#252C35;
-  --sb-hover:#1E242C; --sb-act:#272F3A; --sb-txt:#9AA4B2; --sb-mut:#6E7886;
+  --sb:#1C2127; --sb-deep:#191D23; --sb-line:#282F3A;
+  --sb-hover:#222832; --sb-act:#282F3A; --sb-txt:#9AA4B2; --sb-mut:#717B8C;
 }
-.pne-root .sidebar{background:var(--sb);border-left:1px solid var(--sb-line)}
+/* شبكةٌ خرائطيّةٌ خافتةٌ على اللوح — الملمسُ نفسُه الذي في المرجع */
+.pne-root .sidebar{
+  background-color:var(--sb);border-left:1px solid var(--sb-line);
+  background-image:
+    linear-gradient(to right,rgba(255,255,255,.03) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+.pne-root .app{grid-template-columns:240px 1fr}
 
-.pne-root .brand{height:58px;padding:0 15px;gap:11px;border-bottom:1px solid var(--sb-line);flex:none}
-.pne-root .brand-mark{width:28px;height:28px;border-radius:9px;box-shadow:0 3px 10px -3px rgba(224,123,57,.55)}
-.pne-root .brand-mark svg{border-radius:9px}
-.pne-root .brand-name{font-size:15.5px;font-weight:600;color:#fff;letter-spacing:-.1px}
+.pne-root .brand{height:56px;padding:0 16px;gap:10px;border-bottom:1px solid rgba(40,47,58,.8);flex:none}
+.pne-root .brand-mark{width:26px;height:26px;border-radius:8px}
+.pne-root .brand-mark svg{width:26px;height:26px;border-radius:8px}
+.pne-root .brand-name{font-size:17px;font-weight:600;color:#fff;letter-spacing:-.25px}
 .pne-root .brand-name span{color:var(--sb-mut);font-weight:400}
 .pne-root .collapse-btn{color:var(--sb-mut)}
 .pne-root .collapse-btn:hover{color:#fff}
 
-.pne-root .new-btn{
-  margin:12px 12px 4px;height:36px;border-radius:8px;
-  background:rgba(224,123,57,.11);border:1px solid rgba(224,123,57,.34);
-  color:var(--accent-2);font-weight:500;font-size:13.5px;
-  transition:background .15s,border-color .15s;
-}
-.pne-root .new-btn:hover{background:rgba(224,123,57,.19);border-color:rgba(224,123,57,.55)}
-.pne-root .new-btn svg{color:var(--accent-2)}
-
 /* عناوينُ الأقسام: أحاديّةُ العرض ومُتباعدةُ الحروف — تفصل دون أن تُزاحم */
 .pne-root .nav-sec,.pne-root .side-section{
-  padding:16px 14px 6px;font-family:var(--mono);font-size:10px;font-weight:500;
-  letter-spacing:.17em;color:var(--sb-mut);white-space:nowrap;
+  padding:20px 12px 6px;font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:.16em;color:var(--sb-mut);white-space:nowrap;
 }
-.pne-root .nav-sec:first-child{padding-top:10px}
+.pne-root .nav-sec:first-child{padding-top:8px}
 
-.pne-root .nav{padding:0 9px 4px}
+.pne-root .nav{padding:12px 12px 4px;display:flex;flex-direction:column;gap:2px}
 .pne-root .nav a{
-  position:relative;gap:11px;padding:8px 11px;border-radius:7px;
+  position:relative;gap:12px;padding:8px 12px;border-radius:6px;
   font-size:13.5px;color:var(--sb-txt);transition:background .13s,color .13s;
 }
+.pne-root .nav a svg{width:16px;height:16px}
+/* بندُ إضافةٍ: برتقاليٌّ هادئٌ يميّز الفعل دون كسر إيقاع الصفوف */
+.pne-root .nav a.nav-lead{color:var(--accent-2)}
+.pne-root .nav a.nav-lead svg{color:var(--accent)}
+.pne-root .nav a.nav-lead:hover{background:rgba(224,123,57,.12);color:var(--accent-2)}
+.pne-root .nav a.nav-lead:hover svg{color:var(--accent-2)}
 .pne-root .nav a:hover{background:var(--sb-hover);color:#fff}
 .pne-root .nav a:hover svg{color:#fff}
 .pne-root .nav a.active{background:var(--sb-act);color:#fff;font-weight:500}
@@ -1187,11 +1192,15 @@
 .pne-root .history .hist-item:hover{background:var(--sb-hover);color:#fff}
 .pne-root .history .hist-item.active{background:var(--sb-act);color:#fff}
 
-.pne-root .side-foot{border-top:1px solid var(--sb-line);background:var(--sb-deep)}
-.pne-root .side-foot:hover{background:#161B21}
-.pne-root .side-foot .avatar{border-radius:7px}
-.pne-root .side-foot .who b{color:#fff}
-.pne-root .side-foot .who small{color:var(--sb-mut)}
+.pne-root .side-foot{border-top:1px solid rgba(40,47,58,.8);background:var(--sb-deep);padding:12px}
+.pne-root .side-foot:hover{background:#1C2127}
+.pne-root .side-foot .avatar{
+  width:32px;height:32px;border-radius:4px;background:var(--accent);color:#fff;
+  font-size:12px;font-weight:600;letter-spacing:.5px;flex:none;
+}
+.pne-root .side-foot .who b{color:#fff;font-size:13px;font-weight:500}
+.pne-root .side-foot .who small{color:var(--sb-mut);font-size:11px}
+.pne-root .side-foot .foot-gear svg{width:16px;height:16px}
 
 /* ═════════════════════ الوجهُ الفاتح — عرضُ البدء وحده ═════════════════════ */
 .pne-root .app.lite{
@@ -1309,27 +1318,9 @@
 .pne-root .app.lite .send.build:disabled{background:#C8CBD0;color:#fff;opacity:1}
 .pne-root .app.lite .send.build svg{width:14px;height:14px}
 
-/* صفُّ القوالب */
-.pne-root .app.lite .tpl-row{
-  display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:14px;justify-content:center;
-}
-.pne-root .app.lite .tpl-lbl{
-  display:inline-flex;align-items:center;gap:6px;padding-inline-end:4px;
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--lt-mut);
-}
-.pne-root .app.lite .tpl-chip{
-  display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;
-  border:1px dashed var(--lt-line-2);border-radius:999px;background:rgba(255,255,255,.65);
-  color:var(--lt-text-2);font-size:12.5px;cursor:pointer;
-  transition:border-color .14s,color .14s,background .14s;
-}
-.pne-root .app.lite .tpl-chip:hover{border-style:solid;border-color:var(--accent);color:var(--lt-accent);background:#fff}
-.pne-root .app.lite .tpl-ic{display:grid;place-items:center;width:15px;height:15px;flex:none}
-.pne-root .app.lite .tpl-ic svg{width:15px;height:15px;display:block}
-
 /* مؤشّراتٌ أربعة بفواصلَ شعريّة */
 .pne-root .app.lite .hm-stats{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:42px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:34px;
   background:var(--lt-line);border:1px solid var(--lt-line);border-radius:10px;overflow:hidden;
 }
 .pne-root .app.lite .hm-stat{background:var(--lt-card);padding:13px 14px 14px;transition:background .14s}
@@ -1405,11 +1396,12 @@
   .pne-root .app.lite .hm-cols{grid-template-columns:1fr;gap:24px}
 }
 @media (max-width:820px){
+  /* قاعدةُ العمود 240px أعلاه تلي استعلامَ الجوّال الأصليّ، فتُعاد هنا صراحةً */
+  .pne-root .app,.pne-root .app.collapsed{grid-template-columns:1fr}
   .pne-root .app.lite .home-inner{padding:30px 16px 56px;max-width:100%}
   .pne-root .app.lite h1.hero{font-size:24px;letter-spacing:-.3px}
   .pne-root .app.lite .hm-head{margin-bottom:20px}
   .pne-root .app.lite .hm-stats{grid-template-columns:repeat(2,1fr);margin-top:30px}
-  .pne-root .app.lite .tpl-row{justify-content:flex-start}
   .pne-root .app.lite .cmp-count{display:none}
   .pne-root .app.lite .send.build span{display:none}
   .pne-root .app.lite .send.build{width:34px;padding:0;justify-content:center}

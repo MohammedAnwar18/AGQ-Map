@@ -1320,15 +1320,14 @@ export default function PalNovaaEnginePage() {
         <aside className={`sidebar ${drawer ? 'open' : ''}`}>
           <div className="brand" onClick={() => collapsed && setCollapsed(false)}>
             <span className="brand-mark">
-              <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-                <defs><linearGradient id="pnMark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#F2A163" /><stop offset=".55" stopColor="#E07B39" /><stop offset="1" stopColor="#C4601F" /></linearGradient></defs>
-                <rect width="32" height="32" rx="9.5" fill="url(#pnMark)" />
-                <circle cx="16" cy="16" r="9.6" fill="none" stroke="#2A1505" strokeOpacity=".26" strokeWidth="1" />
-                <path d="M16 6.1 19.7 16 16 16Z" fill="#FFF6EE" />
-                <path d="M16 6.1 12.3 16 16 16Z" fill="#FFF6EE" fillOpacity=".58" />
-                <path d="M16 25.9 12.3 16 16 16Z" fill="#2A1505" fillOpacity=".8" />
-                <path d="M16 25.9 19.7 16 16 16Z" fill="#2A1505" fillOpacity=".5" />
-                <circle cx="16" cy="16" r="1.55" fill="#FFF6EE" />
+              {/* شعارُ محرّك بالنوفا الأصليّ — حرفُ الـP المزدوج على بلاطةٍ برتقاليّة */}
+              <svg viewBox="0 0 512 512" width="28" height="28" aria-hidden="true">
+                <rect width="512" height="512" rx="118" fill="#E07B39" />
+                <g transform="translate(79.2 89.6) scale(5.2)" fill="none" strokeWidth="5" strokeLinecap="round">
+                  <path d="M14 58V6h19a20 20 0 0 1 0 40H14" stroke="#1A0D04" strokeLinejoin="round" />
+                  <path d="M23 15.5h10a10.5 10.5 0 0 1 0 21H23" stroke="#1A0D04" />
+                  <circle cx="33" cy="26" r="2.8" fill="#1A0D04" stroke="none" />
+                </g>
               </svg>
             </span>
             <div className="brand-name">PalNovaa <span>Engine</span></div>
@@ -1336,13 +1335,15 @@ export default function PalNovaaEnginePage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" /></svg>
             </button>
           </div>
-          <button className="new-btn" onClick={() => { setDrawer(false); newProject(); }}>{Ico.plus}<span>مشروع جديد</span></button>
+          {/* صفٌّ واحدٌ لكلّ بند — لا زرَّ شاذًّا عن الإيقاع، كما في المرجع. */}
           <nav className="nav" onClick={() => setDrawer(false)}>
             <div className="nav-sec">البناء</div>
+            <a className="nav-lead" onClick={() => newProject()}>{Ico.plus}<span>مشروع جديد</span></a>
             <a className={view !== 'workspace' ? 'active' : ''} onClick={() => setView('home')}>{Ico.chat}<span>المحادثات</span></a>
-            <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
 
             <div className="nav-sec">البيانات</div>
+            <a className="nav-lead" data-menu-anchor title="رفع ملفّ · ArcGIS · HDX · PostGIS" onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>إضافة بيانات</span></a>
+            <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
             <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
             <a onClick={() => navigate('/palnovaa-engine/data')} title="يفتح في صفحةٍ مستقلّة أسرع — مشبوكة ببياناتك"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg><span>بناء البيانات</span></a>
 
@@ -1433,7 +1434,7 @@ export default function PalNovaaEnginePage() {
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendHome(); } }} rows={3} />
                   <div className="composer-bar">
-                    <button className="tool chip" data-menu-anchor onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>البيانات</span></button>
+                    {/* «إضافة بيانات» انتقلت إلى القائمة الجانبيّة — بندٌ دائمٌ أوضحُ من زرٍّ داخل المُحرِّر. */}
                     <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('mode', e)}><span className="tk">النوع</span><span className="v">{mode}</span></button>
                     <button className="tool chip mono only-desk" data-menu-anchor onClick={(e) => openMenu('crs', e)}><span className="tk">الإسناد</span><span className="v">{crs}</span></button>
                     <button className="tool chip only-mob" title="خيارات المشروع" onClick={() => setModal('opts')}>
@@ -1449,22 +1450,6 @@ export default function PalNovaaEnginePage() {
                     <button className="send build" disabled={!prompt.trim() || busy} title="ابنِ التطبيق" onClick={sendHome}>{Ico.send}<span>ابنِ التطبيق</span></button>
                   </div>
                 </div>
-                {/* القوالبُ كانت مُحمَّلةً بلا واجهة — هنا تظهر، وضغطُها يملأ الوصف فقط. */}
-                {templates.length > 0 && (
-                  <div className="tpl-row">
-                    <span className="tpl-lbl">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="9" height="7" rx="1.5" /><rect x="16" y="14" width="5" height="7" rx="1.5" /></svg>
-                      <span>ابدأ من قالب</span>
-                    </span>
-                    {templates.slice(0, 6).map((t) => (
-                      <button className="tpl-chip" key={t.id} title={t.desc} onClick={() => { setPrompt(t.prompt); homeTaRef.current?.focus(); }}>
-                        {TICONS[t.id] ? <span className="tpl-ic">{TICONS[t.id]}</span> : null}
-                        <span>{t.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
                 <div className="hm-stats">
                   <div className="hm-stat"><div className="hs-top"><span>المشاريع</span>{Ico.folder}</div><b>{nfmt(projects.length)}</b></div>
                   <div className="hm-stat"><div className="hs-top"><span>الطبقات</span>{Ico.db}</div><b>{nfmt(myDatasets.length)}</b></div>
