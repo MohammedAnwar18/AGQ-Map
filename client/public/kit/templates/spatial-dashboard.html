@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لوحة المؤشرات المكانية</title></head>
+<body style="margin:0">
+<div class="pn-app pn-app--noside pn-app--scroll">
+<header class="pn-head">
+  <div class="pn-brand"><span class="pn-brand__mark"><svg class="pn-i"><use href="#pn-ui-layers"/></svg></span>لوحة المؤشرات المكانية</div>
+  
+  <span class="pn-head__sp"></span>
+  <button class="pn-btn pn-btn--ghost pn-btn--icon" id="theme" title="الوضع الداكن / الفاتح" aria-label="تبديل الوضع"><svg class="pn-i"><use href="#pn-ui-theme"/></svg></button>
+</header>
+<main style="grid-area:main;padding:16px;display:grid;gap:16px;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);align-content:start">
+  <div class="pn-kpis" style="grid-column:1/-1" id="kpis"></div>
+  <section class="pn-card" style="padding:0;overflow:hidden;position:relative;min-height:440px">
+    <div class="pn-map" id="map"></div>
+    <div class="pn-float pn-float--ts" style="min-width:170px"><p class="pn-side__title">السكان حسب القطاع</p><div id="leg"></div></div>
+  </section>
+  <section class="pn-grid" style="align-content:start">
+    <div class="pn-card"><h3 class="pn-card__title"><svg class="pn-i"><use href="#pn-ui-chart"/></svg>المرافق حسب الفئة</h3><div class="pn-grid" style="gap:8px" id="bars"></div></div>
+    <div class="pn-card" style="padding:0;overflow:hidden"><h3 class="pn-card__title" style="padding:16px 16px 0"><svg class="pn-i"><use href="#pn-ui-table"/></svg>القطاعات</h3>
+      <div style="max-height:260px;overflow:auto"><table class="pn-table" id="tbl"></table></div></div>
+  </section>
+  <p style="grid-column:1/-1;margin:0;font-size:12px;color:var(--pn-muted)">بيانات توضيحية — استبدلها بمصدرك عبر <code>PN.layer(url)</code>.</p>
+</main>
+</div>
+<script>
+(function(){
+  var B='../', css=['https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',B+'pn-ui-1.0.css'], js=['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',B+'pn-gis-1.0.js',B+'pn-demo-1.0.js'];
+  css.forEach(function(h){var l=document.createElement('link');l.rel='stylesheet';l.href=h;document.head.appendChild(l);});
+  (function next(i){ if(i===js.length){ PN.loadIcons(B+'pn-icons-1.0.svg').catch(function(){}).then(start); return; }
+    var s=document.createElement('script'); s.src=js[i]; s.onload=function(){next(i+1)};
+    s.onerror=function(){document.body.insertAdjacentHTML('afterbegin','<p style="padding:16px">تعذّر تحميل '+js[i]+'</p>')}; document.head.appendChild(s); })(0);
+  function start(){
+
+    var root=document.documentElement;
+    function isDark(){return root.getAttribute('data-theme')==='dark';}
+    var tbtn=document.getElementById('theme');
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:12,basemap:isDark()?'dark':'light'});
+    var ch=PN.choropleth(D.sectors,{field:'السكان',map:m}); document.getElementById('leg').innerHTML=ch.legendHTML; m.fitBounds(ch.layer.getBounds(),{padding:[16,16]});
+    var pop=D.sectors.features.reduce(function(s,f){return s+f.properties['السكان'];},0), pts=D.points.features;
+    var kp=[['إجمالي السكان',pop.toLocaleString('ar'),'+2.4% عن العام الماضي'],['المرافق المسجّلة',pts.length.toLocaleString('ar'),'+6 هذا الشهر'],
+      ['قيد المراجعة',pts.filter(function(f){return f.properties['الحالة']!=='فعّال';}).length.toLocaleString('ar'),'تحتاج تدقيقاً',1],
+      ['الحواجز',pts.filter(function(f){return f.properties._symbol==='pn-checkpoint';}).length.toLocaleString('ar'),'على مداخل المدينة',1]];
+    document.getElementById('kpis').innerHTML=kp.map(function(k){return '<div class="pn-kpi"><div class="pn-kpi__label">'+k[0]+'</div><div class="pn-kpi__value">'+k[1]+'</div><div class="pn-kpi__delta'+(k[3]?' is-down':'')+'">'+k[2]+'</div></div>';}).join('');
+    var by={}; pts.forEach(function(f){var c=PN.points[f.properties._symbol].cat; by[c]=(by[c]||0)+1;});
+    var mx=Math.max.apply(null,Object.keys(by).map(function(k){return by[k];}));
+    document.getElementById('bars').innerHTML=Object.keys(by).sort(function(a,b){return by[b]-by[a];}).map(function(c){
+      return '<div class="pn-bar"><span>'+PN.cats[c]+'</span><span class="pn-bar__track"><span class="pn-bar__fill" style="display:block;width:'+(by[c]/mx*100)+'%"></span></span><span class="num">'+by[c].toLocaleString('ar')+'</span></div>';}).join('');
+    var rows=D.sectors.features.slice().sort(function(a,b){return b.properties['السكان']-a.properties['السكان'];});
+    document.getElementById('tbl').innerHTML='<thead><tr><th>القطاع</th><th class="num">السكان</th><th class="num">المرافق</th></tr></thead><tbody>'+rows.map(function(f,i){
+      return '<tr data-i="'+i+'"><td>'+f.properties.name+'</td><td class="num">'+f.properties['السكان'].toLocaleString('ar')+'</td><td class="num">'+f.properties['المرافق']+'</td></tr>';}).join('')+'</tbody>';
+    document.querySelectorAll('#tbl tbody tr').forEach(function(tr){tr.onclick=function(){var f=rows[+tr.dataset.i];
+      ch.layer.eachLayer(function(l){ if(l.feature===f){ m.fitBounds(l.getBounds()); l.openPopup(); }});};});
+
+  }
+})();
+</script>
+</body>
+</html>

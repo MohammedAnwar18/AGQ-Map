@@ -1140,8 +1140,15 @@
    كُحليّاً بجانب الوجه الداكن للمحرّك. هذه القيمُ هي surface/panel/line
    حرفيّاً، فيتّسق اللوحُ مع مساحة العمل والمعاينة بلا انحرافِ لون. */
 .pne-root{
-  --sb:var(--surface); --sb-deep:var(--panel); --sb-line:var(--line);
-  --sb-hover:var(--surface-2); --sb-act:#23272D; --sb-txt:var(--text-2); --sb-mut:var(--muted);
+  /* مشتقّةٌ من --bg لا ثابتة: اختيارُ لونٍ في «المظهر» يُغيّر اللوحَ فوراً
+     وهو ظاهرٌ أمامك، بدل أن يتغيّر شيءٌ لا تراه. النِّسَبُ معايَرةٌ بحيث
+     تُنتج عند --bg الافتراضيّ (#0A0B0D) قيمَ surface/panel/line نفسَها. */
+  --sb:color-mix(in srgb, var(--bg) 72%, #262B32);
+  --sb-deep:color-mix(in srgb, var(--bg) 88%, #1C2026);
+  --sb-line:color-mix(in srgb, var(--bg) 58%, #343A42);
+  --sb-hover:color-mix(in srgb, var(--bg) 62%, #2C323A);
+  --sb-act:color-mix(in srgb, var(--bg) 48%, #3A4149);
+  --sb-txt:var(--text-2); --sb-mut:var(--muted);
 }
 /* شبكةٌ خرائطيّةٌ خافتةٌ على اللوح — الملمسُ نفسُه الذي في المرجع */
 .pne-root .sidebar{

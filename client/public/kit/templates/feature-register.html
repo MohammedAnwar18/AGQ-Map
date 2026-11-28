@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>سجلّ المعالم</title></head>
+<body style="margin:0">
+<div class="pn-app" style="--pn-side-w:min(560px,52vw);height:100vh">
+<header class="pn-head">
+  <div class="pn-brand"><span class="pn-brand__mark"><svg class="pn-i"><use href="#pn-ui-layers"/></svg></span>سجلّ المعالم</div>
+  <label class="pn-search"><svg class="pn-i"><use href="#pn-ui-search"/></svg><input class="pn-input" id="q" placeholder="ابحث عن معلم، حيّ، أو رقم قطعة…" aria-label="بحث"></label>
+  <span class="pn-head__sp"></span>
+  <button class="pn-btn pn-btn--ghost pn-btn--icon" id="theme" title="الوضع الداكن / الفاتح" aria-label="تبديل الوضع"><svg class="pn-i"><use href="#pn-ui-theme"/></svg></button>
+</header>
+<aside class="pn-side">
+  <div class="pn-side__sec" style="display:grid;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px"><svg class="pn-i"><use href="#pn-ui-filter"/></svg><strong style="flex:1">تصفية حسب الفئة</strong>
+      <button class="pn-btn pn-btn--sm pn-btn--ghost" id="csv"><svg class="pn-i"><use href="#pn-ui-download"/></svg>تصدير CSV</button></div>
+    <div class="pn-chips" id="chips"></div>
+  </div>
+  <div style="flex:1;overflow:auto"><table class="pn-table" id="tbl"></table></div>
+  <div class="pn-side__sec"><div class="pn-status" id="status"></div></div>
+</aside>
+<main class="pn-main">
+  <div class="pn-map" id="map"></div>
+  <div class="pn-float pn-float--te" id="detail" style="width:280px" hidden></div>
+</main>
+</div>
+<script>
+(function(){
+  var B='../', css=['https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',B+'pn-ui-1.0.css'], js=['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',B+'pn-gis-1.0.js',B+'pn-demo-1.0.js'];
+  css.forEach(function(h){var l=document.createElement('link');l.rel='stylesheet';l.href=h;document.head.appendChild(l);});
+  (function next(i){ if(i===js.length){ PN.loadIcons(B+'pn-icons-1.0.svg').catch(function(){}).then(start); return; }
+    var s=document.createElement('script'); s.src=js[i]; s.onload=function(){next(i+1)};
+    s.onerror=function(){document.body.insertAdjacentHTML('afterbegin','<p style="padding:16px">تعذّر تحميل '+js[i]+'</p>')}; document.head.appendChild(s); })(0);
+  function start(){
+
+    var root=document.documentElement;
+    function isDark(){return root.getAttribute('data-theme')==='dark';}
+    var tbtn=document.getElementById('theme');
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:14,basemap:isDark()?'dark':'light'});
+    PN.area(D.areas['pg-city'],'pg-city').addTo(m); PN.line(D.lines['ln-main'],'ln-main').addTo(m); PN.line(D.lines['ln-local'],'ln-local').addTo(m);
+    var feats=D.points.features, on={}, cats=Object.keys(PN.cats), sel=null, mk=[];
+    cats.forEach(function(c){on[c]=true;});
+    document.getElementById('chips').innerHTML=cats.map(function(c){return '<button class="pn-chip is-on" data-c="'+c+'">'+PN.cats[c]+'</button>';}).join('');
+    document.querySelectorAll('[data-c]').forEach(function(b){b.onclick=function(){on[b.dataset.c]=!on[b.dataset.c]; b.classList.toggle('is-on'); draw();};});
+    var grp=L.featureGroup().addTo(m), q=document.getElementById('q'); q.oninput=draw;
+    function visible(){var v=q.value.trim(); return feats.filter(function(f){return on[PN.points[f.properties._symbol].cat] && (!v||JSON.stringify(f.properties).indexOf(v)>-1);});}
+    function show(i){ var f=cur[i], p=f.properties; sel=i;
+      document.querySelectorAll('#tbl tbody tr').forEach(function(tr){tr.classList.toggle('is-on',+tr.dataset.i===i);});
+      var d=document.getElementById('detail'); d.hidden=false;
+      d.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+PN.pin(p._symbol,26)+'<strong style="flex:1">'+PN.esc(p['الاسم'])+'</strong><button class="pn-btn pn-btn--ghost pn-btn--icon pn-btn--sm" style="width:30px" id="x" aria-label="إغلاق"><svg class="pn-i"><use href="#pn-ui-close"/></svg></button></div>'+PN.popup(p);
+      document.getElementById('x').onclick=function(){d.hidden=true;};
+      m.setView(mk[i].getLatLng(),16); }
+    var cur=[];
+    function draw(){ cur=visible(); grp.clearLayers(); mk=[];
+      cur.forEach(function(f,i){ var x=PN.marker([f.geometry.coordinates[1],f.geometry.coordinates[0]],f.properties._symbol).on('click',function(){show(i);}); mk.push(x); grp.addLayer(x); });
+      document.getElementById('tbl').innerHTML='<thead><tr><th></th><th>الاسم</th><th>النوع</th><th>الحيّ</th><th>الحالة</th></tr></thead><tbody>'+cur.map(function(f,i){var p=f.properties;
+        return '<tr data-i="'+i+'"><td style="width:30px">'+PN.pin(p._symbol,20)+'</td><td>'+PN.esc(p['الاسم'])+'</td><td>'+PN.points[p._symbol].ar+'</td><td>'+PN.esc(p['الحيّ'])+'</td><td>'+PN.esc(p['الحالة'])+'</td></tr>';}).join('')+'</tbody>';
+      if(!cur.length) document.getElementById('tbl').innerHTML='<tbody><tr><td><div class="pn-empty">لا معالم تطابق التصفية.</div></td></tr></tbody>';
+      document.querySelectorAll('#tbl tbody tr[data-i]').forEach(function(tr){tr.onclick=function(){show(+tr.dataset.i);};});
+      document.getElementById('status').textContent=cur.length+' من '+feats.length+' معلماً';
+      if(cur.length) m.fitBounds(grp.getBounds(),{padding:[30,30],maxZoom:15}); }
+    draw();
+    document.getElementById('csv').onclick=function(){ PN.exportCSV(cur.map(function(f){var p=f.properties;
+      return {'الاسم':p['الاسم'],'النوع':PN.points[p._symbol].ar,'الرمز':p._symbol,'الحيّ':p['الحيّ'],'الحالة':p['الحالة'],'خط العرض':f.geometry.coordinates[1],'خط الطول':f.geometry.coordinates[0]};}),'features'); };
+
+  }
+})();
+</script>
+</body>
+</html>

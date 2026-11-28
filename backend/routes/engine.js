@@ -88,6 +88,14 @@ const keyForTask = (task) => (CLAUDE_TASKS.has(task)
    الكود فتبدأ دوراتُ إكمالٍ متتالية، وكلّ دورةٍ تُعيد إرسال المحادثة كاملةً —
    تعليمات النظام وحدها ~15 ألف حرف. سقفٌ عالٍ ⇒ جولةٌ واحدة ⇒ ثلثُ الزمن والكلفة. */
 const MAX_OUT = parseInt(process.env.PALNOVAA_MAX_OUT, 10) || 32768;
+
+/* ---- طقم PalNovaa الجاهز ----
+   ملفّاتٌ منشورةٌ مرّةً واحدةً بدل أن يُعيد النموذج كتابتها في كلّ بناء:
+   الأنماطُ والأيقوناتُ ودوالُّ الخريطة. الإصدارُ في اسم الملفّ، فالتطبيقاتُ
+   المنشورةُ سابقاً لا تنكسر حين يُحدَّث الطقم.
+   PALNOVAA_KIT=0 يُعيد الإرشادَ النثريَّ القديم فوراً إن تعطّل المسار. */
+const KIT_BASE = ((process.env.PALNOVAA_KIT_BASE || 'https://palnovaa.com/kit').trim()).replace(/\/+$/, '') + '/';
+const KIT_ON = String(process.env.PALNOVAA_KIT || '1') !== '0';
 /* المخطّط وموجزُ التصميم مهمّتان قصيرتان: موديلٌ خفيفٌ ينهيهما أسرع بكثيرٍ وأرخص.
    يُضبَط بـ PALNOVAA_FAST_MODEL، وإن لم يتوفّر رجَعَا للموديل الرئيس. */
 const FAST_MODEL = (process.env.PALNOVAA_FAST_MODEL || 'gemini-flash-lite-latest').trim();
@@ -393,7 +401,7 @@ const SYSTEM_INSTRUCTION = [
     '— قواعد الإخراج (صارمة) —',
     '1) أخرِج مستند HTML كاملاً فقط: يبدأ بـ <!doctype html> وينتهي بـ </html>. لا شرح ولا نصّ قبله ولا بعده، ولا تضعه داخل أسوار ```.',
     '2) اكتب الكود كاملاً فعليّاً. ممنوع منعاً باتّاً ترك عناصر نائبة مثل «... بقيّة الكود» أو دوالّ فارغة. كلّ دالّة مُنفَّذة بالكامل، وكلّ زرّ موصولٌ بوظيفةٍ حقيقيّة.',
-    '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN مثبّتة الإصدار من cdnjs.cloudflare.com.',
+    '3) ملفٌ واحد مكتفٍ ذاتيّاً: كلّ الـCSS و JavaScript الخاصّ بك داخل الصفحة. لا ملفات خارجيّة سوى مكتبات CDN مثبّتة الإصدار وملفّات طقم PalNovaa المذكورة أدناه.',
     '3ب) صحّة الصياغة إلزاميّة: يجب أن يُحمَّل الكود بلا أيّ خطأ صياغة (SyntaxError). وازِن كلّ الأقواس {}()[] وأغلِق كلّ سلسلةٍ نصّيّة/قالب. لا تضع السلسلة الحرفيّة «</script>» داخل كودٍ أو نصٍّ داخل <script> — اكتبها «<\\/script>» دائماً. لا تخلط وحدات ESM (import/export) مع سكربتٍ عاديّ في نفس الوسم. راجِع الكود ذهنيّاً قبل الإخراج للتأكّد أنه يعمل فوراً.',
     '4) في أوّل سطرٍ بعد <!doctype html> ضع تعليقاً واحداً بهذا الشكل بالضبط: <!--PNE:{"title":"عنوان قصير للمشروع","summary":"جملة تصف ما بُني"}-->',
     '5) اجعل <title> مطابقاً للعنوان.',
@@ -439,6 +447,20 @@ const SYSTEM_INSTRUCTION = [
     '• خدمات ArcGIS REST (مثل GeoMOLG الفلسطينيّ): الطريقة الموثوقة هي استعلام الطبقة كـGeoJSON (نقطة query تدعم CORS وتعيد الإسقاط إلى 4326): fetch("<svc>/<MapServer|FeatureServer>/<layerId>/query?where=1=1&outFields=*&outSR=4326&returnGeometry=true&f=geojson&resultRecordCount=4000") ثمّ L.geoJSON(data,{style,pointToLayer:circleMarker,onEachFeature:bindPopup}).addTo(map) وmap.fitBounds. تجنّب esri featureLayer وdynamicMapLayer الافتراضيّ (f:json) لأنّ نقطة export في هذه الخوادم بلا CORS فتظهر فارغة؛ للطبقات النقطيّة التي لا تدعم query فقط استعمل L.esri.dynamicMapLayer({url,f:"image",useCors:false}).',
     '• لوّن الطبقات المكانيّة ترميزاً متدرّجاً (choropleth) وأضِف popup لخصائص كلّ عنصر.',
     '',
+    ...(KIT_ON ? [
+    '— طقم PalNovaa الجاهز (استعمله، ولا تُعِد كتابة ما فيه) —',
+    `KIT=${KIT_BASE} — في <head>: leaflet 1.9.4 (css+js) ثمّ KIT+'pn-ui-1.0.css' ثمّ KIT+'pn-gis-1.0.js'. وأوّلَ سطرٍ في التشغيل: await PN.loadIcons(KIT+'pn-icons-1.0.svg') — الأيقوناتُ لا تعمل بدونها لأنّ <use> عبر نطاقٍ آخرَ ممنوع.`,
+    '• الخريطة: m=PN.map(el,{center,zoom,basemap:"light|dark|osm|satellite"}) · PN.layer(url,{map:m,symbol:id|f=>id,status:"#s"}) تجلب وتُظهر التحميلَ والخطأ وتعمل fitBounds.',
+    '• الرسم: PN.marker([lat,lng],"pn-*") · PN.line(geo,"ln-*") · PN.area(geo,"pg-*") · PN.choropleth(geo,{field,map}) · PN.legend([ids]) · PN.popup(props,title) · PN.exportCSV(rows,name).',
+    '• الأيقونة: <svg class="pn-i"><use href="#ID"/></svg> · والدبّوس: PN.pin(id).',
+    '• الواجهة: .pn-app>.pn-head+.pn-side+.pn-main>.pn-map · .pn-float--ts|te|bs|be · .pn-card .pn-btn(--ghost|--icon|--sm) .pn-input .pn-search .pn-chip.is-on .pn-badge .pn-tabs>.pn-tab.is-on .pn-layer .pn-kpis>.pn-kpi .pn-table .pn-empty .pn-spinner .pn-status .pn-bar .pn-grid.',
+    '• نقاط: mosque church supermarket mall hospital park tower police checkpoint school university bank restaurant hookah bakery butcher traffic-light camera (بادئة pn-).',
+    '• خطوط: motorway main regional local railway wall power water river trail (بادئة ln-).',
+    '• مساحات: governorate city village water basin parcel (بادئة pg-).',
+    '• التخصيصُ المسموح وحده: --pn-accent و--pn-radius و--pn-font و--pn-side-w على :root، والوضعُ الداكن <html data-theme="dark">. اختر لونَ تمييزٍ يناسب موضوع التطبيق فلا تتشابه المُخرَجات.',
+    '• ممنوع: إعادةُ رسم أيقونةٍ أو أسطورةٍ أو نافذةِ معلمٍ يدويّاً، أو نسخُ مسارات الـsprite، أو إعادةُ تعريف مكوّنٍ يوفّره pn-ui.',
+    '• ما يبقى عليك: التباينُ AA (نصّ ≥4.5:1)، والتجاوبُ (جوّالٌ أوّلاً، ≤768px، أهدافُ لمسٍ ≥44px)، وحالاتُ الفراغ والتحميل والخطأ بأصناف الطقم، واحترامُ prefers-reduced-motion، والنسخةُ العربيّةُ RTL.',
+    ] : [
     '— الواجهة والتصميم (أنت خبير واجهات من الطراز الأوّل — طبّق هذه الأصول في كلّ مُخرَج بلا استثناء) —',
     '• نظام تصميم موحّد: عرّف كلّ الألوان والمسافات والخطوط والظلال والحواف كمتغيّرات CSS في :root (مصدر حقيقةٍ واحد)، واستعملها في كلّ مكان بدل القيم المبعثرة.',
     '• مقياس المسافات (شبكة 4/8): استعمل مضاعفات 4px فقط — 4·8·12·16·24·32·48·64. ابدأ بمسافاتٍ سخيّة ثمّ قلّل؛ الفراغ الأبيض الوافر (داخل العناصر وبينها) هو أكبر فارقٍ بين تصميمٍ هاوٍ ومحترف. padding البطاقات ≥20px، الفجوات بين الأقسام ≥32px.',
@@ -455,6 +477,8 @@ const SYSTEM_INSTRUCTION = [
     '• الوضع الافتراضيّ: داكنٌ أنيق عبر المتغيّرات — خلفيّة #0A0B0D، سطوح #12151A/#1A1E24، حدود #2B3038، نصّ #C8CDD4 وثانويّ #8A9099، تمييز #E07B39. واجهةٌ عربيّة RTL. إن ناسب السياق قدّم وضعاً فاتحاً نظيفاً بنفس المنظومة.',
     '• عناصر متخصّصة: بطاقات KPI (أيقونة + قيمة بارزة + تغيّر ↑↓ ملوّن)، ومفتاح ألوان (legend) أنيق لكلّ خريطة.',
     '',
+    ]),
+
     '— إمكانيّات عامّة (طبّقها حين يناسب الطلب) —',
     '• CRUD: حفظ/تعديل/حذف عبر localStorage + crypto.randomUUID(). نسخة احتياطيّة JSON.',
     '• جداول: ترتيب بالنقر (▲▼)، بحث/فلترة فوري، ترقيم صفحات، header ثابت.',

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>جيوبورتال — مستكشف الخريطة</title></head>
+<body style="margin:0">
+<div class="pn-app" style="height:100vh">
+<header class="pn-head">
+  <div class="pn-brand"><span class="pn-brand__mark"><svg class="pn-i"><use href="#pn-ui-layers"/></svg></span>جيوبورتال المحافظة</div>
+  <label class="pn-search"><svg class="pn-i"><use href="#pn-ui-search"/></svg><input class="pn-input" id="q" placeholder="ابحث عن معلم، حيّ، أو رقم قطعة…" aria-label="بحث"></label>
+  <span class="pn-head__sp"></span>
+  <button class="pn-btn pn-btn--ghost pn-btn--icon" id="theme" title="الوضع الداكن / الفاتح" aria-label="تبديل الوضع"><svg class="pn-i"><use href="#pn-ui-theme"/></svg></button>
+</header>
+<aside class="pn-side">
+  <div class="pn-side__sec">
+    <div class="pn-tabs" role="tablist">
+      <button class="pn-tab is-on" data-tab="layers"><svg class="pn-i"><use href="#pn-ui-layers"/></svg>الطبقات</button>
+      <button class="pn-tab" data-tab="legend"><svg class="pn-i"><use href="#pn-ui-legend"/></svg>الأسطورة</button>
+      <button class="pn-tab" data-tab="results"><svg class="pn-i"><use href="#pn-ui-search"/></svg>النتائج</button>
+    </div>
+  </div>
+  <div id="tab-layers"></div>
+  <div id="tab-legend" class="pn-side__sec" hidden></div>
+  <div id="tab-results" class="pn-side__sec" hidden><div class="pn-empty"><svg class="pn-i"><use href="#pn-ui-search"/></svg>اكتب في خانة البحث للعثور على المعالم.</div></div>
+  <div class="pn-side__sec" style="margin-top:auto"><div class="pn-status" id="status"></div></div>
+</aside>
+<main class="pn-main">
+  <div class="pn-map" id="map"></div>
+  <div class="pn-float pn-float--te" style="padding:6px;display:flex;gap:4px" id="bm">
+    <button class="pn-chip is-on" data-bm="auto">خريطة</button><button class="pn-chip" data-bm="satellite">قمر صناعي</button><button class="pn-chip" data-bm="osm">OSM</button>
+  </div>
+  <div class="pn-float pn-float--bs" style="font-size:12px;color:var(--pn-muted)">بيانات توضيحية</div>
+</main>
+</div>
+<script>
+(function(){
+  var B='../', css=['https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap','https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',B+'pn-ui-1.0.css'], js=['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',B+'pn-gis-1.0.js',B+'pn-demo-1.0.js'];
+  css.forEach(function(h){var l=document.createElement('link');l.rel='stylesheet';l.href=h;document.head.appendChild(l);});
+  (function next(i){ if(i===js.length){ PN.loadIcons(B+'pn-icons-1.0.svg').catch(function(){}).then(start); return; }
+    var s=document.createElement('script'); s.src=js[i]; s.onload=function(){next(i+1)};
+    s.onerror=function(){document.body.insertAdjacentHTML('afterbegin','<p style="padding:16px">تعذّر تحميل '+js[i]+'</p>')}; document.head.appendChild(s); })(0);
+  function start(){
+
+    var root=document.documentElement;
+    function isDark(){return root.getAttribute('data-theme')==='dark';}
+    var tbtn=document.getElementById('theme');
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:13,basemap:isDark()?'dark':'light'});
+    var groups=[
+      ['حدود إدارية',['pg-governorate','pg-city','pg-village']],
+      ['أراضٍ ومياه',['pg-basin','pg-parcel','pg-water']],
+      ['طرق ونقل',['ln-motorway','ln-main','ln-regional','ln-local','ln-railway','ln-trail']],
+      ['شبكات وحدود',['ln-wall','ln-power','ln-water','ln-river']],
+      ['خدمات ومرافق',['pn-mosque','pn-church','pn-hospital','pn-school','pn-university','pn-police','pn-bank','pn-park']],
+      ['تجارة وطعام',['pn-supermarket','pn-mall','pn-restaurant','pn-bakery','pn-butcher','pn-hookah']],
+      ['مرور وأمن',['pn-checkpoint','pn-traffic-light','pn-camera','pn-tower']]];
+    var layers={}, all=[];
+    function sym(id){return id.slice(0,3);}
+    function build(id){
+      if(sym(id)==='pg-') return PN.area(D.areas[id],id,{onEachFeature:function(f,l){l.bindPopup(PN.popup(f.properties,PN.areas[id].ar));}});
+      if(sym(id)==='ln-'){var g=PN.line(D.lines[id],id,{onEachFeature:function(f,l){l.bindPopup(PN.popup(f.properties,PN.lines[id].ar));}});return g;}
+      var g2=L.featureGroup(); D.points.features.filter(function(f){return f.properties._symbol===id;}).forEach(function(f){
+        var mk=PN.marker([f.geometry.coordinates[1],f.geometry.coordinates[0]],id).bindPopup(PN.popup(f.properties,f.properties['الاسم']));
+        mk.feature=f; all.push(mk); g2.addLayer(mk);}); return g2;
+    }
+    function count(id){ if(sym(id)==='pn-') return D.points.features.filter(function(f){return f.properties._symbol===id;}).length;
+      return (sym(id)==='ln-'?D.lines[id]:D.areas[id]).features.length; }
+    function label(id){return (PN.points[id]||PN.lines[id]||PN.areas[id]).ar;}
+    var off={'pg-parcel':1,'ln-water':1,'ln-power':1};
+    var html=groups.map(function(g){ return '<div class="pn-side__sec"><p class="pn-side__title">'+g[0]+'</p>'+g[1].map(function(id){
+      return '<label class="pn-layer"><input type="checkbox" data-id="'+id+'"'+(off[id]?'':' checked')+'><span class="pn-layer__name">'+label(id)+'</span><span class="pn-badge">'+count(id)+'</span></label>';}).join('')+'</div>';}).join('');
+    document.getElementById('tab-layers').innerHTML=html;
+    groups.forEach(function(g){g[1].forEach(function(id){layers[id]=build(id); if(!off[id]) layers[id].addTo(m);});});
+    document.querySelectorAll('[data-id]').forEach(function(cb){cb.onchange=function(){var l=layers[cb.dataset.id]; cb.checked?l.addTo(m):m.removeLayer(l); legend();};});
+    function legend(){ var ids=[].slice.call(document.querySelectorAll('[data-id]:checked')).map(function(c){return c.dataset.id;});
+      document.getElementById('tab-legend').innerHTML=ids.length?PN.legend(ids):'<div class="pn-empty">لا طبقات مفعّلة</div>'; }
+    legend();
+    document.querySelectorAll('.pn-tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('.pn-tab').forEach(function(x){x.classList.toggle('is-on',x===t);});
+      ['layers','legend','results'].forEach(function(k){document.getElementById('tab-'+k).hidden=k!==t.dataset.tab;});};});
+    document.querySelectorAll('[data-bm]').forEach(function(b){b.onclick=function(){document.querySelectorAll('[data-bm]').forEach(function(x){x.classList.toggle('is-on',x===b);});
+      m.pnBasemap(b.dataset.bm==='auto'?(isDark()?'dark':'light'):b.dataset.bm);};});
+    var q=document.getElementById('q');
+    q.oninput=function(){ var v=q.value.trim(), box=document.getElementById('tab-results');
+      document.querySelector('[data-tab=results]').click();
+      if(!v){box.innerHTML='<div class="pn-empty">اكتب للبحث.</div>';return;}
+      var hits=all.filter(function(mk){return JSON.stringify(mk.feature.properties).indexOf(v)>-1;}).slice(0,40);
+      box.innerHTML=hits.length?hits.map(function(mk,i){return '<div class="pn-layer" data-hit="'+i+'">'+PN.pin(mk.feature.properties._symbol,22)+'<span class="pn-layer__name">'+PN.esc(mk.feature.properties['الاسم'])+'</span><span class="pn-badge">'+PN.esc(mk.feature.properties['الحيّ'])+'</span></div>';}).join(''):'<div class="pn-empty">لا نتائج لـ «'+PN.esc(v)+'»</div>';
+      box.querySelectorAll('[data-hit]').forEach(function(el){el.onclick=function(){var mk=hits[+el.dataset.hit]; if(!m.hasLayer(mk)) mk.addTo(m); m.setView(mk.getLatLng(),16); mk.openPopup();};});
+    };
+    document.getElementById('status').textContent=(D.points.features.length)+' معلماً نقطياً · '+groups.reduce(function(s,g){return s+g[1].length;},0)+' طبقة';
+
+  }
+})();
+</script>
+</body>
+</html>

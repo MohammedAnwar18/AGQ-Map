@@ -1788,7 +1788,7 @@ export default function PalNovaaEnginePage() {
                 </div>
 
                 <div className="sp-sec">
-                  <div className="sp-lbl"><b>{NAVI.palette}<span>المظهر</span></b><small>لونُ خلفيّة مساحة العمل. يُطبَّق فوراً ويُحفظ على جهازك.</small></div>
+                  <div className="sp-lbl"><b>{NAVI.palette}<span>المظهر</span></b><small>يُلوّن اللوحَ الجانبيَّ ومساحةَ العمل والمعاينة. يُطبَّق فوراً ويُحفظ على جهازك.</small></div>
                   <div className="sp-card">
                     <div className="sp-swatches">
                       {BG_PRESETS.map((b) => (
