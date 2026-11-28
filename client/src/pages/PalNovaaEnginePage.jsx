@@ -11,7 +11,7 @@ import {
 
 export default function PalNovaaEnginePage() {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   useEngineBranding();
   const greeting = (() => {
     const h = new Date().getHours();
@@ -84,7 +84,6 @@ export default function PalNovaaEnginePage() {
 
   /* الإعدادات: الملفّ الشخصيّ مرتبطٌ بالحساب الأساسيّ؛ لون الخلفية يُحفظ على الجهاز */
   const ls = (k, d = '') => { try { return localStorage.getItem(k) || d; } catch { return d; } };
-  const [settSec, setSettSec] = useState('account');
   const [nameDraft2, setNameDraft2] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);     // صورةٌ قيد الرفع
   const [avatarPreview, setAvatarPreview] = useState('');  // معاينةٌ فوريّة (dataURL)
@@ -99,7 +98,8 @@ export default function PalNovaaEnginePage() {
   const avatarUrl = avatarPreview || acctPic;
   const avInitials = (displayName ? displayName.trim().slice(0, 2) : (user?.username || 'PN').slice(0, 2));
   const updBg = (v) => { setBgColor(v); try { v ? localStorage.setItem('pne-bg', v) : localStorage.removeItem('pne-bg'); } catch { /* */ } };
-  const openSettings = () => { setNameDraft2(userName || ''); setAvatarFile(null); setAvatarPreview(''); setSettSec('account'); setModal('settings'); };
+  /* صارت صفحةً كاملةً بدل النافذة — نفسُ الحالة ونفسُ المعالجات. */
+  const openSettings = () => { setNameDraft2(userName || ''); setAvatarFile(null); setAvatarPreview(''); setDrawer(false); setView('settings'); };
   const onAvatar = (e) => {
     const f = e.target.files?.[0];
     if (f) {
@@ -238,6 +238,7 @@ export default function PalNovaaEnginePage() {
   }, []);
 
   const [templates, setTemplates] = useState([]);
+  const [dragOver, setDragOver] = useState(false);   // مكتبة البيانات: إبرازُ منطقة الإفلات
   const loadProjects = useCallback(() => { jget('/engine/projects').then((d) => { if (d?.ok) setProjects(d.projects || []); }).catch(() => {}); }, []);
   const loadDatasets = useCallback(() => { jget('/engine/datasets').then((d) => { if (d?.ok) setMyDatasets(d.datasets || []); }).catch(() => {}); }, []);
   const loadBalance = useCallback(() => { jget('/engine/balance').then((d) => { if (d?.ok) setBalance(d.balance); }).catch(() => {}); }, []);
@@ -1306,14 +1307,49 @@ export default function PalNovaaEnginePage() {
     return `قبل ${Math.floor(dd / 30)} شهر`;
   };
   const totalFeatures = myDatasets.reduce((a, d) => a + (Number(d.feature_count) || 0), 0);
+  const fmtBytes = (b) => {
+    const v = Number(b) || 0;
+    if (!v) return '—';
+    if (v < 1024) return `${v} B`;
+    if (v < 1048576) return `${(v / 1024).toFixed(1)} KB`;
+    if (v < 1073741824) return `${(v / 1048576).toFixed(1)} MB`;
+    return `${(v / 1073741824).toFixed(2)} GB`;
+  };
+  const totalBytes = myDatasets.reduce((a, d) => a + (Number(d.meta && d.meta.bytes) || 0), 0);
   const nfmt = (v) => (Number(v) || 0).toLocaleString('en-US');
+
+  /* أيقوناتُ اللوح الجانبيّ — مسارات lucide الأصليّة بمقاس 16 وسماكة 2
+     وأطرافٍ مستديرة، كما في المرجع تماماً. منفصلةٌ عن Ico المشتركة عمداً. */
+  const NAVI = (() => {
+    const w = (children) => (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+    );
+    return {
+      plus: w(<><path d="M5 12h14" /><path d="M12 5v14" /></>),
+      compass: w(<><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></>),
+      database: w(<><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5V19A9 3 0 0 0 21 19V5" /><path d="M3 12A9 3 0 0 0 21 12" /></>),
+      map: w(<><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /><path d="M15 5.764v15" /><path d="M9 3.236v15" /></>),
+      layers: w(<><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></>),
+      dollar: w(<><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 18V6" /></>),
+      card: w(<><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></>),
+      book: w(<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></>),
+      user: w(<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>),
+      key: w(<><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" /><path d="m21 2-9.6 9.6" /><circle cx="7.5" cy="15.5" r="5.5" /></>),
+      gauge: w(<><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></>),
+      palette: w(<><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></>),
+      logout: w(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></>),
+      save: w(<><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /><path d="M7 3v4a1 1 0 0 0 1 1h7" /></>),
+      gear: w(<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></>),
+    };
+  })();
 
   /* =========================================================================== */
   return (
     <div className="pne-root" dir="rtl" style={bgColor ? { '--bg': bgColor } : undefined}>
       <input ref={fileRef} type="file" accept=".geojson,.json,.csv,.tif,.tiff,.geotiff,.zip,.shp,.gdb,.gpkg,.kml,.kmz,.gml,.tab,.fgb,.dxf,.dwg" hidden onChange={onFile} />
       <input ref={avatarRef} type="file" accept="image/*" hidden onChange={onAvatar} />
-      <div className={`app ${collapsed ? 'collapsed' : ''} ${view === 'home' ? 'lite' : ''}`}>
+      <div className={`app ${collapsed ? 'collapsed' : ''} ${view === 'home' || view === 'data' || view === 'settings' ? 'lite' : ''}`}>
 
         {/* ============ SIDEBAR ============ */}
         {drawer && <div className="nav-scrim" onClick={() => setDrawer(false)} />}
@@ -1338,18 +1374,21 @@ export default function PalNovaaEnginePage() {
           {/* صفٌّ واحدٌ لكلّ بند — لا زرَّ شاذًّا عن الإيقاع، كما في المرجع. */}
           <nav className="nav" onClick={() => setDrawer(false)}>
             <div className="nav-sec">البناء</div>
-            <a className="nav-lead" onClick={() => newProject()}>{Ico.plus}<span>مشروع جديد</span></a>
-            <a className={view !== 'workspace' ? 'active' : ''} onClick={() => setView('home')}>{Ico.chat}<span>المحادثات</span></a>
+            <a className="nav-lead" onClick={() => newProject()}>{NAVI.plus}<span>مشروع جديد</span></a>
+            <a className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>{NAVI.compass}<span>المحادثات</span></a>
 
             <div className="nav-sec">البيانات</div>
-            <a className="nav-lead" data-menu-anchor title="رفع ملفّ · ArcGIS · HDX · PostGIS" onClick={(e) => openMenu('attach', e)}>{Ico.plus}<span>إضافة بيانات</span></a>
-            <a data-menu-anchor onClick={(e) => openMenu('data', e)}>{Ico.db}<span>بياناتي</span><span className="count">{myDatasets.length || ''}</span></a>
-            <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{Ico.mapIco}<span>معاينة البيانات</span></a>
-            <a onClick={() => navigate('/palnovaa-engine/data')} title="يفتح في صفحةٍ مستقلّة أسرع — مشبوكة ببياناتك"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z" /><path d="m3 13 9 5 9-5M3 18l9 5 9-5" opacity=".55" /></svg><span>بناء البيانات</span></a>
+            <a className={view === 'data' ? 'active' : ''} onClick={() => setView('data')}>{NAVI.database}<span>مكتبة البيانات</span><span className="count">{myDatasets.length || ''}</span></a>
+            <a className={explorerOpen ? 'active' : ''} onClick={() => openExplorer()}>{NAVI.map}<span>معاينة البيانات</span></a>
+            <a onClick={() => navigate('/palnovaa-engine/data')} title="يفتح في صفحةٍ مستقلّة أسرع — مشبوكة ببياناتك">{NAVI.layers}<span>بناء البيانات</span></a>
 
             <div className="nav-sec">الحساب</div>
-            <a onClick={() => navigate('/palnovaa-engine/pricing')}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M14.6 9.2c-.6-.7-1.5-1-2.6-1-1.4 0-2.5.8-2.5 2 0 1.3 1.2 1.7 2.5 2s2.6.7 2.6 2c0 1.2-1.2 2-2.6 2-1.1 0-2-.3-2.6-1M12 6.8v10.4" /></svg><span>الأسعار والترقية</span></a>
-            {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{Ico.db}<span>إدارة الدفع</span></a>}
+            <a onClick={() => navigate('/palnovaa-engine/pricing')}>{NAVI.dollar}<span>الأسعار والترقية</span></a>
+            {user?.role === 'admin' && <a onClick={() => navigate('/palnovaa-engine/payments')}>{NAVI.card}<span>إدارة الدفع</span></a>}
+
+            <div className="nav-sec">المرجع</div>
+            <a onClick={openDocsCenter}>{NAVI.book}<span>المستندات</span></a>
+            <a className={view === 'settings' ? 'active' : ''} onClick={openSettings}>{NAVI.gear}<span>الإعدادات</span></a>
           </nav>
           <div className="side-section">مشاريعي</div>
           <div className="history" onClick={() => setDrawer(false)}>
@@ -1369,7 +1408,7 @@ export default function PalNovaaEnginePage() {
                 ? <span className="foot-meter" title={`استُهلك ${tokMeter.used.toLocaleString('en')} من ${FREE_TOKENS.toLocaleString('en')} توكن`}><i style={{ width: `${Math.max(3, Math.round(tokMeter.frac * 100))}%` }} /></span>
                 : <small>{balance ? (balance.plan === 'pro' ? 'خطّة Pro — غير محدودة' : 'الخطّة المجّانيّة') : 'المحرّك الذكيّ'}</small>}
             </div>
-            <span className="foot-gear"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" /></svg></span>
+            <span className="foot-gear">{NAVI.gear}</span>
           </button>
         </aside>
 
@@ -1379,6 +1418,13 @@ export default function PalNovaaEnginePage() {
             <button className="icon-btn nav-toggle" title="القائمة" onClick={() => { setCollapsed(false); setDrawer(true); }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
             </button>
+            {(view === 'data' || view === 'settings') && (
+              <div className="crumbs">
+                <span className="crumb-home" onClick={() => setView('home')}>مساحة العمل</span>
+                <span className="sep">/</span><b className="crumb-flat">{view === 'data' ? 'مكتبة البيانات' : 'الإعدادات'}</b>
+              </div>
+            )}
+            {view !== 'data' && view !== 'settings' && (<>
             <div className="crumbs">
               <span className="crumb-home" onClick={() => { if (view !== 'home') setView('home'); }}>مساحة العمل</span>
               <span className="sep">/</span>
@@ -1398,6 +1444,7 @@ export default function PalNovaaEnginePage() {
               <button className="btn" onClick={onShare} disabled={!html}>{Ico.share}<span>حفظ</span></button>
               <button className="btn primary" onClick={onDeploy} disabled={!html || busy}>{Ico.rocket}<span>{slug && !dirty ? 'منشور' : 'نشر التطبيق'}</span></button>
             </div>
+            </>)}
           </header>
 
           {/* ===== HOME ===== */}
@@ -1490,6 +1537,166 @@ export default function PalNovaaEnginePage() {
                       {myDatasets.length === 0 && <div className="hm-empty">لا طبقات محفوظة بعد — أضِف مصادرك من زرّ «البيانات»، وتُخزَّن هنا.</div>}
                     </div>
                   </section>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ===== مكتبة البيانات ===== */}
+          {view === 'data' && (
+            <section className="datalib">
+              <div className="dl-inner">
+                <div className="dl-head">
+                  <div className="dl-head-txt">
+                    <div className="hm-eyebrow">التخزين</div>
+                    <h1 className="dl-title">مكتبة البيانات</h1>
+                    <p className="dl-sub">ملفّاتٌ مكانيّةٌ تُرفَع مباشرةً إلى التخزين السحابيّ. أرفِقها بمشاريعك من المُحرِّر.</p>
+                  </div>
+                  <button className="dl-upload" onClick={() => fileRef.current?.click()}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m17 8-5-5-5 5" /><path d="M12 3v13" /></svg>
+                    <span>رفع ملفّات</span>
+                  </button>
+                </div>
+
+                <div className="dl-grid">
+                  {/* الإفلاتُ يمرّ على onFile نفسه الذي يستعمله زرُّ الرفع — لا مسارَ ثانٍ */}
+                  <div className={`dl-drop ${dragOver ? 'over' : ''}`}
+                    onClick={() => fileRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); if (!dragOver) setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) onFile({ target: { files: [f] } }); }}>
+                    <span className="dl-drop-ic">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m17 8-5-5-5 5" /><path d="M12 3v13" /></svg>
+                    </span>
+                    <b>أفلِت الملفّات المكانيّة هنا</b>
+                    <small>.geojson .json .kml .kmz .csv .zip .shp .gpkg .tif .tiff .dxf</small>
+                  </div>
+
+                  <aside className="dl-card">
+                    <div className="dl-card-top"><b>تخزين مساحة العمل</b><span className="dl-used">{fmtBytes(totalBytes)}</span></div>
+                    <div className="dl-mini">
+                      <div><b>{nfmt(myDatasets.length)}</b><span>طبقة</span></div>
+                      <div><b>{nfmt(totalFeatures)}</b><span>معلم</span></div>
+                    </div>
+                    <p className="dl-note">الحدُّ لكلّ ملفّ: <b>40MB</b> للطبقات المتّجهة و<b>500MB</b> لصور GeoTIFF. لا سقفَ على مجموع مساحة العمل.</p>
+                    <div className="dl-fmts">
+                      {['GeoJSON', 'KML / KMZ', 'CSV', 'Shapefile (مضغوط)', 'GeoPackage', 'GeoTIFF', 'AutoCAD DXF'].map((f) => (
+                        <div className="dl-fmt" key={f}><span>{f}</span><em>يُعرَض</em></div>
+                      ))}
+                    </div>
+                  </aside>
+                </div>
+
+                <div className="dl-table">
+                  <div className="dl-tr dl-th"><span>الاسم</span><span>الصيغة</span><span>النوع</span><span>الخريطة</span><span>الحجم</span><span>أُضيف</span><span /></div>
+                  {myDatasets.map((d) => (
+                    <div className="dl-tr" key={d.slug}>
+                      <span className="dl-name" title={d.name}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6" /></svg>
+                        <b>{d.name}</b>
+                      </span>
+                      <span className="dl-fmt-c">{(d.kind || '').toUpperCase()}</span>
+                      <span>{d.kind === 'geotiff' ? 'راستر' : 'متّجه'}</span>
+                      <span><button className="dl-link" onClick={() => openExplorer(d)}>يُعرَض</button></span>
+                      <span className="dl-size">{fmtBytes(d.meta && d.meta.bytes)}</span>
+                      <span className="dl-when">{sinceTxt(d.created_at)}</span>
+                      <span className="dl-acts">
+                        <button title="إرفاقها بالمشروع" onClick={() => { attachDataset(d); setView('home'); }}>{Ico.plus}</button>
+                        <button title="تنزيل" onClick={() => window.open(`${API}/engine/datasets/${d.slug}/data`, '_blank', 'noopener')}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></svg>
+                        </button>
+                        <button className="danger" title="حذف" onClick={() => removeDataset(d)}>{Ico.trash}</button>
+                      </span>
+                    </div>
+                  ))}
+                  {myDatasets.length === 0 && <div className="dl-empty">لا طبقاتٍ بعد — أفلِت ملفّاً في المساحة أعلاه، أو اضغط «رفع ملفّات».</div>}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ===== الإعدادات ===== */}
+          {view === 'settings' && (
+            <section className="setpage">
+              <div className="sp-inner">
+                <div className="sp-head">
+                  <div className="hm-eyebrow">الحساب</div>
+                  <h1 className="dl-title">الإعدادات</h1>
+                  <p className="dl-sub">ملفّك الشخصيّ في محرّك بالنوفا، وحسابُ الدخول.</p>
+                </div>
+
+                <div className="sp-sec">
+                  <div className="sp-lbl"><b>{NAVI.user}<span>الملفّ الشخصيّ</span></b><small>يظهر في مساحة عملك.</small></div>
+                  <div className="sp-card">
+                    <div className="sp-f2">
+                      <label className="sp-field">
+                        <span>الاسم</span>
+                        <input value={nameDraft2} placeholder={userName || 'اسمك…'} maxLength={80} onChange={(e) => setNameDraft2(e.target.value)} />
+                      </label>
+                      <div className="sp-field">
+                        <span>الصورة</span>
+                        <div className="sp-avrow">
+                          <button className="sp-av" title="تغيير الصورة" onClick={() => avatarRef.current?.click()}>
+                            {avatarUrl ? <img src={avatarUrl} alt="" /> : <em>{avInitials}</em>}
+                          </button>
+                          <button className="sp-avbtn" onClick={() => avatarRef.current?.click()}>{avatarUrl ? 'تغيير الصورة' : 'رفع صورة'}</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sp-cardfoot">
+                      <span className="sp-meta">البريد <b>{user?.email || '—'}</b> · الدور <b>{user?.role === 'admin' ? 'أدمن' : 'مستخدم'}</b></span>
+                      <button className="sp-save" disabled={!profDirty || savingProf} onClick={saveProfile}>{NAVI.save}<span>{savingProf ? 'يحفظ…' : 'حفظ'}</span></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sp-sec">
+                  <div className="sp-lbl"><b>{NAVI.key}<span>حساب الدخول</span></b><small>هويّتك وجلستك الحاليّة.</small></div>
+                  <div className="sp-card">
+                    <div className="sp-who">
+                      <span className="sp-who-av">{avatarUrl ? <img src={avatarUrl} alt="" /> : <em>{avInitials}</em>}</span>
+                      <span className="sp-who-txt"><b>{displayName || 'مستخدم'}</b><small>{user?.email || ''}</small></span>
+                      <span className={`plan-badge ${balance?.plan === 'pro' ? 'pro' : ''}`}>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : '—'}</span>
+                    </div>
+                    <div className="sp-hr" />
+                    <div className="sp-actions">
+                      <button className="sp-ghost" onClick={() => navigate('/palnovaa-engine/pricing')}>{NAVI.dollar}<span>الخطط والفوترة</span></button>
+                      <button className="sp-out" onClick={() => logout()}>{NAVI.logout}<span>تسجيل الخروج</span></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="sp-sec">
+                  <div className="sp-lbl"><b>{NAVI.gauge}<span>الاستهلاك</span></b><small>ما صُرف من حصّتك هذه الدورة.</small></div>
+                  <div className="sp-card">
+                    {tokMeter ? (tokMeter.pro ? (<>
+                      <div className="sp-usetop"><b>خطّة Pro</b><span className="plan-badge pro">Pro</span></div>
+                      <div className="sp-track"><i style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
+                      <p className="sp-note">استهلاكٌ غير محدود — هذا الخطّ يبيّن ما صُرف هذه الدورة.</p>
+                    </>) : (<>
+                      <div className="sp-usetop"><b>{nfmt(tokMeter.used)}<span> / {nfmt(FREE_TOKENS)} توكن</span></b><span className="sp-pct">{Math.round(tokMeter.frac * 100)}%</span></div>
+                      <div className="sp-track"><i className={tokMeter.frac > 0.85 ? 'hot' : ''} style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
+                      <p className="sp-note">ميزانيّة الخطّة المجّانيّة — تكفي لبناء عدّة تطبيقاتٍ مرتّبة. عند النفاد تُتاح الترقية إلى Pro.</p>
+                    </>)) : <p className="sp-note">يُحمَّل الرصيد…</p>}
+                  </div>
+                </div>
+
+                <div className="sp-sec">
+                  <div className="sp-lbl"><b>{NAVI.palette}<span>المظهر</span></b><small>لونُ خلفيّة مساحة العمل. يُطبَّق فوراً ويُحفظ على جهازك.</small></div>
+                  <div className="sp-card">
+                    <div className="sp-swatches">
+                      {BG_PRESETS.map((b) => (
+                        <button key={b.n} className={`sp-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
+                          <span className="sp-tile" style={{ background: b.c }}>{(bgColor || '') === b.k && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}</span>
+                          <small>{b.n}</small>
+                        </button>
+                      ))}
+                    </div>
+                    <label className="sp-custom">
+                      <span><b>لونٌ مخصّص</b><small>اختر أيّ لونٍ داكن</small></span>
+                      <input type="color" value={bgColor || '#0A0B0D'} onChange={(e) => updBg(e.target.value)} />
+                    </label>
+                  </div>
                 </div>
               </div>
             </section>
@@ -2022,119 +2229,7 @@ export default function PalNovaaEnginePage() {
         </div>
       )}
 
-      {modal === 'settings' && (
-        <div className="set-scrim" onClick={(e) => { if (e.target.classList.contains('set-scrim')) setModal(null); }}>
-          <div className="set-shell" role="dialog">
-            <div className="set-shell-head">
-              <b>الإعدادات</b>
-              <button className="icon-btn" onClick={() => setModal(null)}>{Ico.close}</button>
-            </div>
-            <div className="set-shell-body">
-              <nav className="set-nav">
-                <button className={settSec === 'account' ? 'on' : ''} onClick={() => setSettSec('account')}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
-                  <span>الحساب</span>
-                </button>
-                <button className={settSec === 'usage' ? 'on' : ''} onClick={() => setSettSec('usage')}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><rect x="7" y="11" width="3" height="6" rx="1" /><rect x="12.5" y="7" width="3" height="10" rx="1" /><rect x="18" y="13" width="3" height="4" rx="1" /></svg>
-                  <span>الاستهلاك</span>
-                </button>
-                <button className={settSec === 'appearance' ? 'on' : ''} onClick={() => setSettSec('appearance')}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r="1.3" /><circle cx="17.5" cy="10.5" r="1.3" /><circle cx="8.5" cy="7.5" r="1.3" /><circle cx="6.5" cy="12.5" r="1.3" /><path d="M12 2a10 10 0 1 0 0 20c1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a5 5 0 0 0 5-5c0-4.4-4.5-8-10-8Z" /></svg>
-                  <span>المظهر</span>
-                </button>
-                <div className="set-nav-foot">
-                  <div className="set-nav-user">
-                    <div className="avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : avInitials}</div>
-                    <div><b>{displayName || 'مستخدم'}</b>{balance && <small>{balance.plan === 'pro' ? 'خطّة Pro' : 'الخطّة المجّانيّة'}</small>}</div>
-                  </div>
-                </div>
-              </nav>
-
-              <div className="set-main">
-                {/* ===== الحساب ===== */}
-                {settSec === 'account' && (
-                  <div className="set-pane">
-                    <h3 className="set-h">الحساب</h3>
-
-                    <div className="set-row">
-                      <div className="set-row-l"><b>صورة الملفّ</b><small>PNG أو JPEG أو WebP، حتى 10MB</small></div>
-                      <div className="set-row-r">
-                        <button className="set-av" onClick={() => avatarRef.current?.click()} title="تغيير الصورة">
-                          {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{avInitials}</span>}
-                        </button>
-                        <button className="set-av-btn" onClick={() => avatarRef.current?.click()}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="3.5" /></svg>
-                          <span>{avatarUrl ? 'تغيير' : 'رفع صورة'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="set-row">
-                      <div className="set-row-l"><b>الاسم الكامل</b><small>يظهر في المحرّك ويُحفظ في حسابك</small></div>
-                      <div className="set-row-r"><input className="set-inp" value={nameDraft2} placeholder={userName || 'اسمك…'} onChange={(e) => setNameDraft2(e.target.value)} maxLength={80} /></div>
-                    </div>
-
-                    <div className="set-row">
-                      <div className="set-row-l"><b>الخطّة</b><small>نوع اشتراكك الحاليّ</small></div>
-                      <div className="set-row-r"><span className={`plan-badge ${balance?.plan === 'pro' ? 'pro' : ''}`}>{balance ? (balance.plan === 'pro' ? 'Pro' : 'مجّاني') : '—'}</span></div>
-                    </div>
-
-                    <div className="set-save">
-                      <small>{profDirty ? 'لديك تغييراتٌ غير محفوظة' : 'كلّ شيءٍ محفوظ'}</small>
-                      <button className="btn accent" disabled={!profDirty || savingProf} onClick={saveProfile}>{savingProf ? 'يحفظ…' : 'حفظ التغييرات'}</button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ===== الاستهلاك ===== */}
-                {settSec === 'usage' && (
-                  <div className="set-pane">
-                    <h3 className="set-h">الاستهلاك</h3>
-                    {tokMeter ? (tokMeter.pro ? (
-                      <div className="set-usage pro">
-                        <div className="set-usage-top"><b>خطّة Pro</b><span className="plan-badge pro">Pro</span></div>
-                        <div className="set-track"><i style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
-                        <p className="set-note">استهلاكٌ غير محدود — هذا الخطّ يبيّن ما صُرف هذه الدورة.</p>
-                      </div>
-                    ) : (
-                      <div className="set-usage">
-                        <div className="set-usage-top"><b>{tokMeter.used.toLocaleString('en')}<span> / {FREE_TOKENS.toLocaleString('en')} توكن</span></b><span className="set-usage-pct">{Math.round(tokMeter.frac * 100)}%</span></div>
-                        <div className="set-track"><i className={tokMeter.frac > 0.85 ? 'hot' : ''} style={{ width: `${Math.round(tokMeter.frac * 100)}%` }} /></div>
-                        <p className="set-note">ميزانيّة الخطّة المجّانيّة — تكفي لبناء عدّة تطبيقاتٍ مرتّبة. عند النفاد تُتاح الترقية إلى Pro.</p>
-                        <button className="set-pro-cta" onClick={() => { setModal(null); navigate('/palnovaa-engine/pricing'); }}>
-                          <span>الترقية إلى Pro</span>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                        </button>
-                      </div>
-                    )) : <p className="set-note">يُحمَّل الرصيد…</p>}
-                  </div>
-                )}
-
-                {/* ===== المظهر ===== */}
-                {settSec === 'appearance' && (
-                  <div className="set-pane">
-                    <h3 className="set-h">المظهر</h3>
-                    <p className="set-sub">لون خلفيّة واجهة المحرّك. يُطبَّق فوراً ويُحفظ على جهازك.</p>
-                    <div className="set-swatches">
-                      {BG_PRESETS.map((b) => (
-                        <button key={b.n} className={`set-swatch ${(bgColor || '') === b.k ? 'on' : ''}`} title={b.n} onClick={() => updBg(b.k)}>
-                          <span className="set-sw-tile" style={{ background: b.c }}>{(bgColor || '') === b.k && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>}</span>
-                          <small>{b.n}</small>
-                        </button>
-                      ))}
-                    </div>
-                    <label className="set-custom">
-                      <div><b>لونٌ مخصّص</b><small>اختر أيّ لونٍ داكن</small></div>
-                      <input type="color" value={bgColor || '#0A0B0D'} onChange={(e) => updBg(e.target.value)} />
-                    </label>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* نافذةُ الإعدادات حُذفت — صارت صفحةً كاملةً (view === 'settings'). */}
 
       {/* ============ MODAL: POSTGIS ============ */}
       {modal === 'postgis' && (
