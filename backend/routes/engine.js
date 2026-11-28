@@ -450,7 +450,7 @@ const SYSTEM_INSTRUCTION = [
     ...(KIT_ON ? [
     '— طقم PalNovaa الجاهز (استعمله، ولا تُعِد كتابة ما فيه) —',
     `KIT=${KIT_BASE} — في <head>: leaflet 1.9.4 (css+js) ثمّ KIT+'pn-ui-1.0.css' ثمّ KIT+'pn-gis-1.0.js'. وأوّلَ سطرٍ في التشغيل: await PN.loadIcons(KIT+'pn-icons-1.0.svg') — الأيقوناتُ لا تعمل بدونها لأنّ <use> عبر نطاقٍ آخرَ ممنوع.`,
-    '• الخريطة: m=PN.map(el,{center,zoom,basemap:"light|dark|osm|satellite"}) · PN.layer(url,{map:m,symbol:id|f=>id,status:"#s"}) تجلب وتُظهر التحميلَ والخطأ وتعمل fitBounds.',
+    '• الخريطة: m=PN.map(el,{center,zoom,basemap:"satellite|google|hybrid|osm"}) · PN.layer(url,{map:m,symbol:id|f=>id,status:"#s"}) تجلب وتُظهر التحميلَ والخطأ وتعمل fitBounds.',
     '• الرسم: PN.marker([lat,lng],"pn-*") · PN.line(geo,"ln-*") · PN.area(geo,"pg-*") · PN.choropleth(geo,{field,map}) · PN.legend([ids]) · PN.popup(props,title) · PN.exportCSV(rows,name).',
     '• الأيقونة: <svg class="pn-i"><use href="#ID"/></svg> · والدبّوس: PN.pin(id).',
     '• الواجهة: .pn-app>.pn-head+.pn-side+.pn-main>.pn-map · .pn-float--ts|te|bs|be · .pn-card .pn-btn(--ghost|--icon|--sm) .pn-input .pn-search .pn-chip.is-on .pn-badge .pn-tabs>.pn-tab.is-on .pn-layer .pn-kpis>.pn-kpi .pn-table .pn-empty .pn-spinner .pn-status .pn-bar .pn-grid.',

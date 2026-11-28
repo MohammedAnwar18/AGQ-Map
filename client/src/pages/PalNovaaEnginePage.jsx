@@ -31,16 +31,6 @@ export default function PalNovaaEnginePage() {
   const [datasets, setDatasets] = useState([]);     // بيانات مرفقة (مرفوعة)
   const [myDatasets, setMyDatasets] = useState([]); // المتاحة
   /* مركز المستندات */
-  const [docsOpen, setDocsOpen] = useState(false);
-  const [docs, setDocs] = useState([]);
-  const [docOpen, setDocOpen] = useState(null);   // المستند المفتوح (تفصيل)
-  const [docEdit, setDocEdit] = useState(null);    // المستند قيد التحرير (أدمن)
-  const [docBusy, setDocBusy] = useState(false);
-  const [docsLoading, setDocsLoading] = useState(false);
-  const [docCat, setDocCat] = useState('');       // تصنيف مُختار
-  const [docSearch, setDocSearch] = useState('');
-  const [docSort, setDocSort] = useState('new');   // new | downloads | title
-  const [attachedExts, setAttachedExts] = useState([]); // إضافات (أدوات/أصول) مربوطة بالبناء الحاليّ
   const isAdmin = user?.role === 'admin';
   const [mode, setMode] = useState(MODES[0]);
   const [crs, setCrs] = useState(CRS[0]);
@@ -549,10 +539,6 @@ export default function PalNovaaEnginePage() {
     if (mode && mode !== MODES[0]) parts.push('نوع المُخرَج المطلوب: ' + mode + '.');
     if (crs && crs !== CRS[0]) parts.push('نظام الإسناد: ' + crs + '.');
     if (parts.length) p += '\n\n[' + parts.join(' ') + ']';
-    if (attachedExts.length) {
-      p += '\n\n[إضافاتٌ جاهزةٌ يجب تضمينها واستعمالها في التطبيق كما هي (أدوات تحليل/أيقونات/نصوص/ألوان):]';
-      attachedExts.forEach((e) => { p += `\n\n— ${e.title} (${e.kind === 'asset' ? 'أصول' : 'أداة'}):\n\`\`\`\n${(e.code || '').slice(0, 8000)}\n\`\`\``; });
-    }
     return p;
   };
 
@@ -1106,59 +1092,6 @@ export default function PalNovaaEnginePage() {
   const switchBase = (which) => { const map = mapRef.current; if (map && map.__base) { map.__base.setUrl(which === 'sat' ? SAT_URL : STREETS_URL); setBaseMap(which); } };
   const openExplorer = (d) => { setMenu(null); if (d && d.slug) pendingFocus.current = d; loadDatasets(); setExplorerOpen(true); };
 
-  /* ---- مركز المستندات ---- */
-  const loadDocs = () => { setDocsLoading(true); jget('/engine/docs').then((d) => { setDocs(d?.ok ? (d.docs || []) : []); }).catch(() => setDocs([])).finally(() => setDocsLoading(false)); };
-  const openDocsCenter = () => { setMenu(null); setDocOpen(null); setDocEdit(null); setDocCat(''); setDocSearch(''); loadDocs(); setDocsOpen(true); };
-  const downloadDoc = async (slug, fileUrl) => {
-    try { const r = await jpost(`/engine/docs/${slug}/download`, {}); const url = (r?.ok && r.file_url) || fileUrl; if (url) window.open(url, '_blank', 'noopener'); loadDocs(); }
-    catch { if (fileUrl) window.open(fileUrl, '_blank', 'noopener'); }
-  };
-  const openDoc = async (slug) => { const d = await jget(`/engine/docs/${slug}`); if (d?.ok) setDocOpen(d.doc); else showToast('تعذّر فتح الإضافة'); };
-  const saveDoc = async () => {
-    const d = docEdit; if (!d || !(d.title || '').trim()) { showToast('العنوان مطلوب'); return; }
-    setDocBusy(true);
-    const payload = { title: d.title, excerpt: d.excerpt || '', cover_url: d.cover_url || '', body: d.body || '', file_url: d.file_url || '', file_name: d.file_name || '', kind: d.kind || 'article', published: d.published !== false, sort_order: d.sort_order || 0 };
-    const res = d.slug ? await jput(`/engine/docs/${d.slug}`, payload) : await jpost('/engine/docs', payload);
-    setDocBusy(false);
-    if (res?.ok) { showToast('حُفظت الإضافة'); setDocEdit(null); loadDocs(); } else showToast('تعذّر الحفظ: ' + (res?.reason || ''));
-  };
-  const deleteDoc = async (slug) => { if (!window.confirm('حذف هذه الإضافة؟')) return; await jdel(`/engine/docs/${slug}`); loadDocs(); if (docOpen?.slug === slug) setDocOpen(null); };
-  const attachDoc = async (slug) => {
-    showToast('جارٍ الإضافة لبياناتك…');
-    const res = await jpost(`/engine/docs/${slug}/attach`, {});
-    if (res?.ok && res.dataset) { addDatasetResult(res.dataset); showToast(`أُضيف «${res.dataset.name}» إلى بياناتك`); }
-    else showToast('تعذّر الإضافة: ' + (res?.reason || ''));
-  };
-  /* ربط إضافة (أداة/أصول) بالبناء → تُحقن في توليد الـAI */
-  const attachExt = async (d) => {
-    let full = d;
-    if (!d.code) { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) full = r.doc; }
-    if (!full.code) { showToast('لا كود في هذه الإضافة'); return; }
-    setAttachedExts((a) => (a.find((x) => x.slug === full.slug) ? a : [...a, { slug: full.slug, title: full.title, kind: full.kind, code: full.code }]));
-    showToast(`أُضيفت «${full.title}» للبناء — سيستعملها المحرّك`);
-  };
-  const rmExt = (slug) => setAttachedExts((a) => a.filter((x) => x.slug !== slug));
-  const copyExtCode = (code) => { if (!navigator.clipboard) { showToast('تعذّر النسخ'); return; } navigator.clipboard.writeText(code || '').then(() => showToast('نُسخ الكود')).catch(() => showToast('تعذّر النسخ')); };
-  const exportCode = (d) => {
-    if (!d.code) return;
-    const ext = d.kind === 'asset' ? 'txt' : 'js';
-    const safe = (d.title || 'extension').replace(/[^\w؀-ۿ -]+/g, '').trim() || 'extension';
-    const url = URL.createObjectURL(new Blob([d.code], { type: 'text/plain;charset=utf-8' }));
-    const a = document.createElement('a'); a.href = url; a.download = `${safe}.${ext}`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
-    showToast('صُدِّر الكود');
-  };
-  const uploadDocAsset = async (file, field) => {
-    if (!file) return;
-    showToast('جارٍ الرفع…');
-    try {
-      const pre = await jpost('/engine/docs/presign', { filename: file.name, contentType: file.type || 'application/octet-stream' });
-      if (!pre?.ok) { showToast(pre?.reason || 'تعذّر الرفع'); return; }
-      await fetch(pre.uploadUrl, { method: 'PUT', headers: { 'Content-Type': pre.contentType }, body: file });
-      setDocEdit((e) => ({ ...e, [field]: pre.publicUrl, ...(field === 'file_url' ? { file_name: file.name } : {}) }));
-      showToast('تمّ الرفع ✓');
-    } catch { showToast('تعذّر الرفع'); }
-  };
   const closeExplorer = () => {
     const map = mapRef.current;
     if (map) Object.values(layerObjs.current).forEach((ly) => { try { map.removeLayer(ly); } catch { /* */ } });
@@ -1276,24 +1209,6 @@ export default function PalNovaaEnginePage() {
     return `${(d.kind || '').toUpperCase()} · ${d.feature_count}${gt ? ` · ${gt}` : ''}${tiled}`;
   };
   const allChips = [...attached.map((k) => ({ k, t: SRC[k].t, n: SRC[k].n, kind: 'src' })), ...datasets.map((d) => ({ k: d.slug, t: dsLabel(d.kind), n: d.name, kind: 'ds' }))];
-
-  /* سوق المستندات: تصنيفات + فلترة + فرز */
-  const docCategories = (() => {
-    const m = {};
-    docs.forEach((d) => { const c = (d.category || '').trim(); if (c) m[c] = (m[c] || 0) + 1; });
-    return Object.entries(m).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
-  })();
-  const docsFiltered = (() => {
-    let a = docs;
-    if (docCat) a = a.filter((d) => (d.category || '') === docCat);
-    if (docSearch.trim()) { const q = docSearch.trim().toLowerCase(); a = a.filter((d) => `${d.title} ${d.excerpt} ${d.author} ${d.category}`.toLowerCase().includes(q)); }
-    a = [...a];
-    if (docSort === 'downloads') a.sort((x, y) => (y.downloads || 0) - (x.downloads || 0));
-    else if (docSort === 'title') a.sort((x, y) => String(x.title).localeCompare(String(y.title), 'ar'));
-    else a.sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
-    return a;
-  })();
-  const fmtDocDate = (d) => { try { return new Date(d).toLocaleDateString('ar', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return ''; } };
 
   /* عرضٌ فقط — لا يمسّ أيّ منطق: زمنٌ نسبيّ مختصر، ومجموعُ معالم الطبقات. */
   const sinceTxt = (d) => {
@@ -1568,16 +1483,11 @@ export default function PalNovaaEnginePage() {
                     <span className="cmp-file"><i />وصف المشروع</span>
                     <span className="cmp-state"><i />{balance ? (balance.plan === 'pro' ? 'المحرّك جاهز · Pro' : 'المحرّك جاهز · مجّاني') : 'المحرّك جاهز'}</span>
                   </div>
-                  {(allChips.length > 0 || attachedExts.length > 0) && (
+                  {allChips.length > 0 && (
                     <div className="chips">
                       {allChips.map((c) => (
                         <span className="chip" key={c.kind + c.k}><span className="ct">{c.t}</span>{c.n}
                           <button title="إزالة" onClick={() => (c.kind === 'ds' ? rmDataset(c.k) : rmSrc(c.k))}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
-                        </span>
-                      ))}
-                      {attachedExts.map((e) => (
-                        <span className="chip ext" key={'x' + e.slug}><span className="ct">{e.kind === 'asset' ? 'أصول' : 'أداة'}</span>{e.title}
-                          <button title="إزالة" onClick={() => rmExt(e.slug)}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
                         </span>
                       ))}
                     </div>
@@ -2070,148 +1980,6 @@ export default function PalNovaaEnginePage() {
 
         </main>
       </div>
-
-      {/* ============ DOCS OVERLAY (مركز المستندات) ============ */}
-      {docsOpen && (
-        <div className="docs-overlay" dir="rtl">
-          <header className="docs-bar">
-            <div className="docs-head"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M19.44 12.99c-.49.18-.82.59-.9 1.06a1.03 1.03 0 0 0 .3.88l.05.05a2.5 2.5 0 1 1-3.54 3.53l-.05-.05a1.03 1.03 0 0 0-1.76.73v.14a2.5 2.5 0 0 1-5 0v-.07a1.03 1.03 0 0 0-.67-.94 1.03 1.03 0 0 0-1.14.21l-.05.05a2.5 2.5 0 1 1-3.54-3.53l.05-.05a1.03 1.03 0 0 0-.73-1.76H2.5a2.5 2.5 0 0 1 0-5h.07a1.03 1.03 0 0 0 .94-1.81l-.05-.05A2.5 2.5 0 1 1 7 2.84l.05.05a1.03 1.03 0 0 0 1.76-.73V2a2.5 2.5 0 0 1 5 0v.07a1.03 1.03 0 0 0 1.81.94l.05-.05A2.5 2.5 0 1 1 20.16 7l-.05.05a1.03 1.03 0 0 0 .73 1.76H21a2.5 2.5 0 0 1 0 5h-.07a1.03 1.03 0 0 0-.49.23z" /></svg><b>الإضافات</b><span>إضافاتٌ تُوسّع المحرّك — طبقات وأدوات وقوالب</span></div>
-            <div className="docs-actions">
-              {isAdmin && !docOpen && <button className="btn accent" onClick={() => setDocEdit({ kind: 'file', published: true })}>+ إضافة جديدة</button>}
-              <button className="icon-btn" title="إغلاق" onClick={() => { setDocsOpen(false); setDocOpen(null); setDocEdit(null); }}>{Ico.close}</button>
-            </div>
-          </header>
-          {!docOpen ? (
-            <div className="docs-market">
-              <aside className="docs-cats">
-                <button className={!docCat ? 'on' : ''} onClick={() => setDocCat('')}>الكلّ<span>{docs.length}</span></button>
-                {docCategories.map((c) => (
-                  <button key={c.name} className={docCat === c.name ? 'on' : ''} onClick={() => setDocCat(c.name)}>{c.name}<span>{c.count}</span></button>
-                ))}
-              </aside>
-              <div className="docs-main">
-                <div className="docs-toolbar">
-                  <input className="docs-search" placeholder="ابحث في الإضافات…" value={docSearch} onChange={(e) => setDocSearch(e.target.value)} />
-                  <select className="docs-sort" value={docSort} onChange={(e) => setDocSort(e.target.value)}>
-                    <option value="new">الأحدث</option>
-                    <option value="downloads">الأكثر تنزيلاً</option>
-                    <option value="title">الاسم</option>
-                  </select>
-                  <span className="docs-count">{docsFiltered.length} إضافة</span>
-                </div>
-                {docsLoading ? (
-                  <div className="docs-empty">…جارِ التحميل</div>
-                ) : docsFiltered.length === 0 ? (
-                  <div className="docs-empty">لا إضافات{isAdmin ? ' — أضِف أوّل إضافة من «+ إضافة جديدة».' : ' مطابقة.'}</div>
-                ) : (
-                  <div className="docs-grid">
-                    {docsFiltered.map((d) => (
-                      <div className="doc-card" key={d.slug}>
-                        <div className="doc-ic" style={d.cover_url ? { backgroundImage: `url("${d.cover_url}")` } : undefined}>
-                          {!d.cover_url && <span className="doc-ic-ph">{d.kind === 'tool' ? '🧩' : d.kind === 'asset' ? '🎨' : d.file_url ? '📦' : '📄'}</span>}
-                          {!d.published && <span className="doc-badge draft">مسودّة</span>}
-                        </div>
-                        <div className="doc-info">
-                          <b className="doc-t" onClick={() => openDoc(d.slug)}>{d.title}</b>
-                          {d.author && <span className="doc-by">by {d.author}</span>}
-                          <p className="doc-desc">{d.excerpt}</p>
-                          <div className="doc-foot">
-                            <span className="doc-date">🗓 {fmtDocDate(d.created_at)}{d.version ? ` · v${d.version}` : ''}</span>
-                          </div>
-                          <div className="doc-dl">
-                            {(d.kind === 'tool' || d.kind === 'asset')
-                              ? <button className="doc-dlbtn" onClick={() => attachExt(d)}>＋ أضِف للمشروع</button>
-                              : d.file_url
-                                ? <button className="doc-dlbtn" onClick={() => downloadDoc(d.slug, d.file_url)}>⬇ تنزيل</button>
-                                : <button className="doc-dlbtn ghost" onClick={() => openDoc(d.slug)}>اقرأ المزيد</button>}
-                            <span className="doc-count">{(d.kind === 'tool' || d.kind === 'asset') ? (d.kind === 'asset' ? '🎨 أصول' : '🧩 أداة') : `⬇ ${(d.downloads || 0).toLocaleString('ar')}`}</span>
-                          </div>
-                        </div>
-                        {isAdmin && (
-                          <div className="doc-admin">
-                            <button title="تحرير" onClick={async () => { const r = await jget(`/engine/docs/${d.slug}`); if (r?.ok) setDocEdit(r.doc); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg></button>
-                            <button title="حذف" onClick={() => deleteDoc(d.slug)}>{Ico.trash}</button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="docs-body">
-              <article className="doc-detail">
-                <button className="doc-back" onClick={() => setDocOpen(null)}>→ رجوع للقائمة</button>
-                {docOpen.cover_url && <img className="doc-detail-cover" src={docOpen.cover_url} alt="" />}
-                <h1>{docOpen.title}</h1>
-                <div className="doc-detail-meta">
-                  {docOpen.author && <span>بقلم {docOpen.author}</span>}
-                  {docOpen.category && <span>· {docOpen.category}</span>}
-                  {docOpen.version && <span>· v{docOpen.version}</span>}
-                  <span>· ⬇ {(docOpen.downloads || 0).toLocaleString('ar')}</span>
-                </div>
-                {(docOpen.kind === 'tool' || docOpen.kind === 'asset') && docOpen.code && (
-                  <div className="doc-file">
-                    <button className="btn accent" onClick={() => attachExt(docOpen)}>＋ أضِف للمشروع</button>
-                    <button className="btn" onClick={() => copyExtCode(docOpen.code)}>نسخ الكود</button>
-                    <button className="btn" onClick={() => exportCode(docOpen)}>تصدير</button>
-                  </div>
-                )}
-                {(docOpen.kind === 'tool' || docOpen.kind === 'asset') && docOpen.code && (
-                  <pre className="doc-code" dir="ltr"><code>{docOpen.code}</code></pre>
-                )}
-                {docOpen.file_url && (
-                  <div className="doc-file">
-                    <button className="btn accent" onClick={() => downloadDoc(docOpen.slug, docOpen.file_url)}>⬇ تنزيل {docOpen.file_name || 'الملفّ'}</button>
-                    {/\.(geojson|json|csv)(\?|$)/i.test(docOpen.file_url + ' ' + (docOpen.file_name || '')) && <button className="btn" onClick={() => attachDoc(docOpen.slug)}>＋ أضِف إلى بياناتي</button>}
-                  </div>
-                )}
-                <div className="doc-body" dangerouslySetInnerHTML={{ __html: mdToHtml(docOpen.body) }} />
-              </article>
-            </div>
-          )}
-          {docEdit && (
-            <div className="docs-editor-scrim" onClick={() => setDocEdit(null)}>
-              <div className="docs-editor" onClick={(e) => e.stopPropagation()}>
-                <h3>{docEdit.slug ? 'تحرير إضافة' : 'إضافة جديدة'}</h3>
-                <label>النوع</label>
-                <select value={docEdit.kind || 'tool'} onChange={(e) => setDocEdit({ ...docEdit, kind: e.target.value })}>
-                  <option value="tool">أداة (كود تحليل مكانيّ — تُحقن في البناء)</option>
-                  <option value="asset">أصول (أيقونات/نصوص/ألوان — تُحقن في البناء)</option>
-                  <option value="file">ملفّ/طبقة (تنزيل + إضافة لبياناتي)</option>
-                  <option value="article">مقال/دليل</option>
-                </select>
-                <label>الاسم</label>
-                <input value={docEdit.title || ''} onChange={(e) => setDocEdit({ ...docEdit, title: e.target.value })} placeholder="اسم الإضافة" />
-                <div className="doc-row2">
-                  <div><label>الكاتب / المصدر</label><input value={docEdit.author || ''} onChange={(e) => setDocEdit({ ...docEdit, author: e.target.value })} placeholder="مثلاً: PalNovaa" /></div>
-                  <div><label>الإصدار</label><input value={docEdit.version || ''} onChange={(e) => setDocEdit({ ...docEdit, version: e.target.value })} placeholder="1.0" /></div>
-                </div>
-                <label>التصنيف</label>
-                <input list="doc-cats" value={docEdit.category || ''} onChange={(e) => setDocEdit({ ...docEdit, category: e.target.value })} placeholder="مثلاً: أقمار صناعيّة / طبقات / قوالب / أدلّة" />
-                <datalist id="doc-cats"><option value="أقمار صناعيّة" /><option value="طبقات جاهزة" /><option value="قوالب" /><option value="أدلّة" /><option value="موارد فلسطين" /><option value="أدوات" /></datalist>
-                <label>مقتطف (يظهر على البطاقة)</label>
-                <input value={docEdit.excerpt || ''} onChange={(e) => setDocEdit({ ...docEdit, excerpt: e.target.value })} placeholder="وصفٌ قصير" />
-                <label>صورة الغلاف</label>
-                <div className="doc-row"><input value={docEdit.cover_url || ''} onChange={(e) => setDocEdit({ ...docEdit, cover_url: e.target.value })} placeholder="رابط صورة أو ارفع" /><label className="doc-up">رفع<input type="file" accept="image/*" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'cover_url')} /></label></div>
-                {(docEdit.kind === 'tool' || docEdit.kind === 'asset') && (
-                  <>
-                    <label>الكود {docEdit.kind === 'asset' ? '(أيقونات SVG / متغيّرات ألوان CSS / نصوص)' : '(دالّة/كود جاهز يُحقن في بناء الـAI)'}</label>
-                    <textarea value={docEdit.code || ''} onChange={(e) => setDocEdit({ ...docEdit, code: e.target.value })} rows={9} dir="ltr" style={{ fontFamily: 'var(--mono)', fontSize: 12.5 }} placeholder={docEdit.kind === 'asset' ? ':root{ --brand:#E07B39 }\n<svg>...</svg>' : 'function bufferKm(geojson, km){ /* ... */ }'} />
-                  </>
-                )}
-                <label>المحتوى/الوصف (ماركداون)</label>
-                <textarea value={docEdit.body || ''} onChange={(e) => setDocEdit({ ...docEdit, body: e.target.value })} rows={6} placeholder={'# عنوان\nشرح الاستعمال... **عريض** و[رابط](https://...)'} />
-                <label>ملفّ للتنزيل (اختياريّ)</label>
-                <div className="doc-row"><input value={docEdit.file_url || ''} onChange={(e) => setDocEdit({ ...docEdit, file_url: e.target.value })} placeholder="رابط ملفّ أو ارفع (geojson/csv يصير قابلاً للإضافة لبياناتك)" /><label className="doc-up">رفع<input type="file" hidden onChange={(e) => uploadDocAsset(e.target.files?.[0], 'file_url')} /></label></div>
-                <label className="doc-check"><input type="checkbox" checked={docEdit.published !== false} onChange={(e) => setDocEdit({ ...docEdit, published: e.target.checked })} /> منشور (يظهر للمستخدمين)</label>
-                <div className="docs-editor-foot"><button className="btn" onClick={() => setDocEdit(null)}>إلغاء</button><button className="btn accent" disabled={docBusy} onClick={saveDoc}>{docBusy ? 'يحفظ…' : 'حفظ'}</button></div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ============ EXPLORER OVERLAY (معاينة البيانات — نافذة مستقلّة) ============ */}
       <div className={`exp-overlay ${explorerOpen ? 'open' : ''}`}>

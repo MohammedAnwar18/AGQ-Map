@@ -35,9 +35,9 @@
     var root=document.documentElement;
     function isDark(){return root.getAttribute('data-theme')==='dark';}
     var tbtn=document.getElementById('theme');
-    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'satellite':'osm'); };
 
-    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:14,basemap:isDark()?'dark':'light'});
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:14,basemap:isDark()?'satellite':'osm'});
     PN.area(D.areas['pg-city'],'pg-city').addTo(m); PN.line(D.lines['ln-main'],'ln-main').addTo(m); PN.line(D.lines['ln-local'],'ln-local').addTo(m);
     var feats=D.points.features, on={}, cats=Object.keys(PN.cats), sel=null, mk=[];
     cats.forEach(function(c){on[c]=true;});

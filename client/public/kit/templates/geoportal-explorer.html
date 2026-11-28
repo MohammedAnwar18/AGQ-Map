@@ -42,9 +42,9 @@
     var root=document.documentElement;
     function isDark(){return root.getAttribute('data-theme')==='dark';}
     var tbtn=document.getElementById('theme');
-    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'satellite':'osm'); };
 
-    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:13,basemap:isDark()?'dark':'light'});
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:13,basemap:isDark()?'satellite':'osm'});
     var groups=[
       ['حدود إدارية',['pg-governorate','pg-city','pg-village']],
       ['أراضٍ ومياه',['pg-basin','pg-parcel','pg-water']],
@@ -77,7 +77,7 @@
     document.querySelectorAll('.pn-tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('.pn-tab').forEach(function(x){x.classList.toggle('is-on',x===t);});
       ['layers','legend','results'].forEach(function(k){document.getElementById('tab-'+k).hidden=k!==t.dataset.tab;});};});
     document.querySelectorAll('[data-bm]').forEach(function(b){b.onclick=function(){document.querySelectorAll('[data-bm]').forEach(function(x){x.classList.toggle('is-on',x===b);});
-      m.pnBasemap(b.dataset.bm==='auto'?(isDark()?'dark':'light'):b.dataset.bm);};});
+      m.pnBasemap(b.dataset.bm==='auto'?(isDark()?'satellite':'osm'):b.dataset.bm);};});
     var q=document.getElementById('q');
     q.oninput=function(){ var v=q.value.trim(), box=document.getElementById('tab-results');
       document.querySelector('[data-tab=results]').click();

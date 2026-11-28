@@ -1,4 +1,5 @@
 /* PalNovaa GIS kit 1.0 — pn-gis-1.0.js  (needs Leaflet 1.9.x loaded first)
+   Basemaps: satellite (Esri) · google · hybrid · osm
    API: PN.map · PN.loadIcons · PN.marker · PN.line · PN.area · PN.layer · PN.legend
         PN.popup · PN.choropleth · PN.exportCSV · PN.icon · PN.pin
    Data: PN.points · PN.lines · PN.areas · PN.cats  */
@@ -6,12 +7,20 @@
   'use strict';
   var POINTS = {"pn-mosque":{"ar":"مسجد","en":"Mosque","cat":"religious","color":"#0b6e4f"},"pn-church":{"ar":"كنيسة","en":"Church","cat":"religious","color":"#4c3f99"},"pn-supermarket":{"ar":"سوبرماركت","en":"Supermarket","cat":"commerce","color":"#b85c00"},"pn-mall":{"ar":"مجمّع تجاري","en":"Shopping mall","cat":"commerce","color":"#9a4d00"},"pn-hospital":{"ar":"مستشفى","en":"Hospital","cat":"health","color":"#c0262d"},"pn-park":{"ar":"حديقة","en":"Park","cat":"nature","color":"#2f7d32"},"pn-tower":{"ar":"برج اتصالات","en":"Telecom tower","cat":"infrastructure","color":"#475569"},"pn-police":{"ar":"مركز شرطة","en":"Police station","cat":"security","color":"#1e3a8a"},"pn-checkpoint":{"ar":"حاجز / نقطة تفتيش","en":"Checkpoint","cat":"security","color":"#8b1a1a"},"pn-school":{"ar":"مدرسة","en":"School","cat":"education","color":"#1d5fa8"},"pn-university":{"ar":"جامعة","en":"University","cat":"education","color":"#164a85"},"pn-bank":{"ar":"بنك","en":"Bank","cat":"finance","color":"#7a5a00"},"pn-restaurant":{"ar":"مطعم","en":"Restaurant","cat":"food","color":"#b5381b"},"pn-hookah":{"ar":"فيب وأراجيل","en":"Vape & hookah","cat":"food","color":"#6d28d9"},"pn-bakery":{"ar":"مخبز","en":"Bakery","cat":"food","color":"#a35a14"},"pn-butcher":{"ar":"ملحمة","en":"Butcher","cat":"food","color":"#9f1239"},"pn-traffic-light":{"ar":"إشارة مرور","en":"Traffic light","cat":"transport","color":"#334155"},"pn-camera":{"ar":"كاميرا مراقبة","en":"CCTV camera","cat":"transport","color":"#0e6377"}}, LINES = {"ln-motorway":{"ar":"شارع سريع","en":"Motorway","stack":[{"color":"#7d1212","weight":10,"lineCap":"round","lineJoin":"round"},{"color":"#e03131","weight":7,"lineCap":"round","lineJoin":"round"}]},"ln-main":{"ar":"شارع رئيسي","en":"Main road","stack":[{"color":"#8a4b00","weight":8,"lineCap":"round","lineJoin":"round"},{"color":"#f08c00","weight":5.5,"lineCap":"round","lineJoin":"round"}]},"ln-regional":{"ar":"شارع إقليمي","en":"Regional road","stack":[{"color":"#8f6d00","weight":7,"lineCap":"round","lineJoin":"round"},{"color":"#fcc419","weight":4.5,"lineCap":"round","lineJoin":"round"}]},"ln-local":{"ar":"شارع فرعي","en":"Local street","stack":[{"color":"#8b95a1","weight":5.5,"lineCap":"round","lineJoin":"round"},{"color":"#ffffff","weight":3.5,"lineCap":"round","lineJoin":"round"}]},"ln-railway":{"ar":"سكة قطار","en":"Railway","stack":[{"color":"#3b3b3b","weight":5,"lineCap":"butt"},{"color":"#ffffff","weight":3,"dashArray":"10 10","lineCap":"butt"}]},"ln-wall":{"ar":"جدار الفصل العنصري","en":"Separation wall","stack":[{"color":"#1f2328","weight":6,"lineCap":"butt"},{"color":"#e03131","weight":2.5,"dashArray":"2 7","lineCap":"butt"}]},"ln-power":{"ar":"خط كهرباء","en":"Power line","stack":[{"color":"#d97706","weight":2,"dashArray":"14 4 2 4","lineCap":"butt"}]},"ln-water":{"ar":"خط مياه","en":"Water pipe","stack":[{"color":"#1c6fd6","weight":2.5,"dashArray":"8 5","lineCap":"butt"}]},"ln-river":{"ar":"نهر / وادٍ","en":"River","stack":[{"color":"#1971c2","weight":5.5,"opacity":0.35,"lineCap":"round","lineJoin":"round"},{"color":"#4dabf7","weight":3.5,"lineCap":"round","lineJoin":"round"}]},"ln-trail":{"ar":"مسار مشي","en":"Walking trail","stack":[{"color":"#7a5230","weight":2.5,"dashArray":"1 6","lineCap":"round"}]}}, AREAS = {"pg-governorate":{"ar":"حدود محافظة","en":"Governorate","style":{"color":"#6741d9","weight":3,"dashArray":"14 5 3 5","fillColor":"#6741d9","fillOpacity":0.04}},"pg-city":{"ar":"حدود مدينة","en":"City","style":{"color":"#495057","weight":2.2,"dashArray":"9 4","fillColor":"#868e96","fillOpacity":0.12}},"pg-village":{"ar":"حدود قرية","en":"Village","style":{"color":"#6c757d","weight":1.5,"dashArray":"4 4","fillColor":"#adb5bd","fillOpacity":0.1}},"pg-water":{"ar":"مسطّح مائي","en":"Water body","style":{"color":"#1c7ed6","weight":1.2,"fillColor":"#74c0fc","fillOpacity":0.6}},"pg-basin":{"ar":"حوض أراضٍ","en":"Land basin","style":{"color":"#b08900","weight":1.8,"dashArray":"6 3","fillColor":"#ffd43b","fillOpacity":0.14}},"pg-parcel":{"ar":"قطعة أرض","en":"Land parcel","style":{"color":"#8d5524","weight":0.9,"fillColor":"#e8c39e","fillOpacity":0.18}}}, CATS = {"religious":"دينية","commerce":"تجارة","health":"صحة","nature":"طبيعة","infrastructure":"بنية تحتية","security":"أمن","education":"تعليم","finance":"مال","food":"طعام","transport":"مرور"};
   var PIN = 'M16 1.5C8.8 1.5 3 7 3 13.9 3 22.3 16 34.5 16 34.5S29 22.3 29 13.9C29 7 23.2 1.5 16 1.5z';
+  /* صورٌ فضائيّةٌ أوّلاً. لكلّ خريطةٍ نطاقاتُها الفرعيّة وأقصى تكبيرٍ خاصٌّ بها. */
   var BASEMAPS = {
-    light: ['https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', '&copy; OpenStreetMap &copy; CARTO'],
-    dark:  ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',  '&copy; OpenStreetMap &copy; CARTO'],
-    osm:   ['https://tile.openstreetmap.org/{z}/{x}/{y}.png', '&copy; OpenStreetMap'],
-    satellite: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', 'Tiles &copy; Esri']
+    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                 attr: 'Tiles &copy; Esri — Maxar, Earthstar Geographics', max: 19 },
+    google:    { url: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr: '&copy; Google',
+                 subs: ['mt0', 'mt1', 'mt2', 'mt3'], max: 20 },
+    hybrid:    { url: 'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr: '&copy; Google',
+                 subs: ['mt0', 'mt1', 'mt2', 'mt3'], max: 20 },
+    osm:       { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', attr: '&copy; OpenStreetMap', max: 19 }
   };
+  BASEMAPS.esri = BASEMAPS.satellite;
+  /* مفتاحان قديمان يبقيان ليعملا في أيّ تطبيقٍ بُني قبل هذا التغيير */
+  BASEMAPS.dark = BASEMAPS.satellite;
+  BASEMAPS.light = BASEMAPS.osm;
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
   /* Cross-origin <use href="https://…svg#id"> is blocked by browsers even with CORS:
@@ -38,12 +47,12 @@
     L.control.zoom({ position: o.zoomPosition || 'bottomleft' }).addTo(m);
     m._pnBase = null;
     m.pnBasemap = function (key) {
-      var b = BASEMAPS[key] || BASEMAPS.light;
+      var b = BASEMAPS[key] || BASEMAPS.satellite;
       if (m._pnBase) m.removeLayer(m._pnBase);
-      m._pnBase = L.tileLayer(b[0], { attribution: b[1], maxZoom: 19, subdomains: 'abcd' }).addTo(m);
+      m._pnBase = L.tileLayer(b.url, { attribution: b.attr, maxZoom: b.max || 19, subdomains: b.subs || 'abc' }).addTo(m);
       m._pnBase.bringToBack(); return m;
     };
-    if (o.basemap !== false) m.pnBasemap(o.basemap || 'light');
+    if (o.basemap !== false) m.pnBasemap(o.basemap || 'satellite');
     return m;
   }
 

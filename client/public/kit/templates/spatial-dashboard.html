@@ -35,9 +35,9 @@
     var root=document.documentElement;
     function isDark(){return root.getAttribute('data-theme')==='dark';}
     var tbtn=document.getElementById('theme');
-    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'dark':'light'); };
+    if(tbtn) tbtn.onclick=function(){ root.setAttribute('data-theme', isDark()?'light':'dark'); if(window._m) _m.pnBasemap(isDark()?'satellite':'osm'); };
 
-    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:12,basemap:isDark()?'dark':'light'});
+    var D=PN_DEMO, m=window._m=PN.map('map',{center:D.center,zoom:12,basemap:isDark()?'satellite':'osm'});
     var ch=PN.choropleth(D.sectors,{field:'السكان',map:m}); document.getElementById('leg').innerHTML=ch.legendHTML; m.fitBounds(ch.layer.getBounds(),{padding:[16,16]});
     var pop=D.sectors.features.reduce(function(s,f){return s+f.properties['السكان'];},0), pts=D.points.features;
     var kp=[['إجمالي السكان',pop.toLocaleString('ar'),'+2.4% عن العام الماضي'],['المرافق المسجّلة',pts.length.toLocaleString('ar'),'+6 هذا الشهر'],

@@ -42,7 +42,7 @@
 
 ```text
 KIT=<R2>/kit/ — load: leaflet 1.9.4, pn-ui-1.0.css, pn-gis-1.0.js; then PN.loadIcons(KIT+'pn-icons-1.0.svg').
-Map: m=PN.map(el,{center,zoom,basemap:'light|dark|osm|satellite'}) · PN.layer(url,{map:m,symbol:id|f=>id,status:'#s'}) fetch+loading/error+fit
+Map: m=PN.map(el,{center,zoom,basemap:'satellite|google|hybrid|osm'}) · PN.layer(url,{map:m,symbol:id|f=>id,status:'#s'}) fetch+loading/error+fit
 Draw: PN.marker([lat,lng],'pn-*') · PN.line(geo,'ln-*') · PN.area(geo,'pg-*') · PN.choropleth(geo,{field,map}) · PN.legend([ids]) · PN.popup(props,title) · PN.exportCSV(rows,name)
 Icon: <svg class="pn-i"><use href="#ID"/></svg> · PN.pin(id)
 UI: .pn-app>.pn-head+.pn-side+.pn-main>.pn-map · .pn-float--ts|te|bs|be · .pn-card .pn-btn(--ghost|--icon|--sm) .pn-chip.is-on .pn-badge .pn-tabs>.pn-tab.is-on .pn-layer .pn-kpis>.pn-kpi .pn-table .pn-empty .pn-spinner .pn-status
